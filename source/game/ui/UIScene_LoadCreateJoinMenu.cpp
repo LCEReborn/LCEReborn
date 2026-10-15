@@ -27,8 +27,11 @@
 #include "platform/CInput.hpp"
 #include "platform/CProfile.hpp"
 #include "platform/CStorage.hpp"
+#include "platform/Platform.hpp"
+#if LCE_PLATFORM_WIIU
 #include "platform/wiiu/NQRNetworkManager_Lan_WiiU.hpp"
-#include "platform/wiiu/cCommerceNintendoWiiU.hpp"
+#endif
+#include "platform/Commerce.hpp"
 #include "vendor/_LoadingInputParams.hpp"
 #include "vendor/_SaveListDetails.hpp"
 
@@ -1018,6 +1021,7 @@ int UIScene_LoadCreateJoinMenu::CrossSaveUploadFinishedCallback(void* context, i
     return 0;
 }
 
+#if LCE_PLATFORM_WIIU
 int UIScene_LoadCreateJoinMenu::UploadNintendoLanSaveThreadProc(void* context)
 {
     UIScene_LoadCreateJoinMenu* menu = static_cast<UIScene_LoadCreateJoinMenu*>(context);
@@ -1178,6 +1182,7 @@ int UIScene_LoadCreateJoinMenu::UploadNintendoLanSaveThreadProc(void* context)
     LeaveCriticalSection(&menu->m_lock);
     return 0;
 }
+#endif
 
 void UIScene_LoadCreateJoinMenu::CancelSaveUploadCallback(void* context)
 {
@@ -1187,6 +1192,7 @@ void UIScene_LoadCreateJoinMenu::CancelSaveUploadCallback(void* context)
     menu->m_ignoreInput = true;
 }
 
+#if LCE_PLATFORM_WIIU
 void UIScene_LoadCreateJoinMenu::LaunchSaveUpload()
 {
     _LoadingInputParams* params = new _LoadingInputParams();
@@ -1204,12 +1210,22 @@ void UIScene_LoadCreateJoinMenu::LaunchSaveUpload()
     gConsoleUIController.NavigateToScene(m_playerId, EUIScene_FullscreenProgress, params, EUILayer_Scene,
                                          EUIGroup_PlayerDefault);
 }
+#endif
 
 int UIScene_LoadCreateJoinMenu::SaveTransferDialogReturned(void* context, int, C4JStorage::EMessageResult result)
 {
     UIScene_LoadCreateJoinMenu* menu = static_cast<UIScene_LoadCreateJoinMenu*>(context);
     if (result == C4JStorage::EMessageResult_Accept)
+#if LCE_PLATFORM_WIIU
         menu->LaunchSaveUpload();
+#elif LCE_PLATFORM_PC
+    {
+        int okOption[1] = {IDS_CONFIRM_OK};
+        gConsoleUIController.RequestErrorMessage(IDS_TITLE_SAVETRANSFER, IDS_SAVE_TRANSFER_FAILED, okOption, 1,
+                                                 gProfile->GetPrimaryPad(), &CrossSaveUploadFinishedCallback, menu,
+                                                 NULL, true);
+    }
+#endif
     menu->m_ignoreInput = false;
     return 0;
 }

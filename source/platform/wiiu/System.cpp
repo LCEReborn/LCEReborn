@@ -1,6 +1,40 @@
 #include "game/core/System.hpp"
+#include "platform/Platform.hpp"
+
+#if LCE_PLATFORM_WIIU
 #include <coreinit/systeminfo.h>
 #include <coreinit/time.h>
+#elif LCE_PLATFORM_PC
+#include <chrono>
+#include <ctime>
+
+static const long long kUnixSecondsAt2000 = 946684800LL;
+
+static long long LocalOffsetSeconds()
+{
+    const std::time_t seconds = std::time(NULL);
+    std::tm local;
+    std::tm utc;
+#if defined(_WIN32)
+    localtime_s(&local, &seconds);
+    gmtime_s(&utc, &seconds);
+#else
+    localtime_r(&seconds, &local);
+    gmtime_r(&seconds, &utc);
+#endif
+    utc.tm_isdst = local.tm_isdst;
+    return static_cast<long long>(std::mktime(&local) - std::mktime(&utc));
+}
+
+static unsigned long long LocalNanosecondsSince2000()
+{
+    static const long long offsetSeconds = LocalOffsetSeconds();
+    const long long unixNanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                          std::chrono::system_clock::now().time_since_epoch())
+                                          .count();
+    return static_cast<unsigned long long>(unixNanoseconds + (offsetSeconds - kUnixSecondsAt2000) * 1000000000LL);
+}
+#endif
 
 void System::arraycopy(arrayWithLength<unsigned char> src, unsigned int srcPos, arrayWithLength<unsigned char>* dest,
                        unsigned int destPos, unsigned int length)
@@ -34,6 +68,7 @@ void System::arraycopy(arrayWithLength<unsigned short> src, unsigned int srcPos,
 
 uint64_t System::processTime(ETimeGranularity granularity)
 {
+#if LCE_PLATFORM_WIIU
     switch (granularity)
     {
     case eTimeGranularity_MilliSecs:
@@ -45,6 +80,18 @@ uint64_t System::processTime(ETimeGranularity granularity)
                / ((unsigned long long)(OSGetSystemInfo()->busClockSpeed >> 2) / 31250);
     }
     return 0;
+#elif LCE_PLATFORM_PC
+    switch (granularity)
+    {
+    case eTimeGranularity_MilliSecs:
+        return LocalNanosecondsSince2000() / 1000000ULL;
+    case eTimeGranularity_MicroSecs:
+        return LocalNanosecondsSince2000() / 1000ULL;
+    case eTimeGranularity_NanoSecs:
+        return LocalNanosecondsSince2000();
+    }
+    return 0;
+#endif
 }
 
 uint64_t System::processTimeInSeconds()
@@ -64,7 +111,11 @@ uint64_t System::processTimeInNanoSecs()
 
 uint64_t System::currentRealTimeMillis()
 {
+#if LCE_PLATFORM_WIIU
     return (unsigned long long)OSGetTime() * 1000 / (OSGetSystemInfo()->busClockSpeed >> 2);
+#elif LCE_PLATFORM_PC
+    return LocalNanosecondsSince2000() / 1000000ULL;
+#endif
 }
 
 uint64_t System::currentUnixEpochTimeSeconds()

@@ -19,9 +19,12 @@
 #include "game/core/MasterGameMode.hpp"
 #include "platform/CInput.hpp"
 #include "vendor/_ConnectionProgressParams.hpp"
+#include "platform/Platform.hpp"
+#if LCE_PLATFORM_WIIU
 #include "platform/wiiu/NQRNetworkManager_WiiU.hpp"
 #include "platform/wiiu/NintendoVoiceChat_WiiU.hpp"
 #include "platform/wiiu/cCommerceNintendo.hpp"
+#endif
 #include "platform/C4JThread.hpp"
 #include "game/network/ServerboundPreLoginPacket.hpp"
 #include "game/server/MinecraftServer.hpp"
@@ -58,15 +61,19 @@
 #include "platform/C4JThreadImpl.hpp"
 #include "platform/CProfile.hpp"
 #include "platform/CStorage.hpp"
+#if LCE_PLATFORM_WIIU
 #include "platform/wiiu/NQRNetworkManager.hpp"
+#endif
 #include "vendor/_NetworkGameInitData.hpp"
 #include "game/ui/UIScene_FullscreenProgress.hpp"
 #include "game/ui/UIScene_QuadrantSignin.hpp"
 #include "game/core/User.hpp"
 #include "vendor/_LoadingInputParams.hpp"
+#if LCE_PLATFORM_WIIU
 #include "platform/wiiu/CPlatformNetworkManagerNintendo.hpp"
 
 #include <sysapp/args.h>
+#endif
 
 extern "C" int shutdown(int socket, int how);
 extern ConsoleUIController gConsoleUIController;
@@ -244,6 +251,7 @@ void CGameNetworkManager::ProcessInvite(unsigned int userIndex, unsigned int fla
     m_pendingInviteUserMask = flags;
     gApp.SetAction((int)userIndex, eXuiAction_JoinFromInvite, 0);
 }
+#if LCE_PLATFORM_WIIU
 void CGameNetworkManager::GameInviteReceived(int userIndex, nn::fp::FriendPresence* presence)
 {
     if (gConsoleUIController.IsShowingErrorMessage(userIndex))
@@ -300,6 +308,11 @@ void CGameNetworkManager::GameInviteReceived(int userIndex, nn::fp::FriendPresen
         ProcessInvite(userIndex, mask, presence);
     }
 }
+#elif LCE_PLATFORM_PC
+void CGameNetworkManager::GameInviteReceived(int, nn::fp::FriendPresence*)
+{
+}
+#endif
 void CGameNetworkManager::TickInvitePending()
 {
     if (m_deferredInviteUserIndex >= 0 && !gConsoleUIController.IsShowingErrorMessage(m_deferredInviteUserIndex))
@@ -1481,6 +1494,7 @@ bool CGameNetworkManager::IsHandlingBootInvite()
 {
     return g_pPlatformNetworkManager->IsHandlingBootInvite();
 }
+#if LCE_PLATFORM_WIIU
 void CGameNetworkManager::WiiU_ClearIsHandlingBootInvite()
 {
     NQRNetworkManager_WiiU::ClearIsHandlingBootInvite();
@@ -1520,6 +1534,61 @@ void CGameNetworkManager::WiiU_SetBootFromFriendList()
         gApp.setIgnoreMainMenuInputDuringInvite(true);
     }
 }
+#elif LCE_PLATFORM_PC
+namespace
+{
+int (*s_connectProgressCallback)(void*, bool, int, int);
+void* s_connectProgressCallbackData;
+int s_connectProgressUserIndex;
+int s_connectProgressControllerId;
+
+int ConnectOnlineProgressReturned(void*, bool connected, int)
+{
+    if (connected)
+    {
+        if (s_connectProgressCallback != NULL)
+            s_connectProgressCallback(s_connectProgressCallbackData, gProfile->IsSignedInLive(0),
+                                      s_connectProgressUserIndex, s_connectProgressControllerId);
+    }
+    else
+    {
+        int parameter = static_cast<int>(IDS_CONFIRM_OK);
+        gConsoleUIController.RequestErrorMessage(IDS_ERROR_NETWORK_TITLE, IDS_ERROR_NETWORK, &parameter, 1, 0xff, NULL,
+                                                 NULL, NULL, true);
+    }
+    return 0;
+}
+}
+
+void CGameNetworkManager::WiiU_ClearIsHandlingBootInvite()
+{
+    gApp.setIgnoreMainMenuInputDuringInvite(false);
+}
+void CGameNetworkManager::WiiU_ShowErrorViewer()
+{
+}
+void CGameNetworkManager::ShowConnectOnlineNintendoProgress(int i, int (*cb)(void*, bool, int, int), void* d)
+{
+    s_connectProgressCallback = cb;
+    s_connectProgressCallbackData = d;
+    s_connectProgressUserIndex = i;
+    s_connectProgressControllerId = g_pInput->GetControllerID(i);
+    TryToConnectOnline(ConnectOnlineProgressReturned, NULL, true);
+}
+void CGameNetworkManager::WiiU_ReleaseForeground()
+{
+}
+void CGameNetworkManager::WiiU_AcquiredForeground()
+{
+    MasterGameMode::ResetLobbyTimerAfterSuspend();
+}
+void CGameNetworkManager::WiiU_ReleaseCallback()
+{
+}
+void CGameNetworkManager::WiiU_SetBootFromFriendList()
+{
+}
+#endif
 bool CGameNetworkManager::IsUGCRestricted(int userIndex)
 {
     bool explicitUser = userIndex != 0xff;
@@ -1616,6 +1685,7 @@ unsigned int CallbackAcquiredForeground(void*)
 {
     gRenderer->AcquiredForeground();
     g_pInput->AcquiredForeground();
+#if LCE_PLATFORM_WIIU
     if (CommerceAppletIsExecuting())
     {
         CommerceAppletFinish();
@@ -1624,6 +1694,7 @@ unsigned int CallbackAcquiredForeground(void*)
             reinterpret_cast<void*>(gApp.GetCommerceInstance()));
         commerce->SetProcessState(cCommerceNintendo::eCommerce_Process_State_ForegroundAcquired);
     }
+#endif
     CGameNetworkManager::sInstance.WiiU_AcquiredForeground();
     return 0;
 }

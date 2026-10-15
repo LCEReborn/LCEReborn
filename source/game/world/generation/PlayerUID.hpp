@@ -52,6 +52,6 @@ struct PlayerUID
     bool operator!=(const PlayerUID& other) const;
 };
 
-unsigned int hash_value(const PlayerUID& uid);
+std::size_t hash_value(const PlayerUID& uid);
 
 #endif

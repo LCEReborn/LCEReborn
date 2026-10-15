@@ -19,7 +19,9 @@
 #include "game/ui/UILayer.hpp"
 #include "game/ui/UIScene_AchievementsMenu.hpp"
 #include "game/ui/UIScene_AnvilMenu.hpp"
+#if LCE_PLATFORM_WIIU
 #include "game/ui/UIScene_AvatarSelectMenu.hpp"
+#endif
 #include "game/ui/UIScene_BeaconMenu.hpp"
 #include "game/ui/UIScene_BiomePreviewMenu.hpp"
 #include "game/ui/UIScene_BrewingStandMenu.hpp"
@@ -145,9 +147,11 @@ UIScene* UILayer::addComponent(int player, EUIScene scene, void* data)
     case EUIScene_MenuBackground:
         created = new UIComponent_MenuBackground(player, data, this);
         break;
+#if LCE_PLATFORM_WIIU
     case EUIScene_WiiUDRC:
         created = new UIComponent_WiiUDRC(player, data, this);
         break;
+#endif
     default:
         return NULL;
     }
@@ -583,9 +587,11 @@ bool UILayer::NavigateToScene(int player, EUIScene scene, void* data)
     case EUIScene_Timer:
         created = new UIScene_Timer(player, data, this);
         break;
+#if LCE_PLATFORM_WIIU
     case EUIScene_AvatarSelectMenu:
         created = new UIScene_AvatarSelectMenu(player, data, this);
         break;
+#endif
     case EUIScene_AchievementsMenu:
         created = new UIScene_AchievementsMenu(player, data, this);
         break;

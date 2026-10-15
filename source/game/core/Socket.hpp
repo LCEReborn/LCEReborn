@@ -15,6 +15,9 @@ class Socket
     friend class ClientPacketListener;
     friend class PlayerList;
     friend class CPlatformNetworkManagerNintendo;
+#if LCE_PLATFORM_PC
+    friend class CPlatformNetworkManagerPC;
+#endif
     friend void closeSocketForLockedProfile();
 
 public:

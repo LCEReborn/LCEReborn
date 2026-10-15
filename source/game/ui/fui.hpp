@@ -80,7 +80,7 @@ private:
     void* m_customTextureContext;
     int (*m_customTextureFunction)(void*, const std::wstring&, unsigned int*, unsigned int*, bool*);
     void (*m_releaseCustomTextureFunction)(int);
-    OSFastMutex m_mutex;
+    C4JCriticalSection m_mutex;
     fuiTextureManager* m_textureManager;
     int m_resolution;
 

@@ -4,7 +4,7 @@
 #include "game/util/AABB.hpp"
 #include "game/util/Vec3i.hpp"
 #include "game/util/phys__Vec2.hpp"
-#include "platform/wiiu/TLSStorageCafe.hpp"
+#include "platform/TLSStorage.hpp"
 
 #include <math.h>
 #include <stddef.h>

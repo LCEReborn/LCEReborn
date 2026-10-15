@@ -1,6 +1,6 @@
 #include "game/core/Input.hpp"
 
-#include "platform/wiiu/CInput.hpp"
+#include "platform/CInput.hpp"
 #include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/core/GameSettings.hpp"
 #include "game/core/Minecraft.hpp"

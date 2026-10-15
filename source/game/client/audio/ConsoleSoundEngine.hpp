@@ -91,7 +91,7 @@ private:
 
 protected:
     long long playTime;
-    OSFastMutex criticalSection;
+    C4JCriticalSection criticalSection;
     boost::unordered_map<SoundInstance*, SoundInstance*> playingSounds;
     std::vector<TickableSoundInstance*> tickableSounds;
     boost::unordered_map<SoundInstance*, long long> delayedSounds;

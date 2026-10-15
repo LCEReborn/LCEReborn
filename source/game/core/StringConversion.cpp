@@ -6,7 +6,50 @@
 #include <iomanip>
 #include <sstream>
 
+#include "platform/Platform.hpp"
+
+#if LCE_PLATFORM_WIIU
 #include "nn/nex/StringConversion.hpp"
+#elif LCE_PLATFORM_PC
+static void Utf8ToWideChar(const char* source, wchar_t* destination, unsigned int capacity)
+{
+    unsigned int left = capacity - 1;
+    wchar_t* output = destination;
+    for (;;)
+    {
+        unsigned int lead = static_cast<unsigned char>(*source);
+        if (lead == 0 || left == 0)
+        {
+            *output = 0;
+            return;
+        }
+        if (lead < 0x80)
+        {
+            *output++ = static_cast<wchar_t>(lead);
+        }
+        else if (lead - 0xc2 < 0x1e)
+        {
+            unsigned int trail = static_cast<unsigned char>(source[1]);
+            *output++ = static_cast<wchar_t>(lead * 0x40 + trail - 0x3080);
+            ++source;
+        }
+        else if (lead - 0xe0 < 0x10)
+        {
+            unsigned int second = static_cast<unsigned char>(source[1]);
+            unsigned int third = static_cast<unsigned char>(source[2]);
+            *output++ = static_cast<wchar_t>(lead * 0x1000 + second * 0x40 + third - 0x2080);
+            source += 2;
+        }
+        else
+        {
+            *destination = 0;
+            return;
+        }
+        --left;
+        ++source;
+    }
+}
+#endif
 
 std::wstring char16towstring(wchar_t* text)
 {
@@ -56,7 +99,11 @@ std::wstring convStringToWstring(const std::string& text)
 {
     const unsigned int length = static_cast<unsigned int>(text.size());
     wchar_t* buffer = new wchar_t[length + 1];
+#if LCE_PLATFORM_WIIU
     nn::nex::StringConversion::Utf8ToWideChar(text.c_str(), buffer, length + 1);
+#elif LCE_PLATFORM_PC
+    Utf8ToWideChar(text.c_str(), buffer, length + 1);
+#endif
     std::wstring result;
     result.assign(buffer, std::wcslen(buffer));
     delete[] buffer;

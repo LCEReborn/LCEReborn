@@ -122,9 +122,9 @@ private:
     int mMaxPlayers;
     std::vector<PlayerUID> mBannedPlayers;
     std::deque<unsigned char> mPlayersToKick;
-    OSFastMutex mPlayersToKickLock;
+    C4JCriticalSection mPlayersToKickLock;
     std::deque<unsigned char> mListenersToClose;
-    OSFastMutex mListenersToCloseLock;
+    C4JCriticalSection mListenersToCloseLock;
     PlayerIO* mPlayerIO;
     bool mUnknownState;
     GameType* mOverrideGameMode;

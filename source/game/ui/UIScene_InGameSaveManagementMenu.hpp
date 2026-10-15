@@ -5,7 +5,7 @@
 #include "game/ui/UIControl_SaveList.hpp"
 #include "game/ui/UIControl_Label.hpp"
 #include "game/ui/UIControl_SpaceIndicatorBar.hpp"
-#include "platform/wiiu/C4JStorage.hpp"
+#include "platform/C4JStorage.hpp"
 
 class _SaveListDetails;
 struct SAVE_DETAILS;

@@ -5,7 +5,7 @@
 #include <coreinit/thread.h>
 
 #include "platform/wiiu/C4JEventImpl.hpp"
-#include "platform/wiiu/C4JThread.hpp"
+#include "platform/C4JThread.hpp"
 
 void Sleep(unsigned int milliseconds);
 

@@ -18,13 +18,13 @@
 #include "game/world/LevelData.hpp"
 #include "game/world/chunk/LevelChunk.hpp"
 #include "game/world/chunk/OldChunkStorage.hpp"
-#include "platform/wiiu/C4JThreadImpl.hpp"
+#include "platform/C4JThreadImpl.hpp"
 #include "game/core/MemSect.hpp"
 #include "game/core/PIXNamedEvents.hpp"
 
 void SetThreadName(unsigned int threadId, const char* name);
 
-OSFastMutex McRegionChunkStorage::sSaveMutex;
+C4JCriticalSection McRegionChunkStorage::sSaveMutex;
 std::deque<DataOutputStream*> McRegionChunkStorage::sSaveQueue;
 int McRegionChunkStorage::sActiveSaves = 0;
 C4JThread* McRegionChunkStorage::sSaveThreads[3];

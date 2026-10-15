@@ -42,7 +42,7 @@
 #include "game/world/block/EnumProperty.hpp"
 #include "game/world/block/TypedBoxed.hpp"
 #include "vendor/_TutorialPopupInfo.hpp"
-#include "platform/wiiu/WiiU_Runtime.hpp"
+#include "platform/Runtime.hpp"
 
 extern ConsoleUIController gConsoleUIController;
 

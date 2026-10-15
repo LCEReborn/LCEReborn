@@ -1,5 +1,5 @@
 #include "game/core/StbiFile.hpp"
-#include "platform/wiiu/WiiU_FileCache.hpp"
+#include "platform/FileApi.hpp"
 
 #include <stddef.h>
 

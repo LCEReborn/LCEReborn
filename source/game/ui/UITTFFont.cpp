@@ -2,8 +2,8 @@
 
 #include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/ui/fui.hpp"
-#include "platform/wiiu/NintendoFileSystem_WiiU.hpp"
-#include "platform/wiiu/WiiU_FileCache.hpp"
+#include "platform/FileSystem.hpp"
+#include "platform/FileApi.hpp"
 
 UITTFFont::UITTFFont(const std::string& fontName, const std::string& fontFile, int missingGlyph)
 {

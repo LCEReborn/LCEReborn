@@ -5,7 +5,7 @@
 #include "game/data/SparseDataStorage.hpp"
 #include "game/world/block/CompressedBlockStorage.hpp"
 #include "platform/wiiu/NQRNetworkManager_Lan_WiiU.hpp"
-#include "platform/wiiu/TLSStorageCafe.hpp"
+#include "platform/TLSStorage.hpp"
 #include "game/core/CriticalSection.hpp"
 
 #include <cstdlib>
@@ -13,8 +13,8 @@
 static unsigned int sElementThreadStorageIndex = TlsAlloc();
 static int sMainThreadStorageCount = 0;
 static int sRenderThreadStorageCount = 0;
-static OSFastMutex sElementLocks[128];
-static OSFastMutex sThreadCountLock;
+static C4JCriticalSection sElementLocks[128];
+static C4JCriticalSection sThreadCountLock;
 
 ElementStorage::ElementStorage(bool threaded)
     : HierarchicalElementStorage(),
@@ -411,7 +411,7 @@ void ElementStorage::ReleaseThreadStorage()
 
 void ElementStorage::staticCtor()
 {
-    OSFastMutex* lock = sElementLocks;
+    C4JCriticalSection* lock = sElementLocks;
     int i;
     for (i = 0; i < 128; ++i)
         InitializeCriticalSectionAndSpinCount(lock++, 0x1400);

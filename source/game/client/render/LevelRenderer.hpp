@@ -68,7 +68,7 @@ public:
         void addAABBs(Level* level, const AABB* area, std::vector<AABB*>* result);
 
     private:
-        OSFastMutex lock;
+        C4JCriticalSection lock;
         std::vector<RecentBlock*> blocks;
     };
 
@@ -182,8 +182,8 @@ private:
 
     int mDebugRenderTick;
     ChunkBlockEntityMap mBlockEntities;
-    OSFastMutex mBlockEntityMutex;
-    OSFastMutex mLevelMutex;
+    C4JCriticalSection mBlockEntityMutex;
+    C4JCriticalSection mLevelMutex;
     Level* mLevels[4];
     Textures* mTextures;
     arrayWithLength<ClipChunk> mClipChunks[4];
@@ -214,7 +214,7 @@ private:
     int mCountEntitiesHidden;
     int mUnknown0x128;
     std::vector<Chunk*> mChunks;
-    OSFastMutex mRenderableBlockEntityMutex;
+    C4JCriticalSection mRenderableBlockEntityMutex;
     boost::unordered_set<boost::shared_ptr<BlockEntity> > mRenderableBlockEntities;
     int mUnknown0x180;
     int mAuxiliaryDisplayList;
@@ -225,7 +225,7 @@ private:
     boost::unordered_map<int, BlockDestructionProgress*> mDestroyingBlocks;
     TextureAtlasSprite* mDestroyStages[10];
     std::vector<AABB*> mCameraInsideAreas;
-    OSFastMutex mChunkMutex;
+    C4JCriticalSection mChunkMutex;
     unsigned char mChunkStatePadding[4];
 
 public:

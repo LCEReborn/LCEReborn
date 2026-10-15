@@ -105,7 +105,7 @@ protected:
     long long mGeneratorSeed;
     float mGeneratorSeedScale;
     MapGenerator* mMapGenerator;
-    OSFastMutex mGeneratorMutex;
+    C4JCriticalSection mGeneratorMutex;
     std::vector<AABB*> mActiveChunkAreas;
     std::vector<int> mThemeWordIds;
     int mChosenThemeWordId;

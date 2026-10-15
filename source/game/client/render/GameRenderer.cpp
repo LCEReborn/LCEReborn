@@ -89,7 +89,7 @@
 #include "game/data/ElementStorage.hpp"
 #include "game/world/biome/Biome.hpp"
 #include "game/world/generation/Player.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 #include "game/client/render/HumanoidModel.hpp"
 #include "game/client/render/ElytraModel.hpp"
 #include "game/item/Items.hpp"
@@ -111,8 +111,8 @@
 #include "game/data/SparseLightStorage.hpp"
 #include "game/ui/Screen.hpp"
 #include "game/ui/ScreenSizeCalculator.hpp"
-#include "platform/wiiu/C4JEventArrayImpl.hpp"
-#include "platform/wiiu/C4JThreadImpl.hpp"
+#include "platform/C4JEventArrayImpl.hpp"
+#include "platform/C4JThreadImpl.hpp"
 #include "game/core/MemSect.hpp"
 #include "game/core/SharedConstants.hpp"
 
@@ -125,7 +125,7 @@ namespace
 {
 C4JEventArrayImpl* sRenderUpdateEvents = NULL;
 C4JThreadImpl* sRenderUpdateThread = NULL;
-OSFastMutex sDeleteMutex;
+C4JCriticalSection sDeleteMutex;
 bool sRenderUpdateThreadActive = false;
 
 std::vector<unsigned char*> sPendingByteDeletes;

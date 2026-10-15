@@ -8,12 +8,12 @@
 #include "game/core/GameSettings.hpp"
 #include "game/core/Minecraft.hpp"
 #include "game/minigame/MiniGameDef.hpp"
-#include "platform/wiiu/CStorage.hpp"
+#include "platform/CStorage.hpp"
 #include "game/ui/UILayer.hpp"
 #include "game/ui/fuiFile.hpp"
 #include "game/ui/fuiRenderNode.hpp"
 #include "game/ui/UIString.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 
 extern C4JStorage* gStorage;
 

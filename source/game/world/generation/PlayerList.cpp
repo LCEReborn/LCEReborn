@@ -1,5 +1,5 @@
 #include "game/world/generation/PlayerList.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 #include "game/core/StringIds.hpp"
 #include "game/core/EntityType.hpp"
 

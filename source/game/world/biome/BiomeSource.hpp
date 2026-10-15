@@ -119,7 +119,7 @@ public:
         unsigned char mZoomLevel;
         int mZoomedCentreX;
         int mZoomedCentreZ;
-        OSFastMutex mBiomesCriticalSection;
+        C4JCriticalSection mBiomesCriticalSection;
     };
 
     class CouldSpawnCache : public boost::unordered_map<ChunkPos, bool, ChunkPosKeyHash, ChunkPosKeyEq,
@@ -181,7 +181,7 @@ protected:
     boost::shared_ptr<Layer> mBiomeLayer;
     BiomeCache* mBiomeCache;
     std::vector<Biome*> mPlayerSpawnBiomes;
-    OSFastMutex mCriticalSection;
+    C4JCriticalSection mCriticalSection;
     std::vector<CouldSpawnCache> mCouldSpawnCaches;
 };
 

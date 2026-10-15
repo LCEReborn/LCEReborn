@@ -1,8 +1,8 @@
 #include "game/core/File.hpp"
 #include "game/core/StringConversion.hpp"
-#include "platform/wiiu/NintendoFileSystem_WiiU.hpp"
-#include "platform/wiiu/WiiU_FileCache.hpp"
-#include "platform/wiiu/WiiU_Runtime.hpp"
+#include "platform/FileSystem.hpp"
+#include "platform/FileApi.hpp"
+#include "platform/Runtime.hpp"
 
 #include <stdio.h>
 

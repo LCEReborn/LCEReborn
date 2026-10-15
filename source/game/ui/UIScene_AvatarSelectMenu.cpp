@@ -9,8 +9,8 @@
 #include "game/ui/fuiRenderNode.hpp"
 #include "game/ui/FJ_AvatarSelectMenu.hpp"
 #include "game/client/audio/SoundEvents.hpp"
-#include "platform/wiiu/CInput.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CInput.hpp"
+#include "platform/CProfile.hpp"
 #include "platform/wiiu/MiiData.hpp"
 #include "game/core/GameSettings.hpp"
 

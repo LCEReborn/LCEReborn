@@ -7,7 +7,7 @@
 
 #include "game/core/CriticalSection.hpp"
 #include "game/core/IScoreboardLayout.hpp"
-#include "platform/wiiu/C4JStorage.hpp"
+#include "platform/C4JStorage.hpp"
 
 class INetworkPlayer;
 class UIControl_ButtonList;
@@ -44,7 +44,7 @@ public:
     int FindPlayer(unsigned char smallId);
 
 protected:
-    OSFastMutex mCriticalSection;
+    C4JCriticalSection mCriticalSection;
     std::vector<PlayerChange*> mPlayerChanges;
 };
 

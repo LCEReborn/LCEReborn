@@ -63,7 +63,7 @@ public:
 class Chunk
 {
 public:
-    Chunk(Level* level, ChunkBlockEntityMap& blockEntities, OSFastMutex& mutex, int x, int z, int dimension,
+    Chunk(Level* level, ChunkBlockEntityMap& blockEntities, C4JCriticalSection& mutex, int x, int z, int dimension,
           ClipChunk* clipChunk);
     Chunk();
     ~Chunk();
@@ -105,7 +105,7 @@ public:
     ClipChunk* mClipChunk;
     int mUnknown;
     ChunkBlockEntityMap* mBlockEntities;
-    OSFastMutex* mMutex;
+    C4JCriticalSection* mMutex;
     bool mNonStack;
 };
 

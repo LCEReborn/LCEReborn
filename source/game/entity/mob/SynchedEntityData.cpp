@@ -18,7 +18,7 @@ static const int END_OF_DATA_MARKER = 255;
 
 static bool sDataItemLockCreated = false;
 
-OSFastMutex SynchedEntityData::sDataItemLock;
+C4JCriticalSection SynchedEntityData::sDataItemLock;
 boost::unordered_map<unsigned long long, int> SynchedEntityData::sIdsByEntityType;
 
 SynchedEntityData::SynchedEntityData(Entity* entity) : mEntity(entity)

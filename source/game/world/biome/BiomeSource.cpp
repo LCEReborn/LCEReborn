@@ -20,7 +20,7 @@
 #include "game/world/biome/BiomeCache.hpp"
 #include "game/world/biome/FjFeatureBiomeRequirements.hpp"
 #include "game/world/generation/Layer.hpp"
-#include "platform/wiiu/WiiU_Runtime.hpp"
+#include "platform/Runtime.hpp"
 
 BiomeSource::BiomeSource()
 {

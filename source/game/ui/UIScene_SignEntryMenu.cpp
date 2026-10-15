@@ -20,7 +20,7 @@
 #include "game/world/block/SignBlockEntity.hpp"
 #include "game/world/generation/MultiPlayerLevel.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
-#include "platform/wiiu/CInput.hpp"
+#include "platform/CInput.hpp"
 #include "game/core/GameSettings.hpp"
 
 UIScene_SignEntryMenu::UIScene_SignEntryMenu(int type, void* data, UILayer* layer) : UIScene(type, layer), m_sign()

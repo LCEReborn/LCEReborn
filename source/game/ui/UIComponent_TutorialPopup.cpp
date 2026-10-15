@@ -24,7 +24,7 @@
 #include "game/world/block/Block.hpp"
 #include "game/world/block/Blocks.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 #include "vendor/_TutorialPopupInfo.hpp"
 
 UIComponent_TutorialPopup::UIComponent_TutorialPopup(int sceneType, void*, UILayer* layer)

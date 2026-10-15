@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "platform/wiiu/C4JThreadImpl.hpp"
+#include "platform/C4JThreadImpl.hpp"
 
 #include "vendor/MilesRib.hpp"
 

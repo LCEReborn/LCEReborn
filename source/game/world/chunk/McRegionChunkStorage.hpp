@@ -3,7 +3,7 @@
 
 #include <deque>
 #include <string>
-#include <coreinit/fastmutex.h>
+#include "game/core/CriticalSection.hpp"
 #include <boost/functional/hash.hpp>
 #include <boost/unordered_map.hpp>
 #include "game/world/biome/arrayWithLength.hpp"
@@ -42,7 +42,7 @@ private:
     ConsoleSaveFile* mSaveFile;
     RegionDataMap mRegionData;
 
-    static OSFastMutex sSaveMutex;
+    static C4JCriticalSection sSaveMutex;
     static std::deque<DataOutputStream*> sSaveQueue;
     static int sActiveSaves;
     static C4JThread* sSaveThreads[3];

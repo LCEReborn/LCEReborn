@@ -8,8 +8,8 @@
 #include "game/item/Items.hpp"
 #include "game/world/block/Block.hpp"
 #include "game/world/block/Blocks.hpp"
-#include "platform/wiiu/CProfile.hpp"
-#include "platform/wiiu/CStorage.hpp"
+#include "platform/CProfile.hpp"
+#include "platform/CStorage.hpp"
 
 #include <climits>
 #include <cstring>

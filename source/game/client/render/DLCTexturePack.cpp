@@ -27,9 +27,9 @@
 #include "game/world/block/DLCMaterialFile.hpp"
 #include "game/world/block/MaterialTable.hpp"
 #include "game/world/generation/StructureManager.hpp"
-#include "platform/wiiu/CProfile.hpp"
-#include "platform/wiiu/CStorage.hpp"
-#include "platform/wiiu/C4JThreadImpl.hpp"
+#include "platform/CProfile.hpp"
+#include "platform/CStorage.hpp"
+#include "platform/C4JThreadImpl.hpp"
 
 extern C4JStorage* gStorage;
 

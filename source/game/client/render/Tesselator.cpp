@@ -1,7 +1,7 @@
 #include "game/client/render/Tesselator.hpp"
 
 #include "game/core/BufferBuilder.hpp"
-#include "platform/wiiu/TLSStorageCafe.hpp"
+#include "platform/TLSStorage.hpp"
 
 static unsigned int g_tesselatorTlsIndex = TlsAlloc();
 

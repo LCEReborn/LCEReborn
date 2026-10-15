@@ -4,11 +4,11 @@
 #include <algorithm>
 #include <cstring>
 
-#include "platform/wiiu/CStorage.hpp"
+#include "platform/CStorage.hpp"
 #include "game/core/CMinecraftApp.hpp"
 #include "game/world/LevelGenerationOptions.hpp"
 
-#include "platform/wiiu/WiiU_FileCache.hpp"
+#include "platform/FileApi.hpp"
 void __debugbreak();
 
 static void* sSaveData = NULL;

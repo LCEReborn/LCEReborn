@@ -3,12 +3,12 @@
 #include <stddef.h>
 
 #include "game/core/CriticalSection.hpp"
-#include "platform/wiiu/C4JThreadImpl.hpp"
+#include "platform/C4JThreadImpl.hpp"
 
 int g_threadRunningCount[ShutdownManager::eThreadId_Count];
 C4JEventArray* g_pThreadEventArray[ShutdownManager::eThreadId_Count];
 bool g_threadShouldRun[ShutdownManager::eThreadId_Count];
-static OSFastMutex g_shutdownLock;
+static C4JCriticalSection g_shutdownLock;
 
 void ShutdownManager::Initialise()
 {

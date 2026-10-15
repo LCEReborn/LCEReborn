@@ -19,9 +19,9 @@
 #include "game/world/generation/Player.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
 #include "game/minigame/MiniGameDef.hpp"
-#include "platform/wiiu/CInput.hpp"
-#include "platform/wiiu/CStorage.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CInput.hpp"
+#include "platform/CStorage.hpp"
+#include "platform/CProfile.hpp"
 extern C4JStorage* gStorage;
 
 GameSettings* gGameSettings[4] = {NULL, NULL, NULL, NULL};

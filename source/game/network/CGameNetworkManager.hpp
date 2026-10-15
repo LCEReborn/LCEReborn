@@ -183,7 +183,7 @@ private:
     bool m_publicJoinable;
     nn::fp::FriendPresence* m_inviteInfo;
     std::vector<ClientPacketListener*> m_connections;
-    OSFastMutex m_connectionsMutex;
+    C4JCriticalSection m_connectionsMutex;
     unsigned char m_trailingPadding[4];
 
 public:

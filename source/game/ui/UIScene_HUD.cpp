@@ -56,7 +56,7 @@
 #include "game/world/generation/MultiPlayerLevel.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
 #include "game/world/generation/Player.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 
 UIScene_HUD::UIScene_HUD(int sceneType, void*, UILayer* layer) : UIScene(sceneType, layer)
 {

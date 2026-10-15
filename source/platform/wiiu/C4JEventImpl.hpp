@@ -2,7 +2,7 @@
 #define SOURCE_PLATFORM_WIIU_C4JEVENTIMPL_HPP
 
 #include <coreinit/event.h>
-#include "platform/wiiu/C4JEvent.hpp"
+#include "platform/C4JEvent.hpp"
 
 class C4JEventImpl : public C4JEvent
 {

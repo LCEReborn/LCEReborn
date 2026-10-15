@@ -1,5 +1,5 @@
 #include "game/util/phys__Vec2.hpp"
-#include "platform/wiiu/TLSStorageCafe.hpp"
+#include "platform/TLSStorage.hpp"
 
 #include <stddef.h>
 

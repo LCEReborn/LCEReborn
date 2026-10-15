@@ -9,7 +9,7 @@
 #include "game/item/ItemInstance.hpp"
 #include "game/item/Items.hpp"
 #include "game/world/biome/arrayWithLength.hpp"
-#include "platform/wiiu/TLSStorageCafe.hpp"
+#include "platform/TLSStorage.hpp"
 
 #include <vector>
 

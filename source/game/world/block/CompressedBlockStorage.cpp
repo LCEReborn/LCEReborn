@@ -8,13 +8,13 @@
 #include "game/core/System.hpp"
 #include "game/core/XLockFreeStack.hpp"
 #include "game/core/XMem.hpp"
-#include "platform/wiiu/WiiU_Runtime.hpp"
+#include "platform/Runtime.hpp"
 
 void __debugbreak();
 
 static int sPendingDeleteList;
 static XLockFreeStack<unsigned char> sPendingDeletes[3];
-static OSFastMutex sCompressLock;
+static C4JCriticalSection sCompressLock;
 static int sAllocatedBytes;
 
 CompressedBlockStorage::CompressedBlockStorage()

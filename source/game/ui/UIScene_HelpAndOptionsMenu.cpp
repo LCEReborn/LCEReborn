@@ -14,7 +14,7 @@
 #include "game/ui/UILayer.hpp"
 #include "game/ui/fuiFile.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 #include "game/core/GameSettings.hpp"
 
 extern ConsoleUIController gConsoleUIController;

@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "platform/wiiu/C4JStorage.hpp"
+#include "platform/C4JStorage.hpp"
 
 int ReadDir(int* directory, FSDirEntry* entry);
 int CloseDir(int* directory);

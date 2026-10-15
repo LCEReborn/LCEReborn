@@ -89,7 +89,7 @@
 #include "game/item/ItemId.hpp"
 #include "game/core/MemSect.hpp"
 #include "game/core/PIXNamedEvents.hpp"
-#include "platform/wiiu/TLSStorageCafe.hpp"
+#include "platform/TLSStorage.hpp"
 
 class ServerPlayer;
 

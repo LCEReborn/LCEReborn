@@ -3,7 +3,7 @@
 
 #include "game/core/CMinecraftApp.hpp"
 #include "game/client/render/Renderer.hpp"
-#include "platform/wiiu/C4JStorage.hpp"
+#include "platform/C4JStorage.hpp"
 #include <stdint.h>
 #include <string>
 

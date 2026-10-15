@@ -77,7 +77,7 @@
 #include "game/world/generation/Player.hpp"
 #include "game/core/XMem.hpp"
 #include "game/core/MemSect.hpp"
-#include "platform/wiiu/TLSStorageCafe.hpp"
+#include "platform/TLSStorage.hpp"
 
 
 static unsigned int sInstaTickTlsIndex = TlsAlloc();

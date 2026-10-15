@@ -16,8 +16,8 @@
 #include "game/ui/fui.hpp"
 #include "game/ui/fuiFile.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
-#include "platform/wiiu/CInput.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CInput.hpp"
+#include "platform/CProfile.hpp"
 
 extern C_4JProfile* gProfile;
 

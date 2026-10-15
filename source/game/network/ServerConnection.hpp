@@ -31,7 +31,7 @@ public:
 private:
     int mUnused;
     int mConnectionCount;
-    OSFastMutex mCriticalSection;
+    C4JCriticalSection mCriticalSection;
     std::vector<boost::shared_ptr<ServerConnectionListener> > mListeners;
     std::vector<boost::shared_ptr<ServerGamePacketListenerImpl> > mPlayers;
     std::vector<std::wstring> mPendingTextureRequests;

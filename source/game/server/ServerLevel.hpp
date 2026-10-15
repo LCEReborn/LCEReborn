@@ -196,12 +196,12 @@ public:
     PlayerChunkMap* chunkMap;
 
 private:
-    OSFastMutex tickNextTickMutex;
+    C4JCriticalSection tickNextTickMutex;
     std::set<TickNextTickData, TickNextTickDataKeyCompare> tickNextTickList;
     boost::unordered_set<TickNextTickData, TickNextTickDataKeyHash, TickNextTickDataKeyEq> tickNextTickSet;
     boost::unordered_map<std::wstring, boost::shared_ptr<Entity> > entitiesByUuid;
     std::vector<QueuedSendBlockData*> queuedSendBlockUpdates;
-    OSFastMutex queuedSendBlockUpdateMutex;
+    C4JCriticalSection queuedSendBlockUpdateMutex;
     int saveInterval;
     bool unusedFlag;
 
@@ -230,8 +230,8 @@ private:
     unsigned int enderCrystalExplosionCount;
     unsigned int fireworksRocketCount;
     unsigned int beaconCount;
-    OSFastMutex entityLimitMutex;
-    OSFastMutex blockEntityLimitMutex;
+    C4JCriticalSection entityLimitMutex;
+    C4JCriticalSection blockEntityLimitMutex;
     std::list<boost::shared_ptr<Entity> > itemEntities;
     std::list<boost::shared_ptr<Entity> > hangingEntities;
     std::list<boost::shared_ptr<Entity> > arrowEntities;

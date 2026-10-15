@@ -1,6 +1,6 @@
 #include "game/ui/UIGroup.hpp"
 #include "game/core/ConsoleUIController.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 #include "game/core/MemoryTracker.hpp"
 #include "game/ui/UIComponent_Tooltips.hpp"
 #include "game/core/Minecraft.hpp"

@@ -77,7 +77,7 @@ private:
     boost::unordered_map<int, BufferedImage*> mTextureImages;
     boost::unordered_map<std::wstring, HttpTexture*> mHttpTextures;
     boost::unordered_map<std::wstring, MemTexture*> mMemTextures;
-    OSFastMutex mMutex;
+    C4JCriticalSection mMutex;
     Options* mOptions;
     TexturePackRepository* mTexturePackRepository;
     BufferedImage* mMissingImage;

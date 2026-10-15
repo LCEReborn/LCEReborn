@@ -6,7 +6,7 @@
 #include "game/core/UnityClient6.hpp"
 #include "game/world/block/Material.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
-#include "platform/wiiu/CInput.hpp"
+#include "platform/CInput.hpp"
 
 ChoiceTask::ChoiceTask(Tutorial* tutorial, int descriptionId, int promptId, bool preCompletionEnabled, int firstInput,
                        int secondInput, eTutorial_CompletionAction completionAction,

@@ -27,7 +27,7 @@ public:
 
 private:
     std::vector<T*> m_items;
-    OSFastMutex m_lock;
+    C4JCriticalSection m_lock;
 };
 
 template <class T>

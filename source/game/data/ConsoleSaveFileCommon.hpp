@@ -63,7 +63,7 @@ public:
 protected:
     FileHeader mFileHeader;
     std::wstring mFilename;
-    OSFastMutex mSaveAccessMutex;
+    C4JCriticalSection mSaveAccessMutex;
     void* mData;
 };
 

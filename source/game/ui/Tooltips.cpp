@@ -33,7 +33,7 @@
 #include "game/world/block/BlockState.hpp"
 #include "game/world/generation/MultiPlayerGameMode.hpp"
 #include "game/world/generation/MultiPlayerLevel.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 
 namespace
 {

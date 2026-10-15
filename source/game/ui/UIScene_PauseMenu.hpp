@@ -3,7 +3,7 @@
 
 #include "game/ui/UIScene.hpp"
 #include "game/ui/UIControl_MultiList.hpp"
-#include "platform/wiiu/C4JStorage.hpp"
+#include "platform/C4JStorage.hpp"
 
 class UIScene_PauseMenu : public UIScene
 {

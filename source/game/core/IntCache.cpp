@@ -1,6 +1,6 @@
 #include "game/core/IntCache.hpp"
 #include "game/core/PIXNamedEvents.hpp"
-#include "platform/wiiu/TLSStorageCafe.hpp"
+#include "platform/TLSStorage.hpp"
 
 static unsigned int sTlsIndex = TlsAlloc();
 

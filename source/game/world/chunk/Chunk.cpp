@@ -39,7 +39,7 @@ extern LevelRenderer* gLevelRenderer;
 static Tesselator* t;
 static int updates = 0;
 
-Chunk::Chunk(Level* level, ChunkBlockEntityMap& blockEntities, OSFastMutex& mutex, int x, int z, int dimension,
+Chunk::Chunk(Level* level, ChunkBlockEntityMap& blockEntities, C4JCriticalSection& mutex, int x, int z, int dimension,
              ClipChunk* clipChunk)
     : mLevel(level),
       mX(0),

@@ -7,7 +7,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/unordered_map.hpp>
 #include "game/util/Vec3.hpp"
-#include "platform/wiiu/C4JStorage.hpp"
+#include "platform/C4JStorage.hpp"
 #include "game/core/CriticalSection.hpp"
 class DataInputStream;
 class DataOutputStream;
@@ -159,7 +159,7 @@ private:
     bool mDone;
     bool mSavingDisabled;
     std::deque<GhostLoadSaveOperation> mQueue;
-    OSFastMutex mQueueLock;
+    C4JCriticalSection mQueueLock;
     int mCurrentOperation;
 };
 #endif

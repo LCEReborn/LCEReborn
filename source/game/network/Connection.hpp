@@ -57,9 +57,9 @@ private:
     ByteArrayOutputStream* m_byteArrayStream;
     Socket::SocketOutputStream* m_socketOutput;
     bool m_running;
-    OSFastMutex m_runningLock;
+    C4JCriticalSection m_runningLock;
     std::deque<boost::shared_ptr<Packet> > m_incoming;
-    OSFastMutex m_incomingLock;
+    C4JCriticalSection m_incomingLock;
     std::deque<boost::shared_ptr<Packet> > m_outgoing;
     std::deque<boost::shared_ptr<Packet> > m_outgoingSlow;
     PacketListener* m_listener;
@@ -79,8 +79,8 @@ private:
     unsigned int m_packetsRead;
     unsigned int m_packetsWritten;
     int m_fakeLag;
-    OSFastMutex m_threadCountLock;
-    OSFastMutex m_writeLock;
+    C4JCriticalSection m_threadCountLock;
+    C4JCriticalSection m_writeLock;
     int m_slowWriteDelay;
     long long m_lastSendTime;
 };

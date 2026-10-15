@@ -232,12 +232,12 @@ public:
     virtual void handlePowerup(boost::shared_ptr<ClientboundPowerupPacket> packet);
     virtual void handleVote(boost::shared_ptr<VotePacket> packet);
     static void staticCtor();
-    static OSFastMutex s_deferredLinkMutex;
+    static C4JCriticalSection s_deferredLinkMutex;
     static std::vector<DeferredEntityLinkPacket> s_deferredLinks;
 
 private:
     bool m_closed;
-    OSFastMutex m_mutex;
+    C4JCriticalSection m_mutex;
     Connection* m_connection;
 
 public:

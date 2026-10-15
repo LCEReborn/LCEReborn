@@ -142,7 +142,7 @@ public:
     bool IsUpdateThreadEnabled();
 
 private:
-    OSFastMutex mUpdateThreadMutex;
+    C4JCriticalSection mUpdateThreadMutex;
     unsigned int mUpdateThreadDisableMask;
     Minecraft* mMinecraft;
     ResourceManager* mResourceManager;

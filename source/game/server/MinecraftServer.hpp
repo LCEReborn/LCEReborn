@@ -181,7 +181,7 @@ private:
     C4JThreadImpl* postProcessThread;
     bool postProcessTerminating;
     std::vector<postProcessRequest> postProcessRequests;
-    OSFastMutex postProcessCritSec;
+    C4JCriticalSection postProcessCritSec;
 
 public:
     C4JEventImpl* serverPausedEvent;

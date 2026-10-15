@@ -55,7 +55,7 @@ private:
     };
 
     static boost::unordered_map<std::wstring, PotionCacheEntry> potionCache;
-    static OSFastMutex potionCacheLock;
+    static C4JCriticalSection potionCacheLock;
     static bool potionCacheLockInitialised;
 };
 

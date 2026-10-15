@@ -113,7 +113,7 @@ private:
     bool mHostLocal;
     int mIndex;
     std::queue<unsigned char> mQueues[2];
-    OSFastMutex mMutexes[2];
+    C4JCriticalSection mMutexes[2];
     InputStream* mInputStreams[2];
     OutputStream* mOutputStreams[2];
     bool mClosed[2];

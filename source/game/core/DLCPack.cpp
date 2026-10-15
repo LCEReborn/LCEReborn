@@ -21,7 +21,7 @@
 #include "game/data/StringTable.hpp"
 #include "game/world/block/DLCMaterialFile.hpp"
 #include "game/core/StringUtils.hpp"
-#include "platform/wiiu/TLSStorageCafe.hpp"
+#include "platform/TLSStorage.hpp"
 
 bool pathCmp(DLCFile* file);
 unsigned int g_pathCompareTlsIndex = TlsAlloc();

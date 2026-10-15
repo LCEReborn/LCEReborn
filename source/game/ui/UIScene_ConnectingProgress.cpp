@@ -16,7 +16,7 @@
 #include "game/ui/UILayer.hpp"
 #include "game/ui/fuiFile.hpp"
 #include "game/ui/fuiRenderNode.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 #include "game/core/GameSettings.hpp"
 #include "vendor/_ConnectionProgressParams.hpp"
 

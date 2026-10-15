@@ -20,7 +20,7 @@
 #include "game/world/block/MaterialColor.hpp"
 #include "game/world/block/Predicates.hpp"
 #include "game/world/block/TypedBoxed.hpp"
-#include "platform/wiiu/TLSStorageCafe.hpp"
+#include "platform/TLSStorage.hpp"
 #include <typeinfo>
 #include <vector>
 #include <boost/unordered_set.hpp>

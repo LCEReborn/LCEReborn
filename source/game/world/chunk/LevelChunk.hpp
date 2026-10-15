@@ -265,9 +265,9 @@ public:
     void setChunkVersion(int version);
     void swapEntities(LevelChunk* chunk);
     static bool touchedSky;
-    static OSFastMutex m_csLighting;
-    static OSFastMutex m_csEntities;
-    static OSFastMutex m_csTileEntities;
+    static C4JCriticalSection m_csLighting;
+    static C4JCriticalSection m_csEntities;
+    static C4JCriticalSection m_csTileEntities;
     static int PackBlockPos(const BlockPos& pos);
     static BlockPos UnpackBlockPos(short packed);
     static void CreateNewThreadStorage();

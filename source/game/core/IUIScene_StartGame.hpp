@@ -14,7 +14,7 @@
 #include "game/ui/UIControl_Slider.hpp"
 #include "game/ui/UIControl_TexturePackList.hpp"
 #include "game/ui/UIScene.hpp"
-#include "platform/wiiu/C4JStorage.hpp"
+#include "platform/C4JStorage.hpp"
 
 class DLCPack;
 class LevelGenerationOptions;

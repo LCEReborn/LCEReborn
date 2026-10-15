@@ -231,7 +231,7 @@
 #include "game/world/block/DirectionProperty.hpp"
 #include "game/world/LevelData.hpp"
 #include "game/core/HitResult.hpp"
-#include "platform/wiiu/TLSStorageCafe.hpp"
+#include "platform/TLSStorage.hpp"
 
 template <class T>
 std::wstring _toString(T value);

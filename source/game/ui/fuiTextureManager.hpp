@@ -26,7 +26,7 @@ private:
     unsigned int peakTextureMemory;
     int tickCount;
     bool initialised;
-    OSFastMutex mutex;
+    C4JCriticalSection mutex;
 
 public:
     fuiTextureManager();

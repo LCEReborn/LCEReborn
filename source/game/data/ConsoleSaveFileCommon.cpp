@@ -11,7 +11,7 @@
 #include "game/core/RegionFile.hpp"
 #include "game/core/RegionFileCache.hpp"
 #include "game/core/System.hpp"
-#include "platform/wiiu/CStorage.hpp"
+#include "platform/CStorage.hpp"
 #include "game/core/XMem.hpp"
 #include "game/core/PIXNamedEvents.hpp"
 

@@ -22,11 +22,11 @@
 #include "game/ui/fuiFile.hpp"
 #include "game/ui/fuiRenderNode.hpp"
 #include "game/world/generation/MultiPlayerGameMode.hpp"
-#include "platform/wiiu/CProfile.hpp"
-#include "platform/wiiu/C4JThreadImpl.hpp"
+#include "platform/CProfile.hpp"
+#include "platform/C4JThreadImpl.hpp"
 #include "vendor/_LoadingInputParams.hpp"
 #include "game/core/GameSettings.hpp"
-#include "platform/wiiu/WiiU_Runtime.hpp"
+#include "platform/Runtime.hpp"
 
 UIScene_FullscreenProgress::UIScene_FullscreenProgress(int type, void* data, UILayer* layer)
     : UIScene(type, layer),

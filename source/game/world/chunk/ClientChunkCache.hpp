@@ -87,12 +87,12 @@ private:
     const std::vector<LevelChunk::BlockChange>* m_reloadChanges;
     bool m_reloadPending;
     bool m_stopThread;
-    OSFastMutex m_csSaveThread;
+    C4JCriticalSection m_csSaveThread;
     std::vector<LevelChunk*> m_loadedChunkList;
     std::vector<QueuedAction> m_queuedActions;
     LevelChunk** m_cache;
     std::deque<LevelChunk*> m_toDrop;
-    OSFastMutex m_csLoadCreate;
+    C4JCriticalSection m_csLoadCreate;
     int m_xzSize;
     int m_xzOffset;
     bool* m_hasData;

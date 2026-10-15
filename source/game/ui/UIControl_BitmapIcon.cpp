@@ -1,7 +1,7 @@
 #include "game/ui/UIControl_BitmapIcon.hpp"
 
 #include "game/ui/FJ_BitmapIcon.hpp"
-#include "platform/wiiu/C4JThread.hpp"
+#include "platform/C4JThread.hpp"
 #include "game/ui/fuiRenderNode.hpp"
 
 UIControl_BitmapIcon::UIControl_BitmapIcon() : m_textureName()

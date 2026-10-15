@@ -39,7 +39,7 @@ public:
 
 private:
     std::vector<PathNavigation*> mPathNavigations;
-    OSFastMutex mMutex;
+    C4JCriticalSection mMutex;
 };
 
 #endif

@@ -12,8 +12,8 @@
 #include "game/ui/UILayer.hpp"
 #include "game/ui/fuiFile.hpp"
 #include "game/ui/fuiRenderNode.hpp"
-#include "platform/wiiu/CInput.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CInput.hpp"
+#include "platform/CProfile.hpp"
 #include "platform/wiiu/NQRNetworkManager.hpp"
 #include "game/core/GameSettings.hpp"
 

@@ -15,11 +15,11 @@
 #include "game/core/Minecraft.hpp"
 #include "game/core/System.hpp"
 #include "game/client/render/TexturePackRepository.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 #include "game/core/StringConversion.hpp"
-#include "platform/wiiu/NintendoFileSystem_WiiU.hpp"
-#include "platform/wiiu/WiiU_FileCache.hpp"
-#include "platform/wiiu/WiiU_Runtime.hpp"
+#include "platform/FileSystem.hpp"
+#include "platform/FileApi.hpp"
+#include "platform/Runtime.hpp"
 
 extern ConsoleUIController gConsoleUIController;
 

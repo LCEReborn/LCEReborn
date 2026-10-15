@@ -14,7 +14,7 @@
 #include "nn/pia/inet/NexSessionSearchCriteria.hpp"
 #include "nn/pia/lan/LanSessionInfo.hpp"
 #include "nn/pia/session/Session.hpp"
-#include "platform/wiiu/C4JStorage.hpp"
+#include "platform/C4JStorage.hpp"
 #include "platform/wiiu/NQRNetworkManager.hpp"
 
 class C4JEventImpl;

@@ -18,7 +18,7 @@
 #include "game/ui/UIScene_AchievementsMenu.hpp"
 #include "game/ui/fuiFile.hpp"
 #include "game/ui/fuiRenderNode.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 
 namespace
 {

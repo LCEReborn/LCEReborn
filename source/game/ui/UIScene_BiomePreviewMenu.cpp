@@ -20,8 +20,8 @@
 #include "game/ui/fuiFile.hpp"
 #include "game/client/render/Renderer.hpp"
 #include "game/core/CConsoleMinecraftApp.hpp"
-#include "platform/wiiu/CInput.hpp"
-#include "platform/wiiu/C4JThreadImpl.hpp"
+#include "platform/CInput.hpp"
+#include "platform/C4JThreadImpl.hpp"
 
 extern ConsoleUIController gConsoleUIController;
 

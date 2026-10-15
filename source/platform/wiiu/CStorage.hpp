@@ -8,7 +8,7 @@
 #include <nn/save/save.h>
 
 #include "game/core/CriticalSection.hpp"
-#include "platform/wiiu/C4JStorage.hpp"
+#include "platform/C4JStorage.hpp"
 #include "platform/wiiu/C4JThreadImpl.hpp"
 #include <nn/ffl/FFLiFsClient.h>
 

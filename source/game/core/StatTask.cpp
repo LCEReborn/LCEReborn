@@ -3,7 +3,7 @@
 #include "game/core/Minecraft.hpp"
 #include "game/core/Stat.hpp"
 #include "game/core/StatsCounter.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 
 StatTask::StatTask(Tutorial* tutorial, int descriptionId, bool preCompletionEnabled, Stat* stat, int requiredValue)
     : TutorialTask(tutorial, descriptionId, preCompletionEnabled, NULL, false, true, true),

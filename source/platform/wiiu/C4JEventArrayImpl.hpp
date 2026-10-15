@@ -2,7 +2,7 @@
 #define SOURCE_PLATFORM_WIIU_C4JEVENTARRAYIMPL_HPP
 
 #include <stdint.h>
-#include "platform/wiiu/C4JEventArray.hpp"
+#include "platform/C4JEventArray.hpp"
 #include "platform/wiiu/C4JEventImpl.hpp"
 
 class C4JEventArrayImpl : public C4JEventArray

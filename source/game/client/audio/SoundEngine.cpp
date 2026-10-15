@@ -19,8 +19,8 @@
 #include "game/minigame/MiniGameDef.hpp"
 #include "game/util/Random.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
-#include "platform/wiiu/C4JThreadImpl.hpp"
-#include "platform/wiiu/CStorage.hpp"
+#include "platform/C4JThreadImpl.hpp"
+#include "platform/CStorage.hpp"
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>

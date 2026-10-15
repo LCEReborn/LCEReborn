@@ -29,7 +29,7 @@
 #include "game/ui/fuiRenderNode.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
 #include "game/world/generation/MultiPlayerGameMode.hpp"
-#include "platform/wiiu/CInput.hpp"
+#include "platform/CInput.hpp"
 
 #include <wchar.h>
 

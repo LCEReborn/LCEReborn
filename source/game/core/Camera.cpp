@@ -3,7 +3,11 @@
 #include <cmath>
 #include <cstring>
 
+#include "platform/Platform.hpp"
+
+#if LCE_PLATFORM_WIIU
 #include <cafe/mtx.h>
+#endif
 
 #include "game/core/CameraController.hpp"
 #include "game/core/FloatBuffer.hpp"
@@ -34,19 +38,97 @@ float gCameraOffsetsX[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 float gCameraOffsetsY[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 float gCameraOffsetsZ[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
+#if LCE_PLATFORM_PC
+static void Matrix44Multiply(const float a[4][4], const float b[4][4], float result[4][4])
+{
+    for (int row = 0; row < 4; ++row)
+    {
+        for (int column = 0; column < 4; ++column)
+        {
+            result[row][column] = a[row][0] * b[0][column] + a[row][1] * b[1][column] + a[row][2] * b[2][column] +
+                                  a[row][3] * b[3][column];
+        }
+    }
+}
+
+static bool Matrix44Inverse(const float source[4][4], float inverse[4][4])
+{
+    float work[4][4];
+    for (int row = 0; row < 4; ++row)
+    {
+        for (int column = 0; column < 4; ++column)
+        {
+            work[row][column] = source[row][column];
+            inverse[row][column] = row == column ? 1.0f : 0.0f;
+        }
+    }
+    for (int pivot = 0; pivot < 4; ++pivot)
+    {
+        float largest = 0.0f;
+        int swap = pivot;
+        for (int row = pivot; row < 4; ++row)
+        {
+            float magnitude = fabsf(work[row][pivot]);
+            if (magnitude > largest)
+            {
+                largest = magnitude;
+                swap = row;
+            }
+        }
+        if (largest == 0.0f)
+            return false;
+        if (swap != pivot)
+        {
+            for (int column = 0; column < 4; ++column)
+            {
+                float swapped = work[pivot][column];
+                work[pivot][column] = work[swap][column];
+                work[swap][column] = swapped;
+                swapped = inverse[pivot][column];
+                inverse[pivot][column] = inverse[swap][column];
+                inverse[swap][column] = swapped;
+            }
+        }
+        float scale = 1.0f / work[pivot][pivot];
+        for (int column = 0; column < 4; ++column)
+        {
+            work[pivot][column] *= scale;
+            inverse[pivot][column] *= scale;
+        }
+        for (int row = 0; row < 4; ++row)
+        {
+            if (row == pivot)
+                continue;
+            float factor = work[row][pivot];
+            for (int column = 0; column < 4; ++column)
+            {
+                work[row][column] -= work[pivot][column] * factor;
+                inverse[row][column] -= inverse[pivot][column] * factor;
+            }
+        }
+    }
+    return true;
+}
+#endif
+
 void Camera::prepare(boost::shared_ptr<Player> player, bool secondPass)
 {
     GlStateManager::getMatrix(0, gCameraModelViewMatrix);
     GlStateManager::getMatrix(1, gCameraProjectionMatrix);
 
-    Mtx44 modelView;
-    Mtx44 projection;
-    Mtx44 combined;
-    Mtx44 inverse;
+    float modelView[4][4];
+    float projection[4][4];
+    float combined[4][4];
+    float inverse[4][4];
     std::memcpy(modelView, gCameraModelViewMatrix->mBuffer, sizeof(modelView));
     std::memcpy(projection, gCameraProjectionMatrix->mBuffer, sizeof(projection));
+#if LCE_PLATFORM_WIIU
     ASM_MTX44Concat(modelView, projection, combined);
     C_MTX44Inverse(combined, inverse);
+#elif LCE_PLATFORM_PC
+    Matrix44Multiply(modelView, projection, combined);
+    Matrix44Inverse(combined, inverse);
+#endif
     gCameraPositionX = inverse[3][0] / inverse[3][3];
     gCameraPositionY = inverse[3][1] / inverse[3][3];
     gCameraPositionZ = inverse[3][2] / inverse[3][3];

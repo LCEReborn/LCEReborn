@@ -1,1 +1,1 @@
-#include "platform/wiiu/C4JEvent.hpp"
+#include "platform/C4JEvent.hpp"

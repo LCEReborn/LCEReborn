@@ -483,11 +483,11 @@ public:
     int mSeaLevel;
 
 protected:
-    OSFastMutex mEntityMutex;
+    C4JCriticalSection mEntityMutex;
     std::vector<boost::shared_ptr<Entity> > mEntities;
     std::vector<boost::shared_ptr<Entity> > mEntitiesToRemove;
     bool mScheduledUpdatesAreImmediate;
-    OSFastMutex mBlockEntityMutex;
+    C4JCriticalSection mBlockEntityMutex;
     std::vector<boost::shared_ptr<BlockEntity> > mBlockEntities;
     std::vector<boost::shared_ptr<BlockEntity> > mTickingBlockEntities;
     std::vector<boost::shared_ptr<BlockEntity> > mPendingBlockEntities;
@@ -565,7 +565,7 @@ protected:
     int mChunkCacheSize;
 
 private:
-    OSFastMutex mLightMutex;
+    C4JCriticalSection mLightMutex;
     int mAmbientTickCountdown;
     int mFogDistance;
 };

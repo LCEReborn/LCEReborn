@@ -19,8 +19,8 @@
 #include "game/network/ServerboundPreLoginPacket.hpp"
 #include "game/network/INetworkPlayer.hpp"
 #include "game/world/LevelData.hpp"
-#include "platform/wiiu/CProfile.hpp"
-#include "platform/wiiu/CStorage.hpp"
+#include "platform/CProfile.hpp"
+#include "platform/CStorage.hpp"
 #include <cstring>
 #include <vector>
 

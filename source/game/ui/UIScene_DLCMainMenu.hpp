@@ -7,7 +7,7 @@
 #include "game/ui/UIControl.hpp"
 #include "game/ui/UIControl_DynamicButtonList.hpp"
 #include "game/ui/UIControl_Label.hpp"
-#include "platform/wiiu/C4JStorage.hpp"
+#include "platform/C4JStorage.hpp"
 
 class UILayer;
 

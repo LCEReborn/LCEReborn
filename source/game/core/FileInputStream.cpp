@@ -2,9 +2,9 @@
 
 #include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/core/File.hpp"
-#include "platform/wiiu/NintendoFileSystem_WiiU.hpp"
-#include "platform/wiiu/WiiU_FileCache.hpp"
-#include "platform/wiiu/WiiU_Runtime.hpp"
+#include "platform/FileSystem.hpp"
+#include "platform/FileApi.hpp"
+#include "platform/Runtime.hpp"
 
 class CConsoleMinecraftApp;
 

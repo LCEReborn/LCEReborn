@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "platform/wiiu/C4JStorage.hpp"
+#include "platform/C4JStorage.hpp"
 #include "game/ui/UIScene.hpp"
 #include "game/ui/UIControl_Label.hpp"
 #include "game/ui/UIControl_LeftIconButtonList.hpp"

@@ -267,7 +267,7 @@ public:
     int mFrameNumber;
     FrameTimer* mFrameTimer;
     long long mLastFrameTime;
-    OSFastMutex mLevelLock;
+    C4JCriticalSection mLevelLock;
     unsigned char mTutorialPlayers;
     Level* mAnimateTickLevel;
     std::vector<std::wstring> mPendingClientTextureRequests;

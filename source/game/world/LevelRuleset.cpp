@@ -28,9 +28,9 @@
 #include "game/world/generation/PlayerBoundsVolumeRuleDefinition.hpp"
 #include "game/world/LevelGenerationOptions.hpp"
 #include "game/util/AABB.hpp"
-#include "platform/wiiu/NintendoFileSystem_WiiU.hpp"
-#include "platform/wiiu/WiiU_FileCache.hpp"
-#include "platform/wiiu/WiiU_Runtime.hpp"
+#include "platform/FileSystem.hpp"
+#include "platform/FileApi.hpp"
+#include "platform/Runtime.hpp"
 
 template <typename T> T _fromString(const std::wstring& value);
 std::string formatstr(const char* format, ...);

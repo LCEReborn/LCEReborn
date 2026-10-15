@@ -100,7 +100,7 @@ private:
     float mMapBottom;
     _UIVec2D mPointer;
     bool mStopRegen;
-    OSFastMutex mCriticalSection;
+    C4JCriticalSection mCriticalSection;
 };
 
 #endif

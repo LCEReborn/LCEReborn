@@ -7,7 +7,7 @@
 #include "game/core/Minecraft.hpp"
 #include "game/core/System.hpp"
 
-static OSFastMutex sProgressRendererMutex;
+static C4JCriticalSection sProgressRendererMutex;
 
 ProgressRenderer::TextField::TextField(const TextField& other) : active(other.active), id(other.id), text(other.text)
 {

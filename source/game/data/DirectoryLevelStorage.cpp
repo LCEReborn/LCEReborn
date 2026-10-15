@@ -30,7 +30,7 @@
 #include "game/world/chunk/OldChunkStorage.hpp"
 #include "game/world/generation/Player.hpp"
 #include "game/world/generation/StructureManager.hpp"
-#include "platform/wiiu/CStorage.hpp"
+#include "platform/CStorage.hpp"
 #include "vendor/_MapDataMappings.hpp"
 #include "vendor/_MapDataMappings_old.hpp"
 

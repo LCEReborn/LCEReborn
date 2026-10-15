@@ -1,20 +1,36 @@
-#ifndef SOURCE_PLATFORM_WIIU_C4JSTORAGE_HPP
-#define SOURCE_PLATFORM_WIIU_C4JSTORAGE_HPP
+#ifndef PLATFORM_C4JSTORAGE_HPP
+#define PLATFORM_C4JSTORAGE_HPP
 
 #include <stdint.h>
 #include <string>
 #include <vector>
+
+#include "platform/Platform.hpp"
+
+#if LCE_PLATFORM_WIIU
 #include <coreinit/filesystem.h>
 
 struct FSDirEntry : FSDirectoryEntry
 {
 };
+#elif LCE_PLATFORM_PC
+struct FSDirEntry
+{
+    char name[256];
+    bool isDirectory;
+    unsigned long long size;
+};
+#endif
 
 struct SAVE_INFO
 {
     char filename[32];
     wchar_t title[128];
+#if LCE_PLATFORM_WIIU
     FSTime modifiedTime;
+#elif LCE_PLATFORM_PC
+    long long modifiedTime;
+#endif
     unsigned char* thumbnail;
     unsigned int thumbnailSize;
     unsigned int nandSize;
@@ -214,7 +230,11 @@ public:
     virtual void SetCloseDirFn(DirectoryCloseCallback) = 0;
     virtual void SetDLCPackageRoot(const char*) = 0;
     virtual int GetInstalledDLC(int, InstalledDLCCallback, void*) = 0;
+#if LCE_PLATFORM_WIIU
     virtual int GetDLC(unsigned int) = 0;
+#elif LCE_PLATFORM_PC
+    virtual intptr_t GetDLC(unsigned int) = 0;
+#endif
     virtual int GetAvailableDLCCount(int) = 0;
     virtual int MountInstalledDLC(int, unsigned int, DLCMountCallback, void*, const char*) = 0;
     virtual int UnmountInstalledDLC(const char*) = 0;

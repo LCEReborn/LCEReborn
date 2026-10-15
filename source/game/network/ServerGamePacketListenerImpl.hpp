@@ -159,7 +159,7 @@ public:
 
 private:
     bool mDisconnected;
-    OSFastMutex mDisconnectMutex;
+    C4JCriticalSection mDisconnectMutex;
     PlayerUID mPlayerUID;
     PlayerUID mOldPlayerUID;
     bool mFriendsOnly;

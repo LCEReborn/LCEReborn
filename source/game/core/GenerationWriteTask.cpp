@@ -8,7 +8,7 @@
 #include "game/world/block/BlockId.hpp"
 #include "game/world/chunk/ChunkPos.hpp"
 #include "game/world/chunk/ChunkSource.hpp"
-#include "platform/wiiu/C4JThreadImpl.hpp"
+#include "platform/C4JThreadImpl.hpp"
 
 GenerationWriteTask::GenerationWriteTask(Level* level, BlockTransaction* transaction, const BlockPos& origin,
                                          int* changedBlocks)

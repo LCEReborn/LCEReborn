@@ -31,7 +31,7 @@
 #include "game/ui/fuiRenderNode.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
 #include "game/world/generation/PlayerList.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 
 extern ConsoleUIController gConsoleUIController;
 

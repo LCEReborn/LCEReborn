@@ -21,7 +21,7 @@
 #include "game/core/SharedConstants.hpp"
 #include "game/core/StringUtils.hpp"
 #include "game/client/render/Font.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 
 extern ConsoleUIController gConsoleUIController;
 

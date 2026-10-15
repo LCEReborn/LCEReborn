@@ -19,7 +19,7 @@ const std::wstring PotionUtils::TAG_CUSTOM_POTION_EFFECTS(L"CustomPotionEffects"
 const std::wstring PotionUtils::TAG_CUSTOM_POTION_COLOR(L"CustomPotionColor");
 const std::wstring PotionUtils::TAG_POTION(L"Potion");
 boost::unordered_map<std::wstring, PotionUtils::PotionCacheEntry> PotionUtils::potionCache;
-OSFastMutex PotionUtils::potionCacheLock;
+C4JCriticalSection PotionUtils::potionCacheLock;
 bool PotionUtils::potionCacheLockInitialised = false;
 
 not_null_ptr<ItemInstance> PotionUtils::setPotion(not_null_ptr<ItemInstance> item, Potion* potion)

@@ -59,7 +59,7 @@
 #include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/core/CMinecraftApp.hpp"
 #include "game/core/ConsoleUIController.hpp"
-#include "platform/wiiu/CStorage.hpp"
+#include "platform/CStorage.hpp"
 #include "game/core/DLCPack.hpp"
 #include "game/client/render/TexturePackRepository.hpp"
 #include "game/client/render/TexturePack.hpp"
@@ -261,8 +261,8 @@
 #include "game/world/chunk/LevelChunk.hpp"
 #include "game/core/Team.hpp"
 #include "game/core/File.hpp"
-#include "platform/wiiu/CProfile.hpp"
-#include "platform/wiiu/WiiU_Runtime.hpp"
+#include "platform/CProfile.hpp"
+#include "platform/Runtime.hpp"
 #include <cfloat>
 #include <cmath>
 
@@ -282,7 +282,7 @@ void replaceFirst(std::wstring& value, const std::wstring& key, const std::wstri
 
 }
 
-OSFastMutex ClientPacketListener::s_deferredLinkMutex;
+C4JCriticalSection ClientPacketListener::s_deferredLinkMutex;
 std::vector<ClientPacketListener::DeferredEntityLinkPacket> ClientPacketListener::s_deferredLinks;
 
 ClientPacketListener::ClientPacketListener(Minecraft* minecraft, Socket* socket, int playerId)

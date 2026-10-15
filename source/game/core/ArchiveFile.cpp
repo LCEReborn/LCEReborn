@@ -5,9 +5,9 @@
 #include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/core/DataInputStream.hpp"
 #include "game/core/FileInputStream.hpp"
-#include "platform/wiiu/NintendoFileSystem_WiiU.hpp"
-#include "platform/wiiu/WiiU_FileCache.hpp"
-#include "platform/wiiu/WiiU_Runtime.hpp"
+#include "platform/FileSystem.hpp"
+#include "platform/FileApi.hpp"
+#include "platform/Runtime.hpp"
 
 char* wstringtofilename(const std::wstring& path, char (&filename)[256]);
 

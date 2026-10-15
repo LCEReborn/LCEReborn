@@ -19,8 +19,8 @@
 #include "game/network/PacketListener.hpp"
 #include "game/network/ServerboundKeepAlivePacket.hpp"
 #include "game/network/ServerboundPlayerActionPacket.hpp"
-#include "platform/wiiu/C4JEventImpl.hpp"
-#include "platform/wiiu/C4JThreadImpl.hpp"
+#include "platform/C4JEventImpl.hpp"
+#include "platform/C4JThreadImpl.hpp"
 
 char* wstringtofilename(const std::wstring& path, char (&filename)[256]);
 extern unsigned char s_altMainStopRequested;
@@ -178,7 +178,7 @@ int Connection::runRead(void* argument)
     if (connection != NULL)
     {
         Compression::CreateNewThreadStorage();
-        OSFastMutex* threadCountLock = &connection->m_threadCountLock;
+        C4JCriticalSection* threadCountLock = &connection->m_threadCountLock;
         EnterCriticalSection(threadCountLock);
         ++sReadThreadCount;
         LeaveCriticalSection(threadCountLock);
@@ -257,7 +257,7 @@ int Connection::runWrite(void* argument)
     if (connection != NULL)
     {
         Compression::CreateNewThreadStorage();
-        OSFastMutex* threadCountLock = &connection->m_threadCountLock;
+        C4JCriticalSection* threadCountLock = &connection->m_threadCountLock;
         EnterCriticalSection(threadCountLock);
         ++sWriteThreadCount;
         LeaveCriticalSection(threadCountLock);

@@ -12,9 +12,9 @@
 #include "game/core/BufferedImage.hpp"
 #include "game/core/StbiFile.hpp"
 #include "game/world/biome/arrayWithLength.hpp"
-#include "platform/wiiu/NintendoFileSystem_WiiU.hpp"
-#include "platform/wiiu/WiiU_FileCache.hpp"
-#include "platform/wiiu/WiiU_Runtime.hpp"
+#include "platform/FileSystem.hpp"
+#include "platform/FileApi.hpp"
+#include "platform/Runtime.hpp"
 
 class IntBuffer;
 class Minecraft;

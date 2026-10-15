@@ -5,7 +5,7 @@
 #include "game/core/Minecraft.hpp"
 #include "game/minigame/Tutorial.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
-#include "platform/wiiu/CInput.hpp"
+#include "platform/CInput.hpp"
 
 ControllerTask::ControllerTask(Tutorial* tutorial, int descriptionId, bool preCompletionEnabled, bool showMinimumTime,
                                int* mappings, unsigned int mappingCount, int* completionIdValues,

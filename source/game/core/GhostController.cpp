@@ -3,10 +3,10 @@
 #include "game/core/ByteArrayOutputStream.hpp"
 #include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/core/StringConversion.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
 #include "game/core/System.hpp"
-#include "platform/wiiu/CStorage.hpp"
+#include "platform/CStorage.hpp"
 #include "game/core/Minecraft.hpp"
 #include "game/world/generation/GhostPlayer.hpp"
 #include "game/world/generation/MultiPlayerLevel.hpp"
@@ -688,7 +688,7 @@ unsigned int GhostController::SaveGhostRecordOp(int track, GhostRecord* record)
 
 void GhostController::ProcessLoadSaveQueue()
 {
-    OSFastMutex* lock = &mQueueLock;
+    C4JCriticalSection* lock = &mQueueLock;
     EnterCriticalSection(lock);
     if (mCurrentOperation == NO_OPERATION && !mQueue.empty())
     {

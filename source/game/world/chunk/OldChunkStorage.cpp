@@ -26,7 +26,7 @@
 #include "game/world/block/BlockEntity.hpp"
 #include "game/world/chunk/ChunkPos.hpp"
 #include "game/world/chunk/LevelChunk.hpp"
-#include "platform/wiiu/TLSStorageCafe.hpp"
+#include "platform/TLSStorage.hpp"
 
 static unsigned int gOldChunkStorageTlsKey = 0;
 static OldChunkStorage::ThreadStorage* gOldChunkStorageDefault = NULL;

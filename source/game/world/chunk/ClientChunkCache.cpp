@@ -33,7 +33,7 @@
 #include "game/world/LevelType.hpp"
 #include "game/world/LevelData.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
-#include "platform/wiiu/C4JThreadImpl.hpp"
+#include "platform/C4JThreadImpl.hpp"
 
 extern long InterlockedCompareExchangeRelease(volatile long* destination, long exchange, long comparand);
 

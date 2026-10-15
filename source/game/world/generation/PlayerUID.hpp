@@ -4,8 +4,11 @@
 #include <string>
 
 #include "game/util/ACTUuid.hpp"
+#include "platform/Platform.hpp"
 
+#if LCE_PLATFORM_WIIU
 struct FFLCreateID;
+#endif
 
 struct PlayerUID
 {
@@ -38,7 +41,9 @@ struct PlayerUID
 
     PlayerUID(int = 0);
     PlayerUID(ACTUuid uuid, bool onlineAccount, bool drcController);
+#if LCE_PLATFORM_WIIU
     PlayerUID(FFLCreateID createId, unsigned int principalId, bool hasPrincipalId, bool drcController);
+#endif
     PlayerUID(std::wstring uidString);
 
     std::wstring UuidString() const;

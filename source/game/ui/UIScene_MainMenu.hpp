@@ -8,7 +8,7 @@
 #include "game/ui/UIControl.hpp"
 #include "game/ui/UIControl_Button.hpp"
 #include "game/ui/UILayer.hpp"
-#include "platform/wiiu/C4JStorage.hpp"
+#include "platform/C4JStorage.hpp"
 
 class UILayer;
 struct fuiRect;

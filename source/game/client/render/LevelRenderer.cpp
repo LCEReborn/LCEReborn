@@ -75,7 +75,7 @@
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
 #include "game/world/generation/Player.hpp"
 #include "game/world/TheEndDimension.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 
 static const unsigned int gChunkDimensionSizes[2] = {80, 20};
 

@@ -7,12 +7,12 @@
 #include "game/network/CGameNetworkManager.hpp"
 #include "game/network/INetworkPlayer.hpp"
 #include "game/network/ServerConnection.hpp"
-#include "platform/wiiu/C4JEventImpl.hpp"
-#include "platform/wiiu/C4JThreadImpl.hpp"
+#include "platform/C4JEventImpl.hpp"
+#include "platform/C4JThreadImpl.hpp"
 
 ServerConnection* Socket::sConnection = NULL;
 
-OSFastMutex gLocalMutexes[2];
+C4JCriticalSection gLocalMutexes[2];
 std::queue<unsigned char> gLocalQueues[2];
 Socket::SocketOutputStreamLocal* gLocalOutputStreams[2];
 Socket::SocketInputStreamLocal* gLocalInputStreams[2];

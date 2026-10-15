@@ -1,7 +1,7 @@
 #ifndef GAME_CORE_IUISCENE_DLCUPSELL_HPP
 #define GAME_CORE_IUISCENE_DLCUPSELL_HPP
 
-#include "platform/wiiu/C4JStorage.hpp"
+#include "platform/C4JStorage.hpp"
 
 class IUIScene_DLCUpsell
 {

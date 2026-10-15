@@ -272,16 +272,16 @@ public:
 private:
     UIScene* m_debugConsole;
     int m_layoutWord;
-    OSFastMutex m_renderMutex;
-    OSFastMutex m_messageBoxMutex;
-    OSFastMutex m_touchMutex;
+    C4JCriticalSection m_renderMutex;
+    C4JCriticalSection m_messageBoxMutex;
+    C4JCriticalSection m_touchMutex;
     int m_actionTimer[9][0x18];
     float m_screenWidth;
     float m_screenHeight;
     bool m_initialized;
     int m_renderOffsetX;
     int m_renderOffsetY;
-    OSFastMutex m_fontMutex;
+    C4JCriticalSection m_fontMutex;
     int m_currentFont;
     EFont m_pendingFont;
     bool m_cleanupOnReload;
@@ -317,7 +317,7 @@ private:
     unsigned int m_winUserIndex;
     bool m_inputSuspended;
     C4JThread* m_skinThread;
-    OSFastMutex m_skinThreadMutex;
+    C4JCriticalSection m_skinThreadMutex;
     bool m_homeMenuPending;
     unsigned int m_lastInputTime;
     unsigned long long m_lastUISFXTime;
@@ -326,7 +326,7 @@ private:
     int m_customDrawRight;
     int m_customDrawBottom;
     boost::unordered_map<unsigned int, UIScene*> m_callbackScenes;
-    OSFastMutex m_callbackMutex;
+    C4JCriticalSection m_callbackMutex;
     int m_touchOffsetX;
     int m_touchOffsetY;
     UIELEMENT* m_touchPressElement;
@@ -334,7 +334,7 @@ private:
     UIGroup* m_groups[EUIGroup_Count];
 };
 
-extern OSFastMutex g_uiCriticalSection;
+extern C4JCriticalSection g_uiCriticalSection;
 extern ConsoleUIController gConsoleUIController;
 extern uint8_t g_introRunning;
 

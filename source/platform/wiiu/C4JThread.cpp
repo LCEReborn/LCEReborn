@@ -1,4 +1,4 @@
-#include "platform/wiiu/C4JThread.hpp"
+#include "platform/C4JThread.hpp"
 
 #include "platform/wiiu/C4JThreadImpl.hpp"
 

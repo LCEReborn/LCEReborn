@@ -2,7 +2,7 @@
 #include "game/client/audio/ConsoleSoundEngine.hpp"
 #include "game/util/Math.hpp"
 #include "game/core/GameSettings.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 #include "game/core/EntityType.hpp"
 
 #include <algorithm>

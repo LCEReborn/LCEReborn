@@ -10,7 +10,7 @@
 #include "game/world/chunk/OldChunkStorage.hpp"
 #include "game/core/Compression.hpp"
 #include "game/core/PIXNamedEvents.hpp"
-#include "platform/wiiu/C4JEvent.hpp"
+#include "platform/C4JEvent.hpp"
 #include <algorithm>
 #include <cstring>
 

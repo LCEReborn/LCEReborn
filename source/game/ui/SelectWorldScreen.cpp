@@ -12,9 +12,9 @@
 #include "game/ui/RenameWorldScreen.hpp"
 #include "game/client/render/Tesselator.hpp"
 #include "game/world/LevelSummary.hpp"
-#include "platform/wiiu/CProfile.hpp"
-#include "platform/wiiu/PlatformTiming.hpp"
-#include "platform/wiiu/WiiU_Runtime.hpp"
+#include "platform/CProfile.hpp"
+#include "platform/PlatformTiming.hpp"
+#include "platform/Runtime.hpp"
 
 template <typename T> std::wstring _toString(T value);
 

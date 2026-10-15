@@ -50,7 +50,7 @@
 #include "game/core/CMinecraftApp.hpp"
 #include "game/core/XMem.hpp"
 #include "game/core/PIXNamedEvents.hpp"
-#include "platform/wiiu/TLSStorageCafe.hpp"
+#include "platform/TLSStorage.hpp"
 #include <algorithm>
 #include <cstring>
 #include <cstdlib>
@@ -60,9 +60,9 @@ extern MinecraftServer* gMinecraftServer;
 
 static unsigned int sLevelChunkThreadStorage = TlsAlloc();
 static bool sEntityRemovalFlag = true;
-OSFastMutex LevelChunk::m_csLighting;
-OSFastMutex LevelChunk::m_csEntities;
-OSFastMutex LevelChunk::m_csTileEntities;
+C4JCriticalSection LevelChunk::m_csLighting;
+C4JCriticalSection LevelChunk::m_csEntities;
+C4JCriticalSection LevelChunk::m_csTileEntities;
 bool LevelChunk::touchedSky = false;
 
 LevelChunk::LevelChunk(Level* level, int x, int z) : mEntitySectionCount(16)

@@ -2,7 +2,7 @@
 #define GAME_CORE_GAMESETTINGS_HPP
 #include <stdint.h>
 #include <string>
-#include "platform/wiiu/C4JStorage.hpp"
+#include "platform/C4JStorage.hpp"
 #include "game/core/GameModeOptions.hpp"
 enum eGameSetting
 {

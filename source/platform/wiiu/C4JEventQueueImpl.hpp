@@ -3,7 +3,7 @@
 
 #include <queue>
 
-#include "platform/wiiu/C4JEventQueue.hpp"
+#include "platform/C4JEventQueue.hpp"
 #include "platform/wiiu/C4JEventImpl.hpp"
 #include "platform/wiiu/C4JEventArrayImpl.hpp"
 #include "platform/wiiu/C4JThreadImpl.hpp"

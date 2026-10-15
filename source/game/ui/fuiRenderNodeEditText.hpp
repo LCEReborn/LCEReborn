@@ -144,7 +144,7 @@ public:
     int getNumLines();
 
 private:
-    OSFastMutex m_lock;
+    C4JCriticalSection m_lock;
     bool m_html;
     std::wstring m_text;
     float m_scrollH;

@@ -59,8 +59,8 @@ private:
 
     void* m_pCompressionContext;
     void* m_pDecompressionContext;
-    OSFastMutex m_compressLock;
-    OSFastMutex m_decompressLock;
+    C4JCriticalSection m_compressLock;
+    C4JCriticalSection m_decompressLock;
     unsigned char m_rleBuffer[256 * 1024];
     unsigned char* m_pDecompressBuffer;
     ECompressionTypes m_decompressionType;

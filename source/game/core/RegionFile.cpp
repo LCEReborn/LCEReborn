@@ -9,7 +9,7 @@
 #include "game/core/PIXNamedEvents.hpp"
 #include "game/core/System.hpp"
 #include "game/data/ConsoleSavePath.hpp"
-#include "platform/wiiu/TLSStorageCafe.hpp"
+#include "platform/TLSStorage.hpp"
 
 static const int SECTOR_BYTES = 0x1000;
 static const int SECTOR_INTS = SECTOR_BYTES / 4;

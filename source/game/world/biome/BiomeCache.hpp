@@ -45,7 +45,7 @@ private:
     long long mLastUpdate;
     AreaMap mAreas;
     std::vector<Area*> mAreaList;
-    OSFastMutex mCriticalSection;
+    C4JCriticalSection mCriticalSection;
 };
 
 #endif

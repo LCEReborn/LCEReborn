@@ -4,7 +4,7 @@
 #include <cstring>
 #include <string>
 
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 
 int getSlotId(int iQuad);
 PlayerUID getPlayerUID(int iQuad, bool includeOffline);

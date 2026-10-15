@@ -9,7 +9,7 @@
 #include "game/ui/FJ_Intro.hpp"
 #include "game/ui/fuiFile.hpp"
 #include "game/ui/fuiRenderNode.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 
 uint8_t g_introRunning = 0;
 

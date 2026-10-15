@@ -72,9 +72,9 @@
 #include "game/world/generation/PlayerList.hpp"
 #include "game/world/generation/VillageSiege.hpp"
 #include "game/world/generation/Villages.hpp"
-#include "platform/wiiu/C4JEventArrayImpl.hpp"
-#include "platform/wiiu/C4JThreadImpl.hpp"
-#include "platform/wiiu/CStorage.hpp"
+#include "platform/C4JEventArrayImpl.hpp"
+#include "platform/C4JThreadImpl.hpp"
+#include "platform/CStorage.hpp"
 
 #include <algorithm>
 #include <typeinfo>
@@ -82,7 +82,7 @@
 namespace
 {
 C4JEventArrayImpl* sBlockUpdateEvents = 0;
-OSFastMutex sBlockUpdateMutex[3];
+C4JCriticalSection sBlockUpdateMutex[3];
 C4JThreadImpl* sBlockUpdateThread = 0;
 ServerLevel* sBlockUpdateLevels[3] = {0, 0, 0};
 int sBlockUpdateChunkCounts[3] = {0, 0, 0};

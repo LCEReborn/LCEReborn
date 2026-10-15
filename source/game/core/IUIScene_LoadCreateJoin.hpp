@@ -3,12 +3,12 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
-#include <coreinit/fastmutex.h>
+#include "game/core/CriticalSection.hpp"
 #include "game/core/FileHeader.hpp"
 #include "game/core/IUIPartial_OnlineRestricted.hpp"
 #include "game/core/IUIScene_DLCUpsell.hpp"
 #include "game/minigame/EMiniGameId.hpp"
-#include "platform/wiiu/C4JStorage.hpp"
+#include "platform/C4JStorage.hpp"
 class File;
 class _SaveListDetails;
 class LevelGenerationOptions;
@@ -129,6 +129,6 @@ protected:
     int m_currentTab;
     EMiniGameId m_selectedMiniGame;
     bool m_returnToHomeMenu;
-    OSFastMutex m_lock;
+    C4JCriticalSection m_lock;
 };
 #endif

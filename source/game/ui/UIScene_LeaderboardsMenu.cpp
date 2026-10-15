@@ -21,7 +21,7 @@
 #include "game/world/LevelRuleset.hpp"
 #include "game/world/block/Block.hpp"
 #include "game/world/block/Blocks.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 #include "game/core/XLanguage.hpp"
 
 

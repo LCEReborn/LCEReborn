@@ -6,7 +6,7 @@
 #include "game/world/generation/OceanMonumentFeature.hpp"
 #include "game/world/generation/ShipwreckFeature.hpp"
 #include "game/world/generation/WoodlandMansionFeature.hpp"
-#include "platform/wiiu/C4JThreadImpl.hpp"
+#include "platform/C4JThreadImpl.hpp"
 
 int countFeaturesInArea(char (*isFeatureChunk)(BiomeSource*, long long, int, int, int), BiomeSource* biomeSource,
                         long long seed, int sizeInChunks);

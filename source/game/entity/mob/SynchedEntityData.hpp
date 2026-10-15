@@ -5,6 +5,7 @@
 
 #include <boost/unordered_map.hpp>
 
+#include "game/core/CriticalSection.hpp"
 #include "game/entity/mob/Entity.hpp"
 #include "game/item/DataItem.hpp"
 #include "game/world/block/DataItem_Impl.hpp"
@@ -13,7 +14,6 @@
 
 class DataInputStream;
 class DataOutputStream;
-struct OSFastMutex;
 
 void MemSect(int section);
 
@@ -95,7 +95,7 @@ public:
     static void pack(std::vector<DataItem*>* items, DataOutputStream* output);
     static void writeDataItem(DataOutputStream* output, DataItem* item);
 
-    static OSFastMutex sDataItemLock;
+    static C4JCriticalSection sDataItemLock;
 
 private:
     static int defineIdInternal(unsigned long long entityType, unsigned long long parentEntityType);

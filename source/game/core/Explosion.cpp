@@ -26,7 +26,7 @@
 #include "game/world/block/Material.hpp"
 #include "game/world/generation/Player.hpp"
 #include "game/core/PIXNamedEvents.hpp"
-#include "platform/wiiu/TLSStorageCafe.hpp"
+#include "platform/TLSStorage.hpp"
 
 static unsigned int gExplosionCountTlsIndex = TlsAlloc();
 

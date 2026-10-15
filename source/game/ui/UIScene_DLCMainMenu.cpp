@@ -9,7 +9,7 @@
 #include "game/core/ConsoleUIController.hpp"
 #include "game/core/cCommerce.hpp"
 #include "game/network/CGameNetworkManager.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 #include "game/client/audio/SoundEvents.hpp"
 #include "game/ui/UIControl.hpp"
 #include "game/ui/UIControl_DynamicButtonList.hpp"

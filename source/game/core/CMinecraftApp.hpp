@@ -14,10 +14,10 @@
 #include "game/core/ColourTable.hpp"
 #include "game/item/not_null_ptr.hpp"
 #include "game/network/DisconnectPacket.hpp"
-#include "platform/wiiu/CProfile.hpp"
-#include "platform/wiiu/C4JStorage.hpp"
+#include "platform/CProfile.hpp"
+#include "platform/C4JStorage.hpp"
 #include "game/core/CriticalSection.hpp"
-#include "platform/wiiu/PlatformTiming.hpp"
+#include "platform/PlatformTiming.hpp"
 #include "vendor/_XUSER_SIGNIN_INFO.hpp"
 struct _DLCRequest
 {
@@ -671,10 +671,10 @@ private:
     boost::unordered_map<PlayerUID, unsigned char*> mUnusedPlayerDataMap;
     boost::unordered_map<std::wstring, MEMDATA*> mMemoryTextureFiles;
     boost::unordered_map<int, MEMDATA*> mMemoryTPDFiles;
-    OSFastMutex mMemoryTextureMutex;
-    OSFastMutex mMemoryTPDMutex;
-    OSFastMutex mPendingActionsMutex;
-    OSFastMutex mActionMutex;
+    C4JCriticalSection mMemoryTextureMutex;
+    C4JCriticalSection mMemoryTPDMutex;
+    C4JCriticalSection mPendingActionsMutex;
+    C4JCriticalSection mActionMutex;
     std::vector<NOTIFICATION*> mNotifications;
     unsigned int mUnusedNotificationWords[2];
     bool mGameStarted;
@@ -711,7 +711,7 @@ private:
     unsigned int mUnusedTimeWord;
     int mTipRotationIndex;
     _TipData mTipData[5];
-    OSFastMutex mTerrainFeaturePositionsMutex;
+    C4JCriticalSection mTerrainFeaturePositionsMutex;
     std::vector<FEATURE_DATA*> mTerrainFeaturePositions;
     bool mUnusedDLCInstallFlag;
     bool mDLCInstallProcessCompleted;
@@ -738,19 +738,19 @@ private:
     unsigned char mPlayerIds[8];
     unsigned int mPlayerPrivileges[8];
     unsigned char mPlayerGameTypes[8];
-    OSFastMutex mSaveNotificationMutex;
+    C4JCriticalSection mSaveNotificationMutex;
     int mSaveNotificationCount;
     std::vector<_DLCRequest*> mDLCDownloadQueue;
     std::vector<_TMSPPRequest*> mTMSPPRequests;
     unsigned int mDLCOffersRetrievedValue;
     bool mDLCDownloadQueueResetFlag;
     bool mUnusedDLCQueueFlags[2];
-    OSFastMutex mDLCRetrieveMutex;
-    OSFastMutex mDLCDownloadQueueMutex;
-    OSFastMutex mAdditionalModelPartsMutex;
-    OSFastMutex mAdditionalSkinBoxesMutex;
-    OSFastMutex mSkinAdjustmentsMutex;
-    OSFastMutex mUnusedMutex;
+    C4JCriticalSection mDLCRetrieveMutex;
+    C4JCriticalSection mDLCDownloadQueueMutex;
+    C4JCriticalSection mAdditionalModelPartsMutex;
+    C4JCriticalSection mAdditionalSkinBoxesMutex;
+    C4JCriticalSection mSkinAdjustmentsMutex;
+    C4JCriticalSection mUnusedMutex;
     bool mCorruptSaveDeleted;
     unsigned int mUnusedSaveWords[4];
     unsigned int mUnusedClearedWords[4];

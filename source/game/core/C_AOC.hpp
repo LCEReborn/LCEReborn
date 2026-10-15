@@ -1,7 +1,7 @@
 #ifndef GAME_CORE_C_AOC_HPP
 #define GAME_CORE_C_AOC_HPP
 
-#include "platform/wiiu/C4JThreadImpl.hpp"
+#include "platform/C4JThreadImpl.hpp"
 
 #include <vector>
 

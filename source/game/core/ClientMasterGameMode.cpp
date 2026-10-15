@@ -46,7 +46,7 @@
 #include "game/world/generation/Player.hpp"
 #include "game/ui/UIScene_FullscreenProgress.hpp"
 #include "vendor/_LoadingInputParams.hpp"
-#include "platform/wiiu/C4JThreadImpl.hpp"
+#include "platform/C4JThreadImpl.hpp"
 #include <algorithm>
 #include <boost/unordered_set.hpp>
 

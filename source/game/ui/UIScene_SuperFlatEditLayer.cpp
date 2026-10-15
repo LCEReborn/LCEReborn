@@ -25,7 +25,7 @@
 #include "game/world/block/Blocks.hpp"
 #include "game/core/GameSettings.hpp"
 #include "game/core/Rarity.hpp"
-#include "platform/wiiu/CInput.hpp"
+#include "platform/CInput.hpp"
 
 extern CInput* g_pInput;
 

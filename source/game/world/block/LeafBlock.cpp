@@ -16,7 +16,7 @@
 #include "game/world/block/BooleanProperty.hpp"
 #include "game/world/block/Material.hpp"
 #include "game/world/block/TypedBoxed.hpp"
-#include "platform/wiiu/TLSStorageCafe.hpp"
+#include "platform/TLSStorage.hpp"
 
 AbstractProperty<bool>* LeafBlock::DECAYABLE = static_cast<AbstractProperty<bool>*>(
     BooleanProperty::create(L"decayable"));

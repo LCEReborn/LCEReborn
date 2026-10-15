@@ -1,4 +1,4 @@
-#include "platform/wiiu/PlatformTiming.hpp"
+#include "platform/PlatformTiming.hpp"
 #include "game/util/Random.hpp"
 
 #include <math.h>

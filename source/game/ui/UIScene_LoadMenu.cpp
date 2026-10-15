@@ -18,7 +18,7 @@
 #include "game/core/MasterGameMode.hpp"
 #include "game/core/Minecraft.hpp"
 #include "game/core/StringConversion.hpp"
-#include "platform/wiiu/CStorage.hpp"
+#include "platform/CStorage.hpp"
 #include "vendor/_SaveListDetails.hpp"
 #include "game/minigame/MiniGameDef.hpp"
 #include "game/ui/FJ_LoadMenu.hpp"
@@ -30,7 +30,7 @@
 #include "game/world/LevelRuleset.hpp"
 #include "game/client/render/TexturePack.hpp"
 #include "game/client/render/TexturePackRepository.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 
 extern ConsoleUIController gConsoleUIController;
 

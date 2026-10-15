@@ -23,8 +23,8 @@
 #include "game/ui/fuiRenderNode.hpp"
 #include "game/world/generation/FlatGeneratorInfo.hpp"
 #include "game/client/render/Renderer.hpp"
-#include "platform/wiiu/CInput.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CInput.hpp"
+#include "platform/CProfile.hpp"
 #include "game/core/GameSettings.hpp"
 
 extern ConsoleUIController gConsoleUIController;

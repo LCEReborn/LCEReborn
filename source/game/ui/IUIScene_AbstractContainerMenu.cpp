@@ -35,7 +35,7 @@
 #include "game/world/generation/MultiPlayerGameMode.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
 #include "game/core/Rarity.hpp"
-#include "platform/wiiu/CInput.hpp"
+#include "platform/CInput.hpp"
 
 static const int s_toolTipStringIds[] = {IDS_TOOLTIPS_PICKUPPLACE,
                                          (int)IDS_TOOLTIPS_EXIT,

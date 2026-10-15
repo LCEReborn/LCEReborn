@@ -80,7 +80,7 @@ private:
     Dimension* m_dimension;
     std::deque<LevelChunk*> m_toDrop;
     LevelChunk** m_unloadedCache;
-    OSFastMutex m_csLoadCreate;
+    C4JCriticalSection m_csLoadCreate;
     int m_xzSize;
     int m_xzOffset;
     bool (*m_boundFunction)(void*, int, int);

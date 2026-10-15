@@ -3,7 +3,7 @@
 #include "game/core/GameModeOptions.hpp"
 #include "game/minigame/MiniGameDef.hpp"
 #include "game/world/generation/PlayerUID.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 
 extern C_4JProfile* gProfile;
 

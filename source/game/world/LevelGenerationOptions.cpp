@@ -23,11 +23,11 @@
 #include "game/world/biome/BiomeOverride.hpp"
 #include "game/world/chunk/LevelChunk.hpp"
 #include "game/world/generation/ConsoleGenerateStructure.hpp"
-#include "platform/wiiu/CProfile.hpp"
-#include "platform/wiiu/CStorage.hpp"
+#include "platform/CProfile.hpp"
+#include "platform/CStorage.hpp"
 #include "game/core/PIXNamedEvents.hpp"
-#include "platform/wiiu/NintendoFileSystem_WiiU.hpp"
-#include "platform/wiiu/WiiU_FileCache.hpp"
+#include "platform/FileSystem.hpp"
+#include "platform/FileApi.hpp"
 
 template <typename T>
 std::wstring _toString(T value);

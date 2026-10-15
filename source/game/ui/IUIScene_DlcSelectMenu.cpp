@@ -7,8 +7,8 @@
 #include "game/core/cCommerce.hpp"
 #include "game/core/cDLCInfo.hpp"
 #include "game/network/CGameNetworkManager.hpp"
-#include "platform/wiiu/C4JStorage.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/C4JStorage.hpp"
+#include "platform/CProfile.hpp"
 
 extern ConsoleUIController gConsoleUIController;
 

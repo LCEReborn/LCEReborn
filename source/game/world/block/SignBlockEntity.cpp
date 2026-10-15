@@ -19,7 +19,7 @@ class ServerLevel;
 
 namespace
 {
-OSFastMutex gSignUniqueIdMutex;
+C4JCriticalSection gSignUniqueIdMutex;
 bool gSignUniqueIdMutexInitialized = true;
 int gSignUniqueId = 0;
 }

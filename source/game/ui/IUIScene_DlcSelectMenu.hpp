@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "platform/wiiu/C4JStorage.hpp"
+#include "platform/C4JStorage.hpp"
 
 class DLCPack;
 class UIScene_SkinSelectMenu;

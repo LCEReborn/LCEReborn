@@ -4,19 +4,25 @@
 #include "game/core/DLCPack.hpp"
 #include "game/core/ShutdownManager.hpp"
 #include "game/ui/UIScene_AchievementsMenu.hpp"
-#include "platform/wiiu/C4JThread.hpp"
-#include "platform/wiiu/CInput.hpp"
-#include "platform/wiiu/CStorage.hpp"
+#include "platform/C4JThread.hpp"
+#include "platform/CInput.hpp"
+#include "platform/CStorage.hpp"
 #include "platform/wiiu/cCommerceNintendoWiiU.hpp"
 #include "platform/wiiu/cNintendoDLCInfo.hpp"
-#include "platform/wiiu/C4JThreadImpl.hpp"
-#include "platform/wiiu/NintendoFileSystem_WiiU.hpp"
-#include "platform/wiiu/WiiU_FileCache.hpp"
+#include "platform/C4JThreadImpl.hpp"
+#include "platform/FileSystem.hpp"
+#include "platform/FileApi.hpp"
 #include "platform/wiiu/WiiU_Platform.hpp"
-#include "platform/wiiu/WiiU_Runtime.hpp"
+#include "platform/Runtime.hpp"
 #include <stdlib.h>
 #include <string.h>
+#include "platform/Platform.hpp"
+
+#if LCE_PLATFORM_WIIU
 #include <sysapp/launch.h>
+#elif LCE_PLATFORM_PC
+#include "platform/pc/PcApplication.hpp"
+#endif
 
 extern "C" void OSReport(const char*, ...);
 extern "C" void ProcUIShutdown();
@@ -304,7 +310,11 @@ bool CConsoleMinecraftApp::getIgnoreMainMenuInputDuringInvite()
 }
 void CConsoleMinecraftApp::ExitGame()
 {
+#if LCE_PLATFORM_WIIU
     SYSLaunchMenu();
+#elif LCE_PLATFORM_PC
+    PcRequestExit();
+#endif
 }
 
 void CConsoleMinecraftApp::ReleaseSaveThumbnail()

@@ -6,7 +6,7 @@
 #include "game/core/UnityClient6.hpp"
 #include "game/world/block/Material.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
-#include "platform/wiiu/CInput.hpp"
+#include "platform/CInput.hpp"
 
 extern ConsoleUIController gConsoleUIController;
 

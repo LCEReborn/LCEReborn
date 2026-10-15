@@ -10,7 +10,7 @@
 #include "game/ui/UIControl_DLCButtonList.hpp"
 #include "game/ui/UIControl_HTMLLabel.hpp"
 #include "game/ui/UIControl_Label.hpp"
-#include "platform/wiiu/C4JStorage.hpp"
+#include "platform/C4JStorage.hpp"
 
 class UILayer;
 class cProductInfo;

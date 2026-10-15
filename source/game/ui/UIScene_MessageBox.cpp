@@ -12,7 +12,7 @@
 #include "game/ui/fuiFile.hpp"
 #include "game/ui/fuiRenderNode.hpp"
 #include "game/core/GameSettings.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 
 UIScene_MessageBox::UIScene_MessageBox(int sceneType, void* sceneData, UILayer* layer) : UIScene(sceneType, layer)
 {

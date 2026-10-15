@@ -11,7 +11,7 @@ long long InterlockedCompareExchangeRelease64(volatile long long* destination, l
 
 int SparseDataStorage::sPendingDeleteList;
 XLockFreeStack<unsigned char> SparseDataStorage::sPendingDeleteLists[3];
-static OSFastMutex sCompressLock;
+static C4JCriticalSection sCompressLock;
 int SparseDataStorage::sAllocatedBytes;
 
 void SparseDataStorage::Array256_1Bit::init()

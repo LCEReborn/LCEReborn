@@ -5,7 +5,11 @@
 
 #include <boost/functional/hash.hpp>
 
+#include "platform/Platform.hpp"
+
+#if LCE_PLATFORM_WIIU
 #include <nn/ffl/FFLCreateID.h>
+#endif
 
 #include "game/core/StringConversion.hpp"
 
@@ -20,12 +24,14 @@ PlayerUID::PlayerUID(ACTUuid uuid, bool onlineAccount, bool drcController)
     flags = (((onlineAccount & 1u) | 2u) << 2 | (drcController & 1u)) << FlagShift | (flags & FlagPayloadMask);
 }
 
+#if LCE_PLATFORM_WIIU
 PlayerUID::PlayerUID(FFLCreateID createId, unsigned int principalId, bool hasPrincipalId, bool drcController)
 {
     std::memcpy(mii.createId, &createId, sizeof(mii.createId));
     mii.principalId = hasPrincipalId ? principalId : 0;
     flags = ((hasPrincipalId & 1u) << 1 | (drcController & 1u)) << FlagShift | (flags & FlagPayloadMask);
 }
+#endif
 
 PlayerUID::PlayerUID(std::wstring uidString)
 {

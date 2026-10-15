@@ -1,6 +1,6 @@
-#include "platform/wiiu/PlatformTiming.hpp"
-#include "platform/wiiu/CStorage.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/PlatformTiming.hpp"
+#include "platform/CStorage.hpp"
+#include "platform/CProfile.hpp"
 #include "game/data/ConsoleSaveFileOriginal.hpp"
 
 #include <cstring>
@@ -12,7 +12,7 @@
 #include "game/core/PIXNamedEvents.hpp"
 #include "game/world/LevelGenerationOptions.hpp"
 
-#include "platform/wiiu/WiiU_FileCache.hpp"
+#include "platform/FileApi.hpp"
 void __debugbreak();
 
 static void* s_saveData = NULL;

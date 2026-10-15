@@ -21,7 +21,7 @@
 #include "game/network/CGameNetworkManager.hpp"
 #include "game/core/GameSettings.hpp"
 #include "game/core/XLanguage.hpp"
-#include "platform/wiiu/CStorage.hpp"
+#include "platform/CStorage.hpp"
 #include "game/core/GlStateManager.hpp"
 #include "game/core/L10N.hpp"
 #include "game/core/Minecraft.hpp"
@@ -52,20 +52,20 @@
 #include "game/ui/fui.hpp"
 #include "game/ui/fuiBitmapFont.hpp"
 #include "game/ui/fuiFile.hpp"
-#include "platform/wiiu/C4JThread.hpp"
-#include "platform/wiiu/C4JThreadImpl.hpp"
-#include "platform/wiiu/CInput.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/C4JThread.hpp"
+#include "platform/C4JThreadImpl.hpp"
+#include "platform/CInput.hpp"
+#include "platform/CProfile.hpp"
 #include "platform/wiiu/NQRNetworkManager.hpp"
 #include "platform/wiiu/WiiU_FileSystem.hpp"
 #include "platform/wiiu/UIComponent_WiiUDRC.hpp"
 #include "vendor/_TutorialPopupInfo.hpp"
-#include "platform/wiiu/WiiU_Runtime.hpp"
+#include "platform/Runtime.hpp"
 
 extern "C" void OSReport(const char*, ...);
 
 
-OSFastMutex g_uiCriticalSection;
+C4JCriticalSection g_uiCriticalSection;
 ConsoleUIController gConsoleUIController;
 
 static unsigned int s_trialTimerValue = 0;

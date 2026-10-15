@@ -59,7 +59,7 @@ static const unsigned int sHostOptionCategoryStringIds[4] = {IDS_MG_OPTION_SPECT
                                                              IDS_MG_OPTION_SPECTATE_MODE_BAT, IDS_PARROT, IDS_VEX};
 
 static MiniGamePlayerSettings sPlayerSettings;
-static OSFastMutex sPlayerSettingsMutex;
+static C4JCriticalSection sPlayerSettingsMutex;
 static MiniGameDef* sMiniGameDefs[eMiniGameId_Count];
 static MiniGameDef* sDefaultMiniGameDef;
 static unsigned int sCrcTable[256];

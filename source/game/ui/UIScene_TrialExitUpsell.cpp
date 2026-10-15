@@ -6,7 +6,7 @@
 #include "game/core/ConsoleUIController.hpp"
 #include "game/core/GameSettings.hpp"
 #include "game/core/UnityClient6.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 
 UIScene_TrialExitUpsell::UIScene_TrialExitUpsell(int sceneType, void*, UILayer* layer) : UIScene(sceneType, layer)
 {

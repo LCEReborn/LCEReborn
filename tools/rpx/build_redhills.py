@@ -70,6 +70,8 @@ GCC_ONLY_UNITS = {'platform/wiiu/BootInit.cpp'}
 # Units the original compiled as C; dlmalloc's malloc family has C names.
 C_UNITS = {'vendor/dlmalloc.cpp'}
 EDG_RUNTIME = re.compile(r'^cafe/libsedg/')
+# Platform layers of other targets; the Wii U build compiles source/platform/wiiu only.
+OTHER_PLATFORMS = re.compile(r'^platform/(?!wiiu/)[^/]+/')
 TARGET = ['-target', 'powerpc-eabi', '-mcpu=750', '-O2', '-ffunction-sections', '-fdata-sections',
           '-fno-delete-null-pointer-checks']
 SEMANTIC = ['-DNDEBUG', '-DNDEV=1', '-DCAFE=2', '-DPLATFORM=CAFE', '-DEPPC', '-DBOOST_SP_NO_SYNC',
@@ -316,7 +318,7 @@ def game_units(out):
     game, c_units, edg = [], [], []
     for src in sorted(SOURCE.rglob('*.cpp')):
         rel = src.relative_to(SOURCE).as_posix()
-        if rel in GCC_ONLY_UNITS:
+        if rel in GCC_ONLY_UNITS or OTHER_PLATFORMS.match(rel):
             continue
         unit = (src, out / 'obj' / Path(rel).with_suffix('.o'))
         if rel in C_UNITS:

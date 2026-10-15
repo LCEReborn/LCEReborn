@@ -1,13 +1,24 @@
 #ifndef GAME_CLIENT_RENDER_C4JRENDER_HPP
 #define GAME_CLIENT_RENDER_C4JRENDER_HPP
 
+#include "platform/Platform.hpp"
+
+#if LCE_PLATFORM_WIIU
 struct _GX2ColorBuffer;
 struct _GX2DepthBuffer;
 struct _GX2Texture;
 typedef _GX2ColorBuffer GX2ColorBuffer;
 typedef _GX2DepthBuffer GX2DepthBuffer;
 typedef _GX2Texture GX2Texture;
-struct ImageFileBuffer;
+#endif
+
+struct ImageFileBuffer
+{
+    int mFormat;
+    void* mData;
+    int mSize;
+};
+
 struct D3DXIMAGE_INFO;
 struct _XSOCIAL_PREVIEWIMAGE;
 
@@ -93,10 +104,12 @@ public:
     virtual void Set_matrixDirty() = 0;
     virtual void Initialise() = 0;
     virtual void InitialiseContext() = 0;
+#if LCE_PLATFORM_WIIU
     virtual GX2ColorBuffer* GetColorBuffer() = 0;
     virtual GX2DepthBuffer* GetDepthStencilBuffer() = 0;
     virtual GX2ColorBuffer* GetColorBufferDRC() = 0;
     virtual GX2DepthBuffer* GetDepthStencilBufferDRC() = 0;
+#endif
     virtual void StartFrame() = 0;
     virtual void TEMP_PatchStateFromIggy() = 0;
     virtual void ResetRenderState() = 0;
@@ -152,7 +165,9 @@ public:
     virtual int SaveTextureDataToMemory(void* destination, int destinationSize, int* bytesWritten, int width,
                                         int height, int* data) = 0;
     virtual void TextureGetStats() = 0;
+#if LCE_PLATFORM_WIIU
     virtual GX2Texture* TextureGetTexture(int texture) = 0;
+#endif
     virtual void StateSetColour(float red, float green, float blue, float alpha) = 0;
     virtual void StateSetColourAdd(float red, float green, float blue, float alpha) = 0;
     virtual void StateSetTexColour(int stage, float red, float green, float blue, float alpha) = 0;

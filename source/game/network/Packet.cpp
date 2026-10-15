@@ -133,7 +133,7 @@
 #include "game/network/UpdateProgressPacket.hpp"
 #include "game/network/VotePacket.hpp"
 #include "game/network/XZPacket.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CProfile.hpp"
 
 int32_t getMaskInt(uint32_t offset, uint32_t width);
 

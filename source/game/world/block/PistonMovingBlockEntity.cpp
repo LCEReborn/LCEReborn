@@ -1,5 +1,5 @@
 #include "game/world/block/PistonMovingBlockEntity.hpp"
-#include "platform/wiiu/TLSStorageCafe.hpp"
+#include "platform/TLSStorage.hpp"
 #include "game/world/block/BlockId.hpp"
 #include "game/core/EntityType.hpp"
 

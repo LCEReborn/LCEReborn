@@ -36,12 +36,12 @@
 #include "game/util/AABB.hpp"
 #include "game/util/Vec3.hpp"
 #include "game/core/Compression.hpp"
-#include "platform/wiiu/CProfile.hpp"
-#include "platform/wiiu/CStorage.hpp"
+#include "platform/CProfile.hpp"
+#include "platform/CStorage.hpp"
 #include "platform/wiiu/cCommerceNintendoWiiU.hpp"
 #include "game/core/GameSettings.hpp"
-#include "platform/wiiu/C4JThreadImpl.hpp"
-#include "platform/wiiu/WiiU_Runtime.hpp"
+#include "platform/C4JThreadImpl.hpp"
+#include "platform/Runtime.hpp"
 
 extern ConsoleUIController gConsoleUIController;
 

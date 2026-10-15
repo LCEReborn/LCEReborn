@@ -77,8 +77,8 @@
 #include "game/core/WitherBoss.hpp"
 #include "game/core/WitherSkull.hpp"
 #include "game/core/Wolf.hpp"
-#include "platform/wiiu/CInput.hpp"
-#include "platform/wiiu/CProfile.hpp"
+#include "platform/CInput.hpp"
+#include "platform/CProfile.hpp"
 #include "game/core/ClientMasterGameMode.hpp"
 #include "game/core/ClientScoreboard.hpp"
 #include "game/core/ColourTable.hpp"
@@ -112,7 +112,7 @@
 #include "game/core/User.hpp"
 #include "game/core/UnityClient13.hpp"
 #include "game/core/UnityClient6.hpp"
-#include "platform/wiiu/CStorage.hpp"
+#include "platform/CStorage.hpp"
 #include "game/data/CompoundTag.hpp"
 #include "game/data/DataFixers.hpp"
 #include "game/command/CheckpointCommand.hpp"
@@ -246,7 +246,7 @@
 #include "game/world/block/Blocks.hpp"
 #include "game/world/block/CompressedBlockStorage.hpp"
 #include "game/server/ServerLevel.hpp"
-#include "platform/wiiu/C4JThreadImpl.hpp"
+#include "platform/C4JThreadImpl.hpp"
 #include "game/core/MemSect.hpp"
 #include "game/core/PIXNamedEvents.hpp"
 #include "game/core/StringConversion.hpp"
@@ -266,7 +266,7 @@ static int sPressStartHoldOffFrames = 0;
 static bool sCheckForNewLocalPlayers = true;
 bool gFancyGraphics = true;
 static File sWorkingDirectory;
-static OSFastMutex sTextureRequestLock;
+static C4JCriticalSection sTextureRequestLock;
 
 struct ScoreboardMenuData
 {

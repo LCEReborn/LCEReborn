@@ -1,7 +1,7 @@
 #include "game/core/Compression.hpp"
 #include "game/core/PIXNamedEvents.hpp"
 #include "game/core/XMem.hpp"
-#include "platform/wiiu/TLSStorageCafe.hpp"
+#include "platform/TLSStorage.hpp"
 
 #include <string.h>
 #include <zlib.h>

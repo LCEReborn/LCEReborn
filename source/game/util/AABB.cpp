@@ -5,7 +5,7 @@
 #include "game/util/Vec3.hpp"
 #include "game/world/block/BlockPos.hpp"
 #include "game/core/HitResult.hpp"
-#include "platform/wiiu/TLSStorageCafe.hpp"
+#include "platform/TLSStorage.hpp"
 
 #include <sstream>
 

@@ -276,7 +276,9 @@
 #include "game/ui/FJ_UpsellButton_Normal.hpp"
 #include "game/ui/FJ_UpsellButton_Small.hpp"
 #include "game/ui/FJ_panel9Grid_16Fade.hpp"
+#if LCE_PLATFORM_WIIU
 #include "platform/wiiu/FJ_WiiUDRC.hpp"
+#endif
 #include "game/ui/fui.hpp"
 #include "game/ui/fuiRenderNode.hpp"
 
@@ -557,7 +559,9 @@ static const std::string g_FJ_SignInput_name("FJ_SignInput");
 static const std::string g_FJ_panel9Grid_16Fade_name("FJ_panel9Grid_16Fade");
 static const std::string g_FJ_Panel9GridFade_name("FJ_Panel9GridFade");
 static const std::string g_FJ_PanelRecessFade_name("FJ_PanelRecessFade");
+#if LCE_PLATFORM_WIIU
 static const std::string g_WiiUDRC_name("WiiUDRC");
+#endif
 
 void FJ_Factory::initialise()
 {
@@ -875,8 +879,10 @@ void FJ_Factory::initialise()
         std::make_pair(g_SignEntryMenu_name, reinterpret_cast<FJ_FactoryFunction>(&FJ_SignEntryMenu::Create)));
     g_fuiNodeFactories.insert(
         std::make_pair(g_SocialPost_name, reinterpret_cast<FJ_FactoryFunction>(&FJ_SocialPost::Create)));
+#if LCE_PLATFORM_WIIU
     g_fuiNodeFactories.insert(
         std::make_pair(g_WiiUDRC_name, reinterpret_cast<FJ_FactoryFunction>(&FJ_WiiUDRC::Create)));
+#endif
     g_fuiNodeFactories.insert(
         std::make_pair(g_AchievementsMenu_name, reinterpret_cast<FJ_FactoryFunction>(&FJ_AchievementsMenu::Create)));
     g_fuiNodeFactories.insert(

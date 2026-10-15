@@ -106,9 +106,9 @@ bool PlayerUID::operator!=(const PlayerUID& other) const
     return !(*this == other);
 }
 
-unsigned int hash_value(const PlayerUID& uid)
+std::size_t hash_value(const PlayerUID& uid)
 {
-    unsigned int seed = 0;
+    std::size_t seed = 0;
     if ((uid.flags & PlayerUID::FlagUuid) == 0)
     {
         for (int i = 0; i < 10; ++i)

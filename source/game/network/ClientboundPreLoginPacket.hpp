@@ -33,6 +33,9 @@ public:
 
 private:
     friend class CPlatformNetworkManagerNintendo;
+#if LCE_PLATFORM_PC
+    friend class CPlatformNetworkManagerPC;
+#endif
     friend class FakeClientPacketListener;
     friend class ClientPacketListener;
 

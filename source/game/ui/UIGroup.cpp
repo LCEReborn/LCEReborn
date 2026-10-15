@@ -48,8 +48,10 @@ UIGroup::UIGroup(EUIGroup group, int player)
 
     if (m_group == EUIGroup_DRC)
     {
+#if LCE_PLATFORM_WIIU
         m_drc = static_cast<UIComponent_WiiUDRC*>(
             m_layers[EUILayer_Fullscreen]->addComponent(m_player, EUIScene_WiiUDRC, NULL));
+#endif
     }
     else if (m_group != EUIGroup_Fullscreen)
     {

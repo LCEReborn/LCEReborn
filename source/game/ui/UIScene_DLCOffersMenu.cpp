@@ -8,7 +8,7 @@
 #include "game/core/ConsoleUIController.hpp"
 #include "game/core/L10N.hpp"
 #include "game/core/cCommerce.hpp"
-#include "platform/wiiu/cCommerceNintendoWiiU.hpp"
+#include "platform/Commerce.hpp"
 #include "platform/wiiu/cNintendoDLCInfo.hpp"
 #include "game/core/cDLCInfo.hpp"
 #include "game/core/cProductInfo.hpp"

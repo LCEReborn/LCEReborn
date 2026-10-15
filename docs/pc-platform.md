@@ -8,12 +8,16 @@ of its platform with ordinary PC facilities.
 
 ## Selecting the platform
 
-`source/platform/Platform.hpp` defines exactly one of:
+Each build defines exactly one platform macro on the compiler command line:
 
-| Macro | When |
+| Macro | Defined by |
 | --- | --- |
-| `LCE_PLATFORM_WIIU` | the Wii U build (`__WIIU__`, set by `tools/rpx/build_redhills.py`) |
-| `LCE_PLATFORM_PC` | Windows, Linux or macOS compilers |
+| `LCE_PLATFORM_WIIU` | the Wii U build (`tools/rpx/build_redhills.py`) |
+| `LCE_PLATFORM_PC` | the PC build (`CMakeLists.txt`) |
+
+`source/platform/Platform.hpp` checks that exactly one is set, and picks one
+from the compiler when neither is (`__WIIU__` for the Wii U; Windows, Linux or
+macOS for PC).
 
 Code that differs between platforms uses `#if LCE_PLATFORM_WIIU` /
 `#elif LCE_PLATFORM_PC`. The Wii U build must keep producing the same RPX:

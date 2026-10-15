@@ -9,7 +9,7 @@
 #include "platform/CInput.hpp"
 #include "platform/PlatformTiming.hpp"
 #include "game/core/CConsoleMinecraftApp.hpp"
-#include "platform/wiiu/cCommerceNintendoWiiU.hpp"
+#include "platform/Commerce.hpp"
 #include "game/core/ArchiveFile.hpp"
 #include "game/core/File.hpp"
 #include "game/core/ConsoleUIController.hpp"
@@ -92,7 +92,11 @@
 #include "game/world/LevelData.hpp"
 #include "game/world/block/SignBlockEntity.hpp"
 #include "game/world/generation/LocalPlayer.hpp"
+#if LCE_PLATFORM_WIIU
 #include "platform/wiiu/PlayerUID.hpp"
+#elif LCE_PLATFORM_PC
+#include "platform/pc/PcPlatform.hpp"
+#endif
 #include "platform/wiiu/cNintendoDLCInfo.hpp"
 #include "platform/C4JThreadImpl.hpp"
 #include "platform/Runtime.hpp"

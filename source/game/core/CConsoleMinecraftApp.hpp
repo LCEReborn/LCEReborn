@@ -4,20 +4,29 @@
 #include "game/core/CMinecraftApp.hpp"
 #include "game/client/render/Renderer.hpp"
 #include "platform/C4JStorage.hpp"
+#include "platform/Platform.hpp"
 #include <stdint.h>
 #include <string>
 
 class ConsoleUIController;
 class cNintendoDLCInfo;
+#if LCE_PLATFORM_WIIU
 class cCommerceNintendoWiiU;
 struct MiiDataEntry;
+
+typedef cCommerceNintendoWiiU PlatformCommerce;
+#elif LCE_PLATFORM_PC
+class cCommerce;
+
+typedef cCommerce PlatformCommerce;
+#endif
 
 class CConsoleMinecraftApp : public CMinecraftApp
 {
 public:
     CConsoleMinecraftApp();
     bool IsAmericanSKU();
-    cCommerceNintendoWiiU* GetCommerceInstance();
+    PlatformCommerce* GetCommerceInstance();
     static void RequestToBackground();
     static uint8_t ReadyToBackground();
     bool GetDRCIconEnabled();
@@ -53,7 +62,9 @@ public:
     uint32_t GetLocalTMSFileIndex(wchar_t*, bool, eFileExtensionType);
     virtual void TemporaryCreateGameStart();
     uint32_t UpgradeTrial();
+#if LCE_PLATFORM_WIIU
     void RequestSignInUIWiiUReturnedSelected(MiiDataEntry*, int, int);
+#endif
     uint8_t IsDrcPreventingSplitscreen();
     void setIgnoreMainMenuInputDuringInvite(bool);
     void LoadLocalDLCImages();
@@ -110,7 +121,7 @@ private:
     char m_productCode[12];
     int m_productSKU;
     unsigned char m_instanceReserved[8];
-    cCommerceNintendoWiiU* m_commerce;
+    PlatformCommerce* m_commerce;
 };
 
 extern CConsoleMinecraftApp theApp;

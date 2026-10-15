@@ -56,7 +56,9 @@
 #include "platform/C4JThreadImpl.hpp"
 #include "platform/CInput.hpp"
 #include "platform/CProfile.hpp"
+#if LCE_PLATFORM_WIIU
 #include "platform/wiiu/NQRNetworkManager.hpp"
+#endif
 #include "platform/wiiu/WiiU_FileSystem.hpp"
 #include "platform/wiiu/UIComponent_WiiUDRC.hpp"
 #include "vendor/_TutorialPopupInfo.hpp"
@@ -1936,11 +1938,13 @@ bool ConsoleUIController::handleInput()
     }
     for (int pad = 4; pad < 9; ++pad)
     {
+#if LCE_PLATFORM_WIIU
         if (g_pInput->IsPadConnected(pad) != 0 && g_pInput->IsPadDRCController(pad) != 0)
         {
             if (m_groups[EUIGroup_DRC]->getDRC() != 0)
                 m_groups[EUIGroup_DRC]->getDRC()->handleDRCTouchInput((unsigned int)pad);
         }
+#endif
         if (!gApp.GetGameStarted() || gApp.m_signInResult != 0)
         {
             if (g_pInput->IsPadLocked(pad) == 0 && g_pInput->IsPadConnected(pad) != 0)

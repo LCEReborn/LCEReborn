@@ -41,7 +41,7 @@
 #include "game/world/LevelRuleset.hpp"
 #include "platform/CProfile.hpp"
 #include "platform/CStorage.hpp"
-#include "platform/wiiu/cCommerceNintendoWiiU.hpp"
+#include "platform/Commerce.hpp"
 #include "platform/wiiu/cNintendoDLCInfo.hpp"
 #include "game/ui/UIScene_FullscreenProgress.hpp"
 #include "vendor/_LoadingInputParams.hpp"

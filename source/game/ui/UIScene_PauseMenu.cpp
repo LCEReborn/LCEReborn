@@ -38,7 +38,7 @@
 #include "game/core/Compression.hpp"
 #include "platform/CProfile.hpp"
 #include "platform/CStorage.hpp"
-#include "platform/wiiu/cCommerceNintendoWiiU.hpp"
+#include "platform/Commerce.hpp"
 #include "game/core/GameSettings.hpp"
 #include "platform/C4JThreadImpl.hpp"
 #include "platform/Runtime.hpp"

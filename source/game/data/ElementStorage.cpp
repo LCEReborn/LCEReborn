@@ -4,7 +4,10 @@
 #include "game/core/DataOutputStream.hpp"
 #include "game/data/SparseDataStorage.hpp"
 #include "game/world/block/CompressedBlockStorage.hpp"
+#include "platform/Platform.hpp"
+#if LCE_PLATFORM_WIIU
 #include "platform/wiiu/NQRNetworkManager_Lan_WiiU.hpp"
+#endif
 #include "platform/TLSStorage.hpp"
 #include "game/core/CriticalSection.hpp"
 

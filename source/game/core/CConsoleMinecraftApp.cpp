@@ -7,25 +7,29 @@
 #include "platform/C4JThread.hpp"
 #include "platform/CInput.hpp"
 #include "platform/CStorage.hpp"
-#include "platform/wiiu/cCommerceNintendoWiiU.hpp"
+#include "platform/Commerce.hpp"
 #include "platform/wiiu/cNintendoDLCInfo.hpp"
 #include "platform/C4JThreadImpl.hpp"
 #include "platform/FileSystem.hpp"
 #include "platform/FileApi.hpp"
-#include "platform/wiiu/WiiU_Platform.hpp"
 #include "platform/Runtime.hpp"
 #include <stdlib.h>
 #include <string.h>
 #include "platform/Platform.hpp"
 
 #if LCE_PLATFORM_WIIU
+#include "platform/wiiu/WiiU_Platform.hpp"
 #include <sysapp/launch.h>
-#elif LCE_PLATFORM_PC
-#include "platform/pc/PcApplication.hpp"
-#endif
 
 extern "C" void OSReport(const char*, ...);
 extern "C" void ProcUIShutdown();
+#elif LCE_PLATFORM_PC
+#include <cstdarg>
+#include <cstdio>
+
+#include "platform/pc/PcApplication.hpp"
+#include "platform/pc/PcPlatform.hpp"
+#endif
 
 extern void altMain();
 extern ConsoleUIController gConsoleUIController;
@@ -79,9 +83,13 @@ void RegisterAwardsWithProfileManager()
 
 void ShutdownAndExit()
 {
+#if LCE_PLATFORM_WIIU
     gRenderer->WiiUWaitDrawDone();
     ShutdownManager::MainThreadHandleShutdown();
     ProcUIShutdown();
+#elif LCE_PLATFORM_PC
+    ShutdownManager::MainThreadHandleShutdown();
+#endif
     _Exit(0);
 }
 
@@ -91,14 +99,18 @@ CConsoleMinecraftApp::CConsoleMinecraftApp() : CMinecraftApp()
     m_noSpaceForSaveQuota = false;
     m_drcCheckPlayerCountEnabled = true;
     m_signInResult = 0;
+#if LCE_PLATFORM_WIIU
     m_drcOutputEnabled = true;
+#elif LCE_PLATFORM_PC
+    m_drcOutputEnabled = false;
+#endif
     m_drcIconEnabled = false;
 }
 bool CConsoleMinecraftApp::IsAmericanSKU()
 {
     return m_productSKU == 1;
 }
-cCommerceNintendoWiiU* CConsoleMinecraftApp::GetCommerceInstance()
+PlatformCommerce* CConsoleMinecraftApp::GetCommerceInstance()
 {
     return m_commerce;
 }
@@ -128,6 +140,7 @@ uint8_t CConsoleMinecraftApp::GetDRCCheckPlayerCountEnabled()
 }
 void CConsoleMinecraftApp::FatalLoadError(const wchar_t* message, ...)
 {
+#if LCE_PLATFORM_WIIU
     gRenderer->InitialiseContext();
     unsigned int errorCode = GetLastFileErrorCodeForViewer();
     g_pInput->RequestErrorViewer(1, errorCode, NULL, NULL);
@@ -140,11 +153,33 @@ void CConsoleMinecraftApp::FatalLoadError(const wchar_t* message, ...)
         if (s_altMainExit != 0 && C4JThread::isMainThread())
             ShutdownAndExit();
     }
+#elif LCE_PLATFORM_PC
+    va_list arguments;
+    va_start(arguments, message);
+    std::vfwprintf(stderr, message, arguments);
+    va_end(arguments);
+    std::fputwc(L'\n', stderr);
+    ShutdownAndExit();
+#endif
 }
 void CConsoleMinecraftApp::InitialiseDLCInfo()
 {
     m_dlcInfo = new cNintendoDLCInfo;
 }
+#if LCE_PLATFORM_PC
+static bool ReadBigEndianUInt32(int handle, unsigned int* value)
+{
+    unsigned char bytes[4];
+    unsigned int bytesRead = 0;
+    if (ReadFile(handle, bytes, sizeof(bytes), &bytesRead, 0) == 0)
+        return false;
+    *value = (static_cast<unsigned int>(bytes[0]) << 24) | (static_cast<unsigned int>(bytes[1]) << 16) |
+             (static_cast<unsigned int>(bytes[2]) << 8) | static_cast<unsigned int>(bytes[3]);
+    return true;
+}
+#endif
+
+#if LCE_PLATFORM_WIIU
 uint32_t CConsoleMinecraftApp::ReadProductCodes()
 {
     unsigned int bytesRead = 0;
@@ -194,6 +229,60 @@ uint32_t CConsoleMinecraftApp::ReadProductCodes()
         CloseHandle(handle);
     }
 
+#elif LCE_PLATFORM_PC
+uint32_t CConsoleMinecraftApp::ReadProductCodes()
+{
+    unsigned int bytesRead = 0;
+    int handle = CreateFileA("WiiU/WiiUProductCodes.bin", GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    if (handle == -1)
+        return 0;
+
+    unsigned int fileSize = 0;
+    if (GetFileSize(handle, &fileSize) != 0)
+    {
+        if (ReadFile(handle, m_productCode, 9, &bytesRead, 0) == 0)
+            return 0;
+
+        unsigned int dlcCount;
+        if (!ReadBigEndianUInt32(handle, &dlcCount))
+            return 0;
+
+        for (unsigned int index = 0; index < dlcCount; ++index)
+        {
+            DLC_INFO* dlcInfo = new DLC_INFO;
+            memset(dlcInfo, 0, sizeof(DLC_INFO));
+
+            unsigned int value;
+            unsigned int stringLength;
+            if (!ReadBigEndianUInt32(handle, &value))
+                return 0;
+            dlcInfo->ContentType = static_cast<int>(value);
+            if (!ReadBigEndianUInt32(handle, &value))
+                return 0;
+            dlcInfo->PackType = static_cast<int>(value);
+            if (!ReadBigEndianUInt32(handle, &dlcInfo->CatalogIndex))
+                return 0;
+            if (!ReadBigEndianUInt32(handle, &stringLength))
+                return 0;
+            if (ReadFile(handle, dlcInfo->PackName, stringLength, &bytesRead, 0) == 0)
+                return 0;
+            if (!ReadBigEndianUInt32(handle, &stringLength))
+                return 0;
+            if (ReadFile(handle, dlcInfo->BannerName, stringLength, &bytesRead, 0) == 0)
+                return 0;
+            if (!ReadBigEndianUInt32(handle, &dlcInfo->PackID))
+                return 0;
+            if (!ReadBigEndianUInt32(handle, &dlcInfo->SortIndex))
+                return 0;
+            if (ReadFile(handle, dlcInfo->RomName, 5, &bytesRead, 0) == 0)
+                return 0;
+
+            m_dlcInfo->AddDLCInfo(dlcInfo);
+        }
+        CloseHandle(handle);
+    }
+#endif
+
     if (strcmp(m_productCode, "AUMP01D75") == 0)
         m_productSKU = 0;
     else if (strcmp(m_productCode, "AUME01D9D") == 0)
@@ -209,7 +298,11 @@ uint32_t CConsoleMinecraftApp::GetProductSKU()
 void CConsoleMinecraftApp::CommerceInit()
 {
     m_commerceInitialized = 0;
+#if LCE_PLATFORM_WIIU
     m_commerce = new cCommerceNintendoWiiU;
+#elif LCE_PLATFORM_PC
+    m_commerce = new cCommerce;
+#endif
     m_commerceResult = 0;
     m_commerceProduct = 0;
     m_commerceCategory = 0;
@@ -392,6 +485,7 @@ uint32_t CConsoleMinecraftApp::UpgradeTrial()
     }
     return 0;
 }
+#if LCE_PLATFORM_WIIU
 void CConsoleMinecraftApp::RequestSignInUIWiiUReturnedSelected(MiiDataEntry* mii, int choice, int pad)
 {
     if (mii == NULL)
@@ -405,6 +499,7 @@ void CConsoleMinecraftApp::RequestSignInUIWiiUReturnedSelected(MiiDataEntry* mii
     }
     m_signInResult = 0;
 }
+#endif
 uint8_t CConsoleMinecraftApp::IsDrcPreventingSplitscreen()
 {
     return m_drcOutputEnabled;

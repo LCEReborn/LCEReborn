@@ -23,7 +23,9 @@
 #include "platform/C4JThreadImpl.hpp"
 
 char* wstringtofilename(const std::wstring& path, char (&filename)[256]);
+#if LCE_PLATFORM_WIIU
 extern unsigned char s_altMainStopRequested;
+#endif
 
 static const int SOCKET_TIMEOUT_MS = 30000;
 static const int IPTOS_LOWDELAY = 16;
@@ -389,8 +391,10 @@ void Connection::tick()
     {
         m_noInputTicks = 0;
     }
+#if LCE_PLATFORM_WIIU
     if (s_altMainStopRequested)
         m_noInputTicks = 0;
+#endif
 
     int now = static_cast<int>(System::processTimeInMilliSecs());
     if (now - static_cast<int>(m_lastSendTime) > KEEP_ALIVE_INTERVAL_MS)

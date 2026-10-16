@@ -1756,6 +1756,7 @@ Renderer::Renderer()
     gRendererInstance = this;
 
     memset(mClearColour, 0, sizeof(mClearColour));
+    mLayout = ELayout_Screen;
     mDRCFrameStarted = false;
     mDisplayEnabled = false;
     mForegroundAcquired = false;
@@ -1939,19 +1940,24 @@ void Renderer::SetScreenScissor(unsigned int left, unsigned int top, unsigned in
     Context& context = getContext();
     float scaleX = 1.0f;
     float scaleY = 1.0f;
+    float offsetX = 0.0f;
+    float offsetY = 0.0f;
 
     if (mScreen == 0)
     {
-        scaleX = (float)mScreenWidth[0] / (float)UI_WIDTH;
-        scaleY = (float)mScreenHeight[0] / (float)UI_HEIGHT;
+        float layoutWidth;
+        float layoutHeight;
+        GetLayoutRect(mLayout, &offsetX, &offsetY, &layoutWidth, &layoutHeight);
+        scaleX = layoutWidth / (float)UI_WIDTH;
+        scaleY = layoutHeight / (float)UI_HEIGHT;
     }
 
     float screenWidth = (float)mScreenWidth[mScreen];
     float screenHeight = (float)mScreenHeight[mScreen];
-    float x0 = (float)left * scaleX;
-    float y0 = (float)top * scaleY;
-    float x1 = ((float)left + (float)width) * scaleX;
-    float y1 = ((float)top + (float)height) * scaleY;
+    float x0 = offsetX + (float)left * scaleX;
+    float y0 = offsetY + (float)top * scaleY;
+    float x1 = offsetX + ((float)left + (float)width) * scaleX;
+    float y1 = offsetY + ((float)top + (float)height) * scaleY;
 
     x0 = x0 < 0.0f ? 0.0f : (x0 > screenWidth ? screenWidth : x0);
     y0 = y0 < 0.0f ? 0.0f : (y0 > screenHeight ? screenHeight : y0);
@@ -1977,15 +1983,6 @@ void Renderer::ResizeTargets()
 
     int width = drawableWidth;
     int height = drawableHeight;
-
-    if (drawableWidth * UI_HEIGHT > drawableHeight * UI_WIDTH)
-    {
-        width = drawableHeight * UI_WIDTH / UI_HEIGHT;
-    }
-    else
-    {
-        height = drawableWidth * UI_HEIGHT / UI_WIDTH;
-    }
 
     width = width < 1 ? 1 : width;
     height = height < 1 ? 1 : height;
@@ -2164,7 +2161,68 @@ void Renderer::StartFrame()
         ResizeTargets();
     }
 
+    mLayout = ELayout_Screen;
     StartFrameInternal(0, true);
+}
+
+void Renderer::GetLayoutRect(ELayout layout, float* x, float* y, float* width, float* height)
+{
+    float screenWidth = (float)mScreenWidth[mScreen];
+    float screenHeight = (float)mScreenHeight[mScreen];
+    *x = 0.0f;
+    *y = 0.0f;
+    *width = screenWidth;
+    *height = screenHeight;
+    if (mScreen != 0 || layout == ELayout_Screen)
+        return;
+
+    float fittedWidth = screenHeight * (float)UI_WIDTH / (float)UI_HEIGHT;
+    bool heightLimited = fittedWidth <= screenWidth;
+    if (layout == ELayout_InterfaceBackground)
+        heightLimited = !heightLimited;
+    if (heightLimited)
+    {
+        *width = floorf(fittedWidth + 0.5f);
+    }
+    else
+    {
+        *height = floorf(screenWidth * (float)UI_HEIGHT / (float)UI_WIDTH + 0.5f);
+    }
+    *x = floorf((screenWidth - *width) * 0.5f);
+    *y = floorf((screenHeight - *height) * 0.5f);
+}
+
+void Renderer::SetLayout(ELayout layout)
+{
+    if (layout == mLayout)
+        return;
+    mLayout = layout;
+    StateSetViewport(mCurrentViewport);
+}
+
+float Renderer::GetScreenAspect()
+{
+    if (mScreenHeight[0] <= 0)
+        return (float)UI_WIDTH / (float)UI_HEIGHT;
+    return (float)mScreenWidth[0] / (float)mScreenHeight[0];
+}
+
+void Renderer::GetInterfaceArea(float* left, float* top, float* width, float* height)
+{
+    int screen = mScreen;
+    mScreen = 0;
+    float x;
+    float y;
+    float areaWidth;
+    float areaHeight;
+    GetLayoutRect(ELayout_Interface, &x, &y, &areaWidth, &areaHeight);
+    mScreen = screen;
+    float screenWidth = mScreenWidth[0] > 0 ? (float)mScreenWidth[0] : 1.0f;
+    float screenHeight = mScreenHeight[0] > 0 ? (float)mScreenHeight[0] : 1.0f;
+    *left = x / screenWidth;
+    *top = y / screenHeight;
+    *width = areaWidth / screenWidth;
+    *height = areaHeight / screenHeight;
 }
 
 void Renderer::ResetRenderState()
@@ -2182,18 +2240,6 @@ void Renderer::GammaCorrect()
 
         if (drawableWidth > 0 && drawableHeight > 0)
         {
-            int width = drawableWidth;
-            int height = drawableHeight;
-
-            if (drawableWidth * UI_HEIGHT > drawableHeight * UI_WIDTH)
-            {
-                width = drawableHeight * UI_WIDTH / UI_HEIGHT;
-            }
-            else
-            {
-                height = drawableWidth * UI_HEIGHT / UI_WIDTH;
-            }
-
             mDevice->BindFramebuffer(0);
             mDevice->SetCapability(Capability_Scissor, Gl::SCISSOR_TEST, false);
             mDevice->SetCapability(Capability_DepthTest, Gl::DEPTH_TEST, false);
@@ -2202,9 +2248,6 @@ void Renderer::GammaCorrect()
             mDevice->SetCapability(Capability_Blend, Gl::BLEND, false);
             mDevice->SetColourMaskMode(ColourMaskMode_Main, CHANNEL_MASK_RGBA);
             Gl::Viewport(0, 0, drawableWidth, drawableHeight);
-            Gl::ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-            Gl::Clear(Gl::COLOR_BUFFER_BIT);
-            Gl::Viewport((drawableWidth - width) / 2, (drawableHeight - height) / 2, width, height);
 
             mDevice->BindTextureUnit(0, mDevice->mMainColourTexture,
                                      mDevice->GetSampler(MakeSampler(true, true, MIP_FILTER_NONE)));
@@ -3363,12 +3406,30 @@ void Renderer::StateSetViewport(C4JRender::eViewportType viewport)
         break;
     }
 
+    float layoutX;
+    float layoutY;
+    float layoutWidth;
+    float layoutHeight;
+    GetLayoutRect(mLayout, &layoutX, &layoutY, &layoutWidth, &layoutHeight);
+    x = layoutX + x * layoutWidth / screenWidth;
+    y = layoutY + y * layoutHeight / screenHeight;
+    width = width * layoutWidth / screenWidth;
+    height = height * layoutHeight / screenHeight;
+
     context.mViewportScale[0] = width / screenWidth;
     context.mViewportScale[1] = height / screenHeight;
     context.mViewportScale[2] = x / screenWidth;
     context.mViewportScale[3] = y / screenHeight;
 
     ApplyGpuViewportAndScissor(x, y, width, height);
+    float scissorX0 = x < 0.0f ? 0.0f : x;
+    float scissorY0 = y < 0.0f ? 0.0f : y;
+    float scissorX1 = x + width > screenWidth ? screenWidth : x + width;
+    float scissorY1 = y + height > screenHeight ? screenHeight : y + height;
+    context.mGpu.mScissor[0] = (int)scissorX0;
+    context.mGpu.mScissor[1] = (int)scissorY0;
+    context.mGpu.mScissor[2] = (int)scissorX1 - (int)scissorX0;
+    context.mGpu.mScissor[3] = (int)scissorY1 - (int)scissorY0;
 }
 
 void Renderer::StateGetScissorRect(unsigned int& left, unsigned int& top, unsigned int& right, unsigned int& bottom)

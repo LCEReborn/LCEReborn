@@ -72,6 +72,7 @@ IUIScene_AbstractContainerMenu::IUIScene_AbstractContainerMenu()
     m_pointerPos.x = 0.0f;
 #if LCE_PLATFORM_PC
     m_mousePointerPending = false;
+    m_mousePointerActive = false;
     m_mousePointerX = 0.0f;
     m_mousePointerY = 0.0f;
 #endif
@@ -394,6 +395,9 @@ void IUIScene_AbstractContainerMenu::onMouseTick()
 
         pointerX = moveX * speed + pointerX;
         pointerY = pointerY - moveY * speed;
+#if LCE_PLATFORM_PC
+        m_mousePointerActive = false;
+#endif
         if (pointerX < m_pointerMinX)
             pointerX = m_pointerMinX;
         else if (pointerX > m_pointerMaxX)
@@ -424,6 +428,7 @@ void IUIScene_AbstractContainerMenu::onMouseTick()
         else if (pointerY > m_pointerMaxY)
             pointerY = m_pointerMaxY;
         m_tapState = ETapState_Cancelled;
+        m_mousePointerActive = true;
         pointerMoved = true;
     }
 #endif
@@ -515,6 +520,12 @@ void IUIScene_AbstractContainerMenu::onMouseTick()
         m_currentSlotX = -1;
         m_currentSlotY = -1;
     }
+#if LCE_PLATFORM_PC
+    else if (!pointerMoved && m_mousePointerActive)
+    {
+        m_tapState = ETapState_None;
+    }
+#endif
     else if (!pointerMoved)
     {
         int targetSlotX;

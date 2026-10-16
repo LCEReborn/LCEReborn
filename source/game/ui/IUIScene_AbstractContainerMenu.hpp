@@ -172,6 +172,7 @@ public:
     ETapState m_tapState;
 #if LCE_PLATFORM_PC
     bool m_mousePointerPending;
+    bool m_mousePointerActive;
     float m_mousePointerX;
     float m_mousePointerY;
 #endif

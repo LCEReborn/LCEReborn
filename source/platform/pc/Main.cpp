@@ -192,7 +192,9 @@ int main(int, char**)
         InfoBarManager::EndTimingCategory(InfoBarManager::eTimingCagegory_UITick);
         gRenderer->ResetRenderState();
         InfoBarManager::StartTimingCategory(InfoBarManager::eTimingCagegory_UIRender);
+        gRenderer->SetLayout(Renderer::ELayout_Interface);
         gConsoleUIController.render();
+        gRenderer->SetLayout(Renderer::ELayout_Screen);
         InfoBarManager::EndTimingCategory(InfoBarManager::eTimingCagegory_UIRender);
         InfoBarManager::EndTimingCategory(InfoBarManager::eTimingCagegory_Frame);
         PIXBeginNamedEvent(timingColour, "Frame present");

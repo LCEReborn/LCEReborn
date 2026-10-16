@@ -2049,13 +2049,17 @@ void ConsoleUIController::SendPointerAction(unsigned int pad, unsigned int actio
 
 void ConsoleUIController::HandlePointerInput(unsigned int pad)
 {
+    UIScene* scene = GetInputScene(pad);
+    bool containerScene = scene != 0 && dynamic_cast<UIScene_AbstractContainerMenu*>(scene) != 0;
+    if (g_pInput->UseKeyboardPrompts((int)pad))
+        g_pInput->SetMenuDrawsPointer(containerScene);
+
     float pointerX;
     float pointerY;
     if (IsReloadingSkin() || m_rebuildingTouchBoxes || !g_pInput->GetMenuPointer((int)pad, &pointerX, &pointerY))
         return;
 
-    UIScene* scene = GetInputScene(pad);
-    if (scene == 0 || dynamic_cast<UIScene_AbstractContainerMenu*>(scene) != 0)
+    if (scene == 0 || containerScene)
     {
         m_pointerHoverControl = 0;
         return;

@@ -58,9 +58,12 @@ saves go to `saves/`, both relative to the working directory. The
 
 ## Window and display
 
-The game draws into a resizable window. Its picture is 16:9, as on the Wii U,
-and is drawn at the window's own resolution, with black bars when the window
-has a different shape; the menus are the Wii U's 720p menus scaled to fit.
+The game draws into a resizable window at the window's own resolution and
+shape. The world fills the window, its field of view following the window's
+proportions. The menus and the HUD are the Wii U's 720p, 16:9 interface: they
+are drawn in the largest 16:9 area centred in the window, scaled to it, and
+full-screen backgrounds such as the title panorama are scaled to cover the
+whole window (`Renderer::SetLayout`). The mouse is mapped into the same area.
 F11 or Alt+Enter switches between the window and borderless fullscreen.
 Whether the game is fullscreen and whether it waits for the monitor's refresh
 (V-Sync) are kept in `display.txt` in the save folder (`platform/pc/PcWindow`).

@@ -142,6 +142,16 @@ public:
     virtual void* MemoryAllocBucket(unsigned int size, unsigned int alignment);
     virtual void MemoryFreeBucket(void* memory);
 
+    enum ELayout
+    {
+        ELayout_Screen,
+        ELayout_Interface,
+        ELayout_InterfaceBackground
+    };
+    void SetLayout(ELayout layout);
+    float GetScreenAspect();
+    void GetInterfaceArea(float* left, float* top, float* width, float* height);
+
 private:
     struct Texture;
     struct GpuState;
@@ -181,6 +191,7 @@ private:
     void SubmitTextureStorage(int slot, const void* data);
     void SubmitTextureLevel(int slot, int level, int width, int height, const void* data);
     void ResizeTargets();
+    void GetLayoutRect(ELayout layout, float* x, float* y, float* width, float* height);
     bool IsGlThread();
 
     float mClearColour[4];
@@ -198,6 +209,7 @@ private:
     int mCurrentVertexShader;
     int mCurrentPixelShader;
     eViewportType mCurrentViewport;
+    ELayout mLayout;
     bool mTextureStateDirty;
     Texture* mTextures;
     int mScreenWidth[2];

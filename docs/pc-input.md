@@ -71,8 +71,11 @@ player: when the cursor moves it highlights the control under it the way a
 touch would, the wheel and the right button are sent to the scene as menu
 actions, and a left click goes through the touch path, so it presses exactly
 what a tap on the GamePad would. A cursor that is not moving never takes the
-highlight away from the keys. Containers (inventory, chests, crafting) move
-their own pointer, which follows the mouse, and handle their own clicks.
+highlight away from the keys. Containers (inventory, chests, crafting) draw
+their own pointer, which follows the mouse exactly (it does not jump to the
+centre of the slot under it, as the stick's pointer does) and handle their own
+clicks; the system cursor is hidden there so only one pointer shows. The
+system cursor is also hidden while a gamepad is the device in use.
 
 ## Prompts
 

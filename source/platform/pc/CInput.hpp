@@ -79,6 +79,7 @@ public:
     virtual unsigned int IsPadClassicController(int pad);
     virtual unsigned char IsDRCConnected();
     virtual void AcquiredForeground();
+    virtual bool ConsumeMouseLook(int pad, float* x, float* y);
 
 private:
     friend void PcInputHandleEvent(const SDL_Event& event);
@@ -157,13 +158,6 @@ private:
         bool repeated;
     };
 
-    struct MouseSample
-    {
-        unsigned long long time;
-        float x;
-        float y;
-    };
-
     struct VerifyRequest
     {
         int (*callback)(void*, _STRING_VERIFY_RESPONSE*);
@@ -193,7 +187,6 @@ private:
     void ClearJoypadValues(Joypad* joypad);
     void SetJoypadValues(int pad, Joypad* joypad);
     void ApplyStickValues(Joypad* joypad, int leftX, int leftY, int rightX, int rightY);
-    void ApplyKeyboardAndMouse(Joypad* joypad);
     void UpdateHotbarPulse();
     void StartHotbarPulse(int direction, unsigned long long now);
     void ConsumeAllPads();
@@ -240,7 +233,8 @@ private:
     bool keyDown[SCANCODE_COUNT];
     unsigned int mouseButtons[MOUSE_BUTTON_COUNT];
     bool mouseButtonDown[MOUSE_BUTTON_COUNT];
-    std::deque<MouseSample> mouseSamples;
+    float mouseLookX;
+    float mouseLookY;
     bool mouseLookEnabled;
     bool mouseCaptured;
     bool windowFocused;

@@ -26,9 +26,7 @@ int XEnableGuestSignin(int enable)
 namespace
 {
 const float kSecondsPerNanosecond = 1.0e-9f;
-const unsigned long long kMouseLookWindow = 50000000ull;
 const unsigned long long kHotbarPulseLength = 60000000ull;
-const float kMouseLookPixelsPerFullStick = 50.0f;
 const int kStickMaximum = 32767;
 const int kTriggerThreshold = 3855;
 const unsigned int kTouchInputButtons = 0x00c03cff;
@@ -113,12 +111,6 @@ int LargerMagnitude(int first, int second)
     int firstMagnitude = first < 0 ? -first : first;
     int secondMagnitude = second < 0 ? -second : second;
     return secondMagnitude > firstMagnitude ? second : first;
-}
-
-float MouseStickValue(float pixels)
-{
-    float magnitude = std::sqrt(std::fabs(pixels) / kMouseLookPixelsPerFullStick);
-    return pixels < 0.0f ? -magnitude : magnitude;
 }
 
 const PcInputBinding* FindBinding(const PcInputBinding* bindings, int count, int source)
@@ -498,11 +490,8 @@ void CInput::HandleEvent(const SDL_Event& event)
     case SDL_EVENT_MOUSE_MOTION:
         if (mouseLookEnabled && (event.motion.xrel != 0.0f || event.motion.yrel != 0.0f))
         {
-            MouseSample sample;
-            sample.time = SDL_GetTicksNS();
-            sample.x = event.motion.xrel;
-            sample.y = event.motion.yrel;
-            mouseSamples.push_back(sample);
+            mouseLookX += event.motion.xrel;
+            mouseLookY += event.motion.yrel;
         }
         break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
@@ -548,7 +537,8 @@ void CInput::ReleaseAllKeys()
     std::memset(keyDown, 0, sizeof(keyDown));
     std::memset(mouseButtons, 0, sizeof(mouseButtons));
     std::memset(mouseButtonDown, 0, sizeof(mouseButtonDown));
-    mouseSamples.clear();
+    mouseLookX = 0.0f;
+    mouseLookY = 0.0f;
 }
 
 int CInput::KeyboardPlayer() const
@@ -715,6 +705,19 @@ SDL_Window* CInput::LocateWindow() const
     return window;
 }
 
+bool CInput::ConsumeMouseLook(int pad, float* x, float* y)
+{
+    if (!mouseLookEnabled || pad != KeyboardPlayer() || (mouseLookX == 0.0f && mouseLookY == 0.0f))
+    {
+        return false;
+    }
+    *x = mouseLookX;
+    *y = mouseLookY;
+    mouseLookX = 0.0f;
+    mouseLookY = 0.0f;
+    return true;
+}
+
 void CInput::UpdateMouseCapture()
 {
     bool desired = windowFocused && keyboardState == EKeyboardState_Idle
@@ -722,7 +725,8 @@ void CInput::UpdateMouseCapture()
     mouseLookEnabled = desired;
     if (!desired)
     {
-        mouseSamples.clear();
+        mouseLookX = 0.0f;
+        mouseLookY = 0.0f;
     }
     if (desired == mouseCaptured)
     {
@@ -849,34 +853,6 @@ void CInput::ApplyStickValues(Joypad* joypad, int leftX, int leftY, int rightX, 
     joypad->rightY = NormaliseStick(ApplyDeadzone(rightY, zone), movementSpanFloat);
 }
 
-void CInput::ApplyKeyboardAndMouse(Joypad* joypad)
-{
-    unsigned long long now = SDL_GetTicksNS();
-    while (!mouseSamples.empty() && now - mouseSamples.front().time > kMouseLookWindow)
-    {
-        mouseSamples.pop_front();
-    }
-    float pixelsX = 0.0f;
-    float pixelsY = 0.0f;
-    for (std::deque<MouseSample>::const_iterator sample = mouseSamples.begin(); sample != mouseSamples.end();
-         ++sample)
-    {
-        pixelsX += sample->x;
-        pixelsY += sample->y;
-    }
-    if (pixelsX == 0.0f && pixelsY == 0.0f)
-    {
-        return;
-    }
-    float lookX = MouseStickValue(pixelsX);
-    float lookY = -MouseStickValue(pixelsY);
-    joypad->rightX += lookX;
-    joypad->rightY += lookY;
-    int rawX = ClampStick(static_cast<int>(lookX * static_cast<float>(kStickMaximum)));
-    int rawY = ClampStick(static_cast<int>(lookY * static_cast<float>(kStickMaximum)));
-    joypad->rawValue |= StickBits(0, 0, rawX, rawY, static_cast<int>(maximumInput));
-}
-
 void CInput::SetJoypadValues(int pad, Joypad* joypad)
 {
     int leftX = joypad->padLeftX;
@@ -924,10 +900,6 @@ void CInput::SetJoypadValues(int pad, Joypad* joypad)
     ApplyStickValues(joypad, leftX, leftY, rightX, rightY);
     joypad->leftTrigger = leftTrigger;
     joypad->rightTrigger = rightTrigger;
-    if (pad == kKeyboardJoypad)
-    {
-        ApplyKeyboardAndMouse(joypad);
-    }
 }
 
 void CInput::GetStartTime(int pad, int button)

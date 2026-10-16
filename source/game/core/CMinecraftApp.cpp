@@ -78,6 +78,9 @@
 #include "game/ui/IUIScene_CraftingMenu.hpp"
 #include "game/ui/UIScene_ClassicCraftingMenu.hpp"
 #include "game/ui/UIScene_PauseMenu.hpp"
+#if LCE_PLATFORM_PC
+#include "game/ui/UIComponent_Tooltips.hpp"
+#endif
 #include "game/core/LeaderboardManager.hpp"
 #include "game/core/MasterGameMode.hpp"
 #include "game/core/StatsCounter.hpp"
@@ -3136,6 +3139,38 @@ std::wstring CMinecraftApp::GetSingleActionReplacement(int32_t pad, uint32_t but
              size.c_str(), controller.c_str(), iconSize, iconSize);
     return image;
 }
+#if LCE_PLATFORM_PC
+static int PromptActions(int action, int* actions)
+{
+    if (action >= EControllerActions_MoveForward && action <= EControllerActions_MoveRight)
+    {
+        actions[0] = EControllerActions_MoveForward;
+        actions[1] = EControllerActions_MoveLeft;
+        actions[2] = EControllerActions_MoveBackward;
+        actions[3] = EControllerActions_MoveRight;
+        return 4;
+    }
+    actions[0] = action;
+    return 1;
+}
+
+static std::wstring PromptReplacement(int pad, int action, unsigned int primary, unsigned int secondary, int size)
+{
+    int actions[4];
+    int actionCount = PromptActions(action, actions);
+    if (g_pInput->GetPromptStyle(pad) < C_4JInput::EPromptStyle_Gamepad)
+        return UIComponent_Tooltips::PromptImagesHtml(pad, actions, actionCount, 0, size);
+    std::wstring html = UIComponent_Tooltips::PromptImagesHtml(pad, actions, actionCount, primary, size);
+    if (!html.empty() && secondary != 0)
+    {
+        std::wstring second = UIComponent_Tooltips::PromptImagesHtml(pad, actions, actionCount, secondary, size);
+        if (!second.empty())
+            html = second + L"+" + html;
+    }
+    return html;
+}
+#endif
+
 std::wstring CMinecraftApp::GetActionReplacement(int32_t controllerIndex, uint8_t actionMask)
 {
     wchar_t replacement[256];
@@ -3149,6 +3184,12 @@ std::wstring CMinecraftApp::GetActionReplacement(int32_t controllerIndex, uint8_
             GameSettings::GetInputButton(controllerIndex, true, static_cast<EControllerActions>(actionMask)));
     }
 
+#if LCE_PLATFORM_PC
+    std::wstring prompt = PromptReplacement(controllerIndex, actionMask, primaryButton, secondaryButton,
+                                            gApp.GetLocalPlayerCount() > 1 ? 20 : 30);
+    if (!prompt.empty())
+        return prompt;
+#endif
     if (secondaryButton != 0)
     {
         swprintf(replacement, sizeof(replacement) / sizeof(replacement[0]), L"%ls+%ls",
@@ -3164,6 +3205,78 @@ std::wstring CMinecraftApp::GetActionReplacement(int32_t controllerIndex, uint8_
 }
 std::wstring CMinecraftApp::GetVKReplacement(int32_t player, uint32_t key, bool fullSize)
 {
+#if LCE_PLATFORM_PC
+    {
+        int action = -1;
+        unsigned int buttons = 0;
+        bool swapped = g_pInput->IsCircleCrossSwapped() != 0;
+        if (key >= VK_PAD_LTHUMB_UP && key <= VK_PAD_LTHUMB_DOWNLEFT)
+        {
+            action = EControllerActions_MoveForward;
+            buttons = EJoypadButton_LeftStickUp;
+        }
+        else if (key >= VK_PAD_RTHUMB_UP && key <= VK_PAD_RTHUMB_DOWNLEFT)
+        {
+            action = EControllerActions_LookUp;
+            buttons = EJoypadButton_RightStickUp;
+        }
+        else
+        {
+            switch (key)
+            {
+            case VK_PAD_A:
+                action = EControllerActions_MenuOk;
+                buttons = swapped ? EJoypadButton_Face2 : EJoypadButton_Face1;
+                break;
+            case VK_PAD_B:
+                action = EControllerActions_MenuCancel;
+                buttons = swapped ? EJoypadButton_Face1 : EJoypadButton_Face2;
+                break;
+            case VK_PAD_X:
+                action = EControllerActions_MenuX;
+                buttons = EJoypadButton_Face3;
+                break;
+            case VK_PAD_Y:
+                action = EControllerActions_MenuY;
+                buttons = EJoypadButton_Face4;
+                break;
+            case VK_PAD_RSHOULDER:
+                action = EControllerActions_MenuRightScroll;
+                buttons = EJoypadButton_RightBumper;
+                break;
+            case VK_PAD_LSHOULDER:
+                action = EControllerActions_MenuLeftScroll;
+                buttons = EJoypadButton_LeftBumper;
+                break;
+            case VK_PAD_LTRIGGER:
+                action = EControllerActions_MenuPageUp;
+                buttons = EJoypadButton_LeftTrigger;
+                break;
+            case VK_PAD_RTRIGGER:
+                action = EControllerActions_MenuPageDown;
+                buttons = EJoypadButton_RightTrigger;
+                break;
+            case VK_PAD_START:
+                action = EControllerActions_Pause;
+                buttons = EJoypadButton_Start;
+                break;
+            case VK_PAD_BACK:
+                action = EControllerActions_Scoreboard;
+                buttons = EJoypadButton_Back;
+                break;
+            default:
+                break;
+            }
+        }
+        if (action >= 0)
+        {
+            std::wstring prompt =
+                PromptReplacement(player, action, buttons, 0, !fullSize && gApp.GetLocalPlayerCount() > 1 ? 20 : 30);
+            if (!prompt.empty())
+                return prompt;
+        }
+    }
+#endif
     std::wstring action = L"";
     std::wstring controller = L"";
     std::wstring size = L"";

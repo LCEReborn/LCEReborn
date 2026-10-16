@@ -88,7 +88,8 @@ public:
     virtual bool UseKeyboardPrompts(int pad);
     virtual void SetMenuDrawsPointer(bool drawsPointer);
     virtual int GetPromptStyle(int pad);
-    virtual bool GetPromptInput(int pad, int action, int* input, int* modifier);
+    virtual int GetPromptImages(int pad, const int* actions, int actionCount, unsigned int buttons, int* images,
+                                int maxImages);
 
 private:
     friend void PcInputHandleEvent(const SDL_Event& event);
@@ -181,6 +182,9 @@ private:
     bool IsKeyboardInMenu() const;
     int KeyboardPlayer() const;
     bool IsKeyboardPad(int pad);
+    int PromptJoypad(int pad);
+    int PadFamily(int joypad);
+    int PadElement(int joypad, unsigned int button);
     bool MenuPointerPosition(float* x, float* y);
     SDL_Window* LocateWindow() const;
     bool RemapIpad(int& pad);

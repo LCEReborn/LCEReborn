@@ -49,8 +49,10 @@ public:
     unsigned int HandleToolTipButton(unsigned int player, EControllerActions action, unsigned int& button, int type);
     void UpdateControllerType(int controllerType);
 #if LCE_PLATFORM_PC
-    bool GetPromptInput(unsigned int index, int* input, int* modifier);
-    static std::wstring KeyPromptHtml(int input, int modifier, const std::wstring& text);
+    static std::wstring PromptImagesHtml(int pad, const int* actions, int actionCount, unsigned int buttons,
+                                         int height);
+    static std::wstring EscapeHtml(const std::wstring& text);
+    std::wstring PromptHtml(unsigned int index, int type, int subtype);
     void RefreshPrompts();
 #endif
     virtual void SetTooltips(int player, int* tooltips, bool visible);

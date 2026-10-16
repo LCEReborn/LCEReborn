@@ -14,7 +14,7 @@
 #include "game/ui/fuiEdittext.hpp"
 #include "game/ui/fuiFontName.hpp"
 #if LCE_PLATFORM_PC
-#include "platform/pc/PcKeycaps.hpp"
+#include "platform/pc/PcPromptArt.hpp"
 #endif
 
 extern Renderer* gRenderer;
@@ -341,14 +341,14 @@ std::wstring fuiRenderNodeEditText::getHtmlTagAttribute(const std::wstring& tag,
 }
 
 #if LCE_PLATFORM_PC
-static int KeycapInput(const char* symbolName)
+static int PromptArt(const char* symbolName)
 {
-    static const char kPrefix[] = "pckey:";
+    static const char kPrefix[] = "pcprompt:";
     if (std::strncmp(symbolName, kPrefix, sizeof(kPrefix) - 1) != 0)
         return -1;
     char* end = NULL;
-    long input = std::strtol(symbolName + sizeof(kPrefix) - 1, &end, 10);
-    return end != symbolName + sizeof(kPrefix) - 1 && *end == '\0' ? static_cast<int>(input) : -1;
+    long art = std::strtol(symbolName + sizeof(kPrefix) - 1, &end, 10);
+    return end != symbolName + sizeof(kPrefix) - 1 && *end == '\0' ? static_cast<int>(art) : -1;
 }
 #endif
 
@@ -364,16 +364,17 @@ bool fuiRenderNodeEditText::htmlImage(const std::wstring& tag, RenderStringState
     symbolName[sizeof(symbolName) - 1] = '\0';
     fuiFile* file = NULL;
 #if LCE_PLATFORM_PC
-    int keycapWidth = 0;
-    int keycapHeight = 0;
-    bool keycap = KeycapInput(symbolName) >= 0 && PcKeycapSize(KeycapInput(symbolName), &keycapWidth, &keycapHeight);
-    intptr_t bitmap = keycap ? 0 : gFui->findBitmapFromSymbol(symbolName, &file);
-    if (keycap || bitmap != 0)
+    int artWidth = 0;
+    int artHeight = 0;
+    int art = PromptArt(symbolName);
+    bool promptImage = art >= 0 && PcPromptArtSize(art, &artWidth, &artHeight);
+    intptr_t bitmap = promptImage ? 0 : gFui->findBitmapFromSymbol(symbolName, &file);
+    if (promptImage || bitmap != 0)
     {
-        float imageWidth = keycap ? static_cast<float>(keycapWidth)
-                                  : static_cast<float>(reinterpret_cast<fuiBitmap*>(bitmap)->width);
-        float imageHeight = keycap ? static_cast<float>(keycapHeight)
-                                   : static_cast<float>(reinterpret_cast<fuiBitmap*>(bitmap)->height);
+        float imageWidth = promptImage ? static_cast<float>(artWidth)
+                                       : static_cast<float>(reinterpret_cast<fuiBitmap*>(bitmap)->width);
+        float imageHeight = promptImage ? static_cast<float>(artHeight)
+                                        : static_cast<float>(reinterpret_cast<fuiBitmap*>(bitmap)->height);
         if (width == 0.0f)
         {
             width = imageWidth * height / imageHeight;
@@ -410,7 +411,7 @@ bool fuiRenderNodeEditText::htmlImage(const std::wstring& tag, RenderStringState
             float right = left + width;
             float bottom = top + height;
 #if LCE_PLATFORM_PC
-            if (!keycap)
+            if (!promptImage)
                 file->initialiseRenderTexture(reinterpret_cast<fuiBitmap*>(bitmap), false);
 #else
             file->initialiseRenderTexture(bitmapObject, false);
@@ -852,10 +853,10 @@ void fuiRenderNodeEditText::DrawRenderData(RenderStringStateData& state)
     {
         HtmlImageDrawData& image = state.activeImageData->at(index);
 #if LCE_PLATFORM_PC
-        int keycapInput = KeycapInput(image.symbolName.c_str());
-        if (keycapInput >= 0)
+        int promptArt = PromptArt(image.symbolName.c_str());
+        if (promptArt >= 0)
         {
-            int texture = PcKeycapTexture(keycapInput);
+            int texture = PcPromptArtTexture(promptArt);
             if (texture != -1)
             {
                 gRenderer->TextureBind(texture);

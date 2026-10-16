@@ -59,6 +59,7 @@ private:
     void ToggleDescriptionPanel();
     void ApplyDescriptionPanel();
     void FitDescriptionPanel();
+    void PlaceDescriptionBehindList(FJ_FuiNode* menu);
     bool HasDescription(int id) const;
 
     UIControl_MultiList m_list;

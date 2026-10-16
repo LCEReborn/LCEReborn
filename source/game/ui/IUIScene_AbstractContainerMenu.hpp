@@ -170,6 +170,11 @@ public:
     float m_panelMaxY;
     int m_consecutiveInputTicks;
     ETapState m_tapState;
+#if LCE_PLATFORM_PC
+    bool m_mousePointerPending;
+    float m_mousePointerX;
+    float m_mousePointerY;
+#endif
     ESceneSection m_currentSection;
     int m_currentSlotX;
     int m_currentSlotY;

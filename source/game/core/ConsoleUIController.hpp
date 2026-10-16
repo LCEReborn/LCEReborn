@@ -119,6 +119,9 @@ public:
     void HandleTouchInput(unsigned int playerId, unsigned int action, bool pressed, bool repeat, bool released);
     void updateViewportTouchOffset(C4JRender::eViewportType viewport);
     void updateViewportTouchOffset(int x, int y);
+#if LCE_PLATFORM_PC
+    void GetViewportTouchOffset(C4JRender::eViewportType viewport, int* x, int* y);
+#endif
     void SetMenuDisplayed(int playerId, bool displayed);
     void setFullscreenMenuDisplayed(bool displayed);
     void handleKeyPress(unsigned int key, unsigned int character);

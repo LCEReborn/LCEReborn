@@ -70,6 +70,11 @@ IUIScene_AbstractContainerMenu::IUIScene_AbstractContainerMenu()
     m_autoDeleteMenu = false;
     m_pointerLabelSlot = NULL;
     m_pointerPos.x = 0.0f;
+#if LCE_PLATFORM_PC
+    m_mousePointerPending = false;
+    m_mousePointerX = 0.0f;
+    m_mousePointerY = 0.0f;
+#endif
     m_previousTutorialState = eTutorial_State_Gameplay;
     m_takeAllEnabled = false;
     m_pointerPos.y = 0.0f;
@@ -403,6 +408,25 @@ void IUIScene_AbstractContainerMenu::onMouseTick()
     {
         m_consecutiveInputTicks = 0;
     }
+
+#if LCE_PLATFORM_PC
+    if (m_mousePointerPending)
+    {
+        m_mousePointerPending = false;
+        pointerX = m_mousePointerX;
+        pointerY = m_mousePointerY;
+        if (pointerX < m_pointerMinX)
+            pointerX = m_pointerMinX;
+        else if (pointerX > m_pointerMaxX)
+            pointerX = m_pointerMaxX;
+        if (pointerY < m_pointerMinY)
+            pointerY = m_pointerMinY;
+        else if (pointerY > m_pointerMaxY)
+            pointerY = m_pointerMaxY;
+        m_tapState = ETapState_Cancelled;
+        pointerMoved = true;
+    }
+#endif
 
     D3DXVECTOR3 snapPos;
     int slotX = -1;

@@ -20,6 +20,9 @@
 #include "game/ui/FJ_AbstractContainerDocument.hpp"
 #include "game/ui/fui.hpp"
 #include "game/ui/fuiFile.hpp"
+#if LCE_PLATFORM_PC
+#include "platform/CInput.hpp"
+#endif
 #include "game/ui/fuiRect.hpp"
 #include "game/ui/fuiRenderNode.hpp"
 #include "game/ui/UILayer.hpp"
@@ -238,7 +241,45 @@ void UIScene_AbstractContainerMenu::handleDestroy()
 void UIScene_AbstractContainerMenu::tick()
 {
     UIScene::tick();
+#if LCE_PLATFORM_PC
+    float mouseX;
+    float mouseY;
+    if (!m_ignoreInput && g_pInput->ConsumeMenuPointer(m_playerId, &mouseX, &mouseY))
+    {
+        int originX = 0;
+        int originY = 0;
+        gConsoleUIController.GetViewportTouchOffset(m_layer->getViewport(), &originX, &originY);
+        int renderWidth;
+        int renderHeight;
+        m_layer->getRenderDimensions(renderWidth, renderHeight);
+        if (renderWidth > 0 && renderHeight > 0)
+        {
+            m_mousePointerX = (mouseX - static_cast<float>(originX)) * static_cast<float>(m_stageWidth)
+                              / static_cast<float>(renderWidth);
+            m_mousePointerY = (mouseY - static_cast<float>(originY)) * static_cast<float>(m_stageHeight)
+                              / static_cast<float>(renderHeight);
+            if (m_mainPanel.getFuiRenderNode() != NULL)
+            {
+                m_mousePointerX -= m_mainPanel.getXPos();
+                m_mousePointerY -= m_mainPanel.getYPos();
+            }
+            m_mousePointerPending = true;
+        }
+    }
+#endif
     onMouseTick();
+#if LCE_PLATFORM_PC
+    unsigned int clicks = g_pInput->ConsumeMenuClicks(m_playerId);
+    if (!m_ignoreInput)
+    {
+        if ((clicks & C_4JInput::EPcMenuClick_Quick) != 0)
+            handleKeyDown(m_playerId, EControllerActions_MenuY, false);
+        if ((clicks & C_4JInput::EPcMenuClick_Primary) != 0)
+            handleKeyDown(m_playerId, EControllerActions_MenuA, false);
+        if ((clicks & C_4JInput::EPcMenuClick_Secondary) != 0)
+            handleKeyDown(m_playerId, EControllerActions_MenuX, false);
+    }
+#endif
 
     int width;
     int height;

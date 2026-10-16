@@ -15,6 +15,10 @@
 #include "vendor/MilesMem.hpp"
 #include "vendor/MilesRR.hpp"
 
+#if LCE_PLATFORM_PC
+#include "platform/pc/audio/MilesPcHandles.hpp"
+#endif
+
 static const unsigned int MILES_IO_WHOLE_FILE = 0xFFFFFFFF;
 static const unsigned int MILES_IO_SEEK_SET = 0;
 static const unsigned int MILES_IO_SEEK_CURRENT = 1;
@@ -147,7 +151,17 @@ unsigned int DefaultFileOpen(const char* pFileName, unsigned int* puFileHandle)
                 pFile->uBaseOffset = uOffset;
             }
 
+#if LCE_PLATFORM_WIIU
             *puFileHandle = (unsigned int)pFile;
+#elif LCE_PLATFORM_PC
+            *puFileHandle = MilesPcRegisterHandle(pFile);
+            if (*puFileHandle == 0)
+            {
+                Platform_CloseFile(pFile);
+                AIL_mem_free_lock(pFile);
+                return 0;
+            }
+#endif
             return 1;
         }
 
@@ -159,6 +173,7 @@ unsigned int DefaultFileOpen(const char* pFileName, unsigned int* puFileHandle)
 
 void DefaultFileClose(unsigned int uFileHandle)
 {
+#if LCE_PLATFORM_WIIU
     if (uFileHandle != 0)
     {
         if (((MilesFile*)uFileHandle)->iDoNotClose == 0)
@@ -168,11 +183,27 @@ void DefaultFileClose(unsigned int uFileHandle)
 
         AIL_mem_free_lock((MilesFile*)uFileHandle);
     }
+#elif LCE_PLATFORM_PC
+    MilesFile* pFile = static_cast<MilesFile*>(MilesPcReleaseHandle(uFileHandle));
+    if (pFile != NULL)
+    {
+        if (pFile->iDoNotClose == 0)
+        {
+            Platform_CloseFile(pFile);
+        }
+
+        AIL_mem_free_lock(pFile);
+    }
+#endif
 }
 
 int DefaultFileSeek(unsigned int uFileHandle, int iOffset, unsigned int uType)
 {
+#if LCE_PLATFORM_WIIU
     MilesFile* pFile = (MilesFile*)uFileHandle;
+#elif LCE_PLATFORM_PC
+    MilesFile* pFile = static_cast<MilesFile*>(MilesPcLookupHandle(uFileHandle));
+#endif
     int iResult = 0;
     if (pFile != NULL)
     {
@@ -210,7 +241,11 @@ int DefaultFileSeek(unsigned int uFileHandle, int iOffset, unsigned int uType)
 
 int DefaultFileRead(unsigned int uFileHandle, void* pBuffer, unsigned int uBytes)
 {
+#if LCE_PLATFORM_WIIU
     MilesFile* pFile = (MilesFile*)uFileHandle;
+#elif LCE_PLATFORM_PC
+    MilesFile* pFile = static_cast<MilesFile*>(MilesPcLookupHandle(uFileHandle));
+#endif
     int iBytesRead = 0;
     if (pFile != NULL)
     {

@@ -1,6 +1,7 @@
 #include "game/data/ConsoleSaveFileCommon.hpp"
 
 #include <cstring>
+#include <stdint.h>
 
 #include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/core/CMinecraftApp.hpp"
@@ -14,6 +15,7 @@
 #include "platform/CStorage.hpp"
 #include "game/core/XMem.hpp"
 #include "game/core/PIXNamedEvents.hpp"
+#include "platform/Platform.hpp"
 
 static const unsigned int SAVE_PAGE_SIZE = 0x1000;
 
@@ -135,9 +137,15 @@ void ConsoleSaveFileCommon::MoveDataBeyond(FileEntry* entry, unsigned int size)
     {
         if (size != 0)
         {
+#if LCE_PLATFORM_WIIU
             unsigned int lowPage = reinterpret_cast<unsigned int>(dataStart) & 0xfffff000;
             unsigned int highPage = reinterpret_cast<unsigned int>(source - 1) & 0xfffff000;
             unsigned int page;
+#elif LCE_PLATFORM_PC
+            uintptr_t lowPage = reinterpret_cast<uintptr_t>(dataStart) & ~static_cast<uintptr_t>(SAVE_PAGE_SIZE - 1);
+            uintptr_t highPage = reinterpret_cast<uintptr_t>(source - 1) & ~static_cast<uintptr_t>(SAVE_PAGE_SIZE - 1);
+            uintptr_t page;
+#endif
             for (page = highPage; page >= lowPage; page -= SAVE_PAGE_SIZE)
             {
                 unsigned char* from = reinterpret_cast<unsigned char*>(page);

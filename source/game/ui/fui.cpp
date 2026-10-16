@@ -82,7 +82,7 @@ int fui::allocatePermanentFileIndex(int fileIndex)
     return -1;
 }
 
-int fui::load(arrayWithLength<unsigned char> bytes, bool createRoot, int fileIndex)
+intptr_t fui::load(arrayWithLength<unsigned char> bytes, bool createRoot, int fileIndex)
 {
     fuiFile* file = new fuiFile();
     if (file->load(bytes, fileIndex) == 0)
@@ -132,7 +132,7 @@ int fui::load(arrayWithLength<unsigned char> bytes, bool createRoot, int fileInd
     }
 
     LeaveCriticalSection(&m_mutex);
-    return (int)file;
+    return (intptr_t)file;
 }
 
 void fui::unloadScene(fuiFile* file)
@@ -352,9 +352,9 @@ void fui::incrementStencilMask()
         m_stencilMask = 1;
 }
 
-uint32_t fui::getFuiFileFromIndex(unsigned int index)
+uintptr_t fui::getFuiFileFromIndex(unsigned int index)
 {
-    return (uint32_t)m_files[m_permanentFileIndices[index]];
+    return (uintptr_t)m_files[m_permanentFileIndices[index]];
 }
 
 fuiRenderNode* fui::createNodeFromSymbol(const char* name, fuiRenderNode* parent)
@@ -413,7 +413,7 @@ fuiRenderNode* fui::createNodeFromSymbol(const char* name, fuiRenderNode* parent
     return NULL;
 }
 
-int fui::findBitmapFromSymbol(const char* name, fuiFile** file)
+intptr_t fui::findBitmapFromSymbol(const char* name, fuiFile** file)
 {
     *file = NULL;
     std::vector<fuiFile*>::reverse_iterator it;
@@ -429,7 +429,7 @@ int fui::findBitmapFromSymbol(const char* name, fuiFile** file)
                 && std::strcmp(name, currentFile->symbolData[bitmap.symbolIndex].name) == 0)
             {
                 *file = currentFile;
-                return (int)&bitmap;
+                return (intptr_t)&bitmap;
             }
         }
     }
@@ -483,7 +483,7 @@ void fui::setFontIndirection(const char* source, const char* target)
     m_fontIndirections.push_back(value);
 }
 
-unsigned int fui::getFont(const char* name, bool skipIndirection)
+uintptr_t fui::getFont(const char* name, bool skipIndirection)
 {
     std::string fontName(name);
     unsigned int i;
@@ -501,12 +501,12 @@ unsigned int fui::getFont(const char* name, bool skipIndirection)
     for (i = 0; i < m_fonts.size(); ++i)
     {
         if (m_fonts[i]->m_name == fontName)
-            return (unsigned int)m_fonts[i];
+            return (uintptr_t)m_fonts[i];
     }
     return 0;
 }
 
-unsigned int fui::getDefaultFont(bool skipIndirection)
+uintptr_t fui::getDefaultFont(bool skipIndirection)
 {
     return getFont(m_fonts[0]->m_name.c_str(), skipIndirection);
 }

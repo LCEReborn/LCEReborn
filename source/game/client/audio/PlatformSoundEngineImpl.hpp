@@ -2,6 +2,7 @@
 #define GAME_CLIENT_AUDIO_PLATFORMSOUNDENGINEIMPL_HPP
 
 #include "game/client/audio/PlatformSoundEngine.hpp"
+#include "platform/Platform.hpp"
 
 struct _SAMPLE;
 struct _STREAM;
@@ -28,7 +29,9 @@ public:
     virtual void shutdown();
 
 private:
+#if LCE_PLATFORM_WIIU
     static int initAX(void* pArg);
+#endif
     static void ErrorCallback(long long iErrorCode, const char* pErrorText);
     static float custom_falloff_function(_SAMPLE* pSample, float fDistance, float fRolloffFactor, float fMinDistance,
                                          float fMaxDistance);

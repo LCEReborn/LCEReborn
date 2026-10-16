@@ -36,7 +36,11 @@ const int SETTINGS_BUS_PRESET_LINE = 0x94;
 const int SETTINGS_CURVE_VARIABLE_LINE = 0xcd;
 const int SETTINGS_CURVE_DATA_LINE = 0xce;
 const int CACHE_ALLOC_LINE = 0xcbf;
+#if LCE_PLATFORM_WIIU
 const int BUS_NODE_HEADER_SIZE = 0x21;
+#elif LCE_PLATFORM_PC
+const int BUS_NODE_HEADER_SIZE = offsetof(BusNode, m_name) + 1;
+#endif
 const int CURVE_VARIABLE_HEADER_SIZE = 0x24;
 const int ENUMERATE_FIRST_INDEX_MASK = 0xffff;
 const int ENUMERATE_SYSTEM_SHIFT = 16;
@@ -54,6 +58,22 @@ const char COMMAND_HANDLE_ERROR[] = "Failed to set handle for command buffer.";
 const char DRC_BUS_PREFIX[] = "drc";
 const int DRC_BUS_PREFIX_LENGTH = 3;
 const char QUERY_ALL_LABELS[] = "";
+
+#if LCE_PLATFORM_PC
+const int PICK_BIT_INDEX_MASK = 0x3f;
+const int PICK_BIT_LIMIT = 32;
+
+unsigned int PickBit(int index)
+{
+    index = index & PICK_BIT_INDEX_MASK;
+    if (index >= PICK_BIT_LIMIT)
+    {
+        return 0;
+    }
+
+    return 1u << index;
+}
+#endif
 }
 
 unsigned long long g_soundSerial = 0;
@@ -251,7 +271,11 @@ extern "C" unsigned int MilesStartupEventSystemInternal(_DIG_DRIVER* driver, int
         return 0;
     }
 
+#if LCE_PLATFORM_WIIU
     return reinterpret_cast<unsigned int>(eventSystem);
+#elif LCE_PLATFORM_PC
+    return 1;
+#endif
 }
 
 extern "C" int MilesEnumerateSoundInstancesInternal(EventSystem* eventSystem, unsigned int* cursor,
@@ -1446,7 +1470,11 @@ static void PlayStepSelect(const EVENT_STEP_INFO* step, EventSystem* eventSystem
 
         const int weight = strtoi(cursor, NULL);
         totalWeight += weight;
+#if LCE_PLATFORM_WIIU
         if ((pickMask & (1 << (entryCount & 0x3f))) != 0)
+#elif LCE_PLATFORM_PC
+        if ((pickMask & PickBit(entryCount)) != 0)
+#endif
         {
             ++playedCount;
         }
@@ -1501,7 +1529,11 @@ static void PlayStepSelect(const EVENT_STEP_INFO* step, EventSystem* eventSystem
 
             const char* weightText = separator + 1;
             bool pick = false;
+#if LCE_PLATFORM_WIIU
             if ((pickMask & (1 << (index & 0x3f))) == 0)
+#elif LCE_PLATFORM_PC
+            if ((pickMask & PickBit(index)) == 0)
+#endif
             {
                 const int weight = strtoi(weightText, NULL);
                 pick = remaining < weight;
@@ -1532,11 +1564,19 @@ static void PlayStepSelect(const EVENT_STEP_INFO* step, EventSystem* eventSystem
     {
         if (mode == 3)
         {
+#if LCE_PLATFORM_WIIU
             newState = pickMask | (1 << (chosenIndex & 0x3f));
+#elif LCE_PLATFORM_PC
+            newState = pickMask | PickBit(chosenIndex);
+#endif
         }
         else if (mode == 1)
         {
+#if LCE_PLATFORM_WIIU
             newState = 1 << (chosenIndex & 0x3f);
+#elif LCE_PLATFORM_PC
+            newState = PickBit(chosenIndex);
+#endif
         }
         else if (mode == 2)
         {

@@ -401,7 +401,7 @@ int UIScene_JoinMenu::WiiUDRCWarningReturned(void* data, int, C4JStorage::EMessa
 int UIScene_JoinMenu::StartGame_SignInReturned(void* context, bool signedIn, int userIndex)
 {
     UIScene_JoinMenu* scene = static_cast<UIScene_JoinMenu*>(
-        gConsoleUIController.GetSceneFromCallbackId(reinterpret_cast<unsigned int>(context)));
+        gConsoleUIController.GetSceneFromCallbackId(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context))));
     if (scene != NULL)
     {
         if (signedIn && gProfile->IsSignedIn(userIndex))

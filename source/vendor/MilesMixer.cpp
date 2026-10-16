@@ -7,6 +7,43 @@
 #include "game/util/StringUtils.hpp"
 #include "vendor/MilesMem.hpp"
 
+#if LCE_PLATFORM_PC
+#include <stddef.h>
+
+#include "game/client/audio/EventSystem.hpp"
+
+static_assert(sizeof(MilesEventStep) == MILES_EVENT_HEADER_SIZE, "event step header size");
+static_assert(sizeof(EVENT_STEP_INFO) <= MILES_EVENT_HEADER_SIZE, "event step info size");
+static_assert(offsetof(EVENT_STEP_INFO, m_data.m_play.m_sounds) == offsetof(MilesEventStep, start.text0),
+              "play step strings");
+static_assert(offsetof(EVENT_STEP_INFO, m_data.m_play.m_stream) == offsetof(MilesEventStep, start.iValue),
+              "play step values");
+static_assert(offsetof(EVENT_STEP_INFO, m_data.m_play.m_presetPersistent) == offsetof(MilesEventStep, start.bValue1),
+              "play step flags");
+static_assert(offsetof(EVENT_STEP_INFO, m_data.m_control.m_fadeTime) == offsetof(MilesEventStep, second.fValue),
+              "control step values");
+static_assert(offsetof(EVENT_STEP_INFO, m_data.m_environment.m_enabled) == offsetof(MilesEventStep, third.bValue),
+              "environment step values");
+static_assert(offsetof(EVENT_STEP_INFO, m_data.m_cache.m_names) == offsetof(MilesEventStep, list.ppItems),
+              "cache step items");
+static_assert(offsetof(EVENT_STEP_INFO, m_data.m_cache.m_nameCount) == offsetof(MilesEventStep, list.iCount),
+              "cache step count");
+static_assert(offsetof(EVENT_STEP_INFO, m_data.m_blend.m_rangeStart) == offsetof(MilesEventStep, blend.fRangeStart),
+              "blend step values");
+static_assert(offsetof(EVENT_STEP_INFO, m_data.m_blend.m_pointCount) == offsetof(MilesEventStep, blend.uPointCount),
+              "blend step count");
+static_assert(offsetof(EVENT_STEP_INFO, m_data.m_ramp.m_duration) == offsetof(MilesEventStep, ramp.fValue),
+              "ramp step values");
+static_assert(offsetof(EVENT_STEP_INFO, m_data.m_lfo.m_inverted) == offsetof(MilesEventStep, wave.iValue0),
+              "lfo step values");
+static_assert(offsetof(EVENT_STEP_INFO, m_data.m_persist.m_active) == offsetof(MilesEventStep, eighth.bValue),
+              "persist step values");
+static_assert(offsetof(EVENT_STEP_INFO, m_data.m_limit.m_name) == offsetof(MilesEventStep, seventh.text1),
+              "limit step strings");
+static_assert(offsetof(EVENT_STEP_INFO, m_data.m_tween.m_firstTime) == offsetof(MilesEventStep, last.fValue0),
+              "tween step values");
+#endif
+
 #ifdef __ghs__
 #include <ppc_ghs.h>
 #endif

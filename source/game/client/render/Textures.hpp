@@ -1,6 +1,7 @@
 #ifndef GAME_CLIENT_RENDER_TEXTURES_HPP
 #define GAME_CLIENT_RENDER_TEXTURES_HPP
 
+#include <stdint.h>
 #include <string>
 #include <boost/shared_ptr.hpp>
 #include <boost/unordered_map.hpp>
@@ -55,7 +56,7 @@ public:
     void replaceTextureDirect(arrayWithLength<int> pixels, int width, int height, int texture);
     void replaceTextureDirect(arrayWithLength<short> pixels, int width, int height, int texture);
     void releaseTexture(int texture);
-    int addMemTexture(const std::wstring& name, MemTextureProcessor* processor);
+    intptr_t addMemTexture(const std::wstring& name, MemTextureProcessor* processor);
     int loadMemTexture(const std::wstring& name, const std::wstring& path);
     int loadMemTexture(const std::wstring& name, int texture);
     void removeMemTexture(const std::wstring& name);

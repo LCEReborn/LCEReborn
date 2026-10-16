@@ -151,7 +151,8 @@ UIScene_HowToPlay::UIScene_HowToPlay(int playerId, void* data, UILayer* layer) :
     m_labels[23].init(UIString(text.c_str()));
 
     m_pageCount = 0;
-    StartPage(static_cast<EHowToPlayPage>((reinterpret_cast<unsigned int>(data) >> 0x10) & 0xfff));
+    StartPage(
+        static_cast<EHowToPlayPage>((static_cast<unsigned int>(reinterpret_cast<uintptr_t>(data)) >> 0x10) & 0xfff));
 }
 
 namespace

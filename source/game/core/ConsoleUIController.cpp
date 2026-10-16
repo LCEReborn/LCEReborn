@@ -334,10 +334,10 @@ void ConsoleUIController::SetupFont()
     LeaveCriticalSection(&m_fontMutex);
 }
 
-int ConsoleUIController::loadSkin(const std::wstring& name, const std::wstring& path, int fileIndex)
+intptr_t ConsoleUIController::loadSkin(const std::wstring& name, const std::wstring& path, int fileIndex)
 {
     (void)path;
-    int scene = 0;
+    intptr_t scene = 0;
     if (name.size() != 0 && gApp.hasArchiveFile(name, false))
     {
         arrayWithLength<unsigned char> bytes = gApp.getArchiveFile(name, false);

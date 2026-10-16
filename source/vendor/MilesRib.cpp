@@ -1,6 +1,11 @@
 #include "vendor/MilesRib.hpp"
 
+#include "platform/Platform.hpp"
+
 #include <stddef.h>
+#if LCE_PLATFORM_PC
+#include <stdint.h>
+#endif
 #include <string.h>
 
 #include "vendor/MilesMem.hpp"
@@ -138,7 +143,11 @@ static ILIST_ENTRY* IL_alloc(InterfaceList* pList)
     ILIST_ENTRY* pNewBase;
     int iOldCount;
     int iNewCount;
+#if LCE_PLATFORM_WIIU
     int iDelta;
+#elif LCE_PLATFORM_PC
+    ptrdiff_t iDelta;
+#endif
     int i;
 
     pEntry = pList->pFree;
@@ -155,7 +164,11 @@ static ILIST_ENTRY* IL_alloc(InterfaceList* pList)
             return NULL;
         }
 
+#if LCE_PLATFORM_WIIU
         iDelta = (int)((char*)pNewBase - (char*)pOldBase);
+#elif LCE_PLATFORM_PC
+        iDelta = (char*)pNewBase - (char*)pOldBase;
+#endif
 
         for (i = 0; i < iOldCount; i++)
         {
@@ -342,7 +355,11 @@ static PVLIST_ENTRY* PL_alloc(ProviderList* pList)
     PVLIST_ENTRY* pNewBase;
     int iOldCount;
     int iNewCount;
+#if LCE_PLATFORM_WIIU
     int iDelta;
+#elif LCE_PLATFORM_PC
+    ptrdiff_t iDelta;
+#endif
     int i;
 
     pEntry = pList->pFree;
@@ -359,7 +376,11 @@ static PVLIST_ENTRY* PL_alloc(ProviderList* pList)
             return NULL;
         }
 
+#if LCE_PLATFORM_WIIU
         iDelta = (int)((char*)pNewBase - (char*)pOldBase);
+#elif LCE_PLATFORM_PC
+        iDelta = (char*)pNewBase - (char*)pOldBase;
+#endif
 
         for (i = 0; i < iOldCount; i++)
         {
@@ -719,13 +740,28 @@ extern "C" int RIB_request_interface(unsigned int uProvider, const char* pInterf
 
         if (pEntry != NULL)
         {
+#if LCE_PLATFORM_WIIU
             *(void**)pEntries[i].pToken = pEntry->descriptor.pToken;
+#elif LCE_PLATFORM_PC
+            if (pEntries[i].uType == RIB_PROPERTY)
+            {
+                *(unsigned int*)pEntries[i].pToken = (unsigned int)(uintptr_t)pEntry->descriptor.pToken;
+            }
+            else
+            {
+                *(void**)pEntries[i].pToken = pEntry->descriptor.pToken;
+            }
+#endif
         }
         else
         {
             if (pEntries[i].uType != 0)
             {
+#if LCE_PLATFORM_WIIU
                 *(void**)pEntries[i].pToken = (void*)RIB_ENTRY_NOT_FOUND;
+#elif LCE_PLATFORM_PC
+                *(unsigned int*)pEntries[i].pToken = RIB_ENTRY_NOT_FOUND;
+#endif
             }
             else
             {
@@ -760,11 +796,33 @@ extern "C" int RIB_request_interface_entry(unsigned int uProvider, const char* p
 
     if (pFound == NULL)
     {
+#if LCE_PLATFORM_WIIU
         *(void**)pEntry = NULL;
+#elif LCE_PLATFORM_PC
+        if (uEntryType == RIB_PROPERTY)
+        {
+            *(unsigned int*)pEntry = 0;
+        }
+        else
+        {
+            *(void**)pEntry = NULL;
+        }
+#endif
         return RIB_NOT_FOUND;
     }
 
+#if LCE_PLATFORM_WIIU
     *(void**)pEntry = pFound->descriptor.pToken;
+#elif LCE_PLATFORM_PC
+    if (uEntryType == RIB_PROPERTY)
+    {
+        *(unsigned int*)pEntry = (unsigned int)(uintptr_t)pFound->descriptor.pToken;
+    }
+    else
+    {
+        *(void**)pEntry = pFound->descriptor.pToken;
+    }
+#endif
     RIB_last_entry = pFound;
     return RIB_NOERR;
 }

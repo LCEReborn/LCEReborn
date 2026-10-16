@@ -1,7 +1,11 @@
 #ifndef SOURCE_VENDOR_MILES_RADSS_HPP
 #define SOURCE_VENDOR_MILES_RADSS_HPP
 
+#include "platform/Platform.hpp"
+
+#if LCE_PLATFORM_WIIU
 #include <sndcore2/voice.h>
+#endif
 
 #include "vendor/MilesApi.hpp"
 
@@ -25,6 +29,7 @@ typedef unsigned int (*RADSS_GET_PROPERTY_FUNCTION)(_RadSoundSystem* pSystem, RA
 typedef void (*RADSS_VOLUME_FUNCTION)(_RadSoundSystem* pSystem, float fFirst, float fSecond);
 typedef void (*RADSS_CHANNEL_ROUTE_FUNCTION)(_RadSoundSystem* pSystem, short* pRouting, int iCount);
 
+#if LCE_PLATFORM_WIIU
 static const int RADSS_AX_VOICE_COUNT = 8;
 static const int RADSS_AX_ROUTING_ENTRIES = 64;
 static const unsigned int RADSS_AX_ROUTING_BYTES = 0x80;
@@ -53,6 +58,35 @@ struct RadSS_WiiUPrivate
     unsigned char ucFlags;
 };
 
+#elif LCE_PLATFORM_PC
+struct SDL_AudioStream;
+
+static const int RADSS_PC_CHANNEL_LIMIT = 8;
+static const int RADSS_PC_ROUTING_ENTRIES = 64;
+static const unsigned int RADSS_PC_ROUTING_BYTES = 0x80;
+
+struct RadSS_PCPrivate
+{
+    SDL_AudioStream* pStream;
+    void* pStaging;
+    short* pRouting;
+    float* pMix;
+    unsigned long long uStartTime;
+    unsigned long long uFramesWritten;
+    unsigned int uLockBytes;
+    unsigned int uStagingBytes;
+    unsigned int uBufferFrames;
+    unsigned int uReadyLimitFrames;
+    unsigned int uReserveFrames;
+    unsigned int uChunkFrames;
+    unsigned short usLatency;
+    short sVolumeFirst;
+    short sVolumeSecond;
+    unsigned char ucFlags;
+    unsigned char ucDeviceOpen;
+};
+#endif
+
 struct _RadSoundSystem
 {
     const char* pError;
@@ -75,10 +109,18 @@ struct _RadSoundSystem
     unsigned short usRate;
     unsigned short usUnderruns;
     unsigned int uReserved3C;
+#if LCE_PLATFORM_WIIU
     RadSS_WiiUPrivate priv;
+#elif LCE_PLATFORM_PC
+    RadSS_PCPrivate priv;
+#endif
 };
 
+#if LCE_PLATFORM_WIIU
 static const unsigned int RADSS_GENERIC_SIZE = 0xB8;
+#elif LCE_PLATFORM_PC
+extern "C" RADSS_OPEN_DRIVER_CALLBACK RADSS_SDLInstallDriver(int iDevice);
+#endif
 
 
 #endif

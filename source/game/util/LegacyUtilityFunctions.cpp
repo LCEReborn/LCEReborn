@@ -108,7 +108,11 @@ extern "C" unsigned int find_ASI_provider(const char* attributeName, const char*
     unsigned int provider = RIB_find_file_provider(ASI_CODEC_INTERFACE, attributeName, fileName);
     if (provider != 0)
     {
+#if LCE_PLATFORM_WIIU
         unsigned int propertyToken = 0;
+#elif LCE_PLATFORM_PC
+        void* propertyToken = NULL;
+#endif
         RIB_INTERFACE_ENTRY entry;
         entry.uType = RIB_FUNCTION;
         entry.pEntryName = PROVIDER_PROPERTY_ENTRY;

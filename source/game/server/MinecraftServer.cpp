@@ -1064,16 +1064,17 @@ void MinecraftServer::run(long long seed, void* argument)
                 case eXuiServerAction_DropItem:
                 {
                     boost::shared_ptr<ServerPlayer> player = mPlayers->mPlayers.at(0);
-                    player->drop(
-                        not_null_ptr<ItemInstance>(new ItemInstance(Item::byId(reinterpret_cast<int>(param)), 1, 0)),
-                        false);
+                    player->drop(not_null_ptr<ItemInstance>(new ItemInstance(
+                                     Item::byId(static_cast<int>(reinterpret_cast<intptr_t>(param))), 1, 0)),
+                                 false);
                     break;
                 }
                 case eXuiServerAction_SpawnMob:
                 {
                     boost::shared_ptr<ServerPlayer> player = mPlayers->mPlayers.at(0);
                     boost::shared_ptr<Mob> mob = boost::dynamic_pointer_cast<Mob>(EntityIO::newEntity(
-                        static_cast<unsigned long long>(reinterpret_cast<unsigned int>(param)), player->mLevel));
+                        static_cast<unsigned long long>(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(param))),
+                        player->mLevel));
                     mob->moveTo(player->mX + 1.0, player->mY, player->mZ + 1.0,
                                 player->mLevel->mRandom->nextFloat() * 360.0f, 0.0f);
                     mob->setDespawnProtected();
@@ -1081,7 +1082,7 @@ void MinecraftServer::run(long long seed, void* argument)
                     break;
                 }
                 case eXuiServerAction_PauseServer:
-                    fjSetServerPaused(reinterpret_cast<int>(param) == 1);
+                    fjSetServerPaused(static_cast<int>(reinterpret_cast<intptr_t>(param)) == 1);
                     break;
                 case eXuiServerAction_ToggleRain:
                 {

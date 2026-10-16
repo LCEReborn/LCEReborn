@@ -2,6 +2,11 @@
 #define GAME_CLIENT_AUDIO_FALLOFFGRAPH_HPP
 
 #include "game/core/Handle.hpp"
+#include "platform/Platform.hpp"
+
+#if LCE_PLATFORM_PC
+#include <stdint.h>
+#endif
 
 class EventSystem;
 class SoundInstance;
@@ -28,6 +33,9 @@ struct _MSSSTRINGC
 struct _SAMPLE;
 struct _DIG_DRIVER;
 struct _STREAM;
+#if LCE_PLATFORM_PC
+struct MilesMarkerList;
+#endif
 struct _RadSoundSystem;
 struct FLT_INSTANCE;
 
@@ -68,9 +76,15 @@ typedef void (*FilterCloseSampleFunc)(void* handle);
 typedef int (*FilterSampleProcessFunc)(void* handle, void* source, void* destination, unsigned int count, int channel);
 typedef int (*FilterSamplePropertyFunc)(void* handle, unsigned int property, void* before, const void* newValue,
                                         void* after);
+#if LCE_PLATFORM_WIIU
 typedef int (*AsiStreamCallback)(unsigned int user, void* destination, int count, int offset);
 typedef void* (*AsiStreamOpenFunc)(MssAllocFunc allocator, MssFreeFunc deallocator, unsigned int user,
                                    AsiStreamCallback callback, unsigned int totalSize);
+#elif LCE_PLATFORM_PC
+typedef int (*AsiStreamCallback)(uintptr_t user, void* destination, int count, int offset);
+typedef void* (*AsiStreamOpenFunc)(MssAllocFunc allocator, MssFreeFunc deallocator, uintptr_t user,
+                                   AsiStreamCallback callback, unsigned int totalSize);
+#endif
 typedef int (*AsiStreamProcessFunc)(void* stream, void* destination, int size);
 typedef void (*AsiStreamSeekFunc)(void* stream, int offset);
 typedef void (*AsiStreamCloseFunc)(void* stream);
@@ -514,6 +528,11 @@ struct _SAMPLE
     float mixInput0;
     float mixInput1;
     float mixInput2;
+#if LCE_PLATFORM_PC
+    const MilesMarkerList* markerList;
+    unsigned char* vocCurrent;
+    unsigned char* vocRepeat;
+#endif
 };
 
 struct FalloffGraph

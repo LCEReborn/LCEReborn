@@ -142,3 +142,7 @@ void C4JThreadImpl::SetMainThreadID()
 {
     s_currentThread = &s_mainThread;
 }
+
+void SetSpecialThreadIDForFS_MilesStreamThread()
+{
+}

@@ -23,7 +23,11 @@ struct MilesTimer
     unsigned int uReserved4;
     unsigned long long uNextTime;
     unsigned long long uPeriod;
+#if LCE_PLATFORM_WIIU
     unsigned int uUser;
+#elif LCE_PLATFORM_PC
+    uintptr_t uUser;
+#endif
     int iStatus;
 };
 
@@ -74,7 +78,11 @@ static const unsigned int MILES_DEVICE_FLAGS_MULTICHANNEL = 0x11;
 static const unsigned int MILES_OPEN_START_PLAYBACK = 0x80;
 static const int MILES_SAMPLE_STATUS_FREE = 1;
 static const unsigned int MILES_SAMPLE_BUFFER_SAMPLE_SCALE = 0x3E800;
+#if LCE_PLATFORM_WIIU
 static const unsigned int MILES_RADSS_ALLOCATION_SIZE = 0xB8;
+#elif LCE_PLATFORM_PC
+static const unsigned int MILES_RADSS_ALLOCATION_SIZE = sizeof(_RadSoundSystem);
+#endif
 static const unsigned int MILES_SAMPLE_ALIGNMENT_MASK = 0xFFFFFFF0;
 static const unsigned int MILES_SAMPLE_ALIGNMENT_ROUND = 0xF;
 static const unsigned int MILES_MILLISECONDS_PER_SECOND = 1000;
@@ -604,9 +612,15 @@ extern "C" int AIL_API_register_timer(AIL_TIMER_CALLBACK pCallback)
     return iTimer;
 }
 
+#if LCE_PLATFORM_WIIU
 extern "C" unsigned int AIL_API_set_timer_user(int iTimer, unsigned int uUser)
 {
     unsigned int uPrevious;
+#elif LCE_PLATFORM_PC
+extern "C" uintptr_t AIL_API_set_timer_user(int iTimer, uintptr_t uUser)
+{
+    uintptr_t uPrevious;
+#endif
 
     if (iTimer == MILES_TIMER_INVALID)
     {
@@ -746,7 +760,11 @@ extern "C" void SS_start_DIG_driver_playback(_SAMPLE* pSample)
     }
 }
 
+#if LCE_PLATFORM_WIIU
 void SS_serve(unsigned int uDriver)
+#elif LCE_PLATFORM_PC
+void SS_serve(uintptr_t uDriver)
+#endif
 {
     _DIG_DRIVER* pDriver;
     int iBufferCount;
@@ -1464,7 +1482,11 @@ extern "C" _DIG_DRIVER* AIL_API_open_generic_digital_driver(unsigned int uFreque
 
         AIL_set_timer_frequency(pDriver->timer,
                                 MILES_MILLISECONDS_PER_SECOND / AIL_preference[MILES_PREFERENCE_SERVICE_MILLISECONDS]);
+#if LCE_PLATFORM_WIIU
         AIL_set_timer_user(pDriver->timer, static_cast<unsigned int>(reinterpret_cast<uintptr_t>(pDriver)));
+#elif LCE_PLATFORM_PC
+        AIL_set_timer_user(pDriver->timer, reinterpret_cast<uintptr_t>(pDriver));
+#endif
         AIL_start_timer(pDriver->timer);
 
         iResult = 1;

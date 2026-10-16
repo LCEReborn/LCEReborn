@@ -1,6 +1,8 @@
 #ifndef GAME_UI_FUIFILE_HPP
 #define GAME_UI_FUIFILE_HPP
 
+#include <stdint.h>
+
 #include "game/ui/fuiFileHeader.hpp"
 #include "game/world/biome/arrayWithLength.hpp"
 
@@ -50,13 +52,13 @@ struct fuiFile
 
     fuiFile();
     ~fuiFile();
-    int addDataRegion(unsigned int count, unsigned int stride, unsigned char** cursor, void (*swap)(void*));
+    intptr_t addDataRegion(unsigned int count, unsigned int stride, unsigned char** cursor, void (*swap)(void*));
     unsigned int load(arrayWithLength<unsigned char> bytes, int fileIndex);
     unsigned int resolveReferences(fuiFile* other);
     void dumpUnresolvedReferences();
     void initialiseRenderTexture(fuiBitmap* bitmap, bool force);
     fuiRenderNode* getRootNode();
-    int createNodeFromSymbol(const char* name, fuiRenderNode* parent, int fileIndex);
+    intptr_t createNodeFromSymbol(const char* name, fuiRenderNode* parent, int fileIndex);
     fuiRenderNode* findNode(const char* name);
     void setVisible(const char* name, bool visible);
     void setCustomDrawCallback(void (*callback)(void*, const char*, fuiRect*), void* context);

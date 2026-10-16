@@ -170,7 +170,7 @@ void UIScene_SettingsMenu::tick()
 int UIScene_SettingsMenu::ResetDefaultsDialogReturned(void* context, int button, C4JStorage::EMessageResult result)
 {
     UIScene_SettingsMenu* scene = static_cast<UIScene_SettingsMenu*>(
-        gConsoleUIController.GetSceneFromCallbackId(reinterpret_cast<unsigned int>(context)));
+        gConsoleUIController.GetSceneFromCallbackId(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context))));
     if (scene != NULL && result == C4JStorage::EMessageResult_Decline)
     {
         GameSettings::SetDefaultGameOptions(gStorage->GetDashboardProfileSettings(scene->m_playerId), scene->m_playerId,
@@ -227,7 +227,7 @@ void UIScene_SettingsMenu::handlePress(int controlId, int)
         int parameters[2] = {static_cast<int>(IDS_CONFIRM_CANCEL), static_cast<int>(IDS_CONFIRM_OK)};
         gConsoleUIController.RequestAlertMessage(IDS_DEFAULTS_TITLE, IDS_DEFAULTS_TEXT, parameters, 2, m_playerId,
                                                  ResetDefaultsDialogReturned,
-                                                 (void*)static_cast<unsigned long>(GetCallbackUniqueId()), NULL, true);
+                                                 (void*)static_cast<uintptr_t>(GetCallbackUniqueId()), NULL, true);
         break;
     }
     }

@@ -688,7 +688,8 @@ void UIScene_PauseMenu::OpenExitGameDialog(int player, void* callbackData,
 
 int UIScene_PauseMenu::WarningTrialTexturePackReturned(void* context, int pad, C4JStorage::EMessageResult result)
 {
-    UIScene* scene = gConsoleUIController.GetSceneFromCallbackId(reinterpret_cast<unsigned int>(context));
+    UIScene* scene =
+        gConsoleUIController.GetSceneFromCallbackId(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context)));
     UIScene_PauseMenu* pauseMenu = scene != NULL ? dynamic_cast<UIScene_PauseMenu*>(scene) : NULL;
     if (result == C4JStorage::EMessageResult_Accept && gProfile->IsSignedIn(pad))
     {
@@ -719,7 +720,7 @@ int UIScene_PauseMenu::WarningTrialTexturePackReturned(void* context, int pad, C
 int UIScene_PauseMenu::ExitGameDialogReturned(void* context, int pad, C4JStorage::EMessageResult result)
 {
     UIScene_PauseMenu* pauseMenu = dynamic_cast<UIScene_PauseMenu*>(
-        gConsoleUIController.GetSceneFromCallbackId(reinterpret_cast<unsigned int>(context)));
+        gConsoleUIController.GetSceneFromCallbackId(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context))));
     if (result == C4JStorage::EMessageResult_Decline)
     {
         if (pauseMenu != NULL && pauseMenu->getSceneType() == EUIScene_PauseMenu)
@@ -731,7 +732,8 @@ int UIScene_PauseMenu::ExitGameDialogReturned(void* context, int pad, C4JStorage
 
 int UIScene_PauseMenu::ExitGameAndSaveReturned(void* context, int pad, C4JStorage::EMessageResult result)
 {
-    UIScene* scene = gConsoleUIController.GetSceneFromCallbackId(reinterpret_cast<unsigned int>(context));
+    UIScene* scene =
+        gConsoleUIController.GetSceneFromCallbackId(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context)));
     UIScene_PauseMenu* pauseMenu = scene != NULL ? dynamic_cast<UIScene_PauseMenu*>(scene) : NULL;
     if (result == C4JStorage::EMessageResult_Decline)
     {
@@ -762,7 +764,8 @@ int UIScene_PauseMenu::ExitGameAndSaveReturned(void* context, int pad, C4JStorag
 
 int UIScene_PauseMenu::ExitGameDeclineSaveReturned(void* context, int pad, C4JStorage::EMessageResult result)
 {
-    UIScene* scene = gConsoleUIController.GetSceneFromCallbackId(reinterpret_cast<unsigned int>(context));
+    UIScene* scene =
+        gConsoleUIController.GetSceneFromCallbackId(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context)));
     UIScene_PauseMenu* pauseMenu = scene != NULL ? dynamic_cast<UIScene_PauseMenu*>(scene) : NULL;
     if (result == C4JStorage::EMessageResult_Decline)
     {
@@ -794,7 +797,7 @@ int UIScene_PauseMenu::ExitGameDeclineSaveReturned(void* context, int pad, C4JSt
 int UIScene_PauseMenu::ExitGameSaveDialogReturned(void* context, int pad, C4JStorage::EMessageResult result)
 {
     UIScene_PauseMenu* pauseMenu = dynamic_cast<UIScene_PauseMenu*>(
-        gConsoleUIController.GetSceneFromCallbackId(reinterpret_cast<unsigned int>(context)));
+        gConsoleUIController.GetSceneFromCallbackId(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context))));
     if (result != C4JStorage::EMessageResult_Decline)
     {
         if (result == C4JStorage::EMessageResult_ThirdOption)
@@ -937,7 +940,8 @@ void UIScene_PauseMenu::PerformActionSaveGame()
 
 unsigned int UIScene_PauseMenu::SaveGame_SignInReturned(void* context, bool signedIn, int, int)
 {
-    UIScene* scene = gConsoleUIController.GetSceneFromCallbackId(reinterpret_cast<unsigned int>(context));
+    UIScene* scene =
+        gConsoleUIController.GetSceneFromCallbackId(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context)));
     UIScene_PauseMenu* pauseMenu = static_cast<UIScene_PauseMenu*>(scene);
     if (pauseMenu != NULL && pauseMenu->getSceneType() == EUIScene_PauseMenu)
         pauseMenu->SetIgnoreInput(false);

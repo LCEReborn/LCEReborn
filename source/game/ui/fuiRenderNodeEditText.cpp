@@ -348,7 +348,7 @@ bool fuiRenderNodeEditText::htmlImage(const std::wstring& tag, RenderStringState
     std::wcstombs(symbolName, srcAttribute.c_str(), sizeof(symbolName) - 1);
     symbolName[sizeof(symbolName) - 1] = '\0';
     fuiFile* file = NULL;
-    int bitmap = gFui->findBitmapFromSymbol(symbolName, &file);
+    intptr_t bitmap = gFui->findBitmapFromSymbol(symbolName, &file);
     if (bitmap != 0)
     {
         fuiBitmap* bitmapObject = reinterpret_cast<fuiBitmap*>(bitmap);
@@ -811,7 +811,7 @@ void fuiRenderNodeEditText::DrawRenderData(RenderStringStateData& state)
     {
         HtmlImageDrawData& image = state.activeImageData->at(index);
         fuiFile* file = NULL;
-        int bitmap = gFui->findBitmapFromSymbol(image.symbolName.c_str(), &file);
+        intptr_t bitmap = gFui->findBitmapFromSymbol(image.symbolName.c_str(), &file);
         if (bitmap != 0)
         {
             fuiBitmap* bitmapObject = reinterpret_cast<fuiBitmap*>(bitmap);

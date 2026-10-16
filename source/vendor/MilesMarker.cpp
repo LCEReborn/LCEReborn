@@ -5,6 +5,10 @@
 
 #include "vendor/MilesMem.hpp"
 
+#if LCE_PLATFORM_PC
+#include "platform/pc/audio/MilesPcBank.hpp"
+#endif
+
 static const unsigned int MILES_MARKER_NOT_FOUND = 0xFFFFFFFF;
 
 extern "C" int AIL_stricmp(const char* pFirst, const char* pSecond);
@@ -45,8 +49,12 @@ extern "C" const MilesMarkerList* AIL_get_marker_list(SoundBank* pBank, const ch
         return NULL;
     }
 
+#if LCE_PLATFORM_WIIU
     pEntry = reinterpret_cast<SoundBank::AssetEntry*>(
         static_cast<uintptr_t>(FindAsset(pBank, pName, pHeader->sounds, pHeader->soundCount)));
+#elif LCE_PLATFORM_PC
+    pEntry = MilesPcFindAsset(pBank, pName, pHeader->sounds, pHeader->soundCount);
+#endif
 
     if (pEntry == NULL)
     {

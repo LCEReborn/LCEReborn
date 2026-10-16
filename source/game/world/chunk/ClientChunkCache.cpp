@@ -34,8 +34,18 @@
 #include "game/world/LevelData.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
 #include "platform/C4JThreadImpl.hpp"
+#include "platform/Platform.hpp"
 
 extern long InterlockedCompareExchangeRelease(volatile long* destination, long exchange, long comparand);
+
+#if LCE_PLATFORM_PC
+static LevelChunk* InterlockedCompareExchangeChunkRelease(LevelChunk* volatile* destination, LevelChunk* exchange,
+                                                          LevelChunk* comparand)
+{
+    __atomic_compare_exchange_n(destination, &comparand, exchange, false, __ATOMIC_RELEASE, __ATOMIC_RELAXED);
+    return comparand;
+}
+#endif
 
 static const int SAVE_THREAD_STACK_SIZE = 0x100000;
 static const int MAX_DROPS_PER_TICK = 100;
@@ -132,9 +142,13 @@ void ClientChunkCache::reLoad(int x, int z, const std::vector<LevelChunk::BlockC
     LevelChunk* chunk = load(x, z, NULL);
     if (chunk != NULL)
     {
+#if LCE_PLATFORM_WIIU
         if (InterlockedCompareExchangeRelease(reinterpret_cast<volatile long*>(&m_cache[idx]),
                                               reinterpret_cast<long>(chunk), reinterpret_cast<long>(previous))
             == reinterpret_cast<long>(previous))
+#elif LCE_PLATFORM_PC
+        if (InterlockedCompareExchangeChunkRelease(&m_cache[idx], chunk, previous) == previous)
+#endif
         {
             if (previous != NULL)
             {
@@ -435,9 +449,13 @@ void ClientChunkCache::drop(int x, int z, bool force)
         int iz = z + m_xzOffset;
         int idx = ix * m_xzSize + iz;
         EnterCriticalSection(&m_csLoadCreate);
+#if LCE_PLATFORM_WIIU
         if (InterlockedCompareExchangeRelease(reinterpret_cast<volatile long*>(&m_cache[idx]), 0,
                                               reinterpret_cast<long>(chunk))
             == reinterpret_cast<long>(chunk))
+#elif LCE_PLATFORM_PC
+        if (InterlockedCompareExchangeChunkRelease(&m_cache[idx], NULL, chunk) == chunk)
+#endif
         {
             std::vector<LevelChunk*>::iterator it = std::find(m_loadedChunkList.begin(), m_loadedChunkList.end(),
                                                               chunk);
@@ -515,9 +533,13 @@ LevelChunk* ClientChunkCache::create(int x, int z)
             chunk->setSkyLightDataAllBright();
         }
         chunk->mLoaded = true;
+#if LCE_PLATFORM_WIIU
         if (InterlockedCompareExchangeRelease(reinterpret_cast<volatile long*>(&m_cache[idx]),
                                               reinterpret_cast<long>(chunk), reinterpret_cast<long>(previous))
             == reinterpret_cast<long>(previous))
+#elif LCE_PLATFORM_PC
+        if (InterlockedCompareExchangeChunkRelease(&m_cache[idx], chunk, previous) == previous)
+#endif
         {
             m_loadedChunkList.push_back(chunk);
             LeaveCriticalSection(&m_csLoadCreate);

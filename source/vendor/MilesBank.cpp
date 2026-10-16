@@ -6,6 +6,10 @@
 #include "vendor/MilesEventExec.hpp"
 #include "vendor/MilesIO.hpp"
 
+#if LCE_PLATFORM_PC
+#include "platform/pc/audio/MilesPcBank.hpp"
+#endif
+
 #include <math.h>
 #include <stddef.h>
 #include <string.h>
@@ -64,12 +68,15 @@ inline void EvaluatePair(EnvironmentPreset* environment, EnvironmentPair* pair, 
     }
 }
 
+#if LCE_PLATFORM_WIIU
 inline SoundBank::AssetEntry* Relocate(SoundBankImage* bank, SoundBank::AssetEntry* offset)
 {
     return reinterpret_cast<SoundBank::AssetEntry*>(reinterpret_cast<char*>(bank) + reinterpret_cast<int>(offset));
 }
+#endif
 }
 
+#if LCE_PLATFORM_WIIU
 extern "C" void AIL_close_soundbank(SoundBank* bank)
 {
     if (bank != NULL)
@@ -173,6 +180,120 @@ extern "C" SoundBank* AIL_open_soundbank(const char* fileName, const char* bankN
     bank->pathLength = pathLength;
     return reinterpret_cast<SoundBank*>(bank);
 }
+#elif LCE_PLATFORM_PC
+extern "C" void AIL_close_soundbank(SoundBank* bank)
+{
+    if (bank != NULL)
+    {
+        MilesPcBankFree(bank);
+    }
+}
+
+extern "C" SoundBank* AIL_open_soundbank(const char* fileName, const char* bankName)
+{
+    if (fileName == NULL)
+    {
+        return NULL;
+    }
+
+    MilesAsyncRead request;
+    BankHeaderBuffer header;
+
+    memset(&request, 0, sizeof(request));
+    request.pBuffer = &header;
+    strcpy(request.szFileName, fileName);
+    request.iLengthHigh = 0;
+    request.iLength = BANK_HEADER_READ_SIZE;
+    request.iOwnerLine = BANK_HEADER_READ_LINE;
+    request.pOwnerName = HLBANK_FILE;
+    request.uFlags = BANK_READ_CLOSE_WHEN_DONE;
+    MilesAsyncFileRead(&request);
+    if (MilesAsyncFileStatus(&request, BANK_WAIT_FOREVER) != BANK_READ_COMPLETE)
+    {
+        CloseAsync(&request);
+        AIL_set_error(OPEN_FAILED_ERROR);
+        return NULL;
+    }
+
+    if (static_cast<int>(MilesPcReadBigEndian32(&header.image.magic)) != SOUND_BANK_MAGIC)
+    {
+        CloseAsync(&request);
+        AIL_set_error(NOT_A_BANK_ERROR);
+        return NULL;
+    }
+
+    if (static_cast<int>(MilesPcReadBigEndian32(&header.image.version)) != SOUND_BANK_VERSION)
+    {
+        CloseAsync(&request);
+        AIL_set_error(BANK_VERSION_ERROR);
+        return NULL;
+    }
+
+    if (bankName != NULL && AIL_stricmp(header.image.name, bankName) != 0)
+    {
+        CloseAsync(&request);
+        AIL_set_error(AUDITION_NAME_ERROR);
+        return NULL;
+    }
+
+    const int memoryUsage = static_cast<int>(MilesPcReadBigEndian32(&header.image.memoryUsage));
+    SoundBank* bank = MilesPcBankAllocate(memoryUsage, HLBANK_FILE, BANK_IMAGE_ALLOC_LINE);
+    if (bank == NULL)
+    {
+        CloseAsync(&request);
+        AIL_set_error(OPEN_FAILED_ERROR);
+        return NULL;
+    }
+
+    int copySize = request.iBytesRead;
+    if (copySize > memoryUsage)
+    {
+        copySize = memoryUsage;
+    }
+
+    memcpy(bank, &header, copySize);
+    if (memoryUsage > request.iBytesRead)
+    {
+        request.iLength = memoryUsage - request.iBytesRead;
+        request.pOwnerName = HLBANK_FILE;
+        request.uFlags = BANK_READ_APPEND;
+        request.pBuffer = reinterpret_cast<char*>(bank) + request.iBytesRead;
+        request.iOwnerLine = BANK_BODY_READ_LINE;
+        request.iLengthHigh = request.iLength >> 31;
+        request.iBytesRead = 0;
+        MilesAsyncFileRead(&request);
+        if (MilesAsyncFileStatus(&request, BANK_WAIT_FOREVER) != BANK_READ_COMPLETE)
+        {
+            MilesPcBankFree(bank);
+            return NULL;
+        }
+    }
+    else
+    {
+        CloseAsync(&request);
+    }
+
+    if (MilesPcSwapSoundBank(bank, memoryUsage) == 0)
+    {
+        MilesPcBankFree(bank);
+        AIL_set_error(NOT_A_BANK_ERROR);
+        return NULL;
+    }
+
+    SoundBankImage* image = reinterpret_cast<SoundBankImage*>(bank);
+    if (image->settings != 0)
+    {
+        AIL_set_event_settings(reinterpret_cast<EventSettings*>(reinterpret_cast<char*>(bank) + image->settings));
+    }
+
+    const size_t pathLength = strlen(fileName);
+    char* path = static_cast<char*>(AIL_mem_alloc_lock_info(pathLength + 1, HLBANK_FILE, BANK_PATH_ALLOC_LINE));
+    memcpy(path, fileName, pathLength + 1);
+    MilesPcBankSetPath(bank, path);
+    image->pathLength = static_cast<int>(pathLength);
+    return bank;
+}
+#endif
 
 extern "C" int AIL_get_event_contents(SoundBank* bank, const char* name, const unsigned char** contents)
 {
@@ -182,8 +303,12 @@ extern "C" int AIL_get_event_contents(SoundBank* bank, const char* name, const u
         return 0;
     }
 
+#if LCE_PLATFORM_WIIU
     SoundBank::AssetEntry* entry = reinterpret_cast<SoundBank::AssetEntry*>(
         FindAsset(bank, name, image->events, image->eventCount));
+#elif LCE_PLATFORM_PC
+    SoundBank::AssetEntry* entry = MilesPcFindAsset(bank, name, image->events, image->eventCount);
+#endif
     if (entry == NULL)
     {
         AIL_set_error(EVENT_NOT_FOUND_ERROR);
@@ -312,8 +437,12 @@ extern "C" void* AIL_find_environment_preset(SoundBank* bank, const char* name)
         return NULL;
     }
 
+#if LCE_PLATFORM_WIIU
     SoundBank::AssetEntry* entry = reinterpret_cast<SoundBank::AssetEntry*>(
         FindAsset(bank, name, image->environments, image->environmentCount));
+#elif LCE_PLATFORM_PC
+    SoundBank::AssetEntry* entry = MilesPcFindAsset(bank, name, image->environments, image->environmentCount);
+#endif
     if (entry == NULL)
     {
         AIL_set_error(ENVIRONMENT_NOT_FOUND_ERROR);

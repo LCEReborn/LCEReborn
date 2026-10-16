@@ -407,7 +407,7 @@ void UIScene_ControlsMenu::UpdateControls(int player)
 int UIScene_ControlsMenu::ResetControlsWarningDialogReturned(void* context, int pad, C4JStorage::EMessageResult result)
 {
     UIScene_ControlsMenu* scene = static_cast<UIScene_ControlsMenu*>(
-        gConsoleUIController.GetSceneFromCallbackId((unsigned int)context));
+        gConsoleUIController.GetSceneFromCallbackId((unsigned int)(uintptr_t)context));
     if (scene != NULL)
     {
         if (result == C4JStorage::EMessageResult_Accept)
@@ -440,7 +440,7 @@ void UIScene_ControlsMenu::CheckMapping(int player)
             int parameters[2] = {static_cast<int>(IDS_CONFIRM_OK), static_cast<int>(IDS_CONFIRM_CANCEL)};
             gConsoleUIController.RequestAlertMessage(
                 IDS_CONTROLS_CONTROLLER_WARNING_TITLE, IDS_CONTROLS_CONTROLLER_WARNING_TEXT, parameters, 2, m_playerId,
-                ResetControlsWarningDialogReturned, (void*)static_cast<unsigned long>(GetCallbackUniqueId()), NULL,
+                ResetControlsWarningDialogReturned, (void*)static_cast<uintptr_t>(GetCallbackUniqueId()), NULL,
                 true);
             return;
         }
@@ -493,7 +493,7 @@ void UIScene_ControlsMenu::handleCheckboxElementToggled(int first, int second, b
 int UIScene_ControlsMenu::ResetDefaultsDialogReturned(void* context, int pad, C4JStorage::EMessageResult result)
 {
     UIScene_ControlsMenu* scene = static_cast<UIScene_ControlsMenu*>(
-        gConsoleUIController.GetSceneFromCallbackId((unsigned int)context));
+        gConsoleUIController.GetSceneFromCallbackId((unsigned int)(uintptr_t)context));
     if (scene != NULL && result == C4JStorage::EMessageResult_Decline)
     {
         GameSettings::SetDefaultControls(gStorage->GetDashboardProfileSettings(scene->m_playerId), scene->m_playerId,
@@ -507,7 +507,7 @@ int UIScene_ControlsMenu::ResetDefaultsDialogReturned(void* context, int pad, C4
 int UIScene_ControlsMenu::ControlsWarningDialogReturned(void* context, int pad, C4JStorage::EMessageResult result)
 {
     UIScene_ControlsMenu* scene = static_cast<UIScene_ControlsMenu*>(
-        gConsoleUIController.GetSceneFromCallbackId((unsigned int)context));
+        gConsoleUIController.GetSceneFromCallbackId((unsigned int)(uintptr_t)context));
     if (scene != NULL && result == C4JStorage::EMessageResult_Accept)
     {
         GameSettings::CheckGameSettingsChanged(true, pad);
@@ -784,7 +784,7 @@ unsigned int UIScene_ControlsMenu::CheckControlsOnExit(int player)
             int parameters[2] = {static_cast<int>(IDS_CONFIRM_OK), static_cast<int>(IDS_CONFIRM_CANCEL)};
             gConsoleUIController.RequestAlertMessage(
                 IDS_CONTROLS_WARNING_TITLE, IDS_CONTROLS_WARNING_TEXT, parameters, 2, m_playerId,
-                ControlsWarningDialogReturned, (void*)static_cast<unsigned long>(GetCallbackUniqueId()), NULL, true);
+                ControlsWarningDialogReturned, (void*)static_cast<uintptr_t>(GetCallbackUniqueId()), NULL, true);
             return 1;
         }
     }
@@ -838,7 +838,7 @@ void UIScene_ControlsMenu::handlePress(int controlId, int childId)
         int parameters[2] = {static_cast<int>(IDS_CONFIRM_CANCEL), static_cast<int>(IDS_CONFIRM_OK)};
         gConsoleUIController.RequestAlertMessage(IDS_DEFAULTS_CONTROLS_TITLE, IDS_DEFAULTS_CONTROLS_TEXT, parameters, 2,
                                                  m_playerId, ResetDefaultsDialogReturned,
-                                                 (void*)static_cast<unsigned long>(GetCallbackUniqueId()), NULL, true);
+                                                 (void*)static_cast<uintptr_t>(GetCallbackUniqueId()), NULL, true);
         return;
     }
     if (childId >= EControl_Use && childId <= EControl_LookBehind)

@@ -2188,11 +2188,11 @@ unsigned int LevelRenderer::updateDirtyChunks(unsigned int* count)
 
     while ((dirtyChunk = mDirtyChunkStack.Pop()) != 0)
     {
-        if ((int)dirtyChunk > 0)
+        if ((int)(intptr_t)dirtyChunk > 0)
         {
-            if ((int)dirtyChunk > 1)
+            if ((int)(intptr_t)dirtyChunk > 1)
             {
-                setGlobalChunkFlag((int)dirtyChunk - 2, 2, 0);
+                setGlobalChunkFlag((int)(intptr_t)dirtyChunk - 2, 2, 0);
             }
 
             mHasDirtyChunks = true;
@@ -2939,7 +2939,7 @@ void LevelRenderer::setDirty(int minX, int minY, int minZ, int maxX, int maxY, i
 
                 if (index >= 0)
                 {
-                    mDirtyChunkStack.Push((int*)(index + 2));
+                    mDirtyChunkStack.Push((int*)(intptr_t)(index + 2));
                     PIXSetMarkerDeprecated(0.0f, "Setting chunk %d %d %d dirty", chunkX * 16, chunkY * 16, chunkZ * 16);
                 }
             }

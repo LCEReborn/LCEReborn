@@ -1,5 +1,9 @@
 #include "vendor/MilesRR.hpp"
 
+#include "platform/Platform.hpp"
+
+#if LCE_PLATFORM_WIIU
+
 #include <stddef.h>
 #include <string.h>
 
@@ -915,3 +919,557 @@ extern "C" long long rrAtomicAddExchange64(volatile long long* pTarget, long lon
     AcquireBarrier();
     return lPrevious;
 }
+
+#elif LCE_PLATFORM_PC
+
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
+
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
+#include <new>
+#include <thread>
+
+#include "platform/FileApi.hpp"
+
+struct rriMutex
+{
+    std::recursive_mutex mutex;
+};
+
+struct rriSemaphore
+{
+    std::mutex mutex;
+    std::condition_variable condition;
+    int iCount;
+    int iMaximum;
+};
+
+struct rriThread
+{
+    std::thread thread;
+    int (*pEntry)(void*);
+    void* pUserData;
+    const char* pName;
+    rrThread* pOwner;
+    unsigned int uFlags;
+    unsigned int uState;
+    unsigned int uExitCode;
+    int bStarted;
+    int bJoined;
+};
+
+static const unsigned int RR_SPIN_SLEEP_MICROSECONDS = 250;
+static const unsigned int RR_WAIT_INFINITE = 0xFFFFFFFF;
+static const unsigned int RR_DEFAULT_SLEEP_MILLISECONDS = 10000;
+
+static const int RR_TLS_SLOT_COUNT = 16;
+
+static const unsigned int RR_THREAD_FLAG_CREATE_SUSPENDED = 1;
+
+static const unsigned int RR_THREAD_STATE_RUNNING = 1;
+static const unsigned int RR_THREAD_STATE_DETACHED = 2;
+static const unsigned int RR_THREAD_STATE_RUNNING_DETACHED = 3;
+
+static const unsigned int RR_THREAD_EXIT_CODE_JOINED = 0x80000000;
+
+static thread_local void* rrTlsValues[RR_TLS_SLOT_COUNT];
+static thread_local rrThread* rrCurrentThread;
+
+static int rrThreadCount;
+
+extern "C" int Platform_OpenFile(MilesFile* pFile, const char* pFileName)
+{
+    int iHandle;
+
+    iHandle = CreateFileA(pFileName, GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, 0);
+    if (iHandle == INVALID_HANDLE_VALUE)
+    {
+        return 0;
+    }
+
+    pFile->uSize = GetFileSize(iHandle, NULL);
+    pFile->uHandle = static_cast<unsigned int>(iHandle);
+    return 1;
+}
+
+extern "C" void Platform_CloseFile(MilesFile* pFile)
+{
+    CloseHandle(static_cast<int>(pFile->uHandle));
+}
+
+extern "C" int Platform_ReadFile(MilesFile* pFile, void* pBuffer, unsigned int uBytes)
+{
+    unsigned int uRead;
+
+    if (uBytes == 0)
+    {
+        return 0;
+    }
+
+    uRead = 0;
+    if (ReadFile(static_cast<int>(pFile->uHandle), pBuffer, uBytes, &uRead, NULL) == 0)
+    {
+        return 0;
+    }
+
+    return static_cast<int>(uRead);
+}
+
+extern "C" void Platform_SeekFromBeginning(MilesFile* pFile, unsigned int uPosition)
+{
+    SetFilePointer(static_cast<int>(pFile->uHandle), static_cast<long>(uPosition + pFile->uBaseOffset), NULL, 0);
+}
+
+void TlsSetValue(int iIndex, void* pValue)
+{
+    if (iIndex >= 0 && iIndex < RR_TLS_SLOT_COUNT)
+    {
+        rrTlsValues[iIndex] = pValue;
+    }
+}
+
+void* TlsGetValue(int iIndex)
+{
+    if (iIndex >= 0 && iIndex < RR_TLS_SLOT_COUNT)
+    {
+        return rrTlsValues[iIndex];
+    }
+
+    return NULL;
+}
+
+static void FreeThreadNative(rrThread* pThread, rriThread* pNative)
+{
+    if (pThread != NULL && pThread->pNative == pNative)
+    {
+        pThread->pNative = NULL;
+    }
+
+    delete pNative;
+}
+
+static void ThreadEntry(rriThread* pNative)
+{
+    unsigned int uState;
+    int iResult;
+
+    rrCurrentThread = pNative->pOwner;
+
+    iResult = pNative->pEntry(pNative->pUserData);
+
+    rrCurrentThread = NULL;
+
+    pNative->uExitCode = static_cast<unsigned int>(iResult);
+
+    do
+    {
+        uState = pNative->uState;
+    } while (rrAtomicCmpXchg32(&pNative->uState, uState & ~RR_THREAD_STATE_RUNNING, uState) != uState);
+
+    if (uState == RR_THREAD_STATE_RUNNING_DETACHED)
+    {
+        rrAtomicAddExchange32(&rrThreadCount, -1);
+        delete pNative;
+    }
+}
+
+static void StartThread(rriThread* pNative)
+{
+    pNative->thread = std::thread(ThreadEntry, pNative);
+    pNative->bStarted = 1;
+}
+
+extern "C" rrThread* rrThreadCurrent()
+{
+    if (rrCurrentThread == NULL || rrCurrentThread->pNative == NULL)
+    {
+        return NULL;
+    }
+
+    return rrCurrentThread;
+}
+
+static rrThread* FindThread(rrThread* pThread)
+{
+    if (pThread == NULL)
+    {
+        return rrThreadCurrent();
+    }
+
+    if (pThread->pNative == NULL)
+    {
+        return NULL;
+    }
+
+    return pThread;
+}
+
+extern "C" int rrThreadCreate(rrThread* pThread, int (*pEntry)(void*), int, void* pUserData, unsigned int uFlags,
+                              const char* pName)
+{
+    rriThread* pNative;
+
+    pNative = new (std::nothrow) rriThread();
+    if (pNative == NULL)
+    {
+        pThread->pNative = NULL;
+        return 0;
+    }
+
+    pNative->pEntry = pEntry;
+    pNative->pUserData = pUserData;
+    pNative->pName = pName;
+    pNative->pOwner = pThread;
+    pNative->uFlags = uFlags;
+    pNative->uState = RR_THREAD_STATE_RUNNING;
+    pNative->uExitCode = 0;
+    pNative->bStarted = 0;
+    pNative->bJoined = 0;
+    pThread->pNative = pNative;
+
+    rrAtomicAddExchange32(&rrThreadCount, 1);
+
+    if ((uFlags & RR_THREAD_FLAG_CREATE_SUSPENDED) == 0)
+    {
+        StartThread(pNative);
+    }
+
+    return 1;
+}
+
+extern "C" void rrThreadSetCPUCore(rrThread* pThread, unsigned int)
+{
+    FindThread(pThread);
+}
+
+extern "C" void rrThreadSetPriority(rrThread* pThread, unsigned int)
+{
+    FindThread(pThread);
+}
+
+extern "C" int rrThreadWaitDone(rrThread* pThread, unsigned int, unsigned int* puExitCode)
+{
+    rriThread* pNative;
+
+    if (pThread == NULL || pThread->pNative == NULL)
+    {
+        return 0;
+    }
+
+    pNative = static_cast<rriThread*>(pThread->pNative);
+
+    if (pNative->bJoined == 0)
+    {
+        if (pNative->bStarted == 0 || pNative->thread.get_id() == std::this_thread::get_id())
+        {
+            return 0;
+        }
+
+        pNative->thread.join();
+        pNative->bJoined = 1;
+        pNative->uExitCode = pNative->uExitCode | RR_THREAD_EXIT_CODE_JOINED;
+    }
+
+    if (puExitCode != NULL)
+    {
+        *puExitCode = pNative->uExitCode & ~RR_THREAD_EXIT_CODE_JOINED;
+    }
+
+    return 1;
+}
+
+extern "C" void rrThreadCleanUp(rrThread* pThread)
+{
+    rrThread* pFound;
+    rriThread* pNative;
+
+    pFound = FindThread(pThread);
+    if (pFound == NULL)
+    {
+        return;
+    }
+
+    pNative = static_cast<rriThread*>(pFound->pNative);
+
+    if (pNative->bStarted == 0 || pNative->bJoined != 0)
+    {
+        rrAtomicAddExchange32(&rrThreadCount, -1);
+        FreeThreadNative(pFound, pNative);
+        return;
+    }
+
+    if (pNative->thread.get_id() == std::this_thread::get_id())
+    {
+        pNative->thread.detach();
+        pFound->pNative = NULL;
+        pNative->pOwner = NULL;
+        if (rrAtomicCmpXchg32(&pNative->uState, RR_THREAD_STATE_RUNNING_DETACHED, RR_THREAD_STATE_RUNNING)
+            != RR_THREAD_STATE_RUNNING)
+        {
+            rrAtomicAddExchange32(&rrThreadCount, -1);
+            delete pNative;
+        }
+
+        return;
+    }
+
+    if (rrAtomicCmpXchg32(&pNative->uState, RR_THREAD_STATE_RUNNING_DETACHED, RR_THREAD_STATE_RUNNING)
+        == RR_THREAD_STATE_RUNNING)
+    {
+        pNative->thread.detach();
+        pFound->pNative = NULL;
+        pNative->pOwner = NULL;
+        return;
+    }
+
+    pNative->thread.join();
+    pNative->bJoined = 1;
+    rrAtomicAddExchange32(&rrThreadCount, -1);
+    FreeThreadNative(pFound, pNative);
+}
+
+extern "C" void rrMutexCreate(rrMutex* pMutex, int)
+{
+    pMutex->pNative = new (std::nothrow) rriMutex();
+    rrAtomicMemoryBarrierFull();
+}
+
+extern "C" void rrMutexDestroy(rrMutex* pMutex)
+{
+    if (pMutex == NULL || pMutex->pNative == NULL)
+    {
+        return;
+    }
+
+    delete static_cast<rriMutex*>(pMutex->pNative);
+    pMutex->pNative = NULL;
+}
+
+extern "C" void rrMutexLock(rrMutex* pMutex)
+{
+    if (pMutex == NULL || pMutex->pNative == NULL)
+    {
+        return;
+    }
+
+    static_cast<rriMutex*>(pMutex->pNative)->mutex.lock();
+}
+
+extern "C" void rrMutexUnlock(rrMutex* pMutex)
+{
+    if (pMutex == NULL || pMutex->pNative == NULL)
+    {
+        return;
+    }
+
+    static_cast<rriMutex*>(pMutex->pNative)->mutex.unlock();
+}
+
+extern "C" int rrMutexLockTimeout(rrMutex* pMutex, unsigned int uTimeoutMilliseconds)
+{
+    rriMutex* pNative;
+    std::chrono::steady_clock::time_point start;
+
+    if (pMutex == NULL || pMutex->pNative == NULL)
+    {
+        return 0;
+    }
+
+    pNative = static_cast<rriMutex*>(pMutex->pNative);
+
+    if (uTimeoutMilliseconds == RR_WAIT_INFINITE)
+    {
+        pNative->mutex.lock();
+        return 1;
+    }
+
+    if (uTimeoutMilliseconds == 0)
+    {
+        return pNative->mutex.try_lock() ? 1 : 0;
+    }
+
+    start = std::chrono::steady_clock::now();
+
+    for (;;)
+    {
+        if (pNative->mutex.try_lock())
+        {
+            return 1;
+        }
+
+        if (std::chrono::steady_clock::now() - start >= std::chrono::milliseconds(uTimeoutMilliseconds))
+        {
+            return 0;
+        }
+
+        std::this_thread::sleep_for(std::chrono::microseconds(RR_SPIN_SLEEP_MICROSECONDS));
+    }
+}
+
+extern "C" void rrThreadSleep(unsigned int uMilliseconds)
+{
+    if (uMilliseconds == RR_WAIT_INFINITE)
+    {
+        uMilliseconds = RR_DEFAULT_SLEEP_MILLISECONDS;
+    }
+
+    if (uMilliseconds == 0)
+    {
+        std::this_thread::yield();
+        return;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(uMilliseconds));
+}
+
+extern "C" int rrSemaphoreCreate(rrSemaphore* pSemaphore, int iInitialCount, int iMaximumCount)
+{
+    rriSemaphore* pNative;
+
+    pNative = new (std::nothrow) rriSemaphore();
+    if (pNative == NULL)
+    {
+        pSemaphore->pNative = NULL;
+        return 0;
+    }
+
+    pNative->iCount = iInitialCount;
+    pNative->iMaximum = iMaximumCount;
+    rrAtomicMemoryBarrierFull();
+    pSemaphore->pNative = pNative;
+    return 1;
+}
+
+extern "C" void rrSemaphoreDestroy(rrSemaphore* pSemaphore)
+{
+    if (pSemaphore == NULL || pSemaphore->pNative == NULL)
+    {
+        return;
+    }
+
+    delete static_cast<rriSemaphore*>(pSemaphore->pNative);
+    pSemaphore->pNative = NULL;
+}
+
+extern "C" int rrSemaphoreDecrementOrWait(rrSemaphore* pSemaphore, unsigned int uTimeoutMilliseconds)
+{
+    rriSemaphore* pNative;
+
+    if (pSemaphore == NULL || pSemaphore->pNative == NULL)
+    {
+        return 0;
+    }
+
+    pNative = static_cast<rriSemaphore*>(pSemaphore->pNative);
+    std::unique_lock<std::mutex> lock(pNative->mutex);
+
+    if (uTimeoutMilliseconds == RR_WAIT_INFINITE)
+    {
+        while (pNative->iCount <= 0)
+        {
+            pNative->condition.wait(lock);
+        }
+    }
+    else if (pNative->iCount <= 0)
+    {
+        if (uTimeoutMilliseconds == 0)
+        {
+            return 0;
+        }
+
+        if (!pNative->condition.wait_for(lock, std::chrono::milliseconds(uTimeoutMilliseconds),
+                                         [pNative]() { return pNative->iCount > 0; }))
+        {
+            return 0;
+        }
+    }
+
+    pNative->iCount = pNative->iCount - 1;
+    return 1;
+}
+
+extern "C" void rrSemaphoreIncrement(rrSemaphore* pSemaphore, int iCount)
+{
+    rriSemaphore* pNative;
+
+    if (pSemaphore == NULL || pSemaphore->pNative == NULL)
+    {
+        return;
+    }
+
+    pNative = static_cast<rriSemaphore*>(pSemaphore->pNative);
+
+    {
+        std::lock_guard<std::mutex> lock(pNative->mutex);
+
+        pNative->iCount = pNative->iCount + iCount;
+        if (pNative->iMaximum > 0 && pNative->iCount > pNative->iMaximum)
+        {
+            pNative->iCount = pNative->iMaximum;
+        }
+    }
+
+    if (iCount == 1)
+    {
+        pNative->condition.notify_one();
+    }
+    else
+    {
+        pNative->condition.notify_all();
+    }
+}
+
+extern "C" void rrAtomicMemoryBarrierFull()
+{
+    __atomic_thread_fence(__ATOMIC_SEQ_CST);
+}
+
+extern "C" unsigned int rrAtomicLoadAcquire32(const volatile unsigned int* pTarget)
+{
+    return __atomic_load_n(pTarget, __ATOMIC_ACQUIRE);
+}
+
+extern "C" unsigned long long rrAtomicLoadAcquire64(const volatile unsigned long long* pTarget)
+{
+    return __atomic_load_n(pTarget, __ATOMIC_ACQUIRE);
+}
+
+extern "C" void rrAtomicStoreRelease32(volatile unsigned int* pTarget, unsigned int uValue)
+{
+    __atomic_store_n(pTarget, uValue, __ATOMIC_RELEASE);
+}
+
+extern "C" unsigned int rrAtomicCmpXchg32(volatile unsigned int* pTarget, unsigned int uNewValue,
+                                          unsigned int uComparand)
+{
+    unsigned int uExpected;
+
+    uExpected = uComparand;
+    __atomic_compare_exchange_n(pTarget, &uExpected, uNewValue, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+    return uExpected;
+}
+
+extern "C" unsigned long long rrAtomicCmpXchg64(volatile unsigned long long* pTarget, unsigned long long uNewValue,
+                                                unsigned long long uComparand)
+{
+    unsigned long long uExpected;
+
+    uExpected = uComparand;
+    __atomic_compare_exchange_n(pTarget, &uExpected, uNewValue, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+    return uExpected;
+}
+
+extern "C" int rrAtomicAddExchange32(volatile int* pTarget, int iValue)
+{
+    return __atomic_fetch_add(pTarget, iValue, __ATOMIC_SEQ_CST);
+}
+
+extern "C" long long rrAtomicAddExchange64(volatile long long* pTarget, long long lValue)
+{
+    return __atomic_fetch_add(pTarget, lValue, __ATOMIC_SEQ_CST);
+}
+
+#endif

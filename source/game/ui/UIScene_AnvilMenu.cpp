@@ -360,7 +360,7 @@ void UIScene_AnvilMenu::addPendingNameChange(const PendingNameInfo& info)
 
 int UIScene_AnvilMenu::KeyboardCompleteCallback(void* data, bool accepted)
 {
-    unsigned int callbackId = static_cast<unsigned int>(reinterpret_cast<unsigned long>(data));
+    unsigned int callbackId = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(data));
     UIScene_AnvilMenu* scene = static_cast<UIScene_AnvilMenu*>(gConsoleUIController.GetSceneFromCallbackId(callbackId));
     if (scene == 0)
         return 0;

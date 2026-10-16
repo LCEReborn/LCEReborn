@@ -27,7 +27,7 @@ extern ConsoleUIController gConsoleUIController;
 
 UIScene_MapVoteMenu::UIScene_MapVoteMenu(int type, void* data, UILayer* layer) : UIScene(type, layer)
 {
-    m_splitScreen = reinterpret_cast<int>(data) == 1;
+    m_splitScreen = static_cast<int>(reinterpret_cast<intptr_t>(data)) == 1;
     initialiseMovie();
     m_updateVoteInfo = false;
     m_selectedVote = -1;

@@ -299,7 +299,7 @@ std::wstring UIScene_QuadrantSignin::getMoviePath()
 int UIScene_QuadrantSignin::SignInReturned(void* context, bool, int, int)
 {
     UIScene_QuadrantSignin* scene = static_cast<UIScene_QuadrantSignin*>(
-        gConsoleUIController.GetSceneFromCallbackId(reinterpret_cast<unsigned int>(context)));
+        gConsoleUIController.GetSceneFromCallbackId(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context))));
     if (scene != NULL)
     {
         scene->m_signInPending = false;

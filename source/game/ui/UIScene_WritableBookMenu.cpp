@@ -425,7 +425,7 @@ bool UIScene_WritableBookMenu::GetBookHasFocus()
 
 int UIScene_WritableBookMenu::KeyboardCompleteCallback(void* context, bool success)
 {
-    unsigned int callbackId = static_cast<unsigned int>(reinterpret_cast<unsigned long>(context));
+    unsigned int callbackId = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context));
     UIScene_WritableBookMenu* scene = static_cast<UIScene_WritableBookMenu*>(
         gConsoleUIController.GetSceneFromCallbackId(callbackId));
     if (scene == 0)

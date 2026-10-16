@@ -185,7 +185,7 @@ void UIComponent_PressStartToPlay::showPressStart(int player, bool show)
 
 void UIComponent_PressStartToPlay::registerTexture(int achievement)
 {
-    AchievementInfo* info = (AchievementInfo*)(unsigned int)UIScene_AchievementsMenu::GetInfo(achievement);
+    AchievementInfo* info = (AchievementInfo*)(uintptr_t)UIScene_AchievementsMenu::GetInfo(achievement);
     wchar_t path[64];
     std::swprintf(path, 64, L"Graphics\\Achievements\\%ls.png", info->icon);
     if (gApp.hasArchiveFile(std::wstring(path), false))
@@ -219,7 +219,7 @@ int UIComponent_PressStartToPlay::AvatarReturned(void* context, unsigned char* d
         std::wstring texture = L"PlayerIcon" + _toString<int>(player);
         scene->registerTexture(achievement);
         scene->registerSubstitutionTexture(texture, 0, size, true);
-        AchievementInfo* info = (AchievementInfo*)(unsigned int)UIScene_AchievementsMenu::GetInfo(achievement);
+        AchievementInfo* info = (AchievementInfo*)(uintptr_t)UIScene_AchievementsMenu::GetInfo(achievement);
         std::wstring title = L10N::GetString(info->title);
         std::wstring text = L10N::GetString(0x4523129e);
         std::wstring description = gApp.FormatHTMLString(
@@ -318,8 +318,9 @@ void UIComponent_PressStartToPlay::ShowAchievementMenu()
     m_achievementToastShowing = false;
     if (gApp.GetGameStarted() != 0)
         gConsoleUIController.CloseAllPlayersScenes(false);
-    gConsoleUIController.NavigateToScene(m_player, EUIScene_AchievementsMenu, (void*)(unsigned int)m_achievement,
-                                         EUILayer_Scene, EUIGroup_PlayerDefault);
+    gConsoleUIController.NavigateToScene(m_player, EUIScene_AchievementsMenu,
+                                         (void*)(uintptr_t)(unsigned int)m_achievement, EUILayer_Scene,
+                                         EUIGroup_PlayerDefault);
 }
 
 void UIComponent_PressStartToPlay::handleTimerComplete(int timerId)

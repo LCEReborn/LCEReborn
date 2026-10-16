@@ -50,6 +50,160 @@ const wchar_t* s_parameterNames[] = {L"DISPLAYNAME",
 
 char s_dlcDataFileName[256];
 
+#if LCE_PLATFORM_PC
+static unsigned int SwapDLCWord(unsigned char* pData, unsigned int offset)
+{
+    unsigned char* pWord = pData + offset;
+    unsigned int value = ((unsigned int)pWord[0] << 24) | ((unsigned int)pWord[1] << 16) | ((unsigned int)pWord[2] << 8) |
+                         (unsigned int)pWord[3];
+    std::memcpy(pWord, &value, sizeof(value));
+    return value;
+}
+
+static bool SwapDLCText(unsigned char* pData, unsigned int size, unsigned int offset, unsigned int length,
+                        std::wstring* pText)
+{
+    if (offset > size || (size - offset) / 2 < length + 2)
+    {
+        return false;
+    }
+
+    for (unsigned int i = 0; i < length + 2; i++)
+    {
+        unsigned char* pCharacter = pData + offset + i * 2;
+        unsigned short character = (unsigned short)((pCharacter[0] << 8) | pCharacter[1]);
+        std::memcpy(pCharacter, &character, sizeof(character));
+        if (pText != NULL && i < length)
+        {
+            pText->push_back((wchar_t)character);
+        }
+    }
+
+    return true;
+}
+
+static bool SwapDLCDataToHost(unsigned char* pData, unsigned int size)
+{
+    if (size < 8)
+    {
+        return false;
+    }
+
+    SwapDLCWord(pData, 0);
+    unsigned int parameterCount = SwapDLCWord(pData, 4);
+    unsigned int offset = 8;
+    bool bHasXMLVersion = false;
+
+    for (unsigned int i = 0; i < parameterCount; i++)
+    {
+        if (size - offset < 8)
+        {
+            return false;
+        }
+
+        SwapDLCWord(pData, offset);
+        unsigned int nameLength = SwapDLCWord(pData, offset + 4);
+        std::wstring parameterName;
+        if (!SwapDLCText(pData, size, offset + 8, nameLength, &parameterName))
+        {
+            return false;
+        }
+
+        if (DLCManager::getParameterType(parameterName) == DLCManager::eDLCParameterType_XMLVersion)
+        {
+            bHasXMLVersion = true;
+        }
+
+        offset += nameLength * 2 + 12;
+    }
+
+    if (bHasXMLVersion)
+    {
+        if (size - offset < 4)
+        {
+            return false;
+        }
+
+        SwapDLCWord(pData, offset);
+        offset += 4;
+    }
+
+    if (offset > size || size - offset < 4)
+    {
+        return false;
+    }
+
+    unsigned int itemCount = SwapDLCWord(pData, offset);
+    offset += 4;
+
+    std::vector<unsigned int> itemSizes;
+    std::vector<unsigned int> itemTypes;
+    for (unsigned int i = 0; i < itemCount; i++)
+    {
+        if (offset > size || size - offset < 12)
+        {
+            return false;
+        }
+
+        itemSizes.push_back(SwapDLCWord(pData, offset));
+        itemTypes.push_back(SwapDLCWord(pData, offset + 4));
+        unsigned int nameLength = SwapDLCWord(pData, offset + 8);
+        if (!SwapDLCText(pData, size, offset + 12, nameLength, NULL))
+        {
+            return false;
+        }
+
+        offset += nameLength * 2 + 16;
+    }
+
+    for (unsigned int i = 0; i < itemCount; i++)
+    {
+        if (offset > size || size - offset < 4)
+        {
+            return false;
+        }
+
+        unsigned int itemParameterCount = SwapDLCWord(pData, offset);
+        offset += 4;
+
+        for (unsigned int j = 0; j < itemParameterCount; j++)
+        {
+            if (offset > size || size - offset < 8)
+            {
+                return false;
+            }
+
+            SwapDLCWord(pData, offset);
+            unsigned int valueLength = SwapDLCWord(pData, offset + 4);
+            if (!SwapDLCText(pData, size, offset + 8, valueLength, NULL))
+            {
+                return false;
+            }
+
+            offset += valueLength * 2 + 12;
+        }
+
+        if (offset > size || size - offset < itemSizes[i])
+        {
+            return false;
+        }
+
+        if (itemTypes[i] == DLCManager::eDLCType_TexturePack || itemTypes[i] == DLCManager::eDLCType_SkinPack ||
+            itemTypes[i] == DLCManager::eDLCType_Audio)
+        {
+            if (!SwapDLCDataToHost(pData + offset, itemSizes[i]))
+            {
+                return false;
+            }
+        }
+
+        offset += itemSizes[i];
+    }
+
+    return true;
+}
+#endif
+
 DLCManager::DLCManager()
 {
     m_bCorruptDLCFound = true;
@@ -551,6 +705,17 @@ bool DLCManager::readDLCDataFile(unsigned int& numItemsAdded, const std::string&
         return false;
     }
 
+#if LCE_PLATFORM_PC
+    if (!SwapDLCDataToHost(pData, bytesRead))
+    {
+        delete[] pData;
+        pPack->SetIsCorrupt(true);
+        m_bCorruptDLCFound = true;
+
+        return false;
+    }
+#endif
+
     return processDLCDataFile(numItemsAdded, pData, bytesRead, pPack, bTakeDataOwnership);
 }
 
@@ -686,6 +851,15 @@ unsigned int DLCManager::retrievePackIDFromDLCDataFile(const std::string& fileNa
 
         return 0;
     }
+
+#if LCE_PLATFORM_PC
+    if (!SwapDLCDataToHost(pData, bytesRead))
+    {
+        delete[] pData;
+
+        return 0;
+    }
+#endif
 
     unsigned int packID = retrievePackID(pData, bytesRead);
 

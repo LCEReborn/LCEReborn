@@ -2,13 +2,22 @@
 #define SOURCE_VENDOR_MILES_EVENT_EXEC_HPP
 
 #include "game/client/audio/EventSystem.hpp"
+#include "platform/Platform.hpp"
 #include "vendor/MilesAsync.hpp"
+
+#if LCE_PLATFORM_PC
+#include <stddef.h>
+
+#include "game/client/audio/FalloffGraph.hpp"
+#endif
 
 struct SoundBank;
 struct _DIG_DRIVER;
 
 const int SOUND_LOAD_SLOT_COUNT = 4;
+#if LCE_PLATFORM_WIIU
 const int SOUND_ENTRY_SIZE = 0x3c;
+#endif
 const int SOUND_EXTENSION_LIMIT = 8;
 const int RAMP_NAME_SIZE = 0x40;
 const int RAMP_LABELS_SIZE = 0x100;
@@ -60,6 +69,10 @@ struct LoadedSound
     int m_extraParam;
     char m_extension[SOUND_EXTENSION_LIMIT];
 };
+
+#if LCE_PLATFORM_PC
+const int SOUND_ENTRY_SIZE = sizeof(LoadedSound);
+#endif
 
 struct EventSystemVariable
 {
@@ -191,13 +204,29 @@ struct BlendListNode
     char m_name[1];
 };
 
+#if LCE_PLATFORM_WIIU
 const int SAMPLE_MARKER_LIST_OFFSET = 0x224;
+#elif LCE_PLATFORM_PC
+#if defined(__clang__) || defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winvalid-offsetof"
+#endif
+const int SAMPLE_MARKER_LIST_OFFSET = offsetof(_SAMPLE, markerList);
+#if defined(__clang__) || defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
+#endif
 
 struct SampleEventState
 {
     unsigned char m_reserved0[SAMPLE_MARKER_LIST_OFFSET];
     const MilesMarkerList* m_markerList;
 };
+
+#if LCE_PLATFORM_PC
+static_assert(offsetof(SampleEventState, m_markerList) == SAMPLE_MARKER_LIST_OFFSET,
+              "SampleEventState must overlay _SAMPLE::markerList");
+#endif
 
 struct SelectionRecord
 {

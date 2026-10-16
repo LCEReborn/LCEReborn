@@ -1,5 +1,7 @@
 #include "vendor/MilesHandle.hpp"
 
+#include "platform/Platform.hpp"
+
 #include <stddef.h>
 #include <string.h>
 
@@ -38,8 +40,14 @@ void Handle_Init(void* pMemory, int iSize)
 
     HandleHeapBase = static_cast<unsigned char*>(pMemory);
     HandleHeapSize = iSize;
+#if LCE_PLATFORM_WIIU
     HandleHeapStart = reinterpret_cast<unsigned char*>(
         (reinterpret_cast<size_t>(HandleHeapBase) + HANDLE_START_ALIGNMENT) & HANDLE_START_ALIGNMENT_MASK);
+#elif LCE_PLATFORM_PC
+    HandleHeapStart = reinterpret_cast<unsigned char*>(
+        (reinterpret_cast<size_t>(HandleHeapBase) + HANDLE_START_ALIGNMENT)
+        & ~static_cast<size_t>(HANDLE_START_ALIGNMENT));
+#endif
 
     if (HandleHeapStart - sizeof(int) < HandleHeapBase)
     {

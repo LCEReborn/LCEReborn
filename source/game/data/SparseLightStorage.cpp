@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstddef>
+#include <stdint.h>
 
 #include "game/core/DataInputStream.hpp"
 #include "game/core/DataOutputStream.hpp"
@@ -62,7 +63,7 @@ SparseLightStorage::SparseLightStorage(bool allBright, bool compressed)
         newData[plane] = (unsigned char)(allBright ? PLANE_ALL_BRIGHT : PLANE_ALL_DARK);
     }
 
-    mDataAndCount = (unsigned int)newData;
+    mDataAndCount = (uintptr_t)newData;
 }
 
 int SparseLightStorage::getDataSize(long long dataAndCount)
@@ -408,7 +409,7 @@ void SparseLightStorage::setAllBright()
         newData[plane] = (unsigned char)PLANE_ALL_BRIGHT;
     }
 
-    updateDataAndCount((unsigned int)newData);
+    updateDataAndCount((uintptr_t)newData);
 }
 
 int SparseLightStorage::setDataRegion(arrayWithLength<unsigned char> data, int x0, int y0, int z0, int x1, int y1,

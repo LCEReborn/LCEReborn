@@ -2,6 +2,7 @@
 #define GAME_CLIENT_AUDIO_EVENTSYSTEM_HPP
 
 #include "game/core/Handle.hpp"
+#include "platform/Platform.hpp"
 #include "vendor/MilesMarker.hpp"
 #include "game/core/PODHandleArray.hpp"
 
@@ -104,6 +105,9 @@ struct BlendStep
 {
     const char* m_name;
     int m_nameLength;
+#if LCE_PLATFORM_PC
+    int m_namePadding;
+#endif
     float m_rangeStart[MAX_BLEND_POINTS];
     float m_fadeInEnd[MAX_BLEND_POINTS];
     float m_fadeOutStart[MAX_BLEND_POINTS];
@@ -121,6 +125,9 @@ struct RampStep
     int m_labelsLength;
     const char* m_value;
     int m_valueLength;
+#if LCE_PLATFORM_PC
+    int m_valuePadding;
+#endif
     float m_duration;
     unsigned char m_target;
     unsigned char m_global;
@@ -137,6 +144,9 @@ struct LfoStep
     int m_amplitudeLength;
     const char* m_frequency;
     int m_frequencyLength;
+#if LCE_PLATFORM_PC
+    int m_frequencyPadding;
+#endif
     int m_inverted;
     int m_flip;
     int m_mode;
@@ -151,6 +161,9 @@ struct PersistStep
     int m_presetLength;
     const char* m_labels;
     int m_labelsLength;
+#if LCE_PLATFORM_PC
+    int m_labelsPadding;
+#endif
     unsigned char m_active;
 };
 
@@ -182,6 +195,9 @@ struct PlayStep
     int m_selectorLength;
     const char* m_variables;
     int m_variablesLength;
+#if LCE_PLATFORM_PC
+    int m_variablesPadding;
+#endif
     int m_stream;
     float m_volumeMinimum;
     float m_volumeMaximum;
@@ -210,6 +226,9 @@ struct ControlStep
     int m_positionMarkerLength;
     const char* m_preset;
     int m_presetLength;
+#if LCE_PLATFORM_PC
+    int m_presetPadding;
+#endif
     float m_fadeTime;
     unsigned char m_presetPersistent;
     signed char m_loopCount;
@@ -220,6 +239,9 @@ struct EnvironmentStep
 {
     const char* m_name;
     int m_nameLength;
+#if LCE_PLATFORM_PC
+    int m_namePadding;
+#endif
     unsigned char m_enabled;
 };
 
@@ -241,6 +263,9 @@ struct TweenStep
 {
     const char* m_name;
     int m_nameLength;
+#if LCE_PLATFORM_PC
+    int m_namePadding;
+#endif
     float m_firstTime;
     float m_secondTime;
     int m_firstCurve;

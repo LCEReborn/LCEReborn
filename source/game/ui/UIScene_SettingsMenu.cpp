@@ -10,6 +10,7 @@
 #include "game/minigame/MiniGameDef.hpp"
 #include "platform/CStorage.hpp"
 #include "game/ui/UILayer.hpp"
+#include "game/ui/UIMoreOptionsPage.hpp"
 #include "game/ui/fuiFile.hpp"
 #include "game/ui/fuiRenderNode.hpp"
 #include "game/ui/UIString.hpp"
@@ -25,11 +26,10 @@ UIScene_SettingsMenu::UIScene_SettingsMenu(int type, void*, UILayer* layer) : UI
 
     m_buttons[0].init(UIString((int)IDS_GAME_OPTIONS), 0);
     m_buttons[1].init(UIString((int)IDS_AUDIO), 1);
+    m_buttons[2].init(UIString(L"More Options"), 2);
     m_buttons[4].init(UIString((int)IDS_GRAPHICS), 4);
     m_buttons[5].init(UIString((int)IDS_USER_INTERFACE), 5);
     m_buttons[6].init(UIString((int)IDS_RESET_TO_DEFAULTS), 6);
-
-    removeControl(&m_buttons[2], false);
 
     if (gProfile->GetPrimaryPad() != m_playerId)
     {
@@ -110,7 +110,6 @@ void UIScene_SettingsMenu::updateComponents()
 void UIScene_SettingsMenu::handleReload()
 {
     bool destroyControls = Minecraft::GetInstance()->mLevel == NULL;
-    removeControl(&m_buttons[2], destroyControls);
 
     if (gProfile->GetPrimaryPad() != m_playerId)
     {
@@ -204,6 +203,10 @@ void UIScene_SettingsMenu::handlePress(int controlId, int)
                                              EUIGroup_PlayerDefault);
         break;
     }
+    case 2:
+        gConsoleUIController.NavigateToScene(m_playerId, EUIScene_CustomMenu, new UIMoreOptionsPage(),
+                                             EUILayer_Scene, EUIGroup_PlayerDefault);
+        break;
     case 4:
     {
         ListMenuInitData* data = new ListMenuInitData();

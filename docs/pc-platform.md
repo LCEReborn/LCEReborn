@@ -84,3 +84,16 @@ cmake --build build/pc
 
 Run CMake from a Visual Studio x64 developer prompt. The game core is
 compiled as C++14, the dialect it was written in; the PC layer as C++17.
+
+## Custom menus
+
+New menus are built from the game's own interface, so they look and behave
+like the rest of it (focus, sounds, prompts, controller, keyboard, mouse and
+touch). `UIScene_CustomMenu` (scene `EUIScene_CustomMenu`) loads the game's
+list menu movie, the one its settings lists use, and fills it from a page: a
+`UICustomMenuPage` subclass whose `Build` adds section labels, buttons,
+checkboxes, sliders and label/value rows (each with an optional description
+shown beside the list), and whose `OnPress`, `OnToggle` and `OnSlide` handle
+them. `OpenPage` opens another page on top. Settings > More Options opens the
+first page, `UIMoreOptionsPage`: display settings on PC and the build's
+details.

@@ -357,11 +357,11 @@ bool MinecraftServer::loadLevel(LevelStorageSource* storageSource, const std::ws
             && !levelGen->isTutorial()
             && (levelGen->isGameModeLobby() || levelGen->getMapSize() != static_cast<unsigned int>(-1)))
         {
-            saveFile = new ConsoleSaveFileReadOnly(std::wstring(L""), 0, 0, false, eSavePlatform_WIIU);
+            saveFile = new ConsoleSaveFileReadOnly(std::wstring(L""), 0, 0, false, SAVE_FILE_PLATFORM_LOCAL);
         }
         else
         {
-            saveFile = new ConsoleSaveFileOriginal(std::wstring(L""), 0, 0, false, eSavePlatform_WIIU);
+            saveFile = new ConsoleSaveFileOriginal(std::wstring(L""), 0, 0, false, SAVE_FILE_PLATFORM_LOCAL);
         }
         storage = boost::shared_ptr<McRegionLevelStorage>(new McRegionLevelStorage(
             saveFile, File(std::wstring(L".")), name, true, Minecraft::GetInstance()->getFixerUpper()));

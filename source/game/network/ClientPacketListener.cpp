@@ -630,7 +630,7 @@ void ClientPacketListener::handleLogin(boost::shared_ptr<ClientboundLoginPacket>
                         gApp.setLevelGenerationOptions(options);
                     }
                 }
-                ConsoleSaveFileReadOnly* saveFile = new ConsoleSaveFileReadOnly(L"", 0, 0, false, eSavePlatform_WIIU);
+                ConsoleSaveFileReadOnly* saveFile = new ConsoleSaveFileReadOnly(L"", 0, 0, false, SAVE_FILE_PLATFORM_LOCAL);
                 boost::shared_ptr<McRegionLevelStorage> storage(new McRegionLevelStorage(
                     saveFile, File(L"."), L"world", true, Minecraft::GetInstance()->getFixerUpper()));
                 m_level = new MultiPlayerLevel(

@@ -204,7 +204,7 @@ DataInputStream* RegionFile::getChunkDataInputStream(int x, int z, bool* compres
     {
         Compression::getCompression()->Decompress(decompressed, &decompressedSize, data, length);
     }
-    Compression::getCompression()->SetDecompressionType(eSavePlatform_WIIU);
+    Compression::getCompression()->SetDecompressionType(SAVE_FILE_PLATFORM_LOCAL);
     delete[] data;
 
     chunkData.length = decompressedSize;

@@ -182,7 +182,8 @@ class GameSettings
     unsigned int mBattleMiniGameMap;
     unsigned int mLoggingMask;
     unsigned char mActionMappings[25];
-    unsigned char mInventoryMappings[3];
+    unsigned char mInventoryMappings[2];
+    unsigned char mReservedBF;
     unsigned int mGlideMiniGameMap;
 
 public:
@@ -190,7 +191,6 @@ public:
     {
         eInventoryControl_QuickMove,
         eInventoryControl_TakeHalf,
-        eInventoryControl_TakeAll,
         eInventoryControl_Count
     };
 

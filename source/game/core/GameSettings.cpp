@@ -413,9 +413,9 @@ void GameSettings::UpdateActionMapping(int profile, int scheme, bool swapPrimary
 namespace
 {
 const unsigned char kInventoryNone = 0xff;
-const unsigned char kInventoryDefaults[GameSettings::eInventoryControl_Count] = {4, 3, 10};
+const unsigned char kInventoryDefaults[GameSettings::eInventoryControl_Count] = {4, 3};
 const int kInventoryActions[GameSettings::eInventoryControl_Count] = {
-    EControllerActions_MenuY, EControllerActions_MenuX, EControllerActions_MenuLeftScroll};
+    EControllerActions_MenuY, EControllerActions_MenuX};
 const unsigned int kAutosaveCodes[] = {0, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8};
 const int kAutosaveShortMinutes[] = {1, 2, 5, 10};
 }

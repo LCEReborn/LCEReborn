@@ -3,6 +3,11 @@
 
 #include "game/client/audio/FalloffGraph.hpp"
 #include "game/client/audio/SoundBank.hpp"
+#include "platform/Platform.hpp"
+
+#if LCE_PLATFORM_PC
+#include <stdint.h>
+#endif
 
 extern "C" void AIL_debug_log(const char* pFormat, ...);
 extern "C" void AIL_set_error(const char* pError);
@@ -33,6 +38,7 @@ struct GraphPoint
 const int SOUND_BANK_MAGIC = 0x42414e4b;
 const int AUDIO_BANK_MAGIC = 0x41554442;
 
+#if LCE_PLATFORM_WIIU
 struct SoundBankHeader
 {
     int magic;
@@ -47,6 +53,22 @@ struct SoundBankHeader
     int soundCount;
     char name[1];
 };
+#elif LCE_PLATFORM_PC
+struct SoundBankHeader
+{
+    int magic;
+    int reserved0[2];
+    int pathLength;
+    int path;
+    int reserved1[2];
+    int presets;
+    int sounds;
+    int reserved2[3];
+    int presetCount;
+    int soundCount;
+    char name[1];
+};
+#endif
 
 typedef void (*PresetEvalFunc)(void* instance, const char* name, int index, void* value, int flags);
 
@@ -158,7 +180,11 @@ unsigned int assign_chan_ptrs(_SAMPLE* pSample, unsigned char* pBuffer, int iKee
 void clear_last_sample(_SAMPLE* pSample);
 void free_channel_buffers(_SAMPLE* pSample);
 void set_user_channel_defaults(int iSpeakerConfig, int iChannelCount, float** ppLevels, signed char* pChannelMap);
+#if LCE_PLATFORM_WIIU
 int SP_ASI_DECODER_callback(unsigned int uUser, void* pDestination, int iCount, int iOffset);
+#elif LCE_PLATFORM_PC
+int SP_ASI_DECODER_callback(uintptr_t uUser, void* pDestination, int iCount, int iOffset);
+#endif
 
 extern int AIL_debug_enabled;
 extern int AIL_debug_nested;

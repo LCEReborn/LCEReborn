@@ -105,7 +105,7 @@ public:
     UITTFFont* createFont(EFont font);
     void updateCurrentFont();
     void SetupFont();
-    int loadSkin(const std::wstring& name, const std::wstring& path, int texture);
+    intptr_t loadSkin(const std::wstring& name, const std::wstring& path, int texture);
     void loadSkins();
     void renderScenes();
     bool PendingFontChange();
@@ -298,7 +298,7 @@ private:
     int m_touchX;
     int m_touchY;
     bool m_rebuildingTouchBoxes;
-    int m_skinScenes[11];
+    intptr_t m_skinScenes[11];
     bool m_menuDisplayed[4];
     bool m_menuDisplayPending[4];
     int m_menuDisplayDelay[4];

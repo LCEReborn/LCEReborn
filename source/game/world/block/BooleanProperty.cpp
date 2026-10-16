@@ -61,7 +61,7 @@ bool BooleanProperty::equals(const Property* other) const
 
 int BooleanProperty::hashCode() const
 {
-    return ((int)mValueClass * 31 + javaStringHashCode(mName)) * 31 + hashBoxedSet(mPossibleValues);
+    return ((int)(intptr_t)mValueClass * 31 + javaStringHashCode(mName)) * 31 + hashBoxedSet(mPossibleValues);
 }
 
 unsigned int BooleanProperty::getValueCount() const

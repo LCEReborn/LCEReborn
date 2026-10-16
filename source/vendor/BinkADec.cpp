@@ -40,6 +40,9 @@ static const unsigned int BCF_SEEK_UNIT_LONG = 1920;
 
 static const unsigned int BCF_STATE_ALIGNMENT_MASK = 0x3F;
 static const unsigned int BCF_SEEK_TABLE_OFFSET = 0x100;
+#if LCE_PLATFORM_PC
+static_assert(sizeof(BcfStream) <= BCF_SEEK_TABLE_OFFSET, "stream state overlaps the seek table");
+#endif
 static const unsigned int BCF_SEEK_CHUNK_ENTRIES = 0x80;
 static const unsigned int BCF_SEEK_ENTRY_BYTES = 2;
 static const unsigned int BCF_HEADER_BYTES = 0x18;
@@ -202,8 +205,13 @@ int ASI_startup()
     return 0;
 }
 
+#if LCE_PLATFORM_WIIU
 int ASI_stream_open(BCF_ALLOC_CALLBACK pAlloc, BCF_FREE_CALLBACK pFree, unsigned int uUser, BCF_FETCH_CALLBACK pFetch,
                     unsigned int uTotalSize)
+#elif LCE_PLATFORM_PC
+void* ASI_stream_open(BCF_ALLOC_CALLBACK pAlloc, BCF_FREE_CALLBACK pFree, uintptr_t uUser, BCF_FETCH_CALLBACK pFetch,
+                      unsigned int uTotalSize)
+#endif
 {
     BcfHeader header;
     unsigned int auStreamBytes[BCF_MAX_STREAMS];
@@ -356,10 +364,18 @@ int ASI_stream_open(BCF_ALLOC_CALLBACK pAlloc, BCF_FREE_CALLBACK pFree, unsigned
         pStream->auStreamBytes[iStream] = auStreamBytes[iStream];
     }
 
+#if LCE_PLATFORM_WIIU
     return reinterpret_cast<int>(pStream);
+#elif LCE_PLATFORM_PC
+    return pStream;
+#endif
 }
 
+#if LCE_PLATFORM_WIIU
 int ASI_stream_close(int iStream)
+#elif LCE_PLATFORM_PC
+int ASI_stream_close(void* iStream)
+#endif
 {
     BcfStream* pStream = reinterpret_cast<BcfStream*>(iStream);
 
@@ -892,7 +908,11 @@ void decode_bink_buffer(BcfStream* pStream)
     }
 }
 
+#if LCE_PLATFORM_WIIU
 void FindFrameBoundary(int iStream)
+#elif LCE_PLATFORM_PC
+void FindFrameBoundary(void* iStream)
+#endif
 {
     BcfStream* pStream = reinterpret_cast<BcfStream*>(iStream);
     unsigned int auCandidates[BCF_SYNC_CANDIDATES];
@@ -1033,10 +1053,18 @@ static void RestartFrameSearch(BcfStream* pStream)
     pStream->uInputPosition = 0;
     pStream->iResyncPending = 0;
     pStream->uInputFill = 0;
+#if LCE_PLATFORM_WIIU
     FindFrameBoundary(reinterpret_cast<int>(pStream));
+#elif LCE_PLATFORM_PC
+    FindFrameBoundary(pStream);
+#endif
 }
 
+#if LCE_PLATFORM_WIIU
 int ASI_stream_process(int iStream, void* pBuffer, int iBytes)
+#elif LCE_PLATFORM_PC
+int ASI_stream_process(void* iStream, void* pBuffer, int iBytes)
+#endif
 {
     BcfStream* pStream = reinterpret_cast<BcfStream*>(iStream);
     unsigned char* pDestination = static_cast<unsigned char*>(pBuffer);
@@ -1263,7 +1291,11 @@ int ASI_stream_process(int iStream, void* pBuffer, int iBytes)
     }
 }
 
+#if LCE_PLATFORM_WIIU
 int ASI_stream_seek(int iStream, int iPosition)
+#elif LCE_PLATFORM_PC
+int ASI_stream_seek(void* iStream, int iPosition)
+#endif
 {
     BcfStream* pStream = reinterpret_cast<BcfStream*>(iStream);
 
@@ -1352,7 +1384,11 @@ void SeekTableLookup(BcfStream* pStream, unsigned int uSample, int* piOffset, in
     }
 }
 
+#if LCE_PLATFORM_WIIU
 int ASI_stream_property(int iStream, unsigned int uProperty, void* pBefore, const void* pNewValue, void* pAfter)
+#elif LCE_PLATFORM_PC
+int ASI_stream_property(void* iStream, unsigned int uProperty, void* pBefore, const void* pNewValue, void* pAfter)
+#endif
 {
     BcfStream* pStream = reinterpret_cast<BcfStream*>(iStream);
     unsigned int* puBefore = static_cast<unsigned int*>(pBefore);

@@ -90,7 +90,7 @@ public:
     static void EndianSwapImageData(void* data, unsigned int length);
     void manageTexture(fuiFile* file, fuiBitmap* bitmap);
     int allocatePermanentFileIndex(int fileIndex);
-    int load(arrayWithLength<unsigned char> bytes, bool createRoot, int fileIndex);
+    intptr_t load(arrayWithLength<unsigned char> bytes, bool createRoot, int fileIndex);
     void unloadScene(fuiFile* file);
     void setScreenSize(float width, float height);
     void setResolution(int resolution);
@@ -112,15 +112,15 @@ public:
     void releaseCustomTexture(int textureId);
     unsigned char getCurrentStencilMask();
     void incrementStencilMask();
-    uint32_t getFuiFileFromIndex(unsigned int index);
+    uintptr_t getFuiFileFromIndex(unsigned int index);
     fuiRenderNode* createNodeFromSymbol(const char* name, fuiRenderNode* parent);
-    int findBitmapFromSymbol(const char* name, fuiFile** file);
+    intptr_t findBitmapFromSymbol(const char* name, fuiFile** file);
     void installTrueTypeFont(int fontIndex, const void** data, const char* name, unsigned short missingGlyph);
     void uninstallTrueTypeFont(const char* name);
     void installBitmapFont(fuiBitmapFont* font);
     void setFontIndirection(const char* source, const char* target);
-    unsigned int getFont(const char* name, bool skipIndirection);
-    unsigned int getDefaultFont(bool skipIndirection);
+    uintptr_t getFont(const char* name, bool skipIndirection);
+    uintptr_t getDefaultFont(bool skipIndirection);
     unsigned int GetCurrentFrameCount();
     void unloadAll();
     void render(fuiFile* file);

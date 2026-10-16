@@ -2,6 +2,7 @@
 #define SOURCE_VENDOR_MILES_GENERIC_HPP
 
 #include "game/client/audio/FalloffGraph.hpp"
+#include "platform/Platform.hpp"
 #include "vendor/MilesApi.hpp"
 #include "vendor/MilesRadSS.hpp"
 
@@ -26,7 +27,11 @@ enum MSS_SPEAKER_CONFIGURATION
     MSS_MC_EAX4 = 0xE0
 };
 
+#if LCE_PLATFORM_WIIU
 const int DIG_DRIVER_SIZE = 4392;
+#elif LCE_PLATFORM_PC
+const int DIG_DRIVER_SIZE = sizeof(_DIG_DRIVER);
+#endif
 const unsigned int DIG_DRIVER_MAGIC = ('H' << 24) | ('D' << 16) | ('I' << 8) | 'G';
 const unsigned int SAMPLE_MAGIC = ('H' << 24) | ('S' << 16) | ('A' << 8) | 'M';
 
@@ -45,6 +50,10 @@ extern "C" unsigned int AIL_us_count();
 extern "C" void SS_start_DIG_driver_playback(_SAMPLE* pSample);
 extern "C" void SS_fill(_DIG_DRIVER* pDriver, short* pDestination);
 extern "C" int AIL_allocate_reverb_buffers(_DIG_DRIVER* pDriver, int iBus);
+#if LCE_PLATFORM_WIIU
 void SS_serve(unsigned int uDriver);
+#elif LCE_PLATFORM_PC
+void SS_serve(uintptr_t uDriver);
+#endif
 
 #endif

@@ -2,6 +2,7 @@
 #define PLATFORM_PC_RENDERER_HPP
 
 #include "game/client/render/C4JRender.hpp"
+#include "game/core/CriticalSection.hpp"
 
 class Renderer : public C4JRender
 {
@@ -140,6 +141,88 @@ public:
     virtual void MemoryFreeMEM2(void* memory);
     virtual void* MemoryAllocBucket(unsigned int size, unsigned int alignment);
     virtual void MemoryFreeBucket(void* memory);
+
+private:
+    struct Texture;
+    struct GpuState;
+    struct Context;
+    struct DeferredCBuff;
+    class CommandBuffer;
+    class Device;
+
+    friend class CommandBuffer;
+
+    void Initialise(bool bFirstTime);
+    void InitialiseContext(bool bReset);
+    Context& getContext();
+    void StartFrameInternal(int screen, bool bAlphaTest);
+    void GammaCorrect();
+    void ConvertLinearToPng(ImageFileBuffer* buffer, unsigned char* pixels, unsigned int width, unsigned int height);
+    void MultWithStack(const float* matrix);
+    void UpdateFogState();
+    void UpdateLightingState();
+    void UpdateViewportState();
+    void UpdateTexGenState();
+    void StateUpdate();
+    void UpdateTextureState(int stage);
+    ePixelShaderType FinalisePixelShaderType(ePixelShaderType pixelShaderType);
+    bool GetDynamicVertexMemory(eVertexType vertexType, int numVertices);
+    void DrawVertexSetup(eVertexType vertexType, ePixelShaderType pixelShaderType, ePrimitiveType primitiveType);
+    void DeleteInternalBuffer(int slot);
+    void SetVertexUniformReg(unsigned int offset, unsigned int count, const float* values);
+    void SetPixelUniformReg(unsigned int offset, unsigned int count, const float* values);
+    void SetGpuShaders(int vertexShader, int pixelShader);
+    void RestoreGpuStateFromContext();
+    void ApplyGpuDepthStencil();
+    void ApplyGpuPolygonControl(bool bFrontFaceCCW);
+    void ApplyGpuAlphaTest();
+    void ApplyGpuViewportAndScissor(float x, float y, float width, float height);
+    void SetScreenScissor(unsigned int left, unsigned int top, unsigned int width, unsigned int height);
+    void SubmitTextureStorage(int slot, const void* data);
+    void SubmitTextureLevel(int slot, int level, int width, int height, const void* data);
+    void ResizeTargets();
+    bool IsGlThread();
+
+    float mClearColour[4];
+    bool mDRCFrameStarted;
+    bool mDisplayEnabled;
+    bool mForegroundAcquired;
+    bool mInitialised;
+    Device* mDevice;
+    int mDefaultTexture;
+    unsigned short mGamma;
+    int mFrameCount;
+    bool mCapturingThumbnail;
+    C4JCriticalSection mCommandBufferMutex;
+    C4JCriticalSection mTextureMutex;
+    int mCurrentVertexShader;
+    int mCurrentPixelShader;
+    eViewportType mCurrentViewport;
+    bool mTextureStateDirty;
+    Texture* mTextures;
+    int mScreenWidth[2];
+    int mScreenHeight[2];
+    int mScreen;
+    bool mHiDef;
+    bool mAllowStaticCommandBufferIds;
+    int mNextCommandBufferId;
+    short* mCommandBufferSlots;
+    CommandBuffer** mCommandBuffers;
+    float* mCommandBufferMatrices;
+    int* mCommandBufferIds;
+    unsigned char* mCommandBufferVertexTypes;
+    int* mCommandBufferPixelShaderTypes;
+    unsigned char* mCommandBufferPrimitiveTypes;
+    int mNumCommandBuffers;
+    int mNumRetiredCommandBuffers;
+    int mCommandBufferVertsDrawn;
+    int mCommandBufferVertsDrawnLastFrame;
+    void* mReservedMEM1;
+    bool mScreenGrabRequested;
+    float mPixelColours[8][4];
+    bool mPixelUniformsDirty;
+    float mLayeredParams[8][4];
+    bool mLayeredParamsDirty;
 };
 
 extern Renderer* gRenderer;

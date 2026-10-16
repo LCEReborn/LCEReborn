@@ -323,7 +323,7 @@ bool Level::getInstaTick()
 
 void Level::setInstaTick(bool instaTick)
 {
-    TlsSetValue(sInstaTickTlsIndex, (void*)(instaTick ? 1 : 0));
+    TlsSetValue(sInstaTickTlsIndex, (void*)(intptr_t)(instaTick ? 1 : 0));
 }
 
 bool Level::hasEntitiesToRemove()

@@ -60,12 +60,12 @@ fuiFile::~fuiFile()
     delete[] data;
 }
 
-int fuiFile::addDataRegion(unsigned int count, unsigned int stride, unsigned char** cursor, void (*swap)(void*))
+intptr_t fuiFile::addDataRegion(unsigned int count, unsigned int stride, unsigned char** cursor, void (*swap)(void*))
 {
-    int first = 0;
+    intptr_t first = 0;
     if (count != 0)
     {
-        first = (int)*cursor;
+        first = (intptr_t)*cursor;
         unsigned int i;
         for (i = 0; i < count; ++i)
         {
@@ -227,7 +227,7 @@ fuiRenderNode* fuiFile::getRootNode()
     return rootNode;
 }
 
-int fuiFile::createNodeFromSymbol(const char* name, fuiRenderNode* parent, int value)
+intptr_t fuiFile::createNodeFromSymbol(const char* name, fuiRenderNode* parent, int value)
 {
     if (fileIndex != value)
         return 0;
@@ -243,10 +243,10 @@ int fuiFile::createNodeFromSymbol(const char* name, fuiRenderNode* parent, int v
                     parent->getStage(), NULL, &timelineData[symbol->objectIndex], 0, 0, NULL, 0, false, this);
                 node->disableCtor();
                 node->gather(false);
-                return (int)node;
+                return (intptr_t)node;
             }
             if (symbol->objectType == eFuiObjectType_Bitmap)
-                return (int)new fuiRenderNodeBitmap(parent->getStage(), NULL, &bitmaps[symbol->objectIndex], 0, 0, NULL,
+                return (intptr_t)new fuiRenderNodeBitmap(parent->getStage(), NULL, &bitmaps[symbol->objectIndex], 0, 0, NULL,
                                                     0, false, this);
         }
     }

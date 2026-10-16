@@ -66,7 +66,11 @@ void handle_asyncs(_STREAM* pStream, int iWait);
 void cancel_asyncs(_STREAM* pStream);
 float MilesStreamCB(void* pUserData);
 int start_IOs_if_we_can(_STREAM* pStream);
+#if LCE_PLATFORM_WIIU
 void background(unsigned int uTimer);
+#elif LCE_PLATFORM_PC
+void background(uintptr_t uTimer);
+#endif
 int stream_align(_STREAM* pStream, int iPosition);
 
 extern "C" float AIL_API_stream_filled_percent(_STREAM* pStream);

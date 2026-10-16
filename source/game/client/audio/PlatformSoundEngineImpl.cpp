@@ -7,15 +7,22 @@
 
 #include "vendor/MilesRib.hpp"
 
+#if LCE_PLATFORM_WIIU
 extern "C" void AXInit();
 extern "C" void MIXInit();
+#endif
 
 extern "C" int BinkADec_RIB_Main(unsigned int uiProvider, int iUpDown,
                                  RIB_ALLOC_PROVIDER_HANDLE_CALLBACK pAllocProviderHandle,
                                  RIB_REGISTER_INTERFACE_CALLBACK pRegisterInterface,
                                  RIB_UNREGISTER_INTERFACE_CALLBACK pUnregisterInterface);
 
+#if LCE_PLATFORM_WIIU
 #include "platform/wiiu/WiiUMilesFileSystem.hpp"
+#elif LCE_PLATFORM_PC
+#include "platform/pc/audio/MilesPcFileSystem.hpp"
+#include "vendor/MilesRadSS.hpp"
+#endif
 #include "game/client/audio/FalloffGraph.hpp"
 #include "vendor/MilesApi.hpp"
 #include "vendor/MilesEventExec.hpp"
@@ -32,6 +39,7 @@ extern "C" void MilesSetEventErrorCallback(void (*pCallback)(long long, const ch
 
 static char szSoundPath[] = "WiiU/Sound/";
 
+#if LCE_PLATFORM_WIIU
 #include <coreinit/memdefaultheap.h>
 
 extern "C" void* platform_alloc(unsigned int uiSize)
@@ -43,6 +51,40 @@ extern "C" void platform_free(void* pBlock)
 {
     MEMFreeToDefaultHeap(pBlock);
 }
+#elif LCE_PLATFORM_PC
+#include <stdlib.h>
+
+#if defined(_WIN32)
+#include <malloc.h>
+#endif
+
+static const unsigned int PLATFORM_ALLOC_ALIGNMENT = 0x40;
+
+extern "C" void* platform_alloc(unsigned int uiSize)
+{
+#if defined(_WIN32)
+    return _aligned_malloc(uiSize, PLATFORM_ALLOC_ALIGNMENT);
+#else
+    void* pBlock;
+
+    if (posix_memalign(&pBlock, PLATFORM_ALLOC_ALIGNMENT, uiSize) != 0)
+    {
+        return NULL;
+    }
+
+    return pBlock;
+#endif
+}
+
+extern "C" void platform_free(void* pBlock)
+{
+#if defined(_WIN32)
+    _aligned_free(pBlock);
+#else
+    free(pBlock);
+#endif
+}
+#endif
 
 PlatformSoundEngineImpl::PlatformSoundEngineImpl()
 {
@@ -55,11 +97,13 @@ PlatformSoundEngineImpl::~PlatformSoundEngineImpl()
 {
 }
 
+#if LCE_PLATFORM_WIIU
 int PlatformSoundEngineImpl::initAX(void* pArg)
 {
     AXInit();
     return 0;
 }
+#endif
 
 void PlatformSoundEngineImpl::ErrorCallback(long long iErrorCode, const char* pErrorText)
 {
@@ -90,12 +134,15 @@ float PlatformSoundEngineImpl::custom_falloff_function(_SAMPLE* pSample, float f
 
 void PlatformSoundEngineImpl::init(char* pSoundBankPath, SoundBankLoadedCallback pSoundBankLoaded)
 {
+#if LCE_PLATFORM_WIIU
     C4JThreadImpl* pAXInitThread;
+#endif
     RADSS_OPEN_DRIVER_CALLBACK pProvider;
     char szSoundBankFile[256];
 
     RIB_load_static_provider_library(BinkADec_RIB_Main, "BinkADec");
 
+#if LCE_PLATFORM_WIIU
     pAXInitThread = new C4JThreadImpl(initAX, NULL, "AXInitThread", 0);
     pAXInitThread->SetProcessor(2);
     pAXInitThread->Run();
@@ -103,11 +150,16 @@ void PlatformSoundEngineImpl::init(char* pSoundBankPath, SoundBankLoadedCallback
     delete pAXInitThread;
 
     MIXInit();
+#endif
 
     AIL_set_file_callbacks(file_open_callback, file_close_callback, file_seek_callback, file_read_callback);
     AIL_startup();
 
+#if LCE_PLATFORM_WIIU
     pProvider = AIL_output_ax(3);
+#elif LCE_PLATFORM_PC
+    pProvider = RADSS_SDLInstallDriver(3);
+#endif
 
     m_pDigitalDriver = AIL_open_generic_digital_driver(32000, 16, 128, 0, pProvider);
 
@@ -123,6 +175,9 @@ void PlatformSoundEngineImpl::init(char* pSoundBankPath, SoundBankLoadedCallback
     if (MilesStartupEventSystem(m_pDigitalDriver, 0x20000, 0, 0x40000) == 0)
     {
         AIL_close_digital_driver(m_pDigitalDriver);
+#if LCE_PLATFORM_PC
+        m_pDigitalDriver = NULL;
+#endif
         AIL_shutdown();
         return;
     }
@@ -136,6 +191,9 @@ void PlatformSoundEngineImpl::init(char* pSoundBankPath, SoundBankLoadedCallback
     {
         AIL_last_error();
         AIL_close_digital_driver(m_pDigitalDriver);
+#if LCE_PLATFORM_PC
+        m_pDigitalDriver = NULL;
+#endif
         AIL_shutdown();
         return;
     }

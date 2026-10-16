@@ -11,10 +11,20 @@
 #include "game/core/Compression.hpp"
 #include "game/core/PIXNamedEvents.hpp"
 #include "platform/C4JEvent.hpp"
+#include "platform/Platform.hpp"
 #include <algorithm>
 #include <cstring>
 
 extern long InterlockedCompareExchangeRelease(volatile long* destination, long exchange, long comparand);
+
+#if LCE_PLATFORM_PC
+static LevelChunk* InterlockedCompareExchangeChunkRelease(LevelChunk* volatile* destination, LevelChunk* exchange,
+                                                          LevelChunk* comparand)
+{
+    __atomic_compare_exchange_n(destination, &comparand, exchange, false, __ATOMIC_RELEASE, __ATOMIC_RELAXED);
+    return comparand;
+}
+#endif
 
 static const int MAX_DROPS_PER_TICK = 100;
 static const int SAVE_PROGRESS_INTERVAL = 10;
@@ -236,9 +246,13 @@ LevelChunk* ServerChunkCache::updateCacheAndPostProcess(int x, int z, LevelChunk
     }
 
     int idx = computeIdx(x, z);
+#if LCE_PLATFORM_WIIU
     if (InterlockedCompareExchangeRelease(reinterpret_cast<volatile long*>(&m_cache[idx]),
                                           reinterpret_cast<long>(chunk), reinterpret_cast<long>(previous))
         == reinterpret_cast<long>(previous))
+#elif LCE_PLATFORM_PC
+    if (InterlockedCompareExchangeChunkRelease(&m_cache[idx], chunk, previous) == previous)
+#endif
     {
         EnterCriticalSection(&m_csLoadCreate);
 

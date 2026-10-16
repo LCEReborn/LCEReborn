@@ -1,6 +1,11 @@
 #include "vendor/MilesStream.hpp"
 
+#include "platform/Platform.hpp"
+
 #include <stddef.h>
+#if LCE_PLATFORM_PC
+#include <stdint.h>
+#endif
 #include <string.h>
 
 #include "vendor/MilesIO.hpp"
@@ -33,7 +38,11 @@ extern "C" void AIL_stop_sample(_SAMPLE* pSample);
 extern "C" void AIL_resume_sample(_SAMPLE* pSample);
 extern "C" void AIL_set_sample_loop_count(_SAMPLE* pSample, int iLoopCount);
 extern "C" void AIL_set_sample_loop_block(_SAMPLE* pSample, int iLoopStart, int iLoopEnd);
+#if LCE_PLATFORM_WIIU
 extern "C" int AIL_register_timer(void (*pCallback)(unsigned int uUser));
+#elif LCE_PLATFORM_PC
+extern "C" int AIL_register_timer(void (*pCallback)(uintptr_t uUser));
+#endif
 extern "C" void AIL_set_timer_frequency(int iTimer, unsigned int uFrequency);
 extern "C" void AIL_start_timer(int iTimer);
 extern "C" void AIL_release_timer_handle(int iTimer);
@@ -129,10 +138,16 @@ static int StreamTimer = -1;
 static int StreamCounter = 0;
 static MilesProfileSite StreamPercentSite;
 
+#if LCE_PLATFORM_WIIU
 #define LITTLE_ENDIAN_32(uValue) \
     (((uValue) << 24) | (((uValue) >> 8 & 0xff) << 16) | (((uValue) >> 16 & 0xff) << 8) | ((uValue) >> 24))
 #define LITTLE_ENDIAN_HIGH_16(uValue) ((((uValue) >> 16 & 0xff) << 8) | ((uValue) >> 24))
 #define LITTLE_ENDIAN_LOW_16(uValue) ((((uValue) & 0xff) << 8) | ((uValue) >> 8 & 0xff))
+#elif LCE_PLATFORM_PC
+#define LITTLE_ENDIAN_32(uValue) (uValue)
+#define LITTLE_ENDIAN_HIGH_16(uValue) ((uValue) & 0xffff)
+#define LITTLE_ENDIAN_LOW_16(uValue) (((uValue) >> 16) & 0xffff)
+#endif
 
 #define QUEUE_ASI_RESET(pStream, iBuffer, pLength, iPosition) \
     do \
@@ -393,7 +408,11 @@ int start_IOs_if_we_can(_STREAM* pStream)
     return iStarted;
 }
 
+#if LCE_PLATFORM_WIIU
 void background(unsigned int uTimer)
+#elif LCE_PLATFORM_PC
+void background(uintptr_t uTimer)
+#endif
 {
     _STREAM* pStream = StreamList;
     InMilesMutex();

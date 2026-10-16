@@ -929,7 +929,7 @@ void Textures::releaseTexture(int texture)
     GlStateManager::deleteTexture(texture);
 }
 
-int Textures::addMemTexture(const std::wstring& name, MemTextureProcessor* processor)
+intptr_t Textures::addMemTexture(const std::wstring& name, MemTextureProcessor* processor)
 {
     MemTexture* texture = NULL;
     EnterCriticalSection(&mMutex);
@@ -957,7 +957,7 @@ int Textures::addMemTexture(const std::wstring& name, MemTextureProcessor* proce
         LeaveCriticalSection(&mMutex);
     }
     delete processor;
-    return (int)texture;
+    return (intptr_t)texture;
 }
 
 int Textures::loadMemTexture(const std::wstring& name, const std::wstring& path)

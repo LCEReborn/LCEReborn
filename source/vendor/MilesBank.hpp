@@ -2,6 +2,7 @@
 #define SOURCE_VENDOR_MILES_BANK_HPP
 
 #include "game/client/audio/SoundBank.hpp"
+#include "platform/Platform.hpp"
 #include "vendor/MilesMem.hpp"
 
 struct _DIG_DRIVER;
@@ -49,6 +50,7 @@ struct EnvironmentPreset
     EnvironmentRecord records[1];
 };
 
+#if LCE_PLATFORM_WIIU
 struct SoundBankImage
 {
     int magic;
@@ -67,6 +69,26 @@ struct SoundBankImage
     int soundCount;
     char name[1];
 };
+#elif LCE_PLATFORM_PC
+struct SoundBankImage
+{
+    int magic;
+    int version;
+    int memoryUsage;
+    int pathLength;
+    int path;
+    int events;
+    int environments;
+    int presets;
+    int sounds;
+    int settings;
+    int eventCount;
+    int environmentCount;
+    int presetCount;
+    int soundCount;
+    char name[1];
+};
+#endif
 
 extern "C" SoundBank* AIL_open_soundbank(const char* fileName, const char* bankName);
 extern "C" void AIL_close_soundbank(SoundBank* bank);

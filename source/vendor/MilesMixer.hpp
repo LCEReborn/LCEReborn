@@ -1,11 +1,16 @@
 #ifndef SOURCE_VENDOR_MILES_MIXER_HPP
 #define SOURCE_VENDOR_MILES_MIXER_HPP
 
+#include "platform/Platform.hpp"
 #include "vendor/MilesRib.hpp"
 
 struct EVENT_STEP_INFO;
 
+#if LCE_PLATFORM_WIIU
 const int MILES_EVENT_HEADER_SIZE = 0x100;
+#elif LCE_PLATFORM_PC
+const int MILES_EVENT_HEADER_SIZE = 0x110;
+#endif
 const int MILES_EVENT_BLEND_POINTS = 10;
 
 struct MilesEventString

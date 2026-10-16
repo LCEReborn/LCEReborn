@@ -1082,7 +1082,7 @@ int CMinecraftApp::EthernetDisconnectReturned(void* context, int pad, C4JStorage
     {
         gConsoleUIController.NavigateToHomeMenu(false);
         gApp.GetCommerceInstance()->HideStoreIcon();
-        int userIndex = reinterpret_cast<int>(context);
+        int userIndex = static_cast<int>(reinterpret_cast<intptr_t>(context));
         if (userIndex == 0xff)
             userIndex = gProfile->GetPrimaryPad();
         gApp.SetAction(userIndex, eXuiAction_ReturnToMenuAfterDisconnect, NULL);

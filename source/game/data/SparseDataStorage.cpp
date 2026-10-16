@@ -4,7 +4,9 @@
 #include "game/core/DataOutputStream.hpp"
 #include "game/core/XLockFreeStack.hpp"
 #include "game/core/XMem.hpp"
+#include "platform/Platform.hpp"
 #include <cstdlib>
+#include <stdint.h>
 #include <string.h>
 
 long long InterlockedCompareExchangeRelease64(volatile long long* destination, long long exchange, long long comparand);
@@ -264,7 +266,7 @@ void SparseDataStorage::freePlaneOffsets(PlaneOffsets* offsets, int size)
 }
 long long SparseDataStorage::createDataAndCount(PlaneOffsets* offsets, int size)
 {
-    return (static_cast<long long>(size) << 48) | reinterpret_cast<unsigned int>(offsets);
+    return (static_cast<long long>(size) << 48) | reinterpret_cast<uintptr_t>(offsets);
 }
 SparseDataStorage::SparseDataStorage()
 {
@@ -293,7 +295,11 @@ SparseDataStorage::PlaneOffsets* SparseDataStorage::getPlaneOffsets()
 }
 unsigned int SparseDataStorage::getPlaneOffsetsDataSize()
 {
+#if LCE_PLATFORM_WIIU
     return dataAndCount.value.sizeAndCount >> DATA_SIZE_SHIFT;
+#elif LCE_PLATFORM_PC
+    return static_cast<unsigned int>(dataAndCount.bits >> 32) >> DATA_SIZE_SHIFT;
+#endif
 }
 void SparseDataStorage::queueForDelete(unsigned char* data, int)
 {

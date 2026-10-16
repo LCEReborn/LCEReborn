@@ -1,6 +1,7 @@
 #ifndef SOURCE_VENDOR_MILES_API_HPP
 #define SOURCE_VENDOR_MILES_API_HPP
 
+#include "platform/Platform.hpp"
 #include "vendor/MilesAsync.hpp"
 #include "vendor/MilesIO.hpp"
 #include "vendor/MilesRR.hpp"
@@ -60,9 +61,13 @@ extern "C" void AIL_API_mem_free_lock(void* pBlock);
 extern "C" void* MSS_alloc_info(unsigned int uSize, unsigned int uUser, const char* pOwnerName, int iOwnerLine);
 extern "C" void MSS_free_info(void* pBlock);
 
+#if LCE_PLATFORM_WIIU
 extern "C" RADSS_OPEN_DRIVER_CALLBACK RADSS_AXInstallDriver1(int iDevice, int iSecond);
+#endif
 extern "C" RADSS_OPEN_DRIVER_CALLBACK AIL_get_default_output();
+#if LCE_PLATFORM_WIIU
 extern "C" RADSS_OPEN_DRIVER_CALLBACK AIL_output_ax(int iDevice);
+#endif
 extern "C" void AIL_set_file_callbacks(AIL_FILE_OPEN_CALLBACK pOpen, AIL_FILE_CLOSE_CALLBACK pClose,
                                        AIL_FILE_SEEK_CALLBACK pSeek, AIL_FILE_READ_CALLBACK pRead);
 extern "C" void AIL_set_sample_bus(_SAMPLE* pSample, unsigned int uBus);

@@ -1,5 +1,7 @@
 #include "vendor/BinkAudioDecode.hpp"
 
+#include "platform/Platform.hpp"
+
 #include <math.h>
 #include <string.h>
 
@@ -25,6 +27,9 @@ struct BINKAUDIODECOMP
 };
 
 static const unsigned int BINKAUDIO_STATE_HEADER_BYTES = 0xA0;
+#if LCE_PLATFORM_PC
+static_assert(sizeof(BINKAUDIODECOMP) <= BINKAUDIO_STATE_HEADER_BYTES, "decoder state overlaps the overlap buffer");
+#endif
 static const unsigned int BINKAUDIO_STATE_ALIGNMENT_ROUNDING = 0xF;
 static const unsigned int BINKAUDIO_SAMPLE_RATE_MEDIUM = 22050;
 static const unsigned int BINKAUDIO_SAMPLE_RATE_LONG = 44100;

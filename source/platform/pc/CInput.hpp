@@ -2,6 +2,14 @@
 #define PLATFORM_PC_CINPUT_HPP
 
 #include "platform/C4JInput.hpp"
+#include "platform/pc/PcInputEvents.hpp"
+
+#include <deque>
+#include <string>
+#include <vector>
+
+struct SDL_Gamepad;
+struct SDL_Window;
 
 class CInput : public C_4JInput
 {
@@ -71,6 +79,201 @@ public:
     virtual unsigned int IsPadClassicController(int pad);
     virtual unsigned char IsDRCConnected();
     virtual void AcquiredForeground();
+
+private:
+    friend void PcInputHandleEvent(const SDL_Event& event);
+
+    enum
+    {
+        JOYPAD_COUNT = 5,
+        BUTTON_COUNT = 24,
+        SCANCODE_COUNT = 512,
+        MOUSE_BUTTON_COUNT = 8,
+        KEYBOARD_TEXT_CAPACITY = 258
+    };
+
+    enum EKeyboardState
+    {
+        EKeyboardState_Idle = 0,
+        EKeyboardState_Requested = 1,
+        EKeyboardState_Active = 2
+    };
+
+    enum EErrorViewerState
+    {
+        EErrorViewerState_None = 0,
+        EErrorViewerState_Requested = 1,
+        EErrorViewerState_Active = 2,
+        EErrorViewerState_Destroyed = 3
+    };
+
+    struct Joypad
+    {
+        bool connected;
+        bool disconnected;
+        bool newlyConnected;
+        bool consumed;
+        bool previousConsumed;
+        unsigned int touchValue;
+        unsigned int rawValue;
+        unsigned int fakeValue;
+        unsigned int fakeTimer;
+        unsigned int previousValue;
+        unsigned int pressedValue;
+        unsigned int releasedValue;
+        float leftX;
+        float leftY;
+        float rightX;
+        float rightY;
+        unsigned char leftTrigger;
+        unsigned char rightTrigger;
+        float* leftXSource;
+        float* leftYSource;
+        float* rightXSource;
+        float* rightYSource;
+        float sensitivity;
+        unsigned char* leftTriggerSource;
+        unsigned char* rightTriggerSource;
+        int lockedController;
+        SDL_Gamepad* gamepad;
+        unsigned int gamepadId;
+        unsigned int padButtons;
+        unsigned int padFaceButtons[4];
+        int padLeftX;
+        int padLeftY;
+        int padRightX;
+        int padRightY;
+        unsigned char padLeftTrigger;
+        unsigned char padRightTrigger;
+
+        void setConnected(bool value);
+    };
+
+    struct ButtonTime
+    {
+        unsigned long long lastUpdate;
+        float heldTime;
+        float repeatTime;
+        bool repeated;
+    };
+
+    struct MouseSample
+    {
+        unsigned long long time;
+        float x;
+        float y;
+    };
+
+    struct VerifyRequest
+    {
+        int (*callback)(void*, _STRING_VERIFY_RESPONSE*);
+        void* context;
+        int count;
+    };
+
+    void HandleEvent(const SDL_Event& event);
+    void AddGamepad(unsigned int gamepadId);
+    void RemoveGamepad(unsigned int gamepadId);
+    void ResolveFaceButtons(Joypad& joypad);
+    void ReleaseAllKeys();
+    bool IsKeyboardInMenu() const;
+    int KeyboardPlayer() const;
+    void PressKey(int scancode);
+    void ReleaseKey(int scancode);
+    void PressMouseButton(int button);
+    void ReleaseMouseButton(int button);
+    void QueueHotbarSteps(int steps);
+    void SelectHotbarSlot(int slot);
+    SDL_Window* LocateWindow() const;
+    bool RemapIpad(int& pad);
+    unsigned int only_one_bit_set(unsigned int value);
+    unsigned int allowInput(int pad, unsigned char map, unsigned int value);
+    void ReadAllPads();
+    void ReadGamepad(Joypad& joypad);
+    void ClearJoypadValues(Joypad* joypad);
+    void SetJoypadValues(int pad, Joypad* joypad);
+    void ApplyStickValues(Joypad* joypad, int leftX, int leftY, int rightX, int rightY);
+    void ApplyKeyboardAndMouse(Joypad* joypad);
+    void UpdateHotbarPulse();
+    void StartHotbarPulse(int direction, unsigned long long now);
+    void ConsumeAllPads();
+    bool IsMenuShown(int pad) const;
+    void UpdateMouseCapture();
+    void UpdateJoypads();
+    void GetStartTime(int pad, int button);
+    void UpdateTime(int pad, int button);
+    void TickErrorViewer();
+    void TickKeyboard();
+    void FinishKeyboard(bool accepted);
+    void HandleKeyboardTextInput(const char* text);
+    void HandleKeyboardKey(int scancode, unsigned short modifiers, bool repeat);
+    bool AppendKeyboardCodepoint(unsigned int codepoint);
+    void TickVerifyStrings();
+
+    Joypad joypads[JOYPAD_COUNT];
+    int padRemap[4];
+    unsigned int controllerCount;
+    unsigned int deadzone;
+    unsigned int maximumInput;
+    unsigned int movementRange;
+    unsigned int movementSpan;
+    float movementSpanFloat;
+    unsigned char controllerConfiguration[3];
+    unsigned int* gameJoypadMaps[JOYPAD_COUNT];
+    unsigned int* alternateJoypadMaps[JOYPAD_COUNT];
+    bool joypadMapsReady;
+    bool initialised;
+    unsigned char menuDisplayed[4];
+    unsigned int inputTick;
+    float initialRepeatDelay;
+    float repeatDelay;
+    bool circleCrossSwapped;
+    ButtonTime buttonTimes[JOYPAD_COUNT][BUTTON_COUNT];
+    unsigned long long idleStartTimes[JOYPAD_COUNT];
+    std::string debugSequence;
+    InputCallback debugSequenceCallback;
+    void* debugSequenceContext;
+    bool localMultiplayer;
+
+    unsigned int keyButtons[SCANCODE_COUNT];
+    unsigned int keySticks[SCANCODE_COUNT];
+    bool keyDown[SCANCODE_COUNT];
+    unsigned int mouseButtons[MOUSE_BUTTON_COUNT];
+    bool mouseButtonDown[MOUSE_BUTTON_COUNT];
+    std::deque<MouseSample> mouseSamples;
+    bool mouseLookEnabled;
+    bool mouseCaptured;
+    bool windowFocused;
+    unsigned int lastWindowId;
+    int hotbarSteps;
+    int hotbarTarget;
+    int hotbarTargetPulses;
+    unsigned int hotbarPulseButton;
+    unsigned long long hotbarPulseStart;
+
+    EKeyboardState keyboardState;
+    KeyboardCallback keyboardCallback;
+    void* keyboardContext;
+    int keyboardMaximumLength;
+    int keyboardPad;
+    EKeyboardMode keyboardMode;
+    wchar_t keyboardText[KEYBOARD_TEXT_CAPACITY];
+    std::vector<wchar_t> keyboardEditText;
+    bool keyboardAccepted;
+    bool keyboardCancelled;
+    bool destroyKeyboardRequested;
+    unsigned int keyboardWindowId;
+
+    EErrorViewerState errorViewerState;
+    ErrorViewerCallback errorViewerCallback;
+    void* errorViewerContext;
+    unsigned int errorViewerController;
+    unsigned int errorViewerCode;
+    std::wstring errorViewerTitle;
+    std::wstring errorViewerMessage;
+    bool errorViewerHasText;
+
+    std::vector<VerifyRequest> verifyRequests;
 };
 
 extern CInput* g_pInput;

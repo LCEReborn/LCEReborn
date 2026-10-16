@@ -775,7 +775,7 @@ int UIScene_LoadCreateJoinMenu::DeleteSaveDataReturned(void* context, bool succe
 {
     gConsoleUIController.EnterCallbackIdCriticalSection();
     UIScene_LoadCreateJoinMenu* menu = static_cast<UIScene_LoadCreateJoinMenu*>(
-        gConsoleUIController.GetSceneFromCallbackId(reinterpret_cast<unsigned int>(context)));
+        gConsoleUIController.GetSceneFromCallbackId(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context))));
     if (menu != NULL)
     {
         if (success)
@@ -841,7 +841,7 @@ bool UIScene_LoadCreateJoinMenu::DoesGamesListHaveFocus()
 int UIScene_LoadCreateJoinMenu::RenameSaveDataReturned(void* context, bool success)
 {
     UIScene_LoadCreateJoinMenu* menu = static_cast<UIScene_LoadCreateJoinMenu*>(
-        gConsoleUIController.GetSceneFromCallbackId(reinterpret_cast<unsigned int>(context)));
+        gConsoleUIController.GetSceneFromCallbackId(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context))));
     if (menu == NULL)
         return 0;
     if (success)
@@ -855,7 +855,7 @@ int UIScene_LoadCreateJoinMenu::RenameSaveDataReturned(void* context, bool succe
 int UIScene_LoadCreateJoinMenu::KeyboardCompleteWorldNameCallback(void* context, bool accepted)
 {
     UIScene_LoadCreateJoinMenu* menu = static_cast<UIScene_LoadCreateJoinMenu*>(
-        gConsoleUIController.GetSceneFromCallbackId(reinterpret_cast<unsigned int>(context)));
+        gConsoleUIController.GetSceneFromCallbackId(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context))));
     if (menu != NULL)
     {
         menu->m_ignoreInput = false;
@@ -888,7 +888,7 @@ int UIScene_LoadCreateJoinMenu::CopySaveErrorDialogFinishedCallback(void* contex
 {
     gConsoleUIController.EnterCallbackIdCriticalSection();
     UIScene_LoadCreateJoinMenu* menu = static_cast<UIScene_LoadCreateJoinMenu*>(
-        gConsoleUIController.GetSceneFromCallbackId(reinterpret_cast<unsigned int>(context)));
+        gConsoleUIController.GetSceneFromCallbackId(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context))));
     if (menu != NULL)
         menu->m_copyInProgress = false;
     gConsoleUIController.LeaveCallbackIdCriticalSection();
@@ -899,7 +899,7 @@ int UIScene_LoadCreateJoinMenu::CopySaveDataReturned(void* context, bool success
 {
     gConsoleUIController.EnterCallbackIdCriticalSection();
     UIScene_LoadCreateJoinMenu* menu = static_cast<UIScene_LoadCreateJoinMenu*>(
-        gConsoleUIController.GetSceneFromCallbackId(reinterpret_cast<unsigned int>(context)));
+        gConsoleUIController.GetSceneFromCallbackId(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context))));
     if (menu != NULL)
     {
         if (success)
@@ -937,7 +937,7 @@ bool UIScene_LoadCreateJoinMenu::CopySaveDataProgress(void* context, int percent
     bool keepCopying = false;
     gConsoleUIController.EnterCallbackIdCriticalSection();
     UIScene_LoadCreateJoinMenu* menu = static_cast<UIScene_LoadCreateJoinMenu*>(
-        gConsoleUIController.GetSceneFromCallbackId(reinterpret_cast<unsigned int>(context)));
+        gConsoleUIController.GetSceneFromCallbackId(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context))));
     if (menu != NULL)
         keepCopying = !menu->m_copyCancelled;
     gConsoleUIController.LeaveCallbackIdCriticalSection();
@@ -953,7 +953,7 @@ int UIScene_LoadCreateJoinMenu::CopySaveThreadProc(void* context)
 
     gConsoleUIController.EnterCallbackIdCriticalSection();
     UIScene_LoadCreateJoinMenu* menu = static_cast<UIScene_LoadCreateJoinMenu*>(
-        gConsoleUIController.GetSceneFromCallbackId(reinterpret_cast<unsigned int>(context)));
+        gConsoleUIController.GetSceneFromCallbackId(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context))));
     if (menu != NULL)
     {
         menu->m_copyInProgress = true;
@@ -968,7 +968,8 @@ int UIScene_LoadCreateJoinMenu::CopySaveThreadProc(void* context)
             Sleep(COPY_POLL_INTERVAL);
             gConsoleUIController.EnterCallbackIdCriticalSection();
             menu = static_cast<UIScene_LoadCreateJoinMenu*>(
-                gConsoleUIController.GetSceneFromCallbackId(reinterpret_cast<unsigned int>(context)));
+                gConsoleUIController.GetSceneFromCallbackId(
+                    static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context))));
             if (menu != NULL)
                 copying = menu->m_copyInProgress;
             else

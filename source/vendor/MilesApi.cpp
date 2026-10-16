@@ -6,6 +6,10 @@
 #include "vendor/MilesEventExec.hpp"
 #include "game/util/LegacyUtilityFunctions.hpp"
 
+#if LCE_PLATFORM_PC
+#include "vendor/MilesRadSS.hpp"
+#endif
+
 extern "C" _DIG_DRIVER* AIL_open_generic_digital_driver(unsigned int uFrequency, int iBits, unsigned int uSpeakerConfig,
                                                         unsigned int uFlags, RADSS_OPEN_DRIVER_CALLBACK pOutput)
 {
@@ -1396,6 +1400,7 @@ extern "C" void AIL_set_file_callbacks(AIL_FILE_OPEN_CALLBACK pOpen, AIL_FILE_CL
     AIL_file_read = pRead;
 }
 
+#if LCE_PLATFORM_WIIU
 extern "C" RADSS_OPEN_DRIVER_CALLBACK AIL_get_default_output()
 {
     return RADSS_AXInstallDriver1(0, 0);
@@ -1405,3 +1410,9 @@ extern "C" RADSS_OPEN_DRIVER_CALLBACK AIL_output_ax(int iDevice)
 {
     return RADSS_AXInstallDriver1(iDevice, 0);
 }
+#elif LCE_PLATFORM_PC
+extern "C" RADSS_OPEN_DRIVER_CALLBACK AIL_get_default_output()
+{
+    return RADSS_SDLInstallDriver(0);
+}
+#endif

@@ -1,5 +1,9 @@
 #include "vendor/MilesTime.hpp"
 
+#include "platform/Platform.hpp"
+
+#if LCE_PLATFORM_WIIU
+
 #include <coreinit/systeminfo.h>
 #include <coreinit/thread.h>
 #include <coreinit/time.h>
@@ -91,3 +95,83 @@ extern "C" unsigned long long rrMicrosToTime(unsigned long long uMicroseconds)
 {
     return (uMicroseconds * (OSGetSystemInfo()->busClockSpeed >> 2)) / 1000000;
 }
+
+#elif LCE_PLATFORM_PC
+
+#include <chrono>
+
+#include "vendor/MilesRR.hpp"
+
+static const unsigned int RR_TIME_UNINITIALISED = 0;
+static const unsigned int RR_TIME_READY = 1;
+static const unsigned int RR_TIME_CLAIMED = 2;
+
+static const unsigned long long RR_TIME_UNITS_PER_SECOND = 1000000000ULL;
+
+static unsigned int rrTimeState = RR_TIME_UNINITIALISED;
+
+static std::chrono::steady_clock::time_point rrTimeBase;
+
+static unsigned long long ElapsedTime()
+{
+    return static_cast<unsigned long long>(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - rrTimeBase).count());
+}
+
+void GetBases()
+{
+    unsigned int uPrevious;
+
+    for (;;)
+    {
+        uPrevious = rrAtomicCmpXchg32(&rrTimeState, RR_TIME_CLAIMED, RR_TIME_UNINITIALISED);
+
+        if (uPrevious == RR_TIME_READY)
+        {
+            return;
+        }
+
+        if (uPrevious == RR_TIME_UNINITIALISED)
+        {
+            break;
+        }
+
+        rrThreadSleep(0);
+    }
+
+    rrTimeBase = std::chrono::steady_clock::now();
+
+    rrAtomicStoreRelease32(&rrTimeState, RR_TIME_READY);
+}
+
+extern "C" unsigned long long rrGetTime()
+{
+    if (rrAtomicLoadAcquire32(&rrTimeState) != RR_TIME_READY)
+    {
+        GetBases();
+    }
+
+    return ElapsedTime();
+}
+
+extern "C" unsigned long long rrTimeToMillis(unsigned long long uTime)
+{
+    return uTime / (RR_TIME_UNITS_PER_SECOND / 1000);
+}
+
+extern "C" unsigned long long rrTimeToMicros(unsigned long long uTime)
+{
+    return uTime / (RR_TIME_UNITS_PER_SECOND / 1000000);
+}
+
+extern "C" unsigned long long rrMillisToTime(unsigned long long uMilliseconds)
+{
+    return uMilliseconds * (RR_TIME_UNITS_PER_SECOND / 1000);
+}
+
+extern "C" unsigned long long rrMicrosToTime(unsigned long long uMicroseconds)
+{
+    return uMicroseconds * (RR_TIME_UNITS_PER_SECOND / 1000000);
+}
+
+#endif

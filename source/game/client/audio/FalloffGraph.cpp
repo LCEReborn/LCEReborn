@@ -24,7 +24,9 @@ const int QUEUE_HANDLE_SHIFT = 16;
 const int QUEUE_TOKEN_MASK = 0xffff;
 const int QUEUE_TOKEN_LIMIT = 8;
 const int QUEUE_BUFFER_RECORD_HEADER_SIZE = 0x10;
+#if LCE_PLATFORM_WIIU
 const int QUEUED_EVENT_HEADER_SIZE = 0x30;
+#endif
 const int QUEUED_EVENT_PADDING = 0xf;
 const unsigned int QUEUE_USED_MASK = 0x7fffffff;
 const unsigned long long QUEUE_HEAD_MASK = 0xffffffff00000000ull;
@@ -105,7 +107,11 @@ struct QueuedEvent
     unsigned int committedSize;
     unsigned int size;
     const void* event;
+#if LCE_PLATFORM_WIIU
     unsigned int filter;
+#elif LCE_PLATFORM_PC
+    uintptr_t filter;
+#endif
     unsigned long long serial;
     unsigned long long context;
     unsigned long long selection;
@@ -113,6 +119,10 @@ struct QueuedEvent
     unsigned int dataSize;
     unsigned char data[1];
 };
+
+#if LCE_PLATFORM_PC
+const int QUEUED_EVENT_HEADER_SIZE = offsetof(QueuedEvent, data);
+#endif
 
 struct BlendNode
 {
@@ -145,7 +155,11 @@ struct SoundLimitEntry
 struct SoundEntry
 {
     Handle name;
+#if LCE_PLATFORM_WIIU
     unsigned char reserved0[8];
+#elif LCE_PLATFORM_PC
+    unsigned char reserved0[16];
+#endif
     unsigned int nameLength;
 };
 
@@ -324,7 +338,11 @@ extern "C" unsigned int AIL_enqueue_event_buffer(unsigned int* puiQueue, void* p
     int size = iDataSize;
     if (iFlags != 0)
     {
+#if LCE_PLATFORM_WIIU
         size = 4;
+#elif LCE_PLATFORM_PC
+        size = sizeof(void*);
+#endif
     }
 
     unsigned int result = 0;
@@ -1088,6 +1106,10 @@ void FalloffGraph_Set(_SAMPLE* sample, int flags, FalloffGraph* graph)
         {
             AIL_set_sample_3D_exclusion_falloff(sample, NULL, 0);
         }
+#if LCE_PLATFORM_PC
+
+        return;
+#endif
     }
 
     sample->maximumDistance = graph->maximumDistance;

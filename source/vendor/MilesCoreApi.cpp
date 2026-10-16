@@ -201,9 +201,15 @@ extern "C" int AIL_register_timer(AIL_TIMER_CALLBACK pCallback)
     return iTimer;
 }
 
+#if LCE_PLATFORM_WIIU
 extern "C" unsigned int AIL_set_timer_user(int iTimer, unsigned int uUser)
 {
     unsigned int uPrevious;
+#elif LCE_PLATFORM_PC
+extern "C" uintptr_t AIL_set_timer_user(int iTimer, uintptr_t uUser)
+{
+    uintptr_t uPrevious;
+#endif
 
     AIL_debug_depth = AIL_debug_depth + 1;
 

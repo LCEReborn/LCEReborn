@@ -452,7 +452,7 @@ int UIScene_MainMenu::MustConnectReturnedNintendo(void* context, int userIndex, 
 int UIScene_MainMenu::MiniGamesUnlock_Returned(void* context, int playerId, C4JStorage::EMessageResult result)
 {
     UIScene_MainMenu* scene = static_cast<UIScene_MainMenu*>(
-        gConsoleUIController.GetSceneFromCallbackId(reinterpret_cast<unsigned int>(context)));
+        gConsoleUIController.GetSceneFromCallbackId(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context))));
     if (scene != NULL)
     {
         if (result == C4JStorage::EMessageResult_Accept)

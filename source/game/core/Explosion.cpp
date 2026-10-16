@@ -89,7 +89,7 @@ Explosion::~Explosion()
 
 void Explosion::explode()
 {
-    unsigned int nestedExplosions = (unsigned int)TlsGetValue(gExplosionCountTlsIndex);
+    unsigned int nestedExplosions = (unsigned int)(uintptr_t)TlsGetValue(gExplosionCountTlsIndex);
 
     if (nestedExplosions > 50)
     {
@@ -405,7 +405,7 @@ void Explosion::explode()
 
     nestedExplosions--;
 
-    TlsSetValue(gExplosionCountTlsIndex, (void*)nestedExplosions);
+    TlsSetValue(gExplosionCountTlsIndex, (void*)(uintptr_t)nestedExplosions);
 }
 
 void Explosion::finalizeExplosion(bool spawnParticles, std::vector<BlockPos>* toBlow)

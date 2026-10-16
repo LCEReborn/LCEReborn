@@ -81,7 +81,11 @@ enum RampTarget
 
 struct SoundSourceData
 {
+#if LCE_PLATFORM_WIIU
     unsigned char m_reserved0[0x30];
+#elif LCE_PLATFORM_PC
+    unsigned char m_reserved0[offsetof(LoadedSound, m_extraParam)];
+#endif
     float m_volume;
 };
 
@@ -393,7 +397,7 @@ void Sound_Free(EventSystem* eventSystem, Handle sound)
         }
         else
         {
-            Audition_AsyncCancel(reinterpret_cast<int>(g_soundLoadRequests[entry->m_loadSlot - 1].pPriorityUserData));
+            Audition_AsyncCancel(static_cast<int>(reinterpret_cast<intptr_t>(g_soundLoadRequests[entry->m_loadSlot - 1].pPriorityUserData)));
             g_soundLoadBusy[entry->m_loadSlot - 1] = LOAD_REQUEST_IDLE;
             AIL_mem_free_lock(entry->m_data);
         }

@@ -5,7 +5,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#if LCE_PLATFORM_WIIU
 #include <coreinit/time.h>
+#endif
 #ifdef __ghs__
 #include <ppc_ghs.h>
 #endif
@@ -23,6 +25,10 @@
 #include "vendor/MilesRadSS.hpp"
 #include "vendor/MilesRib.hpp"
 #include "vendor/MilesTime.hpp"
+
+#if LCE_PLATFORM_PC
+#include "platform/pc/audio/MilesPcBank.hpp"
+#endif
 
 typedef void (*AIL_LOG_CALLBACK)(const char* pText, int iDepth);
 
@@ -659,8 +665,12 @@ extern "C" void* AIL_find_sound_preset(SoundBank* bank, const char* name)
         return NULL;
     }
 
+#if LCE_PLATFORM_WIIU
     SoundBank::AssetEntry* entry = reinterpret_cast<SoundBank::AssetEntry*>(
         static_cast<uintptr_t>(FindAsset(bank, name, header->presets, header->presetCount)));
+#elif LCE_PLATFORM_PC
+    SoundBank::AssetEntry* entry = MilesPcFindAsset(bank, name, header->presets, header->presetCount);
+#endif
     if (entry == NULL)
     {
         AIL_set_error(PRESET_NOT_FOUND_ERROR);
@@ -673,8 +683,12 @@ extern "C" void* AIL_find_sound_preset(SoundBank* bank, const char* name)
 extern "C" int AIL_sound_asset_info(SoundBank* bank, const char* name, char* path, _MILESBANKSOUNDINFO* info)
 {
     SoundBankHeader* header = reinterpret_cast<SoundBankHeader*>(bank);
+#if LCE_PLATFORM_WIIU
     SoundBank::AssetEntry* entry = reinterpret_cast<SoundBank::AssetEntry*>(
         static_cast<uintptr_t>(FindAsset(bank, name, header->sounds, header->soundCount)));
+#elif LCE_PLATFORM_PC
+    SoundBank::AssetEntry* entry = MilesPcFindAsset(bank, name, header->sounds, header->soundCount);
+#endif
     if (entry == NULL)
     {
         if (path != NULL)
@@ -696,7 +710,11 @@ extern "C" int AIL_sound_asset_info(SoundBank* bank, const char* name, char* pat
     if (path != NULL)
     {
         *path = SOUND_ASSET_PATH_MARKER;
+#if LCE_PLATFORM_WIIU
         memcpy(path + 1, header->path, header->pathLength);
+#elif LCE_PLATFORM_PC
+        memcpy(path + 1, MilesPcBankPath(bank), header->pathLength);
+#endif
         strcpy(path + header->pathLength + 1, assetName);
     }
 
@@ -1971,7 +1989,11 @@ extern "C" int AIL_API_open_filter(unsigned int uProvider, _DIG_DRIVER* pDriver)
         pFilter->provider = uProvider;
         pFilter->next = FLT_list;
         FLT_list = pFilter;
+#if LCE_PLATFORM_WIIU
         return reinterpret_cast<int>(pFilter);
+#elif LCE_PLATFORM_PC
+        return 1;
+#endif
     }
 
     const char* pError = pFilter->error();
@@ -1995,8 +2017,14 @@ unsigned char* assign_ptr(unsigned char** ppCursor, unsigned int uSize)
 unsigned int assign_chan_ptrs(_SAMPLE* pSample, unsigned char* pBuffer, int iKeepLevelArrays)
 {
     int iChannels = pSample->channelCount;
+#if LCE_PLATFORM_WIIU
     unsigned char* pCursor = reinterpret_cast<unsigned char*>(
         (reinterpret_cast<unsigned int>(pBuffer) + CHANNEL_BUFFER_ALIGNMENT - 1) & ~(CHANNEL_BUFFER_ALIGNMENT - 1));
+#elif LCE_PLATFORM_PC
+    unsigned char* pCursor = reinterpret_cast<unsigned char*>(
+        (reinterpret_cast<uintptr_t>(pBuffer) + CHANNEL_BUFFER_ALIGNMENT - 1)
+        & ~static_cast<uintptr_t>(CHANNEL_BUFFER_ALIGNMENT - 1));
+#endif
     unsigned int uRows = (pSample->driver->speakerConfig + 1) & ~1u;
     float* pScratch[CHANNEL_SCRATCH_ROWS];
     int* pScratchInt[CHANNEL_SCRATCH_ROWS];
@@ -2370,7 +2398,11 @@ extern "C" int SS_set_sample_type(_SAMPLE* pSample, unsigned int uFlags, int iCh
     return 1;
 }
 
+#if LCE_PLATFORM_WIIU
 int SP_ASI_DECODER_callback(unsigned int uUser, void* pDestination, int iCount, int iOffset)
+#elif LCE_PLATFORM_PC
+int SP_ASI_DECODER_callback(uintptr_t uUser, void* pDestination, int iCount, int iOffset)
+#endif
 {
     _SAMPLE* pSample = reinterpret_cast<_SAMPLE*>(uUser);
     int iCurrent = pSample->currentBuffer;
@@ -2635,8 +2667,13 @@ extern "C" int AIL_API_set_sample_processor(_SAMPLE* pSample, int iStage, int iP
     RIB_request_interface(decoder.provider, ASI_STREAM_INTERFACE, 4, layoutEntries);
     RIB_request_interface(decoder.provider, ASI_STREAM_INTERFACE, 5, seekEntries);
 
+#if LCE_PLATFORM_WIIU
     decoder.stream = decoder.open(MSS_alloc_info, MSS_free_info, reinterpret_cast<unsigned int>(pSample),
                                   SP_ASI_DECODER_callback, pSample->buffers[0].size);
+#elif LCE_PLATFORM_PC
+    decoder.stream = decoder.open(MSS_alloc_info, MSS_free_info, reinterpret_cast<uintptr_t>(pSample),
+                                  SP_ASI_DECODER_callback, pSample->buffers[0].size);
+#endif
 
     RIB_request_interface(decoder.provider, ASI_CODEC_INTERFACE, 1, &profileEntry);
     uProfile = uProfile - ASI_PROFILE_BASE;
@@ -2956,7 +2993,11 @@ const unsigned char* NextWavChunk(const unsigned char* pChunk)
 
 VocBlocks* VocState(_SAMPLE* pSample)
 {
+#if LCE_PLATFORM_WIIU
     return reinterpret_cast<VocBlocks*>(&pSample->falloffHandle);
+#elif LCE_PLATFORM_PC
+    return reinterpret_cast<VocBlocks*>(&pSample->vocCurrent);
+#endif
 }
 }
 
@@ -5546,10 +5587,17 @@ inline unsigned long long ReadTimeBase()
     return (static_cast<unsigned long long>(uHigh) << 32) | uLow;
 }
 #else
+#if LCE_PLATFORM_WIIU
 inline unsigned long long ReadTimeBase()
 {
     return OSGetSystemTime();
 }
+#elif LCE_PLATFORM_PC
+inline unsigned long long ReadTimeBase()
+{
+    return rrGetTime();
+}
+#endif
 #endif
 
 inline void StartTimer(MixTimer* pTimer)
@@ -5609,6 +5657,7 @@ inline short ReadSample(const unsigned char* pBytes)
 }
 #endif
 
+#if LCE_PLATFORM_WIIU
 inline short ConvertOutputSample(int iValue)
 {
     int iScaled = iValue >> OUTPUT_SAMPLE_SHIFT;
@@ -5624,6 +5673,23 @@ inline short ConvertOutputSample(int iValue)
 
     return static_cast<short>((static_cast<unsigned short>(iScaled) >> 8) | (static_cast<unsigned char>(iScaled) << 8));
 }
+#elif LCE_PLATFORM_PC
+inline short ConvertOutputSample(int iValue)
+{
+    int iScaled = iValue >> OUTPUT_SAMPLE_SHIFT;
+    if (iScaled <= OUTPUT_SAMPLE_MINIMUM - 1)
+    {
+        return static_cast<short>(OUTPUT_SAMPLE_MINIMUM - 1);
+    }
+
+    if (iScaled > OUTPUT_SAMPLE_MAXIMUM)
+    {
+        iScaled = OUTPUT_SAMPLE_CLIPPED_HIGH;
+    }
+
+    return static_cast<short>(iScaled);
+}
+#endif
 }
 
 unsigned int slow_ramp_mix(int iStereoSource, int iStereoDestination, void** ppSource, void* pSourceEnd,
@@ -5657,7 +5723,11 @@ unsigned int slow_ramp_mix(int iStereoSource, int iStereoDestination, void** ppS
                             >> 2);
                 if (pDestinationLimit < pDestination + iCount)
                 {
+#if LCE_PLATFORM_WIIU
                     iCount = (reinterpret_cast<int>(pDestinationLimit) - reinterpret_cast<int>(pDestination)) / 4;
+#elif LCE_PLATFORM_PC
+                    iCount = static_cast<int>(pDestinationLimit - pDestination);
+#endif
                 }
 
                 int iSourceFrames = (pSourceLimit - pSource) / 2;
@@ -5688,7 +5758,11 @@ unsigned int slow_ramp_mix(int iStereoSource, int iStereoDestination, void** ppS
                 iCount = iCount + 1;
                 if (pDestinationLimit < pDestination + 2)
                 {
+#if LCE_PLATFORM_WIIU
                     iCount = (reinterpret_cast<int>(pDestinationLimit) - reinterpret_cast<int>(pDestination)) / 8;
+#elif LCE_PLATFORM_PC
+                    iCount = static_cast<int>(pDestinationLimit - pDestination) / 2;
+#endif
                 }
 
                 int iSourceFrames = (pSourceLimit - pSource) / 2;
@@ -5733,7 +5807,11 @@ unsigned int slow_ramp_mix(int iStereoSource, int iStereoDestination, void** ppS
                             >> 2);
                 if (pDestinationLimit < pDestination + iCount)
                 {
+#if LCE_PLATFORM_WIIU
                     iCount = (reinterpret_cast<int>(pDestinationLimit) - reinterpret_cast<int>(pDestination)) / 4;
+#elif LCE_PLATFORM_PC
+                    iCount = static_cast<int>(pDestinationLimit - pDestination);
+#endif
                 }
 
                 int iSourceFrames = (pSourceLimit - pSource) / 4;
@@ -5771,7 +5849,11 @@ unsigned int slow_ramp_mix(int iStereoSource, int iStereoDestination, void** ppS
                 iCount = iCount + 1;
                 if (pDestinationLimit < pDestination + 2)
                 {
+#if LCE_PLATFORM_WIIU
                     iCount = (reinterpret_cast<int>(pDestinationLimit) - reinterpret_cast<int>(pDestination)) / 8;
+#elif LCE_PLATFORM_PC
+                    iCount = static_cast<int>(pDestinationLimit - pDestination) / 2;
+#endif
                 }
 
                 int iSourceFrames = (pSourceLimit - pSource) / 4;
@@ -6430,7 +6512,11 @@ extern "C" void SS_fill(_DIG_DRIVER* pDriver, short* pDestination)
 
     if (MSS_profile != NULL)
     {
+#if LCE_PLATFORM_WIIU
         uProfileStart = OSGetSystemTime();
+#elif LCE_PLATFORM_PC
+        uProfileStart = rrGetTime();
+#endif
     }
 
     for (int iTimer = 0; iTimer < DRIVER_PROFILE_TIMER_COUNT; ++iTimer)
@@ -6813,11 +6899,18 @@ const int OUTPUT_LEVEL_SOURCES[SPEAKER_CONFIG_COUNT][OUTPUT_LEVEL_COLUMNS] = {
     {0, 1, 2, 3, 4, 5, 0, 0, 0, 0}, {0, 1, 2, 3, 4, 5, 6, 0, 0, 0}, {0, 1, 2, 3, 4, 5, 4, 5, 0, 0},
     {0, 1, 2, 3, 4, 5, 6, 4, 5, 0}};
 
+#if LCE_PLATFORM_WIIU
 inline unsigned short EncodeSample(int iValue)
 {
     return static_cast<unsigned short>((static_cast<unsigned short>(iValue) >> 8)
                                        | (static_cast<unsigned char>(iValue) << 8));
 }
+#elif LCE_PLATFORM_PC
+inline unsigned short EncodeSample(int iValue)
+{
+    return static_cast<unsigned short>(iValue);
+}
+#endif
 
 inline int ClampSample(int iValue)
 {
@@ -7401,7 +7494,11 @@ int SS_merge(_SAMPLE* pSample, int iAvailable, int iOffset, short* pDestination,
                 const unsigned char* pFrame = pInterleaved + iChannel;
                 for (int iFrame = 0; iFrame < iSourceFrames; ++iFrame)
                 {
+#if LCE_PLATFORM_WIIU
                     *pPacked++ = static_cast<unsigned short>((*pFrame + MERGE_BYTE_BIAS) & BYTE_MASK_8);
+#elif LCE_PLATFORM_PC
+                    *pPacked++ = static_cast<unsigned short>(((*pFrame + MERGE_BYTE_BIAS) & BYTE_MASK_8) << 8);
+#endif
                     pFrame += iStride;
                 }
             }

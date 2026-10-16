@@ -115,6 +115,7 @@ void UIScene_CustomMenu::Build()
         m_panels[panel] = menu->getChildByName(kPanelNames[panel]);
         m_openX[panel] = m_panels[panel] != NULL ? m_panels[panel]->getX() : 0.0f;
     }
+    PlaceDescriptionBehindList(menu);
     menu->HideDescription();
     for (int panel = 0; panel < ePanel_Count; ++panel)
         m_closedX[panel] = m_panels[panel] != NULL ? m_panels[panel]->getX() : 0.0f;
@@ -127,6 +128,27 @@ void UIScene_CustomMenu::Build()
     }
     ApplyDescriptionPanel();
     gConsoleUIController.TouchBoxRebuild(this);
+}
+
+void UIScene_CustomMenu::PlaceDescriptionBehindList(FJ_FuiNode* menu)
+{
+    FJ_FuiNode* listBackground = m_panels[ePanel_ListBackground];
+    FJ_FuiNode* description = m_panels[ePanel_Description];
+    FJ_FuiNode* descriptionBackground = m_panels[ePanel_DescriptionBackground];
+    if (listBackground == NULL || description == NULL || descriptionBackground == NULL)
+        return;
+
+    fuiRenderNode* behindList[3] = {descriptionBackground->m_pRenderNode, description->m_pRenderNode, NULL};
+    if (description->isFJ_HtmlText())
+        behindList[2] = description->asFJ_HtmlText()->m_pText;
+
+    for (int node = 0; node < 3; ++node)
+    {
+        if (behindList[node] == NULL)
+            continue;
+        menu->removeChild(behindList[node], false);
+        menu->addChildAt(behindList[node], menu->getChildIndex(listBackground));
+    }
 }
 
 void UIScene_CustomMenu::tick()

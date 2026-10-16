@@ -82,6 +82,7 @@ private:
     };
 
     bool CaptureEvent(const SDL_Event& event);
+    bool QuickMoveHeld() const;
     void PressInput(int input, EPcInputContext context);
     void ReleaseInput(int input);
     void AddBinding(EPcInputContext context, int action, int input);

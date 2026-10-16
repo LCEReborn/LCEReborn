@@ -82,7 +82,9 @@ const ActionNameEntry kActionNames[] = {
     {EControllerActions_AltFlyLeft, "AltFlyLeft"},
     {EControllerActions_AltFlyRight, "AltFlyRight"},
     {EControllerActions_AltFlyUp, "AltFlyUp"},
-    {EControllerActions_AltFlyDown, "AltFlyDown"}};
+    {EControllerActions_AltFlyDown, "AltFlyDown"},
+    {EControllerActions_QuickMoveModifier, "QuickMove"},
+    {EControllerActions_ToggleHud, "ToggleHud"}};
 
 const char* const kContextNames[EPcInputContext_Count] = {"menu", "game"};
 
@@ -213,6 +215,8 @@ void PcKeyboardMouse::SetDefaultBindings()
     AddBinding(menu, EControllerActions_MenuStickPress, Key(SDL_SCANCODE_F3));
     AddBinding(menu, EControllerActions_MenuStart, Key(SDL_SCANCODE_RETURN));
     AddBinding(menu, EControllerActions_MenuBack, Key(SDL_SCANCODE_TAB));
+    AddBinding(menu, EControllerActions_QuickMoveModifier, Key(SDL_SCANCODE_LSHIFT));
+    AddBinding(menu, EControllerActions_QuickMoveModifier, Key(SDL_SCANCODE_RSHIFT));
 
     const EPcInputContext game = EPcInputContext_Game;
     AddBinding(game, EControllerActions_MoveForward, Key(SDL_SCANCODE_W));
@@ -243,6 +247,7 @@ void PcKeyboardMouse::SetDefaultBindings()
     AddBinding(game, EControllerActions_RestartSection, Key(SDL_SCANCODE_R));
     AddBinding(game, EControllerActions_RestartRace, Key(SDL_SCANCODE_BACKSPACE));
     AddBinding(game, EControllerActions_LookBehind, Key(SDL_SCANCODE_F));
+    AddBinding(game, EControllerActions_ToggleHud, Key(SDL_SCANCODE_F1));
     AddBinding(game, EControllerActions_MenuA, Key(SDL_SCANCODE_RETURN));
     AddBinding(game, EControllerActions_MenuA, Key(SDL_SCANCODE_SPACE));
     AddBinding(game, EControllerActions_MenuOk, Key(SDL_SCANCODE_RETURN));
@@ -321,7 +326,9 @@ bool PcKeyboardMouse::IsLookAction(int action)
 
 EPcInputContext PcKeyboardMouse::ActionContext(int action)
 {
-    return action <= EControllerActions_MenuCancel ? EPcInputContext_Menu : EPcInputContext_Game;
+    return action <= EControllerActions_MenuCancel || action == EControllerActions_QuickMoveModifier
+               ? EPcInputContext_Menu
+               : EPcInputContext_Game;
 }
 
 std::string PcKeyboardMouse::DisplayName(int input)
@@ -487,6 +494,17 @@ int PcKeyboardMouse::ConsumeCapture()
     return captured;
 }
 
+bool PcKeyboardMouse::QuickMoveHeld() const
+{
+    const std::vector<int>& inputs = mBindings[EPcInputContext_Menu][EControllerActions_QuickMoveModifier];
+    for (size_t index = 0; index < inputs.size(); ++index)
+    {
+        if (mInputDown[inputs[index]])
+            return true;
+    }
+    return false;
+}
+
 bool PcKeyboardMouse::CaptureEvent(const SDL_Event& event)
 {
     int input = C_4JInput::EKeyCapture_None;
@@ -560,8 +578,7 @@ void PcKeyboardMouse::HandleEvent(const SDL_Event& event, EPcInputContext contex
             mPointerX = event.button.x;
             mPointerY = event.button.y;
             if (event.button.button == SDL_BUTTON_LEFT)
-                mClicks |= (SDL_GetModState() & SDL_KMOD_SHIFT) != 0 ? C_4JInput::EPcMenuClick_Quick
-                                                                     : C_4JInput::EPcMenuClick_Primary;
+                mClicks |= QuickMoveHeld() ? C_4JInput::EPcMenuClick_Quick : C_4JInput::EPcMenuClick_Primary;
             else if (event.button.button == SDL_BUTTON_RIGHT)
                 mClicks |= C_4JInput::EPcMenuClick_Secondary;
         }

@@ -410,6 +410,82 @@ void GameSettings::UpdateActionMapping(int profile, int scheme, bool swapPrimary
     }
 }
 
+namespace
+{
+const unsigned char kInventoryNone = 0xff;
+const unsigned char kInventoryDefaults[GameSettings::eInventoryControl_Count] = {4, 3, 10};
+const int kInventoryActions[GameSettings::eInventoryControl_Count] = {
+    EControllerActions_MenuY, EControllerActions_MenuX, EControllerActions_MenuLeftScroll};
+const unsigned int kAutosaveCodes[] = {0, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8};
+const int kAutosaveShortMinutes[] = {1, 2, 5, 10};
+}
+
+unsigned char GameSettings::GetInventoryMapping(int profile, int control)
+{
+    unsigned char stored = gGameSettings[profile]->mInventoryMappings[control];
+    if (stored == 0)
+        return kInventoryDefaults[control];
+    return stored == kInventoryNone ? 0 : stored;
+}
+
+void GameSettings::SetInventoryMapping(int profile, int control, unsigned char button)
+{
+    unsigned char stored = button;
+    if (button == 0)
+        stored = kInventoryNone;
+    else if (button == kInventoryDefaults[control])
+        stored = 0;
+    gGameSettings[profile]->mInventoryMappings[control] = stored;
+    g_pInput->SetGameJoypadMaps(profile, static_cast<unsigned char>(kInventoryActions[control]),
+                                GetInputButton(static_cast<unsigned int>(button)));
+}
+
+int GameSettings::InventoryMenuAction(int control)
+{
+    return kInventoryActions[control];
+}
+
+int GameSettings::InventoryControlForAction(int action)
+{
+    for (int control = 0; control < eInventoryControl_Count; ++control)
+    {
+        if (kInventoryActions[control] == action)
+            return control;
+    }
+    return -1;
+}
+
+int GameSettings::AutosaveMinutes(unsigned int code)
+{
+    if (code >= 9 && code <= 12)
+        return kAutosaveShortMinutes[code - 9];
+    if (code > 8)
+        return 0;
+    return static_cast<int>(code) * 15;
+}
+
+int GameSettings::AutosaveOptionCount()
+{
+    return static_cast<int>(sizeof(kAutosaveCodes) / sizeof(kAutosaveCodes[0]));
+}
+
+unsigned int GameSettings::AutosaveCodeAt(int option)
+{
+    if (option < 0 || option >= AutosaveOptionCount())
+        return 0;
+    return kAutosaveCodes[option];
+}
+
+int GameSettings::AutosaveOptionOf(unsigned int code)
+{
+    for (int option = 0; option < AutosaveOptionCount(); ++option)
+    {
+        if (kAutosaveCodes[option] == code)
+            return option;
+    }
+    return 0;
+}
+
 uint32_t GameSettings::GetInputButton(unsigned int value)
 {
     if (value == 0)
@@ -549,6 +625,11 @@ void GameSettings::ActionGameSettings(int profile, eGameSetting setting)
         {
             g_pInput->SetGameJoypadMaps(profile, static_cast<unsigned char>(EControllerActions_Jump + action),
                                         GetActionVal(GetActionMapping(profile, action)));
+        }
+        for (int control = 0; control < eInventoryControl_Count; ++control)
+        {
+            g_pInput->SetGameJoypadMaps(profile, static_cast<unsigned char>(kInventoryActions[control]),
+                                        GetInputButton(static_cast<unsigned int>(GetInventoryMapping(profile, control))));
         }
     }
         return;
@@ -857,6 +938,8 @@ void GameSettings::SetDefaultControls(C4JStorage::PROFILESETTINGS* values, int p
         g_pInput->SetGameJoypadMaps(profile, static_cast<unsigned char>(EControllerActions_Jump + action),
                                     GetActionVal(value));
     }
+    for (int control = 0; control < eInventoryControl_Count; ++control)
+        SetInventoryMapping(profile, control, kInventoryDefaults[control]);
     gGameSettings[profile]->mChanged = changed;
 }
 void GameSettings::SetDefaultGameOptions(C4JStorage::PROFILESETTINGS* values, int profile, bool changed)

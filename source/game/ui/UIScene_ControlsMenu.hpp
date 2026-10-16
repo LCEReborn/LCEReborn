@@ -44,6 +44,11 @@ public:
         EControl_RestartSection,
         EControl_RestartRace,
         EControl_LookBehind,
+        EControl_QuickMove,
+        EControl_TakeHalf,
+        EControl_TakeAll,
+        EControl_PlayerList,
+        EControl_ToggleHud,
         EControl_Label
     };
 
@@ -74,6 +79,11 @@ public:
     std::wstring AssignHelp(int player);
     void FinishButtonEdit(int player);
     void HandleKeyCapture(int player);
+    void HandlePadCapture(int player);
+    void CommitPadButton(int player, unsigned char button);
+    int ControlGroup(EControl control);
+    int InventoryControl(EControl control);
+    void AddControlRow(int player, EControl control, const std::wstring& label);
     void HandleButtonEdit(int player, int action, bool repeat, bool pressed, bool released);
     unsigned int CheckControlsOnExit(int player);
     virtual void handleInput(int player, int action, bool repeat, bool pressed, bool released, bool& handled);
@@ -95,6 +105,7 @@ private:
     unsigned int m_firstButtonMask;
     int m_buttonCount;
     int m_lastEditAction;
+    unsigned int m_ignoredPadButtons;
     UIControl_Label m_version;
     UIControl_MultiList m_controlsList;
 };

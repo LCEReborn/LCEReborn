@@ -1136,8 +1136,10 @@ int CMinecraftApp::UnlockFullSaveReturned(void* context, int pad, C4JStorage::EM
 }
 void CMinecraftApp::SetAutosaveTimerTime()
 {
-    mAutosaveTime = GetTickCount()
-                    + GameSettings::GetGameSettings(gProfile->GetPrimaryPad(), eGameSetting_Autosave) * 1000 * 60 * 15;
+    mAutosaveTime =
+        GetTickCount()
+        + GameSettings::AutosaveMinutes(GameSettings::GetGameSettings(gProfile->GetPrimaryPad(), eGameSetting_Autosave))
+              * 1000 * 60;
 }
 void CMinecraftApp::SetGameStarted(bool started)
 {

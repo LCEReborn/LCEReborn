@@ -69,7 +69,6 @@ private:
     FJ_FuiNode* m_panels[ePanel_Count];
     float m_openX[ePanel_Count];
     float m_closedX[ePanel_Count];
-    float m_minimumDescriptionHeight;
     float m_maximumDescriptionHeight;
     int m_focusId;
     bool m_descriptionOpen;

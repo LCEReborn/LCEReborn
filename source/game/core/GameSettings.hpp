@@ -115,7 +115,9 @@ enum EControllerActions
     EControllerActions_AltFlyLeft,
     EControllerActions_AltFlyRight,
     EControllerActions_AltFlyUp,
-    EControllerActions_AltFlyDown
+    EControllerActions_AltFlyDown,
+    EControllerActions_QuickMoveModifier,
+    EControllerActions_ToggleHud
 };
 enum EJoypadButton
 {
@@ -180,17 +182,31 @@ class GameSettings
     unsigned int mBattleMiniGameMap;
     unsigned int mLoggingMask;
     unsigned char mActionMappings[25];
-    unsigned char mUnknownBD;
-    unsigned char mUnknownBE;
-    unsigned char mUnknownBF;
+    unsigned char mInventoryMappings[3];
     unsigned int mGlideMiniGameMap;
 
 public:
+    enum EInventoryControl
+    {
+        eInventoryControl_QuickMove,
+        eInventoryControl_TakeHalf,
+        eInventoryControl_TakeAll,
+        eInventoryControl_Count
+    };
+
     static uint32_t GetGameSettings(int, eGameSetting);
+    static unsigned char GetInventoryMapping(int profile, int control);
+    static void SetInventoryMapping(int profile, int control, unsigned char button);
+    static int InventoryMenuAction(int control);
+    static int InventoryControlForAction(int action);
     static uint8_t GetActionMapping(int, int);
     static void SetActionMapping(int, int, unsigned char);
     static void UpdateActionMapping(int profile, int scheme, bool swapPrimaryButtons);
     static uint32_t GetInputButton(unsigned int);
+    static int AutosaveMinutes(unsigned int code);
+    static int AutosaveOptionCount();
+    static unsigned int AutosaveCodeAt(int option);
+    static int AutosaveOptionOf(unsigned int code);
     static uint32_t GetActionVal(unsigned char);
     static void ActionGameSettings(int, eGameSetting);
     static void SetSettingsChanged(int);

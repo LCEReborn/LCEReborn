@@ -20,6 +20,7 @@ public:
     friend class LevelRenderer;
     friend class GameSettings;
     friend class Textures;
+    friend class VideoSettings;
 
     class Option
     {

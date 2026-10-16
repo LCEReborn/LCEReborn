@@ -255,7 +255,6 @@ boost::shared_ptr<ItemInstance> createItem(Block* block)
 Block::ThreadStorage::ThreadStorage()
 {
     mCacheIndex = 0;
-    mFastGraphics = false;
 
     const AABB** shapes = new const AABB*[3];
     shapes[0] = NULL;

@@ -44,7 +44,7 @@ private:
     bool m_primaryPlayer;
     bool m_host;
     bool m_saveRequested;
-    wchar_t m_skinNames[9][256];
+    wchar_t m_skinNames[13][256];
     wchar_t m_difficultyNames[4][256];
 };
 

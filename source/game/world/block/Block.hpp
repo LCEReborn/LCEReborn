@@ -155,7 +155,6 @@ public:
         ~ThreadStorage();
 
         int mCacheIndex;
-        bool mFastGraphics;
         arrayWithLength<const AABB*> mShapes;
     };
 

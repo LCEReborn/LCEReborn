@@ -1,4 +1,5 @@
 #include "game/core/Minecraft.hpp"
+#include "game/core/VideoSettings.hpp"
 #include "game/core/StringIds.hpp"
 #include "game/ui/DeathScreen.hpp"
 #include "game/core/EntityType.hpp"
@@ -489,6 +490,7 @@ void Minecraft::init()
     mWorkingDirectory = File(L"");
     mLevelSource = new McRegionLevelStorageSource(File(mWorkingDirectory, L"saves"), getFixerUpper());
     mOptions = new Options(this, mWorkingDirectory);
+    VideoSettings::Apply();
     mTexturePackRepository = new TexturePackRepository(mWorkingDirectory, this);
     mTexturePackRepository->addDebugPacks();
     mTextures = new Textures(mTexturePackRepository, mOptions);
@@ -2387,6 +2389,12 @@ void Minecraft::run_middle()
             mLocalPlayers[i]->mButtonsDown |= 1LL << EControllerActions_ChangeCameraMode;
         if (g_pInput->ButtonPressed(i, EControllerActions_Scoreboard, 0))
             mLocalPlayers[i]->mButtonsDown |= 1LL << EControllerActions_Scoreboard;
+        if (g_pInput->ButtonPressed(i, EControllerActions_ToggleHud, 0))
+        {
+            unsigned char show = GameSettings::GetGameSettings(i, eGameSetting_DisplayHUD) != 0 ? 0 : 1;
+            GameSettings::SetGameSettings(i, eGameSetting_DisplayHUD, show);
+            GameSettings::SetGameSettings(i, eGameSetting_DisplayHand, show);
+        }
         if (g_pInput->ButtonPressed(i, EControllerActions_ConfirmReady,
                                     GameSettings::GetInputButton(i, true, EControllerActions_ConfirmReady)))
             mLocalPlayers[i]->mButtonsDown |= 1LL << EControllerActions_ConfirmReady;

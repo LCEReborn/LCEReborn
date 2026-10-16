@@ -1419,6 +1419,13 @@ void CInput::SetKeyBinding(int action, int input)
     keyboardMouse.SaveBindings(keyBindingsPath);
 }
 
+unsigned int CInput::GetPadButtons(int pad, bool pressedOnly)
+{
+    if (!RemapIpad(pad) || pad == kKeyboardJoypad || static_cast<unsigned int>(pad) >= JOYPAD_COUNT)
+        return 0;
+    return pressedOnly ? joypads[pad].pressedValue : joypads[pad].rawValue;
+}
+
 void CInput::ResetKeyBindings()
 {
     keyboardMouse.SetDefaultBindings();

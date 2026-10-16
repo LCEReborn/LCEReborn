@@ -1,4 +1,5 @@
 #include "game/client/render/GameRenderer.hpp"
+#include "game/core/VideoSettings.hpp"
 #include "game/core/EntityType.hpp"
 #include "game/client/render/Font.hpp"
 #include "game/client/render/MapRenderer.hpp"
@@ -193,7 +194,6 @@ GameRenderer::GameRenderer(Minecraft* minecraft, ResourceManager* resourceManage
       mSmoothCamFilterY(0.0f),
       mSmoothCamPartialTicks(0.0f),
       mZeroVector(Vec3::newPermanent(0.0, 0.0, 0.0)),
-      mFovSetting(70.0f),
       mDarkenWorldAmount(0.0f),
       mDarkenWorldAmountO(0.0f),
       mCloudFog(false),
@@ -575,7 +575,7 @@ void GameRenderer::onResourceManagerReload(ResourceManager*)
 
 float GameRenderer::GetFovVal()
 {
-    return mFovSetting;
+    return static_cast<float>(VideoSettings::GetFov());
 }
 
 void GameRenderer::UpdateElementStorageDeleteTicks()
@@ -957,7 +957,7 @@ float GameRenderer::getFov(float amount, bool useSmoothing)
     boost::shared_ptr<MultiplayerLocalPlayer> player = Minecraft::GetInstance()->mPlayer;
     const int playerIndex = player != NULL ? player->mUserIndex : 0;
 
-    float fov = mFovSetting;
+    float fov = static_cast<float>(VideoSettings::GetFov());
     if (useSmoothing)
     {
         fov = (fov + mMinecraft->mOptions->mFov)
@@ -1286,7 +1286,8 @@ void GameRenderer::setupCamera(float partialTick, int eyeIndex)
     static const float kRotate180 = 180.0f;
     static const unsigned int kAnimBitNoViewBob = 9;
 
-    mFogDistance = kDefaultFog;
+    mFogDistance = kDefaultFog * static_cast<float>(VideoSettings::GetRenderDistance())
+                   / static_cast<float>(VideoSettings::RENDER_DISTANCE_DEFAULT);
 
     Level* level = Minecraft::GetInstance()->mLevels[0];
     if (level != NULL && level->getFogDistance() > 0)

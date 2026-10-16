@@ -96,6 +96,7 @@ public:
     virtual bool ConsumeMouseLook(int pad, float* x, float* y) = 0;
     virtual bool ConsumeMenuPointer(int pad, float* x, float* y) = 0;
     virtual unsigned int ConsumeMenuClicks(int pad) = 0;
+    virtual bool ConsumeHotbarInput(int pad, int* slot, int* scroll) = 0;
 #endif
 };
 

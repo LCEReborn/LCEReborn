@@ -13,6 +13,7 @@
 namespace
 {
 const int kMouseInputBase = PcKeyboardMouse::SCANCODE_COUNT;
+const float kMouseActivityDistance = 2.0f;
 
 struct ActionNameEntry
 {
@@ -158,6 +159,8 @@ PcKeyboardMouse::PcKeyboardMouse()
     mPointerX = 0.0f;
     mPointerY = 0.0f;
     mPointerMoved = false;
+    mMotionSinceTick = 0.0f;
+    mMovedThisTick = false;
     mClicks = 0;
     mRepeatDelay = 0;
     SetDefaultBindings();
@@ -484,6 +487,7 @@ void PcKeyboardMouse::HandleEvent(const SDL_Event& event, EPcInputContext contex
     case SDL_EVENT_MOUSE_MOTION:
         mPointerX = event.motion.x;
         mPointerY = event.motion.y;
+        mMotionSinceTick += SDL_fabsf(event.motion.xrel) + SDL_fabsf(event.motion.yrel);
         if (mouseCaptured)
         {
             mLookX += event.motion.xrel;
@@ -541,6 +545,8 @@ void PcKeyboardMouse::HandleEvent(const SDL_Event& event, EPcInputContext contex
 void PcKeyboardMouse::Update(EPcInputContext context, float initialRepeatDelay, float repeatDelay)
 {
     unsigned long long now = SDL_GetTicksNS();
+    mMovedThisTick = mMotionSinceTick >= kMouseActivityDistance;
+    mMotionSinceTick = 0.0f;
     mAnyPressed = false;
     for (int input = 0; input < INPUT_COUNT; ++input)
     {
@@ -693,6 +699,11 @@ int PcKeyboardMouse::ConsumeMenuWheel()
     int steps = mMenuWheel;
     mMenuWheel = 0;
     return steps;
+}
+
+bool PcKeyboardMouse::MouseMovedThisTick() const
+{
+    return mMovedThisTick;
 }
 
 bool PcKeyboardMouse::PointerMoved() const

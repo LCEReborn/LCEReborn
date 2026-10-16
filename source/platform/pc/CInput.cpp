@@ -776,7 +776,7 @@ void CInput::UpdateKeyboardMouse(Joypad& joypad)
     {
         idleStartTimes[kKeyboardJoypad] = SDL_GetTicksNS();
     }
-    if (keyboardMouse.AnyInputPressed() || keyboardMouse.PointerMoved())
+    if (keyboardMouse.AnyInputPressed() || keyboardMouse.MouseMovedThisTick())
     {
         lastInputJoypad = kKeyboardJoypad;
     }

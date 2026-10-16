@@ -92,9 +92,13 @@ like the rest of it (focus, sounds, prompts, controller, keyboard, mouse and
 touch). `UIScene_CustomMenu` (scene `EUIScene_CustomMenu`) loads the game's
 list menu movie, the one its settings lists use, and fills it from a page: a
 `UICustomMenuPage` subclass whose `Build` adds section labels, buttons,
-checkboxes, sliders and label/value rows (each with an optional description
-shown beside the list), and whose `OnPress`, `OnToggle` and `OnSlide` handle
-them. `OpenPage` opens another page on top. Settings > More Options opens the
-first page, `UIMoreOptionsPage`, with the PC display settings. Pages that
-follow the game's own lists add only setting rows and no descriptions, so the
-list stands alone in the middle of the screen like the game's settings menus.
+checkboxes, sliders and label/value rows, each with an optional description,
+and whose `OnPress`, `OnToggle` and `OnSlide` handle them. `OpenPage` opens
+another page on top. Settings > More Options opens the first page,
+`UIMoreOptionsPage`, with the PC display settings.
+
+The list stands alone in the middle of the screen like the game's settings
+menus. When the highlighted row has a description, the Show Description
+prompt (the game's X/Square action, X on the keyboard) slides the list to the
+left and the description panel out from behind it, sized to its text; the
+same button tucks it away again. The panel follows the highlight while open.

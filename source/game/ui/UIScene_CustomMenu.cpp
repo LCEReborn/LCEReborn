@@ -6,14 +6,30 @@
 #include "game/core/ConsoleUIController.hpp"
 #include "game/core/GameSettings.hpp"
 #include "game/core/Minecraft.hpp"
+#include "game/core/System.hpp"
+#include "game/ui/FJ_FuiNode.hpp"
+#include "game/ui/FJ_HtmlText.hpp"
 #include "game/ui/FJ_MultilistMenu.hpp"
 #include "game/ui/UICustomMenuPage.hpp"
 #include "game/ui/UILayer.hpp"
 #include "game/ui/UIString.hpp"
 #include "game/ui/fuiFile.hpp"
 #include "game/ui/fuiRenderNode.hpp"
+#include "game/ui/fuiRenderNodeEditText.hpp"
 
 extern ConsoleUIController gConsoleUIController;
+
+namespace
+{
+const char* const kPanelNames[] = {"MultiList", "BackgroundPanel_List", "Description", "BackgroundPanel_Text"};
+const float kDescriptionSlideMilliseconds = 220.0f;
+
+float EaseOut(float amount)
+{
+    float remaining = 1.0f - amount;
+    return 1.0f - remaining * remaining * remaining;
+}
+} // namespace
 
 UICustomMenuPage::~UICustomMenuPage()
 {
@@ -37,8 +53,20 @@ void UICustomMenuPage::OnClose(UIScene_CustomMenu&)
 
 UIScene_CustomMenu::UIScene_CustomMenu(int playerId, void* data, UILayer* layer)
     : UIScene(playerId, layer),
-      m_page(static_cast<UICustomMenuPage*>(data))
+      m_page(static_cast<UICustomMenuPage*>(data)),
+      m_minimumDescriptionHeight(0.0f),
+      m_maximumDescriptionHeight(0.0f),
+      m_focusId(-1),
+      m_descriptionOpen(false),
+      m_descriptionAmount(0.0f),
+      m_lastAnimationTime(0)
 {
+    for (int panel = 0; panel < ePanel_Count; ++panel)
+    {
+        m_panels[panel] = NULL;
+        m_openX[panel] = 0.0f;
+        m_closedX[panel] = 0.0f;
+    }
     initialiseMovie();
     m_description.init(UIString(L""));
     Build();
@@ -77,17 +105,95 @@ void UIScene_CustomMenu::Build()
         m_page->Build(*this);
 
     FJ_MultilistMenu* menu = static_cast<FJ_MultilistMenu*>(m_movie->getRootNode()->getFuiNode());
+    FJ_FuiNode* description = menu->getChildByName(kPanelNames[ePanel_Description]);
+    m_maximumDescriptionHeight = description != NULL ? description->getHeight() : 0.0f;
     menu->DoVerticalResizeCheck();
+    m_minimumDescriptionHeight = description != NULL ? description->getHeight() : 0.0f;
     doHorizontalResizeCheck();
+    for (int panel = 0; panel < ePanel_Count; ++panel)
+    {
+        m_panels[panel] = menu->getChildByName(kPanelNames[panel]);
+        m_openX[panel] = m_panels[panel] != NULL ? m_panels[panel]->getX() : 0.0f;
+    }
+    menu->HideDescription();
+    for (int panel = 0; panel < ePanel_Count; ++panel)
+        m_closedX[panel] = m_panels[panel] != NULL ? m_panels[panel]->getX() : 0.0f;
+    m_closedX[ePanel_Description] = m_closedX[ePanel_List];
+    m_closedX[ePanel_DescriptionBackground] = m_closedX[ePanel_ListBackground];
     if (m_descriptions.empty())
-        menu->HideDescription();
+    {
+        m_descriptionOpen = false;
+        m_descriptionAmount = 0.0f;
+    }
+    ApplyDescriptionPanel();
     gConsoleUIController.TouchBoxRebuild(this);
+}
+
+void UIScene_CustomMenu::tick()
+{
+    UIScene::tick();
+    int now = static_cast<int>(System::processTimeInMilliSecs());
+    float target = m_descriptionOpen ? 1.0f : 0.0f;
+    if (m_descriptionAmount != target)
+    {
+        float step = static_cast<float>(now - m_lastAnimationTime) / kDescriptionSlideMilliseconds;
+        if (step < 0.0f || step > 1.0f)
+            step = 1.0f;
+        if (m_descriptionAmount < target)
+            m_descriptionAmount = m_descriptionAmount + step > target ? target : m_descriptionAmount + step;
+        else
+            m_descriptionAmount = m_descriptionAmount - step < target ? target : m_descriptionAmount - step;
+    }
+    m_lastAnimationTime = now;
+    ApplyDescriptionPanel();
+}
+
+void UIScene_CustomMenu::ToggleDescriptionPanel()
+{
+    if (!m_descriptionOpen && !HasDescription(m_focusId))
+        return;
+    m_descriptionOpen = !m_descriptionOpen;
+    m_lastAnimationTime = static_cast<int>(System::processTimeInMilliSecs());
+    gConsoleUIController.PlayUISFX(SoundEvents::UI_PRESS);
+    updateTooltips();
+}
+
+void UIScene_CustomMenu::ApplyDescriptionPanel()
+{
+    float eased = EaseOut(m_descriptionAmount);
+    bool showDescription = m_descriptionAmount > 0.0f;
+    for (int panel = 0; panel < ePanel_Count; ++panel)
+    {
+        if (m_panels[panel] == NULL)
+            continue;
+        m_panels[panel]->setX(m_closedX[panel] + (m_openX[panel] - m_closedX[panel]) * eased);
+        if (panel == ePanel_Description || panel == ePanel_DescriptionBackground)
+        {
+            if (m_panels[panel]->isVisible() != showDescription)
+                m_panels[panel]->setVisible(showDescription);
+            m_panels[panel]->setAlpha(eased);
+        }
+    }
+
+    FJ_FuiNode* description = m_panels[ePanel_Description];
+    if (description != NULL && description->isFJ_HtmlText())
+    {
+        float textAlpha = eased * 2.0f - 1.0f;
+        description->asFJ_HtmlText()->m_pText->setAlpha(textAlpha > 0.0f ? textAlpha : 0.0f);
+    }
+}
+
+bool UIScene_CustomMenu::HasDescription(int id) const
+{
+    return m_descriptions.find(id) != m_descriptions.end();
 }
 
 void UIScene_CustomMenu::updateTooltips()
 {
-    gConsoleUIController.SetTooltips(m_playerId, IDS_TOOLTIPS_SELECT, IDS_TOOLTIPS_BACK, -1, -1, -1, -1, -1, -1, -1, -1,
-                                     -1, -1, -1, -1, -1, -1, false, false);
+    int showDescription =
+        m_descriptionOpen || HasDescription(m_focusId) ? static_cast<int>(IDS_TOOLTIPS_SHOW_DESCRIPTION) : -1;
+    gConsoleUIController.SetTooltips(m_playerId, IDS_TOOLTIPS_SELECT, IDS_TOOLTIPS_BACK, showDescription, -1, -1, -1,
+                                     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, false, false);
 }
 
 void UIScene_CustomMenu::updateComponents()
@@ -116,6 +222,13 @@ void UIScene_CustomMenu::handleInput(int playerId, int action, bool repeat, bool
             if (m_page != NULL)
                 m_page->OnClose(*this);
             navigateBack();
+            handled = true;
+        }
+        break;
+    case EControllerActions_MenuX:
+        if (pressed)
+        {
+            ToggleDescriptionPanel();
             handled = true;
         }
         break;
@@ -161,7 +274,14 @@ void UIScene_CustomMenu::handleSliderElementMove(int, int childId, int value)
 
 void UIScene_CustomMenu::handleFocusChange(int, int childFocus)
 {
+    m_focusId = childFocus;
     ShowDescription(childFocus);
+    updateTooltips();
+}
+
+void UIScene_CustomMenu::handleInitFocus(int focus, int childFocus)
+{
+    handleFocusChange(focus, childFocus);
 }
 
 void UIScene_CustomMenu::ShowDescription(int id)
@@ -170,6 +290,27 @@ void UIScene_CustomMenu::ShowDescription(int id)
         return;
     std::map<int, std::wstring>::const_iterator found = m_descriptions.find(id);
     m_description.setLabel(UIString(found != m_descriptions.end() ? found->second : std::wstring()), true, false);
+    FitDescriptionPanel();
+}
+
+void UIScene_CustomMenu::FitDescriptionPanel()
+{
+    FJ_FuiNode* description = m_panels[ePanel_Description];
+    FJ_FuiNode* background = m_panels[ePanel_DescriptionBackground];
+    if (description == NULL || background == NULL || !description->isFJ_HtmlText())
+        return;
+
+    FJ_HtmlText* text = description->asFJ_HtmlText();
+    float arrowHeight = text->m_bNoBackground ? 0.0f : text->m_pUpArrow->getHeight();
+    float height = text->m_pText->getTextHeight() + arrowHeight;
+    if (height < m_minimumDescriptionHeight)
+        height = m_minimumDescriptionHeight;
+    if (height > m_maximumDescriptionHeight)
+        height = m_maximumDescriptionHeight;
+
+    text->setHeight(height);
+    background->getChildAt(0)->setHeight(height + 2.0f * (description->getY() - background->getY()));
+    text->SetLabel(text->m_pText->getText());
 }
 
 void UIScene_CustomMenu::AddButton(int id, const std::wstring& label, const std::wstring& description)

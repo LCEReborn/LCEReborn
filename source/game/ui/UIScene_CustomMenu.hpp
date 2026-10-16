@@ -8,6 +8,7 @@
 #include "game/ui/UIControl_MultiList.hpp"
 #include "game/ui/UIScene.hpp"
 
+class FJ_FuiNode;
 class UICustomMenuPage;
 
 class UIScene_CustomMenu : public UIScene
@@ -19,6 +20,7 @@ public:
     virtual std::wstring getMoviePath();
     virtual unsigned int mapElementsAndNames();
     virtual int getSceneType();
+    virtual void tick();
     virtual void updateTooltips();
     virtual void updateComponents();
     virtual void handleInput(int playerId, int action, bool repeat, bool pressed, bool released, bool& handled);
@@ -27,6 +29,7 @@ public:
     virtual void handleCheckboxElementToggled(int controlId, int childId, bool checked);
     virtual void handleSliderElementMove(int controlId, int childId, int value);
     virtual void handleFocusChange(int focus, int childFocus);
+    virtual void handleInitFocus(int focus, int childFocus);
 
     void AddButton(int id, const std::wstring& label, const std::wstring& description);
     void AddCheckbox(int id, const std::wstring& label, bool checked, const std::wstring& description);
@@ -42,13 +45,35 @@ public:
     int GetPlayer() const;
 
 private:
+    enum EPanel
+    {
+        ePanel_List,
+        ePanel_ListBackground,
+        ePanel_Description,
+        ePanel_DescriptionBackground,
+        ePanel_Count
+    };
+
     void Build();
     void ShowDescription(int id);
+    void ToggleDescriptionPanel();
+    void ApplyDescriptionPanel();
+    void FitDescriptionPanel();
+    bool HasDescription(int id) const;
 
     UIControl_MultiList m_list;
     UIControl_HTMLLabel m_description;
     UICustomMenuPage* m_page;
     std::map<int, std::wstring> m_descriptions;
+    FJ_FuiNode* m_panels[ePanel_Count];
+    float m_openX[ePanel_Count];
+    float m_closedX[ePanel_Count];
+    float m_minimumDescriptionHeight;
+    float m_maximumDescriptionHeight;
+    int m_focusId;
+    bool m_descriptionOpen;
+    float m_descriptionAmount;
+    int m_lastAnimationTime;
 };
 
 #endif

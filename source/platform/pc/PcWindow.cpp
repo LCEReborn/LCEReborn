@@ -4,15 +4,79 @@
 
 #include <stdio.h>
 
+#include <fstream>
+#include <sstream>
+#include <string>
+
 #include "platform/CInput.hpp"
 #include "platform/pc/PcApplication.hpp"
 #include "platform/pc/PcInputEvents.hpp"
+#include "platform/pc/PcPaths.hpp"
 
 namespace
 {
 SDL_Window* sWindow = NULL;
 SDL_GLContext sContext = NULL;
 bool sShown = false;
+bool sFullscreen = false;
+bool sVSync = true;
+Uint64 sNextFrame = 0;
+const Uint64 kFramePeriod = SDL_NS_PER_SECOND / 60;
+
+std::string DisplaySettingsPath()
+{
+    return PcSaveRoot() + "/display.txt";
+}
+
+void LoadDisplaySettings()
+{
+    std::ifstream file(DisplaySettingsPath().c_str());
+    std::string line;
+    while (std::getline(file, line))
+    {
+        std::string::size_type equals = line.find('=');
+        if (equals == std::string::npos)
+            continue;
+        std::istringstream name(line.substr(0, equals));
+        std::istringstream value(line.substr(equals + 1));
+        std::string key;
+        int setting = 0;
+        if (!(name >> key) || !(value >> setting))
+            continue;
+        if (key == "Fullscreen")
+            sFullscreen = setting != 0;
+        else if (key == "VSync")
+            sVSync = setting != 0;
+    }
+}
+
+void SaveDisplaySettings()
+{
+    std::ofstream file(DisplaySettingsPath().c_str(), std::ios::trunc);
+    if (!file)
+    {
+        fprintf(stderr, "display settings could not be written to %s\n", DisplaySettingsPath().c_str());
+        return;
+    }
+    file << "Fullscreen = " << (sFullscreen ? 1 : 0) << "\n";
+    file << "VSync = " << (sVSync ? 1 : 0) << "\n";
+}
+
+void ApplyVSync()
+{
+    if (sContext != NULL && !SDL_GL_SetSwapInterval(sVSync ? 1 : 0))
+        fprintf(stderr, "SDL_GL_SetSwapInterval failed: %s\n", SDL_GetError());
+}
+
+bool IsFullscreenToggle(const SDL_Event& event)
+{
+    if (event.type != SDL_EVENT_KEY_DOWN && event.type != SDL_EVENT_KEY_UP)
+        return false;
+    if (event.key.scancode == SDL_SCANCODE_F11)
+        return true;
+    return (event.key.scancode == SDL_SCANCODE_RETURN || event.key.scancode == SDL_SCANCODE_KP_ENTER)
+           && (event.key.mod & SDL_KMOD_ALT) != 0;
+}
 }
 
 bool PcWindowCreate(int width, int height)
@@ -54,7 +118,13 @@ bool PcWindowCreate(int width, int height)
     }
 
     SDL_GL_MakeCurrent(sWindow, sContext);
-    SDL_GL_SetSwapInterval(1);
+    LoadDisplaySettings();
+    ApplyVSync();
+    if (sFullscreen && !SDL_SetWindowFullscreen(sWindow, true))
+    {
+        fprintf(stderr, "SDL_SetWindowFullscreen failed: %s\n", SDL_GetError());
+        sFullscreen = false;
+    }
     sShown = false;
     return true;
 }
@@ -122,6 +192,12 @@ void PcPumpEvents()
         case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
             PcRequestExit();
             break;
+        case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
+            sFullscreen = true;
+            break;
+        case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
+            sFullscreen = false;
+            break;
         case SDL_EVENT_WINDOW_FOCUS_GAINED:
             if (g_pInput != NULL)
             {
@@ -132,6 +208,56 @@ void PcPumpEvents()
             break;
         }
 
+        if (IsFullscreenToggle(event))
+        {
+            if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat)
+                PcWindowSetFullscreen(!sFullscreen);
+            continue;
+        }
+
         PcInputHandleEvent(event);
     }
+}
+
+void PcWindowPaceFrame()
+{
+    Uint64 now = SDL_GetTicksNS();
+    if (sNextFrame == 0 || now >= sNextFrame + kFramePeriod)
+    {
+        sNextFrame = now + kFramePeriod;
+        return;
+    }
+    if (now < sNextFrame)
+        SDL_DelayPrecise(sNextFrame - now);
+    sNextFrame += kFramePeriod;
+}
+
+bool PcWindowIsFullscreen()
+{
+    return sFullscreen;
+}
+
+void PcWindowSetFullscreen(bool fullscreen)
+{
+    if (sWindow == NULL)
+        return;
+    if (!SDL_SetWindowFullscreen(sWindow, fullscreen))
+    {
+        fprintf(stderr, "SDL_SetWindowFullscreen failed: %s\n", SDL_GetError());
+        return;
+    }
+    sFullscreen = fullscreen;
+    SaveDisplaySettings();
+}
+
+bool PcWindowIsVSync()
+{
+    return sVSync;
+}
+
+void PcWindowSetVSync(bool enabled)
+{
+    sVSync = enabled;
+    ApplyVSync();
+    SaveDisplaySettings();
 }

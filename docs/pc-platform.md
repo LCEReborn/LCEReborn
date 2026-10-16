@@ -56,6 +56,20 @@ saves go to `saves/`, both relative to the working directory. The
 `LCE_CONTENT_DIR` and `LCE_SAVE_DIR` environment variables override them
 (`platform/pc/PcPaths`).
 
+## Window and display
+
+The game draws into a resizable window. Its picture is 16:9, as on the Wii U,
+and is drawn at the window's own resolution, with black bars when the window
+has a different shape; the menus are the Wii U's 720p menus scaled to fit.
+F11 or Alt+Enter switches between the window and borderless fullscreen.
+Whether the game is fullscreen and whether it waits for the monitor's refresh
+(V-Sync) are kept in `display.txt` in the save folder (`platform/pc/PcWindow`).
+
+The game runs one frame at a time at 60 frames per second, like the Wii U: the
+menus and their animations advance one step per frame, so the main loop holds
+the frame rate at 60 (`PcWindowPaceFrame`) whatever the monitor's refresh rate
+or the V-Sync setting.
+
 ## Building on PC
 
 ```

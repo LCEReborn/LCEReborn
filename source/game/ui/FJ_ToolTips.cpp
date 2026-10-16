@@ -130,11 +130,29 @@ void FJ_ToolTips::SetToolTip(int index, int type, int subtype, const std::wstrin
     if (index < 16)
     {
         m_toolTipNodes[index]->setVisible(visible);
+#if LCE_PLATFORM_PC
+        static_cast<FJ_ToolTip*>(m_toolTipNodes[index])->SetHtmlLabel(false);
+#endif
         static_cast<FJ_ToolTip*>(m_toolTipNodes[index])->SetType(type, subtype);
         static_cast<FJ_ToolTip*>(m_toolTipNodes[index])->SetLabel(text + m_toolTipSuffix);
     }
     m_toolTipIndex = index;
 }
+
+#if LCE_PLATFORM_PC
+void FJ_ToolTips::SetHtmlToolTip(int index, const std::wstring& html, bool visible)
+{
+    if (index < 16)
+    {
+        FJ_ToolTip* toolTip = static_cast<FJ_ToolTip*>(m_toolTipNodes[index]);
+        toolTip->setVisible(visible);
+        toolTip->SetType(-1, -1);
+        toolTip->SetHtmlLabel(true);
+        toolTip->SetLabel(html + m_toolTipSuffix);
+    }
+    m_toolTipIndex = index;
+}
+#endif
 
 void FJ_ToolTips::UpdateLayout()
 {

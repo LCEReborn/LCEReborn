@@ -1423,13 +1423,28 @@ bool CInput::UseKeyboardPrompts(int pad)
     return lastInputJoypad == kKeyboardJoypad;
 }
 
-bool CInput::GetPromptKeyName(int pad, int action, std::wstring* name)
+int CInput::GetPromptStyle(int pad)
 {
     if (!UseKeyboardPrompts(pad))
     {
+        return EPromptStyle_Gamepad;
+    }
+    return menuDrawsPointer ? EPromptStyle_Pointer : EPromptStyle_Keyboard;
+}
+
+bool CInput::GetPromptInput(int pad, int action, int* input, int* modifier)
+{
+    int style = GetPromptStyle(pad);
+    if (style == EPromptStyle_Gamepad)
+    {
         return false;
     }
-    name->clear();
+    *input = -1;
+    *modifier = -1;
+    if (style == EPromptStyle_Pointer && PcKeyboardMouse::PointerPromptInput(action, input, modifier))
+    {
+        return true;
+    }
     if (action < 0 || action >= PcKeyboardMouse::ACTION_COUNT)
     {
         return true;
@@ -1437,8 +1452,7 @@ bool CInput::GetPromptKeyName(int pad, int action, std::wstring* name)
     const std::vector<int>& inputs = keyboardMouse.GetBindings(PcKeyboardMouse::ActionContext(action), action);
     if (!inputs.empty())
     {
-        std::string display = PcKeyboardMouse::DisplayName(inputs[0]);
-        name->assign(display.begin(), display.end());
+        *input = inputs[0];
     }
     return true;
 }

@@ -79,10 +79,20 @@ system cursor is also hidden while a gamepad is the device in use.
 
 ## Prompts
 
-The button prompts along the bottom of the screen name the key or mouse
-button bound to each action while the keyboard is in use, for example
-`[E] Inventory` or `[Escape] Back`, and switch back to the controller's
-button pictures as soon as a gamepad is used. A signed-in player's prompts
+The button prompts along the bottom of the screen show the key or mouse
+button bound to each action while the keyboard is in use, drawn as a keycap
+(`E` Inventory, `Esc` Back) or a mouse with the button lit, and switch back
+to the controller's button pictures as soon as a gamepad is used. In
+containers, where the mouse moves the pointer, they show the mouse buttons the
+clicks do: the left button to take or place, the right button for half a stack
+or one item, Shift and the left button to move a stack across.
+
+The keycap, mouse and arrow art is in `resources/pc/ui`, drawn by
+`tools/pcart/make_ui_art.py` and copied next to the executable when it is
+built. The game composes a keycap for each bound key at run time, writing the
+key's name on it in the Mojangles font on the font's own pixel grid
+(`platform/pc/PcKeycaps`), and the prompt text shows it as an inline image
+(`<img src="pckey:N">`, N being the bound input). A signed-in player's prompts
 follow the device that player is signed in on; before anyone is signed in they
 follow whichever device was used last (`UseKeyboardPrompts`). The names come
 from the player's own bindings (`GetPromptKeyName`) and use the keyboard

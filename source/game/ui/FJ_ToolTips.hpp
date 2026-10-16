@@ -23,6 +23,9 @@ public:
     void UpdateControllerType(int controllerType);
     virtual void keyDownHandler(FJ_Event* event);
     void SetToolTip(int index, int type, int subtype, const std::wstring& text, bool visible);
+#if LCE_PLATFORM_PC
+    void SetHtmlToolTip(int index, const std::wstring& html, bool visible);
+#endif
     void UpdateLayout();
     void SetAlpha(float alpha);
     void AnimateToolTip(int index);

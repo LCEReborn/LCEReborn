@@ -37,6 +37,7 @@ public:
     static std::string InputName(int input);
     static std::string DisplayName(int input);
     static EPcInputContext ActionContext(int action);
+    static bool PointerPromptInput(int action, int* input, int* modifier);
     static int InputFromName(const std::string& name);
     static const char* ActionName(int action);
 

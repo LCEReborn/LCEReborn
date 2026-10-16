@@ -21,6 +21,10 @@
 
 extern C_4JProfile* gProfile;
 
+#if LCE_PLATFORM_PC
+static const int kKeyPromptHeight = 28;
+#endif
+
 UIComponent_Tooltips::_TooltipValues::_TooltipValues()
 {
     m_enabled = false;
@@ -40,7 +44,7 @@ UIComponent_Tooltips::UIComponent_Tooltips(int sceneType, void* data, UILayer* l
     }
 #if LCE_PLATFORM_PC
     m_promptPad = m_playerId;
-    m_keyboardPrompts = g_pInput->UseKeyboardPrompts(m_promptPad);
+    m_promptStyle = g_pInput->GetPromptStyle(m_promptPad);
 #endif
     initialiseMovie();
     m_controllerType = -1;
@@ -219,12 +223,15 @@ void UIComponent_Tooltips::_SetTooltip(unsigned int index, int type, int subtype
         value.m_text = text;
         const std::wstring& textString = text.getString();
 #if LCE_PLATFORM_PC
-        std::wstring keyName;
-        if (enabled && GetPromptKeyName(index, &keyName))
+        int input = -1;
+        int modifier = -1;
+        if (enabled && GetPromptInput(index, &input, &modifier))
         {
-            std::wstring prompt = keyName.empty() ? textString : L"[" + keyName + L"] " + textString;
-            static_cast<FJ_ToolTips*>(m_movie->getRootNode()->getFuiNode())
-                ->SetToolTip((int)index, -1, -1, prompt, enabled);
+            FJ_ToolTips* toolTips = static_cast<FJ_ToolTips*>(m_movie->getRootNode()->getFuiNode());
+            if (input < 0)
+                toolTips->SetToolTip((int)index, -1, -1, textString, enabled);
+            else
+                toolTips->SetHtmlToolTip((int)index, KeyPromptHtml(input, modifier, textString), enabled);
             return;
         }
 #endif
@@ -295,7 +302,41 @@ void UIComponent_Tooltips::tick()
 }
 
 #if LCE_PLATFORM_PC
-bool UIComponent_Tooltips::GetPromptKeyName(unsigned int index, std::wstring* name)
+std::wstring UIComponent_Tooltips::KeyPromptHtml(int input, int modifier, const std::wstring& text)
+{
+    std::wstring html;
+    wchar_t image[96];
+    if (modifier >= 0)
+    {
+        swprintf(image, sizeof(image) / sizeof(image[0]), L"<img src=\"pckey:%d\" height=\"%d\"/>", modifier,
+                 kKeyPromptHeight);
+        html += image;
+    }
+    swprintf(image, sizeof(image) / sizeof(image[0]), L"<img src=\"pckey:%d\" height=\"%d\"/> ", input,
+             kKeyPromptHeight);
+    html += image;
+    for (size_t i = 0; i < text.size(); ++i)
+    {
+        switch (text[i])
+        {
+        case L'&':
+            html += L"&amp;";
+            break;
+        case L'<':
+            html += L"&lt;";
+            break;
+        case L'>':
+            html += L"&gt;";
+            break;
+        default:
+            html += text[i];
+            break;
+        }
+    }
+    return html;
+}
+
+bool UIComponent_Tooltips::GetPromptInput(unsigned int index, int* input, int* modifier)
 {
     static const int kMenuActions[16] = {EControllerActions_MenuOk,
                                          EControllerActions_MenuCancel,
@@ -319,15 +360,15 @@ bool UIComponent_Tooltips::GetPromptKeyName(unsigned int index, std::wstring* na
         action = value.m_button;
     else if (index < 16)
         action = kMenuActions[index];
-    return g_pInput->GetPromptKeyName(m_promptPad, action, name);
+    return g_pInput->GetPromptInput(m_promptPad, action, input, modifier);
 }
 
 void UIComponent_Tooltips::RefreshPrompts()
 {
-    bool keyboardPrompts = g_pInput->UseKeyboardPrompts(m_promptPad);
-    if (keyboardPrompts == m_keyboardPrompts || gConsoleUIController.IsReloadingSkin())
+    int promptStyle = g_pInput->GetPromptStyle(m_promptPad);
+    if (promptStyle == m_promptStyle || gConsoleUIController.IsReloadingSkin())
         return;
-    m_keyboardPrompts = keyboardPrompts;
+    m_promptStyle = promptStyle;
     for (unsigned int i = 0; i < 16; ++i)
     {
         _TooltipValues& value = m_tooltipValues[i];

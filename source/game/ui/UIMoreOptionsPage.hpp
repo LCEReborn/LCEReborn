@@ -8,11 +8,8 @@ class UIMoreOptionsPage : public UICustomMenuPage
 public:
     enum
     {
-        eItem_DisplayHeading,
         eItem_Fullscreen,
-        eItem_VSync,
-        eItem_AboutHeading,
-        eItem_Version
+        eItem_VSync
     };
 
     virtual void Build(UIScene_CustomMenu& menu);

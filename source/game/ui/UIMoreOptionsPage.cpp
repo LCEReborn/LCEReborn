@@ -10,15 +10,9 @@
 void UIMoreOptionsPage::Build(UIScene_CustomMenu& menu)
 {
 #if LCE_PLATFORM_PC
-    menu.AddLabel(eItem_DisplayHeading, L"Display");
-    menu.AddCheckbox(eItem_Fullscreen, L"Fullscreen", PcWindowIsFullscreen(),
-                     L"Fill the screen with the game. F11 or Alt+Enter also switches.");
-    menu.AddCheckbox(eItem_VSync, L"V-Sync", PcWindowIsVSync(),
-                     L"Wait for the monitor before showing each frame, so the picture never tears.");
+    menu.AddCheckbox(eItem_Fullscreen, L"Fullscreen", PcWindowIsFullscreen(), std::wstring());
+    menu.AddCheckbox(eItem_VSync, L"V-Sync", PcWindowIsVSync(), std::wstring());
 #endif
-    menu.AddLabel(eItem_AboutHeading, L"About");
-    menu.AddValue(eItem_Version, L"LCE Reborn", L"Preview",
-                  L"LCE Reborn is built from the reconstructed source of Minecraft: Wii U Edition.");
 }
 
 void UIMoreOptionsPage::OnToggle(UIScene_CustomMenu& menu, int id, bool checked)

@@ -90,6 +90,7 @@ enum EUIScene
     EUIScene_LanguageSelector = 0x4f,
     EUIScene_AvatarSelectMenu = 0x50,
     EUIScene_AchievementsMenu = 0x51,
+    EUIScene_CustomMenu = 0x52,
     EUIScene_None = 0x53,
     EUIScene_Count
 };

@@ -82,6 +82,7 @@
 #include "game/ui/UIScene_TeleportMenu.hpp"
 #include "game/ui/UIScene_Timer.hpp"
 #include "game/ui/UIScene_TradingMenu.hpp"
+#include "game/ui/UIScene_CustomMenu.hpp"
 #include "game/ui/UIScene_TrialExitUpsell.hpp"
 #include "game/ui/UIScene_WritableBookMenu.hpp"
 #include "platform/wiiu/UIComponent_WiiUDRC.hpp"
@@ -447,6 +448,9 @@ bool UILayer::NavigateToScene(int player, EUIScene scene, void* data)
         break;
     case EUIScene_SettingsListMenu:
         created = new UIScene_SettingsListMenu(player, data, this);
+        break;
+    case EUIScene_CustomMenu:
+        created = new UIScene_CustomMenu(player, data, this);
         break;
     case EUIScene_SkinSelectMenu:
         created = new UIScene_SkinSelectMenu(player, data, this);

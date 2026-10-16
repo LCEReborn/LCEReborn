@@ -35,6 +35,8 @@ public:
     const std::vector<int>& GetBindings(EPcInputContext context, int action) const;
     void SetBindings(EPcInputContext context, int action, const std::vector<int>& inputs);
     static std::string InputName(int input);
+    static std::string DisplayName(int input);
+    static EPcInputContext ActionContext(int action);
     static int InputFromName(const std::string& name);
     static const char* ActionName(int action);
 

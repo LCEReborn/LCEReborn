@@ -48,6 +48,10 @@ public:
     unsigned int _SetTooltip(unsigned int index, int type, int subtype, int textId, bool& changed);
     unsigned int HandleToolTipButton(unsigned int player, EControllerActions action, unsigned int& button, int type);
     void UpdateControllerType(int controllerType);
+#if LCE_PLATFORM_PC
+    bool GetPromptKeyName(unsigned int index, std::wstring* name);
+    void RefreshPrompts();
+#endif
     virtual void SetTooltips(int player, int* tooltips, bool visible);
     virtual void SetTooltips(int player, int first, int second, int third, int fourth, int fifth, int sixth,
                              int seventh, int eighth, int ninth, int tenth, int eleventh, int twelfth, int thirteenth,
@@ -69,6 +73,10 @@ private:
     unsigned int m_controllerType;
     UIControl_Touch m_touchControls[16];
     bool m_overrideSFX[4][23];
+#if LCE_PLATFORM_PC
+    int m_promptPad;
+    bool m_keyboardPrompts;
+#endif
 };
 
 #endif

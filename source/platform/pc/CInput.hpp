@@ -85,6 +85,8 @@ public:
     virtual bool ConsumeHotbarInput(int pad, int* slot, int* scroll);
     virtual bool GetMenuPointer(int pad, float* x, float* y);
     virtual int ConsumeMenuWheel(int pad);
+    virtual bool UseKeyboardPrompts(int pad);
+    virtual bool GetPromptKeyName(int pad, int action, std::wstring* name);
 
 private:
     friend void PcInputHandleEvent(const SDL_Event& event);
@@ -207,6 +209,7 @@ private:
     Joypad joypads[JOYPAD_COUNT];
     int padRemap[4];
     unsigned int controllerCount;
+    int lastInputJoypad;
     unsigned int deadzone;
     unsigned int maximumInput;
     unsigned int movementRange;

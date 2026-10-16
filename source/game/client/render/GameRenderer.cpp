@@ -53,6 +53,10 @@
 #include "game/core/ColourTable.hpp"
 #include "game/core/Direction.hpp"
 #include "game/core/GameSettings.hpp"
+#if LCE_PLATFORM_PC
+#include "game/item/PowerupItems.hpp"
+#include "platform/CInput.hpp"
+#endif
 #include "game/core/System.hpp"
 #include "game/entity/mob/Animal.hpp"
 #include "game/entity/mob/LivingEntity.hpp"
@@ -3216,6 +3220,43 @@ void GameRenderer::renderItemActivationAnimation(int width, int height, float pa
     GlStateManager::disableDepthTest();
 }
 
+#if LCE_PLATFORM_PC
+static void ApplyMouseLook(Minecraft* minecraft)
+{
+    for (int player = 0; player < 4; ++player)
+    {
+        float x;
+        float y;
+        if (!g_pInput->ConsumeMouseLook(player, &x, &y))
+            continue;
+        boost::shared_ptr<MultiplayerLocalPlayer> localPlayer = minecraft->mLocalPlayers[player];
+        MultiPlayerGameMode* gameMode = minecraft->mGameModes[player];
+        if (localPlayer == NULL || gameMode == NULL || minecraft->mScreen != NULL)
+            continue;
+        if (!gameMode->isInputAllowed(EControllerActions_LookLeft)
+            && !gameMode->isInputAllowed(EControllerActions_LookRight))
+            x = 0.0f;
+        if (!gameMode->isInputAllowed(EControllerActions_LookUp)
+            && !gameMode->isInputAllowed(EControllerActions_LookDown))
+            y = 0.0f;
+        y = -y;
+        if (GameSettings::GetGameSettings(player, eGameSetting_InvertLook) != 0)
+            y = -y;
+        if (gApp.GetFirstMiniGameType() == eMiniGameId_Glide
+            && localPlayer->CheckPowerup(PowerupItems::eGlide_Timed_Powerup_ID_InvertControls))
+        {
+            x = -x;
+            y = -y;
+        }
+        float sensitivity =
+            static_cast<float>(GameSettings::GetGameSettings(player, eGameSetting_GameSensitivity)) / 200.0f * 0.6f
+            + 0.2f;
+        float scale = sensitivity * sensitivity * sensitivity * 8.0f;
+        localPlayer->turn(x * scale, y * scale);
+    }
+}
+#endif
+
 void GameRenderer::render(float partialTick, long long frameNanoTime, bool refreshLightTexture)
 {
     if (mLightTextureDirty && refreshLightTexture)
@@ -3242,6 +3283,9 @@ void GameRenderer::render(float partialTick, long long frameNanoTime, bool refre
         if (fpsCap < 60)
             fpsCap = 60;
 
+#if LCE_PLATFORM_PC
+        ApplyMouseLook(mMinecraft);
+#endif
         const long long startNano = System::processTimeInNanoSecs();
         int remainingNanos = 1000000000 / fpsCap / 4 - static_cast<int>(startNano - frameNanoTime);
         if (remainingNanos < 0)

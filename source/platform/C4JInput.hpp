@@ -84,6 +84,9 @@ public:
     virtual unsigned int IsPadClassicController(int pad) = 0;
     virtual unsigned char IsDRCConnected() = 0;
     virtual void AcquiredForeground() = 0;
+#if LCE_PLATFORM_PC
+    virtual bool ConsumeMouseLook(int pad, float* x, float* y) = 0;
+#endif
 };
 
 #endif

@@ -578,7 +578,18 @@ Image ComposePadButton(EPcPadFamily family, EPcPadElement element)
     {
         DrawLabel(&image, button.label, (image.width - labelWidth) / 2, (image.height - kCapRows) / 2, button.mark);
     }
-    return image;
+
+    int canvasHeight = sResources.shapes[EShape_Round].height;
+    if (image.height >= canvasHeight)
+        return image;
+    Image canvas = BlankImage(image.width, canvasHeight);
+    int top = (canvasHeight - image.height) / 2;
+    for (int y = 0; y < image.height; ++y)
+    {
+        for (int x = 0; x < image.width; ++x)
+            Copy(image, x, y, &canvas, x, top + y);
+    }
+    return canvas;
 }
 
 Image Enlarge(const Image& source)

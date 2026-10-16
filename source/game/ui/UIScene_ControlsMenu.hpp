@@ -46,7 +46,6 @@ public:
         EControl_LookBehind,
         EControl_QuickMove,
         EControl_TakeHalf,
-        EControl_TakeAll,
         EControl_PlayerList,
         EControl_ToggleHud,
         EControl_Label

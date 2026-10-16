@@ -225,7 +225,6 @@ void UIScene_ControlsMenu::Init(int player)
     m_controlsList.AddNewLabel(L10N::GetString(IDS_CONTROLS_INVENTORY), EControl_Label);
     AddControlRow(player, EControl_QuickMove, L10N::GetString(IDS_TOOLTIPS_QUICK_MOVE));
     AddControlRow(player, EControl_TakeHalf, L"Take Half");
-    AddControlRow(player, EControl_TakeAll, L10N::GetString(IDS_TOOLTIPS_TAKE_EVERYTHING));
     if (UsesKeyboard(player))
     {
         m_controlsList.AddNewLabel(L" ", EControl_Label);
@@ -365,8 +364,6 @@ int UIScene_ControlsMenu::GetControlsAction(EControl control)
         return UsesKeyboard(m_playerId) ? EControllerActions_QuickMoveModifier : EControllerActions_MenuY;
     case EControl_TakeHalf:
         return EControllerActions_MenuX;
-    case EControl_TakeAll:
-        return EControllerActions_MenuLeftScroll;
     case EControl_PlayerList:
         return EControllerActions_Scoreboard;
     case EControl_ToggleHud:
@@ -391,8 +388,6 @@ int UIScene_ControlsMenu::InventoryControl(EControl control)
         return GameSettings::eInventoryControl_QuickMove;
     case EControl_TakeHalf:
         return GameSettings::eInventoryControl_TakeHalf;
-    case EControl_TakeAll:
-        return GameSettings::eInventoryControl_TakeAll;
     default:
         return -1;
     }

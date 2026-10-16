@@ -3,6 +3,9 @@
 #include <string>
 
 #include "game/client/render/C4JRender.hpp"
+#if LCE_PLATFORM_PC
+#include "game/client/render/Renderer.hpp"
+#endif
 #include "game/core/ConsoleUIController.hpp"
 #include "game/core/Minecraft.hpp"
 #include "game/ui/FJ_Panorama.hpp"
@@ -117,7 +120,13 @@ void UIComponent_Panorama::render(int width, int height, C4JRender::eViewportTyp
     }
     else
     {
+#if LCE_PLATFORM_PC
+        gRenderer->SetLayout(Renderer::ELayout_InterfaceBackground);
         UIScene::render(width, height, viewport);
+        gRenderer->SetLayout(Renderer::ELayout_Interface);
+#else
+        UIScene::render(width, height, viewport);
+#endif
     }
 }
 

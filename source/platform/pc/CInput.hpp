@@ -86,6 +86,7 @@ public:
     virtual bool GetMenuPointer(int pad, float* x, float* y);
     virtual int ConsumeMenuWheel(int pad);
     virtual bool UseKeyboardPrompts(int pad);
+    virtual void SetMenuDrawsPointer(bool drawsPointer);
     virtual bool GetPromptKeyName(int pad, int action, std::wstring* name);
 
 private:
@@ -236,6 +237,8 @@ private:
     unsigned short touchData[4];
     bool mouseLookEnabled;
     bool mouseCaptured;
+    bool menuDrawsPointer;
+    bool cursorShown;
     bool windowFocused;
     unsigned int lastWindowId;
 

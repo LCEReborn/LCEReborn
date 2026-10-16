@@ -1,6 +1,7 @@
 #include "platform/pc/CInput.hpp"
 #include "platform/pc/InputBindings.hpp"
 #include "platform/pc/PcPaths.hpp"
+#include "platform/pc/Renderer.hpp"
 
 #include <SDL3/SDL.h>
 
@@ -211,6 +212,8 @@ CInput::CInput()
     }
     controllerCount = 0;
     lastInputJoypad = kKeyboardJoypad;
+    menuDrawsPointer = false;
+    cursorShown = true;
     deadzone = 10000;
     maximumInput = 10000;
     movementRange = 0x7fff;
@@ -567,6 +570,12 @@ void CInput::UpdateMouseCapture()
     bool desired = windowFocused && keyboardState == EKeyboardState_Idle
                    && errorViewerState == EErrorViewerState_None && !IsKeyboardInMenu();
     mouseLookEnabled = desired;
+    bool showCursor = !desired && !(menuDrawsPointer && keyboardState == EKeyboardState_Idle)
+                      && lastInputJoypad == kKeyboardJoypad;
+    if (showCursor != cursorShown && (showCursor ? SDL_ShowCursor() : SDL_HideCursor()))
+    {
+        cursorShown = showCursor;
+    }
     if (desired == mouseCaptured)
     {
         return;
@@ -1363,8 +1372,13 @@ bool CInput::MenuPointerPosition(float* x, float* y)
     {
         return false;
     }
-    float pointerX = keyboardMouse.PointerX() * kTouchSpaceWidth / static_cast<float>(width);
-    float pointerY = keyboardMouse.PointerY() * kTouchSpaceHeight / static_cast<float>(height);
+    float areaLeft;
+    float areaTop;
+    float areaWidth;
+    float areaHeight;
+    gRenderer->GetInterfaceArea(&areaLeft, &areaTop, &areaWidth, &areaHeight);
+    float pointerX = (keyboardMouse.PointerX() / static_cast<float>(width) - areaLeft) / areaWidth * kTouchSpaceWidth;
+    float pointerY = (keyboardMouse.PointerY() / static_cast<float>(height) - areaTop) / areaHeight * kTouchSpaceHeight;
     *x = pointerX < 0.0f ? 0.0f : (pointerX > kTouchSpaceWidth - 1.0f ? kTouchSpaceWidth - 1.0f : pointerX);
     *y = pointerY < 0.0f ? 0.0f : (pointerY > kTouchSpaceHeight - 1.0f ? kTouchSpaceHeight - 1.0f : pointerY);
     return true;
@@ -1392,6 +1406,11 @@ unsigned int CInput::ConsumeMenuClicks(int pad)
 bool CInput::GetMenuPointer(int pad, float* x, float* y)
 {
     return IsKeyboardPad(pad) && MenuPointerPosition(x, y);
+}
+
+void CInput::SetMenuDrawsPointer(bool drawsPointer)
+{
+    menuDrawsPointer = drawsPointer;
 }
 
 bool CInput::UseKeyboardPrompts(int pad)

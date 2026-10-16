@@ -1252,7 +1252,11 @@ void GameRenderer::moveCameraToPlayer(float partialTick)
 
 void GameRenderer::getFovAndAspect(float& fov, float& aspect, float partialTick, bool useSmoothing)
 {
+#if LCE_PLATFORM_PC
+    aspect = gRenderer->GetScreenAspect();
+#else
     aspect = static_cast<float>(mMinecraft->mWidth) / static_cast<float>(mMinecraft->mHeight);
+#endif
     fov = getFov(partialTick, useSmoothing);
 
     if (mMinecraft->mPlayer->mViewport == 1 || mMinecraft->mPlayer->mViewport == 2)

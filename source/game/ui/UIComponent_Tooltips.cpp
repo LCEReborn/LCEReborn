@@ -38,6 +38,10 @@ UIComponent_Tooltips::UIComponent_Tooltips(int sceneType, void* data, UILayer* l
         for (int action = 0; action < 23; ++action)
             m_overrideSFX[pad][action] = false;
     }
+#if LCE_PLATFORM_PC
+    m_promptPad = m_playerId;
+    m_keyboardPrompts = g_pInput->UseKeyboardPrompts(m_promptPad);
+#endif
     initialiseMovie();
     m_controllerType = -1;
     for (unsigned int i = 0; i < 16; ++i)
@@ -214,6 +218,16 @@ void UIComponent_Tooltips::_SetTooltip(unsigned int index, int type, int subtype
         value.m_enabled = enabled;
         value.m_text = text;
         const std::wstring& textString = text.getString();
+#if LCE_PLATFORM_PC
+        std::wstring keyName;
+        if (enabled && GetPromptKeyName(index, &keyName))
+        {
+            std::wstring prompt = keyName.empty() ? textString : L"[" + keyName + L"] " + textString;
+            static_cast<FJ_ToolTips*>(m_movie->getRootNode()->getFuiNode())
+                ->SetToolTip((int)index, -1, -1, prompt, enabled);
+            return;
+        }
+#endif
         static_cast<FJ_ToolTips*>(m_movie->getRootNode()->getFuiNode())
             ->SetToolTip((int)index, finalType, finalSubtype, textString, enabled);
     }
@@ -275,7 +289,54 @@ void UIComponent_Tooltips::tick()
     }
     if (changed)
         _Relayout();
+#if LCE_PLATFORM_PC
+    RefreshPrompts();
+#endif
 }
+
+#if LCE_PLATFORM_PC
+bool UIComponent_Tooltips::GetPromptKeyName(unsigned int index, std::wstring* name)
+{
+    static const int kMenuActions[16] = {EControllerActions_MenuOk,
+                                         EControllerActions_MenuCancel,
+                                         EControllerActions_MenuX,
+                                         EControllerActions_MenuY,
+                                         EControllerActions_MenuPageUp,
+                                         EControllerActions_MenuPageDown,
+                                         EControllerActions_MenuLeftScroll,
+                                         EControllerActions_MenuRightScroll,
+                                         EControllerActions_MenuStickPress,
+                                         EControllerActions_MenuOtherStickPress,
+                                         EControllerActions_MenuBack,
+                                         EControllerActions_MenuLeft,
+                                         EControllerActions_MenuRight,
+                                         EControllerActions_MenuUp,
+                                         EControllerActions_MenuDown,
+                                         -1};
+    const _TooltipValues& value = m_tooltipValues[index];
+    int action = -1;
+    if (value.m_dynamic)
+        action = value.m_button;
+    else if (index < 16)
+        action = kMenuActions[index];
+    return g_pInput->GetPromptKeyName(m_promptPad, action, name);
+}
+
+void UIComponent_Tooltips::RefreshPrompts()
+{
+    bool keyboardPrompts = g_pInput->UseKeyboardPrompts(m_promptPad);
+    if (keyboardPrompts == m_keyboardPrompts || gConsoleUIController.IsReloadingSkin())
+        return;
+    m_keyboardPrompts = keyboardPrompts;
+    for (unsigned int i = 0; i < 16; ++i)
+    {
+        _TooltipValues& value = m_tooltipValues[i];
+        if (value.m_enabled)
+            _SetTooltip(i, value.m_type, value.m_subtype, value.m_text, true, true);
+    }
+    _Relayout();
+}
+#endif
 
 void UIComponent_Tooltips::render(int width, int height, C4JRender::eViewportType viewport)
 {
@@ -491,6 +552,9 @@ unsigned int UIComponent_Tooltips::HandleToolTipButton(unsigned int player, ECon
     unsigned int index = button;
     if (index < 16)
     {
+#if LCE_PLATFORM_PC
+        m_tooltipValues[index].m_button = action;
+#endif
         result = _SetTooltip(index, (int)primary, (int)secondary, type, changed);
         index = button;
         _TooltipValues& value = m_tooltipValues[index];
@@ -630,6 +694,10 @@ void UIComponent_Tooltips::SetTooltips(int player, int* tooltips, bool visible)
             _SetTooltip(index, -1, -1, UIString(L""), false, false);
         }
     }
+#if LCE_PLATFORM_PC
+    if (player >= 0)
+        m_promptPad = player;
+#endif
     if (changed)
         _Relayout();
     if (player >= 0)
@@ -658,6 +726,10 @@ void UIComponent_Tooltips::SetTooltips(int player, int first, int second, int th
     changed = _SetTooltip(13, fourteenth) || changed;
     changed = _SetTooltip(14, fifteenth) || changed;
     changed = _SetTooltip(15, sixteenth) || changed;
+#if LCE_PLATFORM_PC
+    if (player >= 0)
+        m_promptPad = player;
+#endif
     if (changed)
         _Relayout();
     if (player >= 0)

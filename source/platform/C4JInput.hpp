@@ -1,6 +1,10 @@
 #ifndef PLATFORM_C4JINPUT_HPP
 #define PLATFORM_C4JINPUT_HPP
 
+#if LCE_PLATFORM_PC
+#include <string>
+#endif
+
 struct _STRING_VERIFY_RESPONSE;
 
 class C_4JInput
@@ -99,6 +103,8 @@ public:
     virtual bool ConsumeHotbarInput(int pad, int* slot, int* scroll) = 0;
     virtual bool GetMenuPointer(int pad, float* x, float* y) = 0;
     virtual int ConsumeMenuWheel(int pad) = 0;
+    virtual bool UseKeyboardPrompts(int pad) = 0;
+    virtual bool GetPromptKeyName(int pad, int action, std::wstring* name) = 0;
 #endif
 };
 

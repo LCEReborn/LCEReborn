@@ -288,6 +288,29 @@ std::string PcKeyboardMouse::InputName(int input)
     return std::string();
 }
 
+EPcInputContext PcKeyboardMouse::ActionContext(int action)
+{
+    return action <= EControllerActions_MenuCancel ? EPcInputContext_Menu : EPcInputContext_Game;
+}
+
+std::string PcKeyboardMouse::DisplayName(int input)
+{
+    if (input >= kMouseInputBase && input < kMouseInputBase + MOUSE_BUTTON_COUNT)
+    {
+        static const char* const kShortNames[MOUSE_BUTTON_COUNT] = {
+            "Mouse 0", "LMB", "MMB", "RMB", "Mouse 4", "Mouse 5", "Mouse 6", "Mouse 7"};
+        return kShortNames[input - kMouseInputBase];
+    }
+    if (input >= 0 && input < SCANCODE_COUNT)
+    {
+        SDL_Keycode key = SDL_GetKeyFromScancode(static_cast<SDL_Scancode>(input), SDL_KMOD_NONE, false);
+        const char* name = SDL_GetKeyName(key);
+        if (name != 0 && name[0] != 0)
+            return name;
+    }
+    return InputName(input);
+}
+
 int PcKeyboardMouse::InputFromName(const std::string& name)
 {
     if (SameText(name, "Wheel Up"))

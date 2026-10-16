@@ -210,6 +210,7 @@ CInput::CInput()
         menuDisplayed[pad] = 0;
     }
     controllerCount = 0;
+    lastInputJoypad = kKeyboardJoypad;
     deadzone = 10000;
     maximumInput = 10000;
     movementRange = 0x7fff;
@@ -748,6 +749,10 @@ void CInput::UpdateKeyboardMouse(Joypad& joypad)
     {
         idleStartTimes[kKeyboardJoypad] = SDL_GetTicksNS();
     }
+    if (keyboardMouse.AnyInputPressed() || keyboardMouse.PointerMoved())
+    {
+        lastInputJoypad = kKeyboardJoypad;
+    }
 }
 
 void CInput::UpdateJoypads()
@@ -796,6 +801,10 @@ void CInput::UpdateJoypads()
             {
                 joypad.pressedValue = joypad.rawValue & ~joypad.previousValue;
                 joypad.releasedValue = joypad.previousValue & ~joypad.rawValue;
+            }
+            if (joypad.pressedValue != 0)
+            {
+                lastInputJoypad = pad;
             }
             else
             {
@@ -1383,6 +1392,36 @@ unsigned int CInput::ConsumeMenuClicks(int pad)
 bool CInput::GetMenuPointer(int pad, float* x, float* y)
 {
     return IsKeyboardPad(pad) && MenuPointerPosition(x, y);
+}
+
+bool CInput::UseKeyboardPrompts(int pad)
+{
+    int mappedPad = pad;
+    if (RemapIpad(mappedPad))
+    {
+        return mappedPad == kKeyboardJoypad;
+    }
+    return lastInputJoypad == kKeyboardJoypad;
+}
+
+bool CInput::GetPromptKeyName(int pad, int action, std::wstring* name)
+{
+    if (!UseKeyboardPrompts(pad))
+    {
+        return false;
+    }
+    name->clear();
+    if (action < 0 || action >= PcKeyboardMouse::ACTION_COUNT)
+    {
+        return true;
+    }
+    const std::vector<int>& inputs = keyboardMouse.GetBindings(PcKeyboardMouse::ActionContext(action), action);
+    if (!inputs.empty())
+    {
+        std::string display = PcKeyboardMouse::DisplayName(inputs[0]);
+        name->assign(display.begin(), display.end());
+    }
+    return true;
 }
 
 int CInput::ConsumeMenuWheel(int pad)

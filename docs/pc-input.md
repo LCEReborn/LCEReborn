@@ -74,6 +74,22 @@ what a tap on the GamePad would. A cursor that is not moving never takes the
 highlight away from the keys. Containers (inventory, chests, crafting) move
 their own pointer, which follows the mouse, and handle their own clicks.
 
+## Prompts
+
+The button prompts along the bottom of the screen name the key or mouse
+button bound to each action while the keyboard is in use, for example
+`[E] Inventory` or `[Escape] Back`, and switch back to the controller's
+button pictures as soon as a gamepad is used. A signed-in player's prompts
+follow the device that player is signed in on; before anyone is signed in they
+follow whichever device was used last (`UseKeyboardPrompts`). The names come
+from the player's own bindings (`GetPromptKeyName`) and use the keyboard
+layout's key names, so rebinding an action changes its prompt.
+
+In-game prompts already know their action. Menu prompts are given by button
+position (A, B, X, Y, triggers, bumpers...), and each position stands for the
+menu action the controller maps to it: A is `MenuOk`, B is `MenuCancel`, the
+triggers page, the bumpers change tab, and so on.
+
 ## What changes in the game
 
 The game core stays platform-pure. Where PC input needs the game to do

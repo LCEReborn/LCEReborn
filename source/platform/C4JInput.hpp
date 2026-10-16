@@ -23,6 +23,11 @@ public:
         EPromptStyle_Pointer,
         EPromptStyle_Gamepad
     };
+    enum EKeyCapture
+    {
+        EKeyCapture_None = -1,
+        EKeyCapture_Cancelled = -2
+    };
 #endif
     enum ETouchType
     {
@@ -114,6 +119,14 @@ public:
     virtual int GetPromptStyle(int pad) = 0;
     virtual int GetPromptImages(int pad, const int* actions, int actionCount, unsigned int buttons, int* images,
                                 int maxImages) = 0;
+    virtual bool UsesKeyboard(int pad) = 0;
+    virtual void BeginKeyCapture() = 0;
+    virtual void CancelKeyCapture() = 0;
+    virtual int ConsumeCapturedKey() = 0;
+    virtual bool HasKeyBinding(int action) = 0;
+    virtual bool SameKeyBinding(int action, int otherAction) = 0;
+    virtual void SetKeyBinding(int action, int input) = 0;
+    virtual void ResetKeyBindings() = 0;
 #endif
 };
 

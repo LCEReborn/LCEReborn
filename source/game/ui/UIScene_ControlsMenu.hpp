@@ -67,6 +67,13 @@ public:
     static int ControlsWarningDialogReturned(void* context, int pad, C4JStorage::EMessageResult result);
     virtual void handleReload();
     unsigned int CheckControls(int player, EControl control);
+    bool HasMapping(int player, EControl control);
+    bool SameMapping(int player, EControl control, EControl otherControl);
+    void ClearMapping(int player, EControl control);
+    bool UsesKeyboard(int player);
+    std::wstring AssignHelp(int player);
+    void FinishButtonEdit(int player);
+    void HandleKeyCapture(int player);
     void HandleButtonEdit(int player, int action, bool repeat, bool pressed, bool released);
     unsigned int CheckControlsOnExit(int player);
     virtual void handleInput(int player, int action, bool repeat, bool pressed, bool released, bool& handled);

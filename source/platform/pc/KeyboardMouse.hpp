@@ -43,6 +43,9 @@ public:
     static const char* ActionName(int action);
 
     void HandleEvent(const SDL_Event& event, EPcInputContext context, bool mouseCaptured);
+    void BeginCapture();
+    void CancelCapture();
+    int ConsumeCapture();
     void Update(EPcInputContext context, float initialRepeatDelay, float repeatDelay);
     void ReleaseAll();
     void SetFakeAction(int action, int ticks);
@@ -78,6 +81,7 @@ private:
         bool repeatStarted;
     };
 
+    bool CaptureEvent(const SDL_Event& event);
     void PressInput(int input, EPcInputContext context);
     void ReleaseInput(int input);
     void AddBinding(EPcInputContext context, int action, int input);
@@ -103,6 +107,8 @@ private:
     bool mMovedThisTick;
     unsigned int mClicks;
     unsigned long long mRepeatDelay;
+    bool mCapturing;
+    int mCaptured;
 };
 
 #endif

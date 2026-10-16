@@ -90,6 +90,14 @@ public:
     virtual int GetPromptStyle(int pad);
     virtual int GetPromptImages(int pad, const int* actions, int actionCount, unsigned int buttons, int* images,
                                 int maxImages);
+    virtual bool UsesKeyboard(int pad);
+    virtual void BeginKeyCapture();
+    virtual void CancelKeyCapture();
+    virtual int ConsumeCapturedKey();
+    virtual bool HasKeyBinding(int action);
+    virtual bool SameKeyBinding(int action, int otherAction);
+    virtual void SetKeyBinding(int action, int input);
+    virtual void ResetKeyBindings();
 
 private:
     friend void PcInputHandleEvent(const SDL_Event& event);
@@ -239,6 +247,7 @@ private:
     bool localMultiplayer;
 
     PcKeyboardMouse keyboardMouse;
+    std::string keyBindingsPath;
     unsigned short touchData[4];
     bool mouseLookEnabled;
     bool mouseCaptured;

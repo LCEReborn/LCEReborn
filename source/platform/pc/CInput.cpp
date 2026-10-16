@@ -1380,6 +1380,20 @@ unsigned int CInput::ConsumeMenuClicks(int pad)
     return keyboardMouse.ConsumeClicks();
 }
 
+bool CInput::GetMenuPointer(int pad, float* x, float* y)
+{
+    return IsKeyboardPad(pad) && MenuPointerPosition(x, y);
+}
+
+int CInput::ConsumeMenuWheel(int pad)
+{
+    if (!IsKeyboardPad(pad) || !IsKeyboardInMenu())
+    {
+        return 0;
+    }
+    return keyboardMouse.ConsumeMenuWheel();
+}
+
 bool CInput::ConsumeHotbarInput(int pad, int* slot, int* scroll)
 {
     if (!IsKeyboardPad(pad) || IsKeyboardInMenu())

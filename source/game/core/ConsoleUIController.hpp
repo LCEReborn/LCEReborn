@@ -335,6 +335,17 @@ private:
     UIELEMENT* m_touchPressElement;
     UIELEMENT* m_touchCurrentElement;
     UIGroup* m_groups[EUIGroup_Count];
+#if LCE_PLATFORM_PC
+    void HandlePointerInput(unsigned int pad);
+    UIScene* GetInputScene(unsigned int pad);
+    UIELEMENT* FindPointerElement(UIScene* scene, int x, int y);
+    void HoverElement(UIELEMENT* element, int x, int y);
+    void SendPointerAction(unsigned int pad, unsigned int action);
+
+    UIControl* m_pointerHoverControl;
+    int m_pointerLastX;
+    int m_pointerLastY;
+#endif
 };
 
 extern C4JCriticalSection g_uiCriticalSection;

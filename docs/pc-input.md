@@ -47,7 +47,8 @@ tick, and when it should next repeat. `ButtonDown`, `ButtonPressed`,
 | --- | --- |
 | Mouse look | `ConsumeMouseLook`: the raw mouse delta, turned every frame in `GameRenderer::render` |
 | Hotbar keys and wheel | `ConsumeHotbarInput`: a slot to select, or a number of slots to scroll, applied where the game cycles the held item |
-| Menu pointer | `ConsumeMenuPointer` / `ConsumeMenuClicks`: the cursor position in UI space and the clicks since the last frame |
+| Menu pointer | `GetMenuPointer`: the cursor position in UI space; `ConsumeMenuPointer` also reports whether it moved |
+| Menu clicks and wheel | `ConsumeMenuClicks` / `ConsumeMenuWheel`: the clicks and wheel steps since the last frame |
 | Text | `RequestKeyboard`: the typed text, edited with the usual keys |
 
 Movement keys feed the left stick for slot 0 so that the game's movement code,
@@ -60,12 +61,18 @@ control. On PC the mouse also points at controls directly:
 
 - moving the cursor over a control highlights it;
 - clicking presses it;
-- the wheel scrolls lists and sliders;
+- the wheel moves the highlight up and down, scrolling lists with it;
 - the right button or Escape goes back.
 
 The UI already knows where every control is on screen (the hit boxes it keeps
-for the GamePad's touch screen); the pointer uses that. Containers (inventory,
-chests, crafting) move their own pointer, which follows the mouse.
+for the GamePad's touch screen); the pointer uses that.
+`ConsoleUIController::HandlePointerInput` runs once per frame for the keyboard
+player: when the cursor moves it highlights the control under it the way a
+touch would, the wheel and the right button are sent to the scene as menu
+actions, and a left click goes through the touch path, so it presses exactly
+what a tap on the GamePad would. A cursor that is not moving never takes the
+highlight away from the keys. Containers (inventory, chests, crafting) move
+their own pointer, which follows the mouse, and handle their own clicks.
 
 ## What changes in the game
 

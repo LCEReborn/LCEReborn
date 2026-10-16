@@ -54,7 +54,6 @@ void UICustomMenuPage::OnClose(UIScene_CustomMenu&)
 UIScene_CustomMenu::UIScene_CustomMenu(int playerId, void* data, UILayer* layer)
     : UIScene(playerId, layer),
       m_page(static_cast<UICustomMenuPage*>(data)),
-      m_minimumDescriptionHeight(0.0f),
       m_maximumDescriptionHeight(0.0f),
       m_focusId(-1),
       m_descriptionOpen(false),
@@ -108,7 +107,6 @@ void UIScene_CustomMenu::Build()
     FJ_FuiNode* description = menu->getChildByName(kPanelNames[ePanel_Description]);
     m_maximumDescriptionHeight = description != NULL ? description->getHeight() : 0.0f;
     menu->DoVerticalResizeCheck();
-    m_minimumDescriptionHeight = description != NULL ? description->getHeight() : 0.0f;
     doHorizontalResizeCheck();
     for (int panel = 0; panel < ePanel_Count; ++panel)
     {
@@ -325,8 +323,6 @@ void UIScene_CustomMenu::FitDescriptionPanel()
     FJ_HtmlText* text = description->asFJ_HtmlText();
     float arrowHeight = text->m_bNoBackground ? 0.0f : text->m_pUpArrow->getHeight();
     float height = text->m_pText->getTextHeight() + arrowHeight;
-    if (height < m_minimumDescriptionHeight)
-        height = m_minimumDescriptionHeight;
     if (height > m_maximumDescriptionHeight)
         height = m_maximumDescriptionHeight;
 

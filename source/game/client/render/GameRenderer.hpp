@@ -177,7 +177,6 @@ private:
     float mFov[4];
     float mFovO[4];
     float mUnusedPlayerFloats[4];
-    float mFovSetting;
     float mDarkenWorldAmount;
     float mDarkenWorldAmountO;
     bool mCloudFog;

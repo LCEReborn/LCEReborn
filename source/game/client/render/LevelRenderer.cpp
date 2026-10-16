@@ -4,6 +4,7 @@
 #include "game/minigame/MiniGameDef.hpp"
 #include "game/client/render/Particle.hpp"
 #include "game/client/render/LevelRenderer.hpp"
+#include "game/core/VideoSettings.hpp"
 #include "game/core/EntityType.hpp"
 
 #include <algorithm>
@@ -322,6 +323,7 @@ LevelRenderer::LevelRenderer(Minecraft* minecraft, Textures* textures)
         mClipChunks[player].data = 0;
         mClipChunks[player].length = 0;
         mActivePlayers[player] = 0;
+        mRenderDistance[player] = 0;
     }
 
     mAuxiliaryDisplayList = auxiliaryDisplayList;
@@ -837,7 +839,9 @@ void LevelRenderer::allChanged(int dimension)
 
     mLastViewDistance = mMinecraft->mOptions->mViewDistance;
 
-    int viewDistance = (int)sqrtf(400.0f / (float)activePlayers());
+    int renderDistance = VideoSettings::GetRenderDistance();
+    int viewDistance = (int)sqrtf(4.0f * (float)(renderDistance * renderDistance) / (float)activePlayers());
+    mRenderDistance[dimension] = renderDistance;
 
     mMinecraft->mOptions->mViewDistance = viewDistance;
     mActivePlayers[dimension] = activePlayers();
@@ -1493,7 +1497,8 @@ void LevelRenderer::render(boost::shared_ptr<Entity> camera, int layer, double p
 {
     int dimension = mMinecraft->mPlayer->mUserIndex;
 
-    if (mActivePlayers[dimension] != activePlayers() || mMinecraft->mOptions->mViewDistance != mLastViewDistance)
+    if (mActivePlayers[dimension] != activePlayers() || mMinecraft->mOptions->mViewDistance != mLastViewDistance
+        || mRenderDistance[dimension] != VideoSettings::GetRenderDistance())
     {
         allChanged();
     }

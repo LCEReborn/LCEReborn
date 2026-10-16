@@ -98,6 +98,7 @@ public:
     virtual bool SameKeyBinding(int action, int otherAction);
     virtual void SetKeyBinding(int action, int input);
     virtual void ResetKeyBindings();
+    virtual unsigned int GetPadButtons(int pad, bool pressedOnly);
 
 private:
     friend void PcInputHandleEvent(const SDL_Event& event);

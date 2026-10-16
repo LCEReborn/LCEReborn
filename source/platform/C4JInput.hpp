@@ -127,6 +127,7 @@ public:
     virtual bool SameKeyBinding(int action, int otherAction) = 0;
     virtual void SetKeyBinding(int action, int input) = 0;
     virtual void ResetKeyBindings() = 0;
+    virtual unsigned int GetPadButtons(int pad, bool pressedOnly) = 0;
 #endif
 };
 

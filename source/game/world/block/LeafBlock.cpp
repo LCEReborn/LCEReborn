@@ -272,8 +272,6 @@ bool LeafBlock::isSolidRender(const BlockState* state) const
 void LeafBlock::setFancy(bool fancy)
 {
     mIgnoreSimilarity = fancy;
-    Block::ThreadStorage* storage = static_cast<Block::ThreadStorage*>(TlsGetValue(THREAD_STORAGE_INDEX));
-    storage->mFastGraphics = !fancy;
 }
 
 int LeafBlock::getRenderLayer()
@@ -311,8 +309,7 @@ int LeafBlock::getDescriptionId(int auxValue)
 TextureAtlasSprite* LeafBlock::getTexture(const Direction* direction, const BlockState* state)
 {
     int woodType = getWoodType(state);
-    Block::ThreadStorage* storage = static_cast<Block::ThreadStorage*>(TlsGetValue(THREAD_STORAGE_INDEX));
-    return mIcons[storage->mFastGraphics * 6 + woodType];
+    return mIcons[(mIgnoreSimilarity ? 0 : 6) + woodType];
 }
 
 void LeafBlock::registerIcons(IconRegister* iconRegister)

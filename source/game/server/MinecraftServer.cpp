@@ -1,4 +1,6 @@
 #include "game/server/MinecraftServer.hpp"
+#include "game/core/VideoSettings.hpp"
+#include "game/world/chunk/PlayerChunkMap.hpp"
 #include "game/core/StringIds.hpp"
 
 #include <cstdlib>
@@ -850,6 +852,12 @@ void MinecraftServer::tick()
     Vec3::resetPool();
 
     ++tickCount;
+    if (mPlayers->getViewDistance() != VideoSettings::GetRenderDistance())
+    {
+        mPlayers->setViewDistance(VideoSettings::GetRenderDistance());
+        for (unsigned int i = 0; i < mLevels.length; ++i)
+            mLevels.data[i]->getChunkMap()->setViewDistance(VideoSettings::GetRenderDistance());
+    }
     for (unsigned int i = 0; i < mLevels.length; ++i)
     {
         ServerLevel* level = mLevels.data[i];

@@ -95,7 +95,26 @@ list menu movie, the one its settings lists use, and fills it from a page: a
 checkboxes, sliders and label/value rows, each with an optional description,
 and whose `OnPress`, `OnToggle` and `OnSlide` handle them. `OpenPage` opens
 another page on top. Settings > More Options opens the first page,
-`UIMoreOptionsPage`, with the PC display settings.
+`UIMoreOptionsPage`, with the display and video settings.
+
+## Video settings
+
+`game/core/VideoSettings` holds the settings the console fixed, and saves
+them to `video.txt` in the save folder whenever one changes (the PC build
+loads the file at startup; a platform that never loads it keeps the
+defaults, which are the original game's values).
+
+| Setting | Range | Default | What follows it |
+| --- | --- | --- | --- |
+| Render Distance | 2 to 32 chunks | 10 | `LevelRenderer::allChanged` sizes the chunk grid (split screen shares the same area, as before); the fog scales with it; the host's server sends chunks that far (`PlayerChunkMap` accepts 2 to 32) |
+| FOV | 30 to 110 degrees, "Normal" at 70, "Quake Pro" at 110 | 70 | `GameRenderer::getFov` |
+| Fancy Graphics | on/off | on | `Options::mFancyGraphics`: leaves, shadows and item detail; the world is rebuilt when it changes |
+| Smooth Lighting | on/off | on | `Options::mAmbientOcclusion`; the world is rebuilt |
+| Particles | All, Decreased, Minimal | All | `Options::mParticles` |
+| Biome Blend | Off, 3x3 up to 15x15 | 3x3 | the averaging radius in `BiomeColors::getAverageColor`; the world is rebuilt |
+
+Leaves pick their fast or fancy texture from the leaf block itself, so
+chunks built on any thread agree after a change.
 
 The list stands alone in the middle of the screen like the game's settings
 menus. When the highlighted row has a description, the Show Description

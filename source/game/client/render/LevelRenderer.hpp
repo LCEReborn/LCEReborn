@@ -188,6 +188,7 @@ private:
     Textures* mTextures;
     arrayWithLength<ClipChunk> mClipChunks[4];
     int mActivePlayers[4];
+    int mRenderDistance[4];
     int mChunkGridWidth;
     int mChunkGridHeight;
     int mChunkGridDepth;

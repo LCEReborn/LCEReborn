@@ -127,6 +127,11 @@ int PlayerList::getViewDistance()
     return mViewDistance;
 }
 
+void PlayerList::setViewDistance(int distance)
+{
+    mViewDistance = distance;
+}
+
 boost::shared_ptr<ServerPlayer> PlayerList::findAlivePlayerOnSystem(boost::shared_ptr<ServerPlayer> player)
 {
     int dimension = player->mDimension;

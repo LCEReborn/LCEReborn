@@ -393,7 +393,14 @@ std::wstring UIComponent_Tooltips::PromptHtml(unsigned int index, int type, int 
 
     if (type < 0 || type >= 16)
         return std::wstring();
-    std::wstring html = PromptImagesHtml(m_promptPad, &action, 1, kGlyphButtons[type], kPromptHeight);
+    unsigned int buttons = kGlyphButtons[type];
+    if (!value.m_dynamic && GameSettings::InventoryControlForAction(action) >= 0)
+    {
+        buttons = g_pInput->GetGameJoypadMaps(m_promptPad, static_cast<unsigned char>(action));
+        if (buttons == 0)
+            return std::wstring();
+    }
+    std::wstring html = PromptImagesHtml(m_promptPad, &action, 1, buttons, kPromptHeight);
     if (!html.empty() && subtype >= 0 && subtype < 16)
     {
         std::wstring second = PromptImagesHtml(m_promptPad, &action, 1, kGlyphButtons[subtype], kPromptHeight);

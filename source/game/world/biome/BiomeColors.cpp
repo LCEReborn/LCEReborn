@@ -1,4 +1,5 @@
 #include "game/world/biome/BiomeColors.hpp"
+#include "game/core/VideoSettings.hpp"
 
 #include "game/world/LevelSource.hpp"
 #include "game/world/biome/Biome.hpp"
@@ -39,10 +40,12 @@ unsigned int BiomeColors::getAverageColor(LevelSource* level, const BlockPos& po
     int blue = 0;
 
     MutableBlockPos samplePos;
+    const int radius = VideoSettings::GetBiomeBlend();
+    const float samples = static_cast<float>((radius * 2 + 1) * (radius * 2 + 1));
 
-    for (int offsetZ = -1; offsetZ <= 1; ++offsetZ)
+    for (int offsetZ = -radius; offsetZ <= radius; ++offsetZ)
     {
-        for (int offsetX = -1; offsetX <= 1; ++offsetX)
+        for (int offsetX = -radius; offsetX <= radius; ++offsetX)
         {
             samplePos.setX(pos.x + offsetX);
             samplePos.setZ(pos.z + offsetZ);
@@ -56,10 +59,10 @@ unsigned int BiomeColors::getAverageColor(LevelSource* level, const BlockPos& po
         }
     }
 
-    int averageAlpha = (int)(alpha / 9.0f);
-    int averageRed = (int)(red / 9.0f);
-    int averageGreen = (int)(green / 9.0f);
-    int averageBlue = (int)(blue / 9.0f);
+    int averageAlpha = (int)(alpha / samples);
+    int averageRed = (int)(red / samples);
+    int averageGreen = (int)(green / samples);
+    int averageBlue = (int)(blue / samples);
 
     return (unsigned int)((averageAlpha << 24) | ((averageRed & 0xFF) << 16) | ((averageGreen & 0xFF) << 8)
                           | (averageBlue & 0xFF));

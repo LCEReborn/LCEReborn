@@ -6,6 +6,7 @@
 #include "game/core/IntCache.hpp"
 #include "game/core/Minecraft.hpp"
 #include "game/core/ShutdownManager.hpp"
+#include "game/core/VideoSettings.hpp"
 #include "game/core/StatsCounter.hpp"
 #include "game/client/render/Tesselator.hpp"
 #include "game/world/block/Block.hpp"
@@ -27,6 +28,7 @@
 #include "game/core/CriticalSection.hpp"
 #include "platform/C4JThreadImpl.hpp"
 #include "platform/CInput.hpp"
+#include "platform/pc/PcPaths.hpp"
 #include "platform/CProfile.hpp"
 #include "platform/CStorage.hpp"
 #include "platform/FileApi.hpp"
@@ -50,6 +52,7 @@ int main(int, char**)
     Compression::CreateNewThreadStorage();
     gRenderer->Initialise();
     g_pInput->Initialise(1, 0x3d, 0x17);
+    VideoSettings::Load(PcSaveRoot() + "/video.txt");
 
     DefineActions();
     g_pInput->SetJoypadMapArraySetupComplete();

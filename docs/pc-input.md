@@ -146,6 +146,16 @@ is using, and every row shows that device's buttons or keys.
   action's only binding and is written to `keybinds.txt` straight away; Esc
   cancels. The captured press never reaches the menus, so Enter, Esc or a
   click can be bound like any other input.
+- On PC a controller row waits for a physical button rather than a menu
+  action, so a remapped menu button never hides the real one.
+- **Inventory** rows (Quick Move, Take Half, Take Everything) remap the
+  container buttons. A controller keeps them in three spare bytes of the
+  profile after the action mappings (0 means the original button, so older
+  profiles are unchanged) and accepts any button except confirm, back and
+  the d-pad. On the keyboard, Quick Move is the key held while clicking
+  (Shift by default), Take Half and Take Everything are the X and Q keys.
+- **Other** (keyboard only): Player List (Tab) and Hide HUD (F1), which hides
+  the HUD and hand together and shows them again.
 - Both devices share the game's conflict rule: binding an input already used
   by another action in the same group clears that action and asks the player
   to give it a new one. Leaving the menu with a required action unbound

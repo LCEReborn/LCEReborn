@@ -117,16 +117,18 @@ void UIScene_SettingsListMenu::Init()
             m_multiList.AddNewButton(std::wstring(L10N::GetString(IDS_LANGUAGE_SELECTOR)), 5, false);
         if (canChangeAutosave)
         {
-            int skin = static_cast<int>(GameSettings::GetGameSettings(m_playerId, eGameSetting_Autosave));
-            for (unsigned int index = 0; index < 9; ++index)
+            int skin = GameSettings::AutosaveOptionOf(GameSettings::GetGameSettings(m_playerId, eGameSetting_Autosave));
+            for (int index = 0; index < GameSettings::AutosaveOptionCount(); ++index)
             {
-                if (index == 0)
+                int minutes = GameSettings::AutosaveMinutes(GameSettings::AutosaveCodeAt(index));
+                if (minutes == 0)
                     std::swprintf(m_skinNames[index], 256, L"%ls", L10N::GetString(IDS_SLIDER_AUTOSAVE_OFF));
                 else
                     std::swprintf(m_skinNames[index], 256, L"%ls: %d %ls", L10N::GetString(IDS_SLIDER_AUTOSAVE),
-                                  index * 15, L10N::GetString(IDS_MINUTES));
+                                  minutes, L10N::GetString(IDS_MINUTES));
             }
-            m_multiList.AddNewSlider(std::wstring(m_skinNames[skin]), 6, 0, 8, skin, false, 7, 3);
+            m_multiList.AddNewSlider(std::wstring(m_skinNames[skin]), 6, 0, GameSettings::AutosaveOptionCount() - 1,
+                                     skin, false, 7, 3);
         }
         std::swprintf(text, 256, L"%ls: %d%%", L10N::GetString(IDS_SLIDER_SENSITIVITY_INGAME),
                       GameSettings::GetGameSettings(m_playerId, eGameSetting_GameSensitivity));
@@ -474,7 +476,8 @@ void UIScene_SettingsListMenu::handleSliderElementMove(int, int id, int value)
     switch (id)
     {
     case 6:
-        GameSettings::SetGameSettings(m_playerId, eGameSetting_Autosave, value);
+        GameSettings::SetGameSettings(m_playerId, eGameSetting_Autosave,
+                                      static_cast<unsigned char>(GameSettings::AutosaveCodeAt(value)));
         m_multiList.SetItemLabel(6, UIString(m_skinNames[value]), false);
         gApp.SetAutosaveTimerTime();
         break;

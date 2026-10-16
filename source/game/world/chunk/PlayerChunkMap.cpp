@@ -21,6 +21,7 @@
 #include "game/world/DimensionType.hpp"
 #include "game/world/Level.hpp"
 #include "game/world/chunk/PlayerChunkContainer.hpp"
+#include "game/core/VideoSettings.hpp"
 
 PlayerChunkMap::PlayerChunkMap(ServerLevel* level, int dimension, int viewDistance)
 {
@@ -123,7 +124,8 @@ bool PlayerChunkMap::shouldActuallyDropChunks()
 
 void PlayerChunkMap::setViewDistance(int distance)
 {
-    int newDistance = Mth::clamp(distance, 3, 15);
+    int newDistance = Mth::clamp(distance, static_cast<int>(VideoSettings::RENDER_DISTANCE_MIN),
+                                 static_cast<int>(VideoSettings::RENDER_DISTANCE_MAX));
     if (newDistance != mViewDistance)
     {
         int delta = newDistance - mViewDistance;

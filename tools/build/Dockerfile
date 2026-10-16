@@ -4,7 +4,7 @@
 FROM devkitpro/devkitppc@sha256:44cb1a920e1ec3ec7c06767493c3b85f8d643d6137cc4661f0201895ac6e4967
 
 ARG REDHILLS_URL=https://github.com/Jacobwasbeast/RedHills.git
-ARG REDHILLS_COMMIT=37713dd04a8cc1d211749b0abdcc684a8aa11423
+ARG REDHILLS_COMMIT=3f6793417ebf7e23120ee26614d5c3673c2229fa
 ARG LLVM_RELEASE=https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.8/LLVM-22.1.8-Linux-X64.tar.xz
 ARG LLVM_SHA256=df0e1ecf16caf3489a272a5eea4eec9b0d82878f6477fa309504f918a0006384
 ARG CAPSTONE_VERSION=5.0.7

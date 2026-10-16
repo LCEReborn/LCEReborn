@@ -168,7 +168,12 @@ void* TextureUtil::decodeJpeg(void* data, int length, int* width, int* height)
             for (int x = 0; x < imageWidth; x++)
             {
                 unsigned char* pixel = pixels + (y * imageWidth + x) * 4;
+#if LCE_PLATFORM_PC
+                unsigned int colour = ((unsigned int)pixel[0] << 24) | ((unsigned int)pixel[1] << 16) |
+                                      ((unsigned int)pixel[2] << 8) | (unsigned int)pixel[3];
+#else
                 unsigned int colour = *(unsigned int*)pixel;
+#endif
 
                 pixel[0] = (unsigned char)colour;
                 pixel[1] = (unsigned char)(colour >> 8);
@@ -195,20 +200,6 @@ void TextureUtil::insertZlibAlphaChannelData(void* pixels, int width, int height
             {
                 int index = y * width + x;
                 unsigned char alpha = alphaData[index];
-#if LCE_PLATFORM_PC
-                unsigned int* pixel = (unsigned int*)pixels + index;
-                float alphaScale = alpha / 255.0f;
-                float red = ((*pixel >> 16) & 0xff) / alphaScale;
-                float green = ((*pixel >> 8) & 0xff) / alphaScale;
-                float blue = (*pixel & 0xff) / alphaScale;
-
-                float clampedRed = red < 255.0f ? red : 255.0f;
-                float clampedGreen = green < 255.0f ? green : 255.0f;
-                float clampedBlue = blue < 255.0f ? blue : 255.0f;
-
-                *pixel = ((unsigned int)alpha << 24) | ((unsigned int)(unsigned char)clampedRed << 16) |
-                         ((unsigned int)(unsigned char)clampedGreen << 8) | (unsigned int)(unsigned char)clampedBlue;
-#else
                 unsigned char* pixel = (unsigned char*)pixels + index * 4;
                 float alphaScale = alpha / 255.0f;
                 float red = pixel[1] / alphaScale;
@@ -223,7 +214,6 @@ void TextureUtil::insertZlibAlphaChannelData(void* pixels, int width, int height
                 pixel[1] = (unsigned char)clampedRed;
                 pixel[2] = (unsigned char)clampedGreen;
                 pixel[3] = (unsigned char)clampedBlue;
-#endif
             }
         }
     }

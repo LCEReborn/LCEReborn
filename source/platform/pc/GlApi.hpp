@@ -106,7 +106,6 @@ const GLenum TEXTURE0 = 0x84C0;
 
 const GLenum BYTE = 0x1400;
 const GLenum UNSIGNED_BYTE = 0x1401;
-const GLenum UNSIGNED_INT_8_8_8_8 = 0x8035;
 const GLenum SHORT = 0x1402;
 const GLenum UNSIGNED_SHORT = 0x1403;
 const GLenum INT = 0x1404;

@@ -1363,7 +1363,7 @@ void Renderer::Device::ExecuteTextureStorage(Texture& texture, const void* pixel
     Gl::BindTexture(Gl::TEXTURE_2D, texture.mName);
     mCurrentTexture[0] = texture.mName;
     Gl::TexImage2D(Gl::TEXTURE_2D, 0, (GLint)Gl::RGBA8, texture.mWidth, texture.mHeight, 0, Gl::RGBA,
-                   Gl::UNSIGNED_INT_8_8_8_8, pixels);
+                   Gl::UNSIGNED_BYTE, pixels);
 
     for (int level = 1; level < texture.mStorageLevels; ++level)
     {
@@ -1387,7 +1387,7 @@ void Renderer::Device::ExecuteTextureLevel(Texture& texture, int level, int widt
     Gl::ActiveTexture(Gl::TEXTURE0);
     Gl::BindTexture(Gl::TEXTURE_2D, texture.mName);
     mCurrentTexture[0] = texture.mName;
-    Gl::TexSubImage2D(Gl::TEXTURE_2D, level, 0, 0, width, height, Gl::RGBA, Gl::UNSIGNED_INT_8_8_8_8, pixels);
+    Gl::TexSubImage2D(Gl::TEXTURE_2D, level, 0, 0, width, height, Gl::RGBA, Gl::UNSIGNED_BYTE, pixels);
 }
 
 void Renderer::Device::FlushPending(Renderer& renderer)
@@ -4028,15 +4028,6 @@ int Renderer::LoadTextureData(unsigned char* fileData, unsigned int fileSize, D3
 
     if (*data != NULL && png_image_finish_read(&image, NULL, *data, 0, NULL))
     {
-        unsigned char* bytes = reinterpret_cast<unsigned char*>(*data);
-        unsigned int* words = reinterpret_cast<unsigned int*>(*data);
-        for (unsigned int i = 0; i < image.width * image.height; ++i)
-        {
-            const unsigned char* pixel = bytes + i * 4;
-            words[i] = ((unsigned int)pixel[0] << 24) | ((unsigned int)pixel[1] << 16) | ((unsigned int)pixel[2] << 8) |
-                       (unsigned int)pixel[3];
-        }
-
         info->Width = image.width;
         info->Height = image.height;
         return 0;

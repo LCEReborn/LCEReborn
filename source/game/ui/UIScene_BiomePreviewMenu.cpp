@@ -423,17 +423,39 @@ void UIScene_BiomePreviewMenu::UpdatePreviewImage(const arrayWithLength<unsigned
     }
     CustomImage* image = getImage(wholeMap);
     gRenderer->TextureBind(image->mTexture);
+#if LCE_PLATFORM_PC
+    arrayWithLength<unsigned char> bytes((unsigned int)(imageWidth * imageWidth * 4), true);
+    const unsigned int* words = (const unsigned int*)pixels.data;
+    for (unsigned int i = 0; i < bytes.length / 4; ++i)
+    {
+        bytes.data[i * 4] = (unsigned char)(words[i] >> 24);
+        bytes.data[i * 4 + 1] = (unsigned char)(words[i] >> 16);
+        bytes.data[i * 4 + 2] = (unsigned char)(words[i] >> 8);
+        bytes.data[i * 4 + 3] = (unsigned char)words[i];
+    }
+#endif
     if (image->mTextureLoaded)
     {
+#if LCE_PLATFORM_PC
+        gRenderer->TextureDataUpdate(0, 0, imageWidth, imageWidth, bytes.data, 0);
+#else
         gRenderer->TextureDataUpdate(0, 0, imageWidth, imageWidth, pixels.data, 0);
+#endif
     }
     else
     {
+#if LCE_PLATFORM_PC
+        gRenderer->TextureData(imageWidth, imageWidth, bytes.data, 0, C4JRender::eTextureFormat_RGBA8);
+#else
         gRenderer->TextureData(imageWidth, imageWidth, pixels.data, 0, C4JRender::eTextureFormat_RGBA8);
+#endif
         image->mTextureLoaded = true;
         gConsoleUIController.registerSubstitutionTexture(textureName, image->mTexture);
         image->mImage.setTextureName(textureName, true);
     }
+#if LCE_PLATFORM_PC
+    delete[] bytes.data;
+#endif
     if (!wholeMap)
         setNewPointerPos(mPointer);
 }

@@ -79,6 +79,8 @@ public:
     virtual unsigned char IsDRCConnected();
     virtual void AcquiredForeground();
     virtual bool ConsumeMouseLook(int pad, float* x, float* y);
+    virtual bool ConsumeMenuPointer(int pad, float* x, float* y);
+    virtual unsigned int ConsumeMenuClicks(int pad);
 
 private:
     friend void PcInputHandleEvent(const SDL_Event& event);
@@ -172,6 +174,8 @@ private:
     void ReleaseAllKeys();
     bool IsKeyboardInMenu() const;
     int KeyboardPlayer() const;
+    bool IsKeyboardPad(int pad);
+    bool MenuPointerPosition(float* x, float* y);
     void PressKey(int scancode);
     void ReleaseKey(int scancode);
     void PressMouseButton(int button);
@@ -238,6 +242,8 @@ private:
     float mousePointerX;
     float mousePointerY;
     unsigned short touchData[4];
+    bool menuPointerMoved;
+    unsigned int menuClicks;
     bool mouseLookEnabled;
     bool mouseCaptured;
     bool windowFocused;

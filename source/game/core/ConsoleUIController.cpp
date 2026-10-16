@@ -537,6 +537,15 @@ void ConsoleUIController::updateViewportTouchOffset(int x, int y)
     m_touchOffsetY = y;
 }
 
+#if LCE_PLATFORM_PC
+void ConsoleUIController::GetViewportTouchOffset(C4JRender::eViewportType viewport, int* x, int* y)
+{
+    updateViewportTouchOffset(viewport);
+    *x = m_touchOffsetX;
+    *y = m_touchOffsetY;
+}
+#endif
+
 void ConsoleUIController::SetTutorialVisible(int playerId, bool visible)
 {
     int groupId = EUIGroup_Fullscreen;

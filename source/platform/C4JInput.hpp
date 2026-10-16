@@ -6,6 +6,14 @@ struct _STRING_VERIFY_RESPONSE;
 class C_4JInput
 {
 public:
+#if LCE_PLATFORM_PC
+    enum EPcMenuClick
+    {
+        EPcMenuClick_Primary = 0x1,
+        EPcMenuClick_Secondary = 0x2,
+        EPcMenuClick_Quick = 0x4
+    };
+#endif
     enum ETouchType
     {
         ETouchType_0 = 0,
@@ -86,6 +94,8 @@ public:
     virtual void AcquiredForeground() = 0;
 #if LCE_PLATFORM_PC
     virtual bool ConsumeMouseLook(int pad, float* x, float* y) = 0;
+    virtual bool ConsumeMenuPointer(int pad, float* x, float* y) = 0;
+    virtual unsigned int ConsumeMenuClicks(int pad) = 0;
 #endif
 };
 

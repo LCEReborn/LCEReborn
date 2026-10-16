@@ -44,6 +44,9 @@
 #include "game/ui/UIControl_LeaderboardList.hpp"
 #include "game/ui/UIControl_List.hpp"
 #include "game/ui/UIControl_GridList.hpp"
+#if LCE_PLATFORM_PC
+#include "game/ui/UIScene_AbstractContainerMenu.hpp"
+#endif
 #include "game/ui/UIGroup.hpp"
 #include "game/ui/UIScene.hpp"
 #include "game/ui/UIScene_HUD.hpp"
@@ -128,6 +131,11 @@ ConsoleUIController::ConsoleUIController()
     m_touchX = 0;
     m_touchY = 0;
     m_touchOffsetX = 0;
+#if LCE_PLATFORM_PC
+    m_pointerHoverControl = 0;
+    m_pointerLastX = -1;
+    m_pointerLastY = -1;
+#endif
     m_touchOffsetY = 0;
     if (!s_uiCriticalSectionInitialized)
     {
@@ -1939,12 +1947,159 @@ void ConsoleUIController::handleKeyPress(unsigned int key, unsigned int characte
     }
 }
 
+#if LCE_PLATFORM_PC
+UIScene* ConsoleUIController::GetInputScene(unsigned int pad)
+{
+    UIScene* scene = m_groups[EUIGroup_Fullscreen]->getCurrentScene((int)pad);
+    if (scene == 0)
+    {
+        if (pad < 4)
+            scene = m_groups[static_cast<EUIGroup>(pad + EUIGroup_Player1)]->getCurrentScene((int)pad);
+        else
+            scene = m_groups[EUIGroup_Player1]->getCurrentScene((int)pad);
+    }
+    return scene;
+}
+
+ConsoleUIController::UIELEMENT* ConsoleUIController::FindPointerElement(UIScene* scene, int x, int y)
+{
+    if (scene == 0)
+        return 0;
+    EUIGroup group = scene->m_layer->m_group->m_group;
+    int layer = scene->m_layer->m_layerId;
+    EUIScene sceneType = (EUIScene)scene->getSceneType();
+    UIELEMENT* found = 0;
+    EnterCriticalSection(&m_touchMutex);
+    std::vector<UIELEMENT*>& boxes = m_touchBoxes[group][layer][sceneType];
+    for (std::vector<UIELEMENT*>::iterator it = boxes.begin(); it != boxes.end(); ++it)
+    {
+        UIELEMENT* element = *it;
+        if (element != 0 && element->control != 0 && !element->control->m_removed && element->control->getVisible()
+            && x >= element->left && x <= element->right && y >= element->top && y <= element->bottom)
+        {
+            found = element;
+            break;
+        }
+    }
+    LeaveCriticalSection(&m_touchMutex);
+    return found;
+}
+
+void ConsoleUIController::HoverElement(UIELEMENT* element, int x, int y)
+{
+    UIControl* control = element->control;
+    switch (control->m_controlType)
+    {
+    case UIControl::eUIControlType_Button:
+    case UIControl::eUIControlType_CheckBox:
+    case UIControl::eUIControlType_TextInput:
+    case UIControl::eUIControlType_Slider:
+        if (control != m_pointerHoverControl)
+            control->m_scene->SetFocusToElement(control->m_controlId);
+        break;
+    case UIControl::eUIControlType_TexturePackList:
+        if (control != m_pointerHoverControl)
+            control->m_scene->SetFocusToElement(control->m_controlId);
+        static_cast<UIControl_TexturePackList*>(control)->SetTouchFocus(x - element->left, y - element->top, false);
+        break;
+    case UIControl::eUIControlType_LeaderboardList:
+        static_cast<UIControl_LeaderboardList*>(control)->SetTouchFocus(x, y, false);
+        break;
+    case UIControl::eUIControlType_ButtonList:
+    case UIControl::eUIControlType_CheckboxButtonList:
+    case UIControl::eUIControlType_LayerIconButtonList:
+    case UIControl::eUIControlType_LeftIconButtonList:
+    case UIControl::eUIControlType_MultiList:
+    {
+        UIControl* panel = control->m_scene->GetMainPanel();
+        int listX = panel == 0 ? x - (int)control->getXPos() : x - (int)panel->getXPos();
+        int listY = panel == 0 ? y : y - (int)panel->getYPos();
+        UIControl_List* list = static_cast<UIControl_List*>(control);
+        if (control->m_controlType != UIControl::eUIControlType_MultiList || list->CanTouchFocus(listX, listY))
+            list->SetTouchFocus(listX, listY, false);
+        break;
+    }
+    case UIControl::eUIControlType_AchievementsList:
+    {
+        UIControl* panel = control->m_scene->GetMainPanel();
+        int listX = panel == 0 ? x - (int)control->getXPos() : x - (int)panel->getXPos();
+        int listY = panel == 0 ? y : y - (int)panel->getYPos();
+        UIControl_GridList* list = static_cast<UIControl_GridList*>(control);
+        if (list->CanTouchFocus(listX, listY))
+            list->SetTouchFocus(listX, listY, false);
+        break;
+    }
+    default:
+        break;
+    }
+    m_pointerHoverControl = control;
+}
+
+void ConsoleUIController::SendPointerAction(unsigned int pad, unsigned int action)
+{
+    for (int phase = 0; phase < 2; ++phase)
+    {
+        bool pressed = phase == 0;
+        bool handled = false;
+        m_groups[EUIGroup_Fullscreen]->handleInput((int)pad, (int)action, false, pressed, !pressed, handled);
+        if (!handled && pad < 4)
+            m_groups[EUIGroup_Player1 + pad]->handleInput((int)pad, (int)action, false, pressed, !pressed, handled);
+    }
+}
+
+void ConsoleUIController::HandlePointerInput(unsigned int pad)
+{
+    float pointerX;
+    float pointerY;
+    if (IsReloadingSkin() || m_rebuildingTouchBoxes || !g_pInput->GetMenuPointer((int)pad, &pointerX, &pointerY))
+        return;
+
+    UIScene* scene = GetInputScene(pad);
+    if (scene == 0 || dynamic_cast<UIScene_AbstractContainerMenu*>(scene) != 0)
+    {
+        m_pointerHoverControl = 0;
+        return;
+    }
+
+    int x = (int)pointerX;
+    int y = (int)pointerY;
+    if (x != m_pointerLastX || y != m_pointerLastY)
+    {
+        m_pointerLastX = x;
+        m_pointerLastY = y;
+        if (!m_touchHeld)
+        {
+            UIELEMENT* element = FindPointerElement(scene, x, y);
+            if (element != 0)
+                HoverElement(element, x, y);
+            else
+                m_pointerHoverControl = 0;
+        }
+    }
+
+    int wheel = g_pInput->ConsumeMenuWheel((int)pad);
+    for (; wheel > 0; --wheel)
+        SendPointerAction(pad, EControllerActions_MenuUp);
+    for (; wheel < 0; ++wheel)
+        SendPointerAction(pad, EControllerActions_MenuDown);
+
+    if ((g_pInput->ConsumeMenuClicks((int)pad) & C_4JInput::EPcMenuClick_Secondary) != 0)
+    {
+        SendPointerAction(pad, EControllerActions_MenuB);
+        SendPointerAction(pad, EControllerActions_MenuCancel);
+    }
+}
+#endif
+
 bool ConsoleUIController::handleInput()
 {
     for (int pad = 0; pad < 4; ++pad)
     {
         if (g_pInput->IsPadConnected(pad) != 0 && g_pInput->IsPadLocked(pad) != 0)
         {
+#if LCE_PLATFORM_PC
+            HandlePointerInput((unsigned int)pad);
+#endif
             for (unsigned int action = 0; action <= 0x17; ++action)
                 handleKeyPress((unsigned int)pad, action);
         }
@@ -1962,6 +2117,9 @@ bool ConsoleUIController::handleInput()
         {
             if (g_pInput->IsPadLocked(pad) == 0 && g_pInput->IsPadConnected(pad) != 0)
             {
+#if LCE_PLATFORM_PC
+                HandlePointerInput((unsigned int)pad);
+#endif
                 for (unsigned int action = 0; action <= 0x17; ++action)
                     handleKeyPress((unsigned int)pad, action);
             }

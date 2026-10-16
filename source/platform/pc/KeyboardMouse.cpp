@@ -154,6 +154,7 @@ PcKeyboardMouse::PcKeyboardMouse()
     mLookY = 0.0f;
     mHotbarSlot = -1;
     mHotbarScroll = 0;
+    mMenuWheel = 0;
     mPointerX = 0.0f;
     mPointerY = 0.0f;
     mPointerMoved = false;
@@ -205,8 +206,6 @@ void PcKeyboardMouse::SetDefaultBindings()
     AddBinding(menu, EControllerActions_MenuRightScroll, Key(SDL_SCANCODE_R));
     AddBinding(menu, EControllerActions_MenuOtherStickPress, Key(SDL_SCANCODE_F1));
     AddBinding(menu, EControllerActions_MenuStickPress, Key(SDL_SCANCODE_F3));
-    AddBinding(menu, EControllerActions_MenuOtherStickUp, INPUT_WHEEL_UP);
-    AddBinding(menu, EControllerActions_MenuOtherStickDown, INPUT_WHEEL_DOWN);
     AddBinding(menu, EControllerActions_MenuStart, Key(SDL_SCANCODE_RETURN));
     AddBinding(menu, EControllerActions_MenuBack, Key(SDL_SCANCODE_TAB));
 
@@ -479,6 +478,10 @@ void PcKeyboardMouse::HandleEvent(const SDL_Event& event, EPcInputContext contex
             mHotbarSlot = -1;
             mHotbarScroll -= steps;
         }
+        else
+        {
+            mMenuWheel += steps;
+        }
         break;
     }
     default:
@@ -636,6 +639,13 @@ bool PcKeyboardMouse::ConsumeHotbar(int* slot, int* scroll)
     return true;
 }
 
+int PcKeyboardMouse::ConsumeMenuWheel()
+{
+    int steps = mMenuWheel;
+    mMenuWheel = 0;
+    return steps;
+}
+
 bool PcKeyboardMouse::PointerMoved() const
 {
     return mPointerMoved;
@@ -669,6 +679,7 @@ void PcKeyboardMouse::DiscardRelativeInput()
     mLookY = 0.0f;
     mHotbarSlot = -1;
     mHotbarScroll = 0;
+    mMenuWheel = 0;
     mClicks = 0;
     mPointerMoved = false;
 }

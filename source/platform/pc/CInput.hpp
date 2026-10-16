@@ -83,6 +83,8 @@ public:
     virtual bool ConsumeMenuPointer(int pad, float* x, float* y);
     virtual unsigned int ConsumeMenuClicks(int pad);
     virtual bool ConsumeHotbarInput(int pad, int* slot, int* scroll);
+    virtual bool GetMenuPointer(int pad, float* x, float* y);
+    virtual int ConsumeMenuWheel(int pad);
 
 private:
     friend void PcInputHandleEvent(const SDL_Event& event);

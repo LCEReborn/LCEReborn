@@ -54,6 +54,7 @@ public:
 
     bool ConsumeLook(float* x, float* y);
     bool ConsumeHotbar(int* slot, int* scroll);
+    int ConsumeMenuWheel();
     bool PointerMoved() const;
     void ClearPointerMoved();
     float PointerX() const;
@@ -89,6 +90,7 @@ private:
     float mLookY;
     int mHotbarSlot;
     int mHotbarScroll;
+    int mMenuWheel;
     float mPointerX;
     float mPointerY;
     bool mPointerMoved;

@@ -226,6 +226,7 @@ const GLenum VERSION = 0x1F02;
     X(GLint, GetUniformLocation, (GLuint program, const GLchar* name))                                                 \
     X(void, Uniform1i, (GLint location, GLint v0))                                                                     \
     X(void, Uniform1f, (GLint location, GLfloat v0))                                                                   \
+    X(void, Uniform2f, (GLint location, GLfloat v0, GLfloat v1))                                                       \
     X(void, Uniform4f, (GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3))                               \
     X(GLuint, GetUniformBlockIndex, (GLuint program, const GLchar* uniformBlockName))                                  \
     X(void, UniformBlockBinding, (GLuint program, GLuint uniformBlockIndex, GLuint uniformBlockBinding))               \

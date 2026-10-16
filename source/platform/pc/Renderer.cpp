@@ -12,6 +12,7 @@
 
 #include "platform/FileApi.hpp"
 #include "platform/pc/GlApi.hpp"
+#include "platform/pc/PcKeyboardOverlay.hpp"
 #include "platform/pc/PcWindow.hpp"
 #include "platform/pc/RenderShaders.hpp"
 
@@ -1800,6 +1801,7 @@ Renderer::~Renderer()
 {
     if (mDevice != NULL && mDevice->IsGlThread())
     {
+        PcKeyboardOverlayShutdown();
         mDevice->Destroy();
         PcWindowDestroy();
     }
@@ -2251,6 +2253,10 @@ void Renderer::Present()
 
     if (IsGlThread())
     {
+        int drawableWidth = 0;
+        int drawableHeight = 0;
+        PcWindowGetDrawableSize(&drawableWidth, &drawableHeight);
+        PcKeyboardOverlayDraw(drawableWidth, drawableHeight);
         PcWindowSwap();
         mDevice->Invalidate();
 

@@ -2,6 +2,7 @@
 #define PLATFORM_PC_CINPUT_HPP
 
 #include "platform/C4JInput.hpp"
+#include "platform/pc/KeyboardMouse.hpp"
 #include "platform/pc/PcInputEvents.hpp"
 
 #include <string>
@@ -81,6 +82,7 @@ public:
     virtual bool ConsumeMouseLook(int pad, float* x, float* y);
     virtual bool ConsumeMenuPointer(int pad, float* x, float* y);
     virtual unsigned int ConsumeMenuClicks(int pad);
+    virtual bool ConsumeHotbarInput(int pad, int* slot, int* scroll);
 
 private:
     friend void PcInputHandleEvent(const SDL_Event& event);
@@ -90,8 +92,6 @@ private:
     {
         JOYPAD_COUNT = 5,
         BUTTON_COUNT = 24,
-        SCANCODE_COUNT = 512,
-        MOUSE_BUTTON_COUNT = 8,
         KEYBOARD_TEXT_CAPACITY = 258
     };
 
@@ -176,12 +176,6 @@ private:
     int KeyboardPlayer() const;
     bool IsKeyboardPad(int pad);
     bool MenuPointerPosition(float* x, float* y);
-    void PressKey(int scancode);
-    void ReleaseKey(int scancode);
-    void PressMouseButton(int button);
-    void ReleaseMouseButton(int button);
-    void QueueHotbarSteps(int steps);
-    void SelectHotbarSlot(int slot);
     SDL_Window* LocateWindow() const;
     bool RemapIpad(int& pad);
     unsigned int only_one_bit_set(unsigned int value);
@@ -191,12 +185,13 @@ private:
     void ClearJoypadValues(Joypad* joypad);
     void SetJoypadValues(int pad, Joypad* joypad);
     void ApplyStickValues(Joypad* joypad, int leftX, int leftY, int rightX, int rightY);
-    void UpdateHotbarPulse();
-    void StartHotbarPulse(int direction, unsigned long long now);
     void ConsumeAllPads();
     bool IsMenuShown(int pad) const;
     void UpdateMouseCapture();
     void UpdateJoypads();
+    void UpdateKeyboardMouse(Joypad& joypad);
+    EPcInputContext KeyboardContext() const;
+    unsigned int KeyboardActionValue(int pad, unsigned char map);
     void GetStartTime(int pad, int button);
     void UpdateTime(int pad, int button);
     void TickErrorViewer();
@@ -232,27 +227,12 @@ private:
     void* debugSequenceContext;
     bool localMultiplayer;
 
-    unsigned int keyButtons[SCANCODE_COUNT];
-    unsigned int keySticks[SCANCODE_COUNT];
-    bool keyDown[SCANCODE_COUNT];
-    unsigned int mouseButtons[MOUSE_BUTTON_COUNT];
-    bool mouseButtonDown[MOUSE_BUTTON_COUNT];
-    float mouseLookX;
-    float mouseLookY;
-    float mousePointerX;
-    float mousePointerY;
+    PcKeyboardMouse keyboardMouse;
     unsigned short touchData[4];
-    bool menuPointerMoved;
-    unsigned int menuClicks;
     bool mouseLookEnabled;
     bool mouseCaptured;
     bool windowFocused;
     unsigned int lastWindowId;
-    int hotbarSteps;
-    int hotbarTarget;
-    int hotbarTargetPulses;
-    unsigned int hotbarPulseButton;
-    unsigned long long hotbarPulseStart;
 
     EKeyboardState keyboardState;
     KeyboardCallback keyboardCallback;

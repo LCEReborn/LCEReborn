@@ -1,6 +1,6 @@
 #include "platform/pc/CInput.hpp"
 #include "platform/pc/InputBindings.hpp"
-#include "platform/pc/InputGameState.hpp"
+#include "platform/pc/PcPaths.hpp"
 
 #include <SDL3/SDL.h>
 
@@ -26,13 +26,10 @@ int XEnableGuestSignin(int enable)
 namespace
 {
 const float kSecondsPerNanosecond = 1.0e-9f;
-const unsigned long long kHotbarPulseLength = 60000000ull;
 const int kStickMaximum = 32767;
 const int kTriggerThreshold = 3855;
 const unsigned int kTouchInputButtons = 0x00c03cff;
-const int kHotbarSize = 9;
-const int kHotbarStepLimit = 36;
-const int kKeyboardJoypad = 1;
+const int kKeyboardJoypad = 0;
 const int kKeyboardTextLimit = 256;
 const float kTouchSpaceWidth = 1280.0f;
 const float kTouchSpaceHeight = 720.0f;
@@ -113,18 +110,6 @@ int LargerMagnitude(int first, int second)
     int firstMagnitude = first < 0 ? -first : first;
     int secondMagnitude = second < 0 ? -second : second;
     return secondMagnitude > firstMagnitude ? second : first;
-}
-
-const PcInputBinding* FindBinding(const PcInputBinding* bindings, int count, int source)
-{
-    for (int index = 0; index < count; ++index)
-    {
-        if (bindings[index].source == source)
-        {
-            return &bindings[index];
-        }
-    }
-    return 0;
 }
 
 void AppendUtf8(std::string& text, unsigned int codepoint)
@@ -244,25 +229,11 @@ CInput::CInput()
     debugSequenceContext = 0;
     localMultiplayer = false;
 
-    std::memset(keyButtons, 0, sizeof(keyButtons));
-    std::memset(keySticks, 0, sizeof(keySticks));
-    std::memset(keyDown, 0, sizeof(keyDown));
-    std::memset(mouseButtons, 0, sizeof(mouseButtons));
-    std::memset(mouseButtonDown, 0, sizeof(mouseButtonDown));
     mouseLookEnabled = false;
-    mousePointerX = 0.0f;
-    mousePointerY = 0.0f;
     std::memset(touchData, 0, sizeof(touchData));
-    menuPointerMoved = false;
-    menuClicks = 0;
     mouseCaptured = false;
     windowFocused = true;
     lastWindowId = 0;
-    hotbarSteps = 0;
-    hotbarTarget = -1;
-    hotbarTargetPulses = 0;
-    hotbarPulseButton = 0;
-    hotbarPulseStart = 0;
 
     keyboardState = EKeyboardState_Idle;
     keyboardCallback = 0;
@@ -370,6 +341,7 @@ void CInput::Initialise(int count, unsigned char gameMapCount, unsigned char men
         padRemap[pad] = -1;
     }
     initialised = true;
+    keyboardMouse.LoadBindings(PcSaveRoot() + "/keybinds.txt");
 
     int gamepadCount = 0;
     SDL_JoystickID* gamepads = SDL_GetGamepads(&gamepadCount);
@@ -491,13 +463,10 @@ void CInput::HandleEvent(const SDL_Event& event)
         {
             HandleKeyboardKey(static_cast<int>(event.key.scancode), event.key.mod, event.key.repeat);
         }
-        else if (!event.key.repeat)
+        else
         {
-            PressKey(static_cast<int>(event.key.scancode));
+            keyboardMouse.HandleEvent(event, KeyboardContext(), mouseCaptured);
         }
-        break;
-    case SDL_EVENT_KEY_UP:
-        ReleaseKey(static_cast<int>(event.key.scancode));
         break;
     case SDL_EVENT_TEXT_INPUT:
         if (keyboardState == EKeyboardState_Active)
@@ -505,49 +474,16 @@ void CInput::HandleEvent(const SDL_Event& event)
             HandleKeyboardTextInput(event.text.text);
         }
         break;
+    case SDL_EVENT_KEY_UP:
     case SDL_EVENT_MOUSE_MOTION:
-        mousePointerX = event.motion.x;
-        mousePointerY = event.motion.y;
-        if (!mouseCaptured)
-        {
-            menuPointerMoved = true;
-        }
-        if (mouseLookEnabled && (event.motion.xrel != 0.0f || event.motion.yrel != 0.0f))
-        {
-            mouseLookX += event.motion.xrel;
-            mouseLookY += event.motion.yrel;
-        }
+    case SDL_EVENT_MOUSE_BUTTON_UP:
+        keyboardMouse.HandleEvent(event, KeyboardContext(), mouseCaptured);
         break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
-        if (keyboardState != EKeyboardState_Active)
-        {
-            PressMouseButton(event.button.button);
-            if (!mouseCaptured && event.button.button == SDL_BUTTON_LEFT)
-            {
-                menuClicks |= (SDL_GetModState() & SDL_KMOD_SHIFT) != 0 ? EPcMenuClick_Quick
-                                                                        : EPcMenuClick_Primary;
-            }
-            else if (!mouseCaptured && event.button.button == SDL_BUTTON_RIGHT)
-            {
-                menuClicks |= EPcMenuClick_Secondary;
-            }
-        }
-        break;
-    case SDL_EVENT_MOUSE_BUTTON_UP:
-        ReleaseMouseButton(event.button.button);
-        break;
     case SDL_EVENT_MOUSE_WHEEL:
         if (keyboardState != EKeyboardState_Active)
         {
-            int steps = event.wheel.integer_y;
-            if (event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED)
-            {
-                steps = -steps;
-            }
-            if (steps != 0)
-            {
-                QueueHotbarSteps(-steps);
-            }
+            keyboardMouse.HandleEvent(event, KeyboardContext(), mouseCaptured);
         }
         break;
     case SDL_EVENT_WINDOW_FOCUS_GAINED:
@@ -565,13 +501,7 @@ void CInput::HandleEvent(const SDL_Event& event)
 
 void CInput::ReleaseAllKeys()
 {
-    std::memset(keyButtons, 0, sizeof(keyButtons));
-    std::memset(keySticks, 0, sizeof(keySticks));
-    std::memset(keyDown, 0, sizeof(keyDown));
-    std::memset(mouseButtons, 0, sizeof(mouseButtons));
-    std::memset(mouseButtonDown, 0, sizeof(mouseButtonDown));
-    mouseLookX = 0.0f;
-    mouseLookY = 0.0f;
+    keyboardMouse.ReleaseAll();
 }
 
 int CInput::KeyboardPlayer() const
@@ -589,130 +519,14 @@ bool CInput::IsKeyboardInMenu() const
     return menuDisplayed[player] != 0;
 }
 
+EPcInputContext CInput::KeyboardContext() const
+{
+    return IsKeyboardInMenu() ? EPcInputContext_Menu : EPcInputContext_Game;
+}
+
 bool CInput::IsMenuShown(int pad) const
 {
     return static_cast<unsigned int>(pad) < 4 && menuDisplayed[pad] != 0;
-}
-
-void CInput::PressKey(int scancode)
-{
-    if (scancode < 0 || scancode >= SCANCODE_COUNT || keyDown[scancode])
-    {
-        return;
-    }
-    int count = 0;
-    const PcInputBinding* bindings = PcInputKeyBindings(count);
-    const PcInputBinding* binding = FindBinding(bindings, count, scancode);
-    if (binding == 0)
-    {
-        return;
-    }
-    bool menu = IsKeyboardInMenu();
-    keyDown[scancode] = true;
-    keyButtons[scancode] = menu ? binding->menuButtons : binding->gameButtons;
-    keySticks[scancode] = menu ? binding->menuStick : binding->gameStick;
-    if (!menu && binding->hotbarSlot > 0)
-    {
-        SelectHotbarSlot(binding->hotbarSlot - 1);
-    }
-}
-
-void CInput::ReleaseKey(int scancode)
-{
-    if (scancode < 0 || scancode >= SCANCODE_COUNT)
-    {
-        return;
-    }
-    keyDown[scancode] = false;
-    keyButtons[scancode] = 0;
-    keySticks[scancode] = 0;
-}
-
-void CInput::PressMouseButton(int button)
-{
-    if (button < 0 || button >= MOUSE_BUTTON_COUNT || mouseButtonDown[button])
-    {
-        return;
-    }
-    int count = 0;
-    const PcInputBinding* bindings = PcInputMouseBindings(count);
-    const PcInputBinding* binding = FindBinding(bindings, count, button);
-    if (binding == 0)
-    {
-        return;
-    }
-    bool menu = IsKeyboardInMenu();
-    mouseButtonDown[button] = true;
-    mouseButtons[button] = menu ? binding->menuButtons : binding->gameButtons;
-}
-
-void CInput::ReleaseMouseButton(int button)
-{
-    if (button < 0 || button >= MOUSE_BUTTON_COUNT)
-    {
-        return;
-    }
-    mouseButtonDown[button] = false;
-    mouseButtons[button] = 0;
-}
-
-void CInput::QueueHotbarSteps(int steps)
-{
-    hotbarTarget = -1;
-    hotbarSteps += steps;
-    if (hotbarSteps > kHotbarStepLimit)
-    {
-        hotbarSteps = kHotbarStepLimit;
-    }
-    else if (hotbarSteps < -kHotbarStepLimit)
-    {
-        hotbarSteps = -kHotbarStepLimit;
-    }
-}
-
-void CInput::SelectHotbarSlot(int slot)
-{
-    hotbarSteps = 0;
-    hotbarTarget = slot;
-    hotbarTargetPulses = 0;
-}
-
-void CInput::StartHotbarPulse(int direction, unsigned long long now)
-{
-    hotbarPulseButton = direction > 0 ? EPcButton_RightBumper : EPcButton_LeftBumper;
-    hotbarPulseStart = now;
-}
-
-void CInput::UpdateHotbarPulse()
-{
-    unsigned long long now = SDL_GetTicksNS();
-    if (hotbarPulseButton != 0)
-    {
-        if (now - hotbarPulseStart >= kHotbarPulseLength)
-        {
-            hotbarPulseButton = 0;
-        }
-        return;
-    }
-    if (hotbarTarget >= 0)
-    {
-        int current = IsKeyboardInMenu() ? -1 : PcInputGetSelectedHotbarSlot(KeyboardPlayer());
-        if (current < 0 || current == hotbarTarget || hotbarTargetPulses >= kHotbarSize)
-        {
-            hotbarTarget = -1;
-            return;
-        }
-        int distance = (hotbarTarget - current + kHotbarSize) % kHotbarSize;
-        StartHotbarPulse(distance <= kHotbarSize / 2 ? 1 : -1, now);
-        ++hotbarTargetPulses;
-        return;
-    }
-    if (hotbarSteps != 0)
-    {
-        int direction = hotbarSteps > 0 ? 1 : -1;
-        hotbarSteps -= direction;
-        StartHotbarPulse(direction, now);
-    }
 }
 
 SDL_Window* CInput::LocateWindow() const
@@ -740,15 +554,11 @@ SDL_Window* CInput::LocateWindow() const
 
 bool CInput::ConsumeMouseLook(int pad, float* x, float* y)
 {
-    if (!mouseLookEnabled || pad != KeyboardPlayer() || (mouseLookX == 0.0f && mouseLookY == 0.0f))
+    if (!mouseLookEnabled || pad != KeyboardPlayer())
     {
         return false;
     }
-    *x = mouseLookX;
-    *y = mouseLookY;
-    mouseLookX = 0.0f;
-    mouseLookY = 0.0f;
-    return true;
+    return keyboardMouse.ConsumeLook(x, y);
 }
 
 void CInput::UpdateMouseCapture()
@@ -756,20 +566,11 @@ void CInput::UpdateMouseCapture()
     bool desired = windowFocused && keyboardState == EKeyboardState_Idle
                    && errorViewerState == EErrorViewerState_None && !IsKeyboardInMenu();
     mouseLookEnabled = desired;
-    if (desired)
-    {
-        menuClicks = 0;
-        menuPointerMoved = false;
-    }
-    if (!desired)
-    {
-        mouseLookX = 0.0f;
-        mouseLookY = 0.0f;
-    }
     if (desired == mouseCaptured)
     {
         return;
     }
+    keyboardMouse.DiscardRelativeInput();
     SDL_Window* window = LocateWindow();
     if (window != 0)
     {
@@ -845,11 +646,11 @@ void CInput::ReadAllPads()
         Joypad& joypad = joypads[pad];
         joypad.previousConsumed = joypad.consumed;
         joypad.consumed = false;
-        bool connected = false;
-        if (pad != 0)
+        bool connected = pad == kKeyboardJoypad;
+        if (pad != kKeyboardJoypad)
         {
             ReadGamepad(joypad);
-            connected = joypad.gamepad != 0 || pad == kKeyboardJoypad;
+            connected = joypad.gamepad != 0;
             if (!connected && recentlyForegrounded && joypad.connected)
             {
                 connected = true;
@@ -900,41 +701,6 @@ void CInput::SetJoypadValues(int pad, Joypad* joypad)
     unsigned char leftTrigger = joypad->padLeftTrigger;
     unsigned char rightTrigger = joypad->padRightTrigger;
     joypad->rawValue |= joypad->padButtons;
-    if (pad == kKeyboardJoypad)
-    {
-        unsigned int buttons = hotbarPulseButton;
-        unsigned int sticks = 0;
-        for (int scancode = 0; scancode < SCANCODE_COUNT; ++scancode)
-        {
-            if (keyDown[scancode])
-            {
-                buttons |= keyButtons[scancode];
-                sticks |= keySticks[scancode];
-            }
-        }
-        for (int button = 0; button < MOUSE_BUTTON_COUNT; ++button)
-        {
-            if (mouseButtonDown[button])
-            {
-                buttons |= mouseButtons[button];
-            }
-        }
-        joypad->rawValue |= buttons;
-        int keyX = ((sticks & EPcStickDirection_LeftRight) ? kStickMaximum : 0)
-                   - ((sticks & EPcStickDirection_LeftLeft) ? kStickMaximum : 0);
-        int keyY = ((sticks & EPcStickDirection_LeftUp) ? kStickMaximum : 0)
-                   - ((sticks & EPcStickDirection_LeftDown) ? kStickMaximum : 0);
-        leftX = LargerMagnitude(leftX, keyX);
-        leftY = LargerMagnitude(leftY, keyY);
-        if (buttons & EPcButton_LeftTrigger)
-        {
-            leftTrigger = 255;
-        }
-        if (buttons & EPcButton_RightTrigger)
-        {
-            rightTrigger = 255;
-        }
-    }
     ApplyStickValues(joypad, leftX, leftY, rightX, rightY);
     joypad->leftTrigger = leftTrigger;
     joypad->rightTrigger = rightTrigger;
@@ -961,15 +727,34 @@ void CInput::UpdateTime(int pad, int button)
     idleStartTimes[pad] = now;
 }
 
+void CInput::UpdateKeyboardMouse(Joypad& joypad)
+{
+    if (joypad.consumed)
+    {
+        keyboardMouse.ReleaseAll();
+    }
+    keyboardMouse.Update(KeyboardContext(), initialRepeatDelay, repeatDelay);
+    joypad.previousValue = 0;
+    joypad.rawValue = 0;
+    joypad.pressedValue = 0;
+    joypad.releasedValue = 0;
+    joypad.leftX = keyboardMouse.MoveX();
+    joypad.leftY = keyboardMouse.MoveY();
+    joypad.rightX = 0.0f;
+    joypad.rightY = 0.0f;
+    joypad.leftTrigger = 0;
+    joypad.rightTrigger = 0;
+    if (keyboardMouse.AnyInputPressed() || keyboardMouse.AnyInputDown())
+    {
+        idleStartTimes[kKeyboardJoypad] = SDL_GetTicksNS();
+    }
+}
+
 void CInput::UpdateJoypads()
 {
-    Joypad& unused = joypads[0];
-    unused.previousValue = unused.rawValue;
-    unused.rawValue = 0;
-    unused.pressedValue = 0;
-    unused.releasedValue = 0;
+    UpdateKeyboardMouse(joypads[kKeyboardJoypad]);
 
-    int connected = 0;
+    int connected = 1;
     for (int pad = 1; pad < JOYPAD_COUNT; ++pad)
     {
         Joypad& joypad = joypads[pad];
@@ -1042,7 +827,6 @@ void CInput::Tick()
     TickKeyboard();
     TickVerifyStrings();
     UpdateMouseCapture();
-    UpdateHotbarPulse();
     UpdateJoypads();
 }
 
@@ -1153,6 +937,12 @@ unsigned int CInput::allowInput(int pad, unsigned char map, unsigned int value)
     return 1;
 }
 
+unsigned int CInput::KeyboardActionValue(int pad, unsigned char map)
+{
+    unsigned int mapping = GetGameJoypadMaps(pad, map);
+    return mapping != 0 ? mapping : 1u;
+}
+
 unsigned int CInput::GetValue(int pad, unsigned char map, bool repeated)
 {
     bool menuOpen = IsMenuShown(pad);
@@ -1160,6 +950,11 @@ unsigned int CInput::GetValue(int pad, unsigned char map, bool repeated)
     if (!RemapIpad(mappedPad) || (menuOpen && map > controllerConfiguration[2]))
     {
         return 0;
+    }
+    if (mappedPad == kKeyboardJoypad)
+    {
+        bool active = repeated ? keyboardMouse.ActionRepeat(map) : keyboardMouse.ActionDown(map);
+        return active ? KeyboardActionValue(pad, map) : 0;
     }
     unsigned int value = joypads[mappedPad].rawValue & GetGameJoypadMaps(pad, map);
     if (map > controllerConfiguration[2] && !allowInput(pad, map, value))
@@ -1232,6 +1027,11 @@ void CInput::SetFakePadValue(int pad, unsigned char map)
     int mappedPad = pad;
     if (RemapIpad(mappedPad) && (!menuOpen || map <= controllerConfiguration[2]))
     {
+        if (mappedPad == kKeyboardJoypad)
+        {
+            keyboardMouse.SetFakeAction(map, 10);
+            return;
+        }
         joypads[mappedPad].fakeValue |= GetGameJoypadMaps(pad, map);
         joypads[mappedPad].fakeTimer = 10;
     }
@@ -1243,6 +1043,18 @@ bool CInput::ButtonPressed(int pad, unsigned char map, unsigned int mask)
     if (!RemapIpad(mappedPad))
     {
         return false;
+    }
+    if (mappedPad == kKeyboardJoypad)
+    {
+        if (map == 0xff)
+        {
+            return keyboardMouse.AnyInputPressed();
+        }
+        if (map > controllerConfiguration[2] && IsMenuShown(pad))
+        {
+            return false;
+        }
+        return keyboardMouse.ActionPressed(map);
     }
     if (map == 0xff)
     {
@@ -1270,6 +1082,10 @@ bool CInput::ButtonReleased(int pad, unsigned char map)
     int mappedPad = pad;
     if (RemapIpad(mappedPad) && (!IsMenuShown(pad) || map <= controllerConfiguration[2]))
     {
+        if (mappedPad == kKeyboardJoypad)
+        {
+            return keyboardMouse.ActionReleased(map);
+        }
         return (joypads[mappedPad].releasedValue & GetGameJoypadMaps(pad, map)) != 0;
     }
     return false;
@@ -1281,6 +1097,18 @@ bool CInput::ButtonDown(int pad, unsigned char map)
     if (!RemapIpad(mappedPad))
     {
         return false;
+    }
+    if (mappedPad == kKeyboardJoypad)
+    {
+        if (map == 0xff)
+        {
+            return keyboardMouse.AnyInputDown();
+        }
+        if (map > controllerConfiguration[2] && IsMenuShown(pad))
+        {
+            return false;
+        }
+        return keyboardMouse.ActionDown(map);
     }
     if (map == 0xff)
     {
@@ -1526,8 +1354,8 @@ bool CInput::MenuPointerPosition(float* x, float* y)
     {
         return false;
     }
-    float pointerX = mousePointerX * kTouchSpaceWidth / static_cast<float>(width);
-    float pointerY = mousePointerY * kTouchSpaceHeight / static_cast<float>(height);
+    float pointerX = keyboardMouse.PointerX() * kTouchSpaceWidth / static_cast<float>(width);
+    float pointerY = keyboardMouse.PointerY() * kTouchSpaceHeight / static_cast<float>(height);
     *x = pointerX < 0.0f ? 0.0f : (pointerX > kTouchSpaceWidth - 1.0f ? kTouchSpaceWidth - 1.0f : pointerX);
     *y = pointerY < 0.0f ? 0.0f : (pointerY > kTouchSpaceHeight - 1.0f ? kTouchSpaceHeight - 1.0f : pointerY);
     return true;
@@ -1535,11 +1363,11 @@ bool CInput::MenuPointerPosition(float* x, float* y)
 
 bool CInput::ConsumeMenuPointer(int pad, float* x, float* y)
 {
-    if (!menuPointerMoved || !IsKeyboardPad(pad) || !MenuPointerPosition(x, y))
+    if (!keyboardMouse.PointerMoved() || !IsKeyboardPad(pad) || !MenuPointerPosition(x, y))
     {
         return false;
     }
-    menuPointerMoved = false;
+    keyboardMouse.ClearPointerMoved();
     return true;
 }
 
@@ -1549,9 +1377,16 @@ unsigned int CInput::ConsumeMenuClicks(int pad)
     {
         return 0;
     }
-    unsigned int clicks = menuClicks;
-    menuClicks = 0;
-    return clicks;
+    return keyboardMouse.ConsumeClicks();
+}
+
+bool CInput::ConsumeHotbarInput(int pad, int* slot, int* scroll)
+{
+    if (!IsKeyboardPad(pad) || IsKeyboardInMenu())
+    {
+        return false;
+    }
+    return keyboardMouse.ConsumeHotbar(slot, scroll);
 }
 
 unsigned short* CInput::GetTouchPadData(int pad, ETouchType touchType, bool previous)
@@ -2033,7 +1868,8 @@ int CInput::GetControllerID(int pad)
 
 unsigned char CInput::IsPadDRCController(int pad)
 {
-    return RemapIpad(pad) && pad == 0 && joypads[0].connected;
+    (void)pad;
+    return 0;
 }
 
 unsigned int CInput::IsPadClassicController(int pad)
@@ -2044,7 +1880,7 @@ unsigned int CInput::IsPadClassicController(int pad)
 
 unsigned char CInput::IsDRCConnected()
 {
-    return joypads[0].connected;
+    return 0;
 }
 
 void CInput::AcquiredForeground()

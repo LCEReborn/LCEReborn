@@ -29,25 +29,6 @@ enum EPcButton
     EPcButton_LeftTrigger = 0x800000
 };
 
-enum EPcStickDirection
-{
-    EPcStickDirection_None = 0,
-    EPcStickDirection_LeftUp = 0x1,
-    EPcStickDirection_LeftDown = 0x2,
-    EPcStickDirection_LeftLeft = 0x4,
-    EPcStickDirection_LeftRight = 0x8
-};
-
-struct PcInputBinding
-{
-    int source;
-    unsigned int gameButtons;
-    unsigned int menuButtons;
-    unsigned int gameStick;
-    unsigned int menuStick;
-    int hotbarSlot;
-};
-
 struct PcGamepadBinding
 {
     int button;
@@ -60,8 +41,6 @@ struct PcGamepadLabelBinding
     unsigned int buttons;
 };
 
-const PcInputBinding* PcInputKeyBindings(int& count);
-const PcInputBinding* PcInputMouseBindings(int& count);
 const PcGamepadBinding* PcInputGamepadBindings(int& count);
 const int* PcInputGamepadFaceButtons(int& count);
 const PcGamepadLabelBinding* PcInputGamepadLabelBindings(int& count);

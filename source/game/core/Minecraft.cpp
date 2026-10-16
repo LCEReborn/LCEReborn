@@ -1654,6 +1654,30 @@ void Minecraft::tick(bool handleInput, bool lastTickOfFrame)
                     }
                 }
 
+#if LCE_PLATFORM_PC
+                int hotbarSlot;
+                int hotbarSteps;
+                if (g_pInput->ConsumeHotbarInput(playerIdx, &hotbarSlot, &hotbarSteps)
+                    && mGameMode->isInputAllowed(EControllerActions_CycleHeldItemLeft)
+                    && mGameMode->isInputAllowed(EControllerActions_CycleHeldItemRight))
+                {
+                    if (hotbarSlot >= 0)
+                    {
+                        mPlayer->mInventory->m_selected = hotbarSlot;
+                    }
+                    else
+                    {
+                        for (int step = 0; step < (hotbarSteps < 0 ? -hotbarSteps : hotbarSteps); ++step)
+                            mPlayer->mInventory->swapPaint(hotbarSteps > 0 ? -1 : 1);
+                    }
+
+                    if (mGameMode != NULL && mGameMode->getTutorial() != NULL)
+                        mGameMode->getTutorial()->onSelectedItemChanged(mPlayer->mInventory->getSelected());
+
+                    mPlayer->updateRichPresence();
+                }
+#endif
+
                 bool pickBlock = g_pInput->ButtonDown(playerIdx, EControllerActions_PickBlock);
                 if (pickBlock)
                     mPlayer->handleMouseClick(2);

@@ -77,31 +77,59 @@ centre of the slot under it, as the stick's pointer does) and handle their own
 clicks; the system cursor is hidden there so only one pointer shows. The
 system cursor is also hidden while a gamepad is the device in use.
 
+## Players and devices
+
+Each player plays on one device, as on a console. On the title screen and in
+the main menu any keyboard or controller drives the menus, and the device that
+picks a main-menu option becomes player 1. In game, double-tapping Start on
+another controller, or Escape on a keyboard nobody is playing on, joins it as
+the next split-screen player.
+
+A gamepad's face buttons follow the controller's own edition of the game: the
+button labelled A or Cross (the button in the confirm position on a Nintendo
+controller) confirms and the one labelled B or Circle goes back, while the top
+button opens the inventory and the left one crafting, so Y and X on an Xbox
+controller, Triangle and Square on a PlayStation one, and X and Y on a Nintendo
+one (`CInput::ResolveFaceButtons`).
+
 ## Prompts
 
-The button prompts along the bottom of the screen show the key or mouse
-button bound to each action while the keyboard is in use, drawn as a keycap
-(`E` Inventory, `Esc` Back) or a mouse with the button lit, and switch back
-to the controller's button pictures as soon as a gamepad is used. In
-containers, where the mouse moves the pointer, they show the mouse buttons the
-clicks do: the left button to take or place, the right button for half a stack
-or one item, Shift and the left button to move a stack across.
+The button prompts along the bottom of the screen, and the buttons named in
+tutorial and help text, show the buttons of the device the player is using.
+A player's prompts follow the device that player is on; before anyone has
+picked an option in the main menu, they follow whichever device was used last.
 
-The keycap, mouse and arrow art is in `resources/pc/ui`, drawn by
-`tools/pcart/make_ui_art.py` and copied next to the executable when it is
-built. The game composes a keycap for each bound key at run time, writing the
-key's name on it in the Mojangles font on the font's own pixel grid
-(`platform/pc/PcKeycaps`), and the prompt text shows it as an inline image
-(`<img src="pckey:N">`, N being the bound input). A signed-in player's prompts
-follow the device that player is signed in on; before anyone is signed in they
-follow whichever device was used last (`UseKeyboardPrompts`). The names come
-from the player's own bindings (`GetPromptKeyName`) and use the keyboard
-layout's key names, so rebinding an action changes its prompt.
+- On the keyboard they show the key bound to the action as a keycap (`E`
+  Inventory, `Esc` Back), or a mouse with the button lit. Movement shows the
+  four movement keys and looking shows the mouse. In containers, where the mouse
+  moves the pointer, they show what the clicks do: the left button to take or
+  place, the right button for half a stack or one item, Shift and the left
+  button to move a stack across.
+- On a gamepad they show that controller's own buttons. The controller is
+  recognised from what SDL reports about it: Xbox (coloured A, B, X, Y, LB, RT,
+  View and Menu), PlayStation 3, 4 or 5 (Cross, Circle, Square, Triangle, L1, R2,
+  and Select, Share or Create), Nintendo (A, B, X, Y, L, ZR, plus and minus) or
+  any other controller (plain A, B, X, Y). The face buttons are drawn from the
+  label SDL gives the physical button, so the picture is the button the player
+  has to press.
 
-In-game prompts already know their action. Menu prompts are given by button
-position (A, B, X, Y, triggers, bumpers...), and each position stands for the
-menu action the controller maps to it: A is `MenuOk`, B is `MenuCancel`, the
-triggers page, the bumpers change tab, and so on.
+The game asks `C_4JInput::GetPromptImages` for the pictures for an action and
+the console buttons it is mapped to; the platform answers for the player's
+device, with keyboard inputs for the keyboard and controller buttons for a
+gamepad (`platform/pc/CInput.cpp`). Prompt text shows them as inline images
+(`<img src="pcprompt:N">`), which the interface's text renderer draws from
+`platform/pc/PcPromptArt`. In-game prompts know their action; menu prompts are
+given by button position (A, B, X, Y, triggers, bumpers...), and each position
+stands for the menu action the controller maps to it: A is `MenuOk`, B is
+`MenuCancel`, the triggers page, the bumpers change tab, and so on.
+
+The art is in `resources/pc/ui`, drawn by `tools/pcart/make_ui_art.py` and
+copied next to the executable when it is built: the keycap, the mouse, the
+arrows, the controller button shapes (round, stick, bumper, trigger, pill and
+d-pad, in marker colours each controller's colours replace) and the button
+symbols. Labels are not part of the art: the game writes them in the Mojangles
+font, on the font's own pixel grid, when it first needs a picture, and scales
+the result by whole numbers so it stays sharp.
 
 ## What changes in the game
 

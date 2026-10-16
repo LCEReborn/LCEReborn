@@ -308,6 +308,12 @@ bool PcKeyboardMouse::PointerPromptInput(int action, int* input, int* modifier)
     }
 }
 
+bool PcKeyboardMouse::IsLookAction(int action)
+{
+    return action == EControllerActions_LookUp || action == EControllerActions_LookDown
+           || action == EControllerActions_LookLeft || action == EControllerActions_LookRight;
+}
+
 EPcInputContext PcKeyboardMouse::ActionContext(int action)
 {
     return action <= EControllerActions_MenuCancel ? EPcInputContext_Menu : EPcInputContext_Game;

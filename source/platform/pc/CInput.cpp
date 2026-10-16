@@ -1,6 +1,7 @@
 #include "platform/pc/CInput.hpp"
 #include "platform/pc/InputBindings.hpp"
 #include "platform/pc/PcPaths.hpp"
+#include "platform/pc/PcPromptArt.hpp"
 #include "platform/pc/Renderer.hpp"
 
 #include <SDL3/SDL.h>
@@ -409,6 +410,16 @@ void CInput::ResolveFaceButtons(Joypad& joypad)
             continue;
         }
         SDL_GamepadButton button = static_cast<SDL_GamepadButton>(faceButtons[face]);
+        if (button == SDL_GAMEPAD_BUTTON_NORTH)
+        {
+            joypad.padFaceButtons[face] = EPcButton_Face4;
+            continue;
+        }
+        if (button == SDL_GAMEPAD_BUTTON_WEST)
+        {
+            joypad.padFaceButtons[face] = EPcButton_Face3;
+            continue;
+        }
         SDL_GamepadButtonLabel label = SDL_GetGamepadButtonLabel(joypad.gamepad, button);
         if (label == SDL_GAMEPAD_BUTTON_LABEL_UNKNOWN)
         {
@@ -518,7 +529,14 @@ bool CInput::IsKeyboardInMenu() const
     int player = KeyboardPlayer();
     if (player < 0 || player >= 4)
     {
-        return true;
+        for (int pad = 0; pad < 4; ++pad)
+        {
+            if (menuDisplayed[pad] != 0)
+            {
+                return true;
+            }
+        }
+        return false;
     }
     return menuDisplayed[player] != 0;
 }
@@ -568,7 +586,7 @@ bool CInput::ConsumeMouseLook(int pad, float* x, float* y)
 void CInput::UpdateMouseCapture()
 {
     bool desired = windowFocused && keyboardState == EKeyboardState_Idle
-                   && errorViewerState == EErrorViewerState_None && !IsKeyboardInMenu();
+                   && errorViewerState == EErrorViewerState_None && KeyboardPlayer() >= 0 && !IsKeyboardInMenu();
     mouseLookEnabled = desired;
     bool showCursor = !desired && !(menuDrawsPointer && keyboardState == EKeyboardState_Idle)
                       && lastInputJoypad == kKeyboardJoypad;
@@ -1413,48 +1431,216 @@ void CInput::SetMenuDrawsPointer(bool drawsPointer)
     menuDrawsPointer = drawsPointer;
 }
 
-bool CInput::UseKeyboardPrompts(int pad)
+int CInput::PromptJoypad(int pad)
 {
     int mappedPad = pad;
     if (RemapIpad(mappedPad))
     {
-        return mappedPad == kKeyboardJoypad;
+        return mappedPad;
     }
-    return lastInputJoypad == kKeyboardJoypad;
+    return lastInputJoypad;
+}
+
+bool CInput::UseKeyboardPrompts(int pad)
+{
+    return PromptJoypad(pad) == kKeyboardJoypad;
+}
+
+int CInput::PadFamily(int joypad)
+{
+    SDL_Gamepad* gamepad = joypad > 0 && joypad < JOYPAD_COUNT ? joypads[joypad].gamepad : 0;
+    switch (gamepad != 0 ? SDL_GetGamepadType(gamepad) : SDL_GAMEPAD_TYPE_UNKNOWN)
+    {
+    case SDL_GAMEPAD_TYPE_XBOX360:
+    case SDL_GAMEPAD_TYPE_XBOXONE:
+        return EPcPadFamily_Xbox;
+    case SDL_GAMEPAD_TYPE_PS3:
+        return EPcPadFamily_PlayStation3;
+    case SDL_GAMEPAD_TYPE_PS4:
+        return EPcPadFamily_PlayStation4;
+    case SDL_GAMEPAD_TYPE_PS5:
+        return EPcPadFamily_PlayStation5;
+    case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO:
+    case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_LEFT:
+    case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT:
+    case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_PAIR:
+        return EPcPadFamily_Nintendo;
+    default:
+        return EPcPadFamily_Generic;
+    }
+}
+
+int CInput::PadElement(int joypad, unsigned int button)
+{
+    static const struct
+    {
+        unsigned int button;
+        int element;
+    } kElements[] = {{EPcButton_LeftBumper, EPcPadElement_LeftShoulder},
+                     {EPcButton_RightBumper, EPcPadElement_RightShoulder},
+                     {EPcButton_LeftTrigger, EPcPadElement_LeftTrigger},
+                     {EPcButton_RightTrigger, EPcPadElement_RightTrigger},
+                     {EPcButton_LeftStickPress, EPcPadElement_LeftStickPress},
+                     {EPcButton_RightStickPress, EPcPadElement_RightStickPress},
+                     {EPcButton_LeftStickUp | EPcButton_LeftStickDown | EPcButton_LeftStickLeft
+                          | EPcButton_LeftStickRight,
+                      EPcPadElement_LeftStick},
+                     {EPcButton_RightStickUp | EPcButton_RightStickDown | EPcButton_RightStickLeft
+                          | EPcButton_RightStickRight,
+                      EPcPadElement_RightStick},
+                     {EPcButton_Start, EPcPadElement_Start},
+                     {EPcButton_Back, EPcPadElement_Back},
+                     {EPcButton_DPadUp, EPcPadElement_DPadUp},
+                     {EPcButton_DPadDown, EPcPadElement_DPadDown},
+                     {EPcButton_DPadLeft, EPcPadElement_DPadLeft},
+                     {EPcButton_DPadRight, EPcPadElement_DPadRight}};
+    for (size_t index = 0; index < sizeof(kElements) / sizeof(kElements[0]); ++index)
+    {
+        if ((button & kElements[index].button) != 0)
+        {
+            return kElements[index].element;
+        }
+    }
+
+    int family = PadFamily(joypad);
+    SDL_Gamepad* gamepad = joypad > 0 && joypad < JOYPAD_COUNT ? joypads[joypad].gamepad : 0;
+    SDL_GamepadButtonLabel label = SDL_GAMEPAD_BUTTON_LABEL_UNKNOWN;
+    if (gamepad != 0)
+    {
+        int faceCount = 0;
+        const int* faceButtons = PcInputGamepadFaceButtons(faceCount);
+        for (int face = 0; face < faceCount && face < 4; ++face)
+        {
+            if ((joypads[joypad].padFaceButtons[face] & button) != 0)
+            {
+                label = SDL_GetGamepadButtonLabel(gamepad, static_cast<SDL_GamepadButton>(faceButtons[face]));
+                break;
+            }
+        }
+    }
+    if (label == SDL_GAMEPAD_BUTTON_LABEL_UNKNOWN)
+    {
+        bool playStation = family == EPcPadFamily_PlayStation3 || family == EPcPadFamily_PlayStation4
+                           || family == EPcPadFamily_PlayStation5;
+        int labelCount = 0;
+        const PcGamepadLabelBinding* labels = PcInputGamepadLabelBindings(labelCount);
+        for (int index = 0; index < labelCount; ++index)
+        {
+            bool symbol = labels[index].label >= SDL_GAMEPAD_BUTTON_LABEL_CROSS;
+            if ((labels[index].buttons & button) != 0 && symbol == playStation)
+            {
+                label = static_cast<SDL_GamepadButtonLabel>(labels[index].label);
+                break;
+            }
+        }
+    }
+    switch (label)
+    {
+    case SDL_GAMEPAD_BUTTON_LABEL_A:
+        return EPcPadElement_FaceA;
+    case SDL_GAMEPAD_BUTTON_LABEL_B:
+        return EPcPadElement_FaceB;
+    case SDL_GAMEPAD_BUTTON_LABEL_X:
+        return EPcPadElement_FaceX;
+    case SDL_GAMEPAD_BUTTON_LABEL_Y:
+        return EPcPadElement_FaceY;
+    case SDL_GAMEPAD_BUTTON_LABEL_CROSS:
+        return EPcPadElement_FaceCross;
+    case SDL_GAMEPAD_BUTTON_LABEL_CIRCLE:
+        return EPcPadElement_FaceCircle;
+    case SDL_GAMEPAD_BUTTON_LABEL_SQUARE:
+        return EPcPadElement_FaceSquare;
+    case SDL_GAMEPAD_BUTTON_LABEL_TRIANGLE:
+        return EPcPadElement_FaceTriangle;
+    default:
+        return -1;
+    }
 }
 
 int CInput::GetPromptStyle(int pad)
 {
-    if (!UseKeyboardPrompts(pad))
+    int joypad = PromptJoypad(pad);
+    if (joypad != kKeyboardJoypad)
     {
-        return EPromptStyle_Gamepad;
+        return EPromptStyle_Gamepad + PadFamily(joypad);
     }
     return menuDrawsPointer ? EPromptStyle_Pointer : EPromptStyle_Keyboard;
 }
 
-bool CInput::GetPromptInput(int pad, int action, int* input, int* modifier)
+int CInput::GetPromptImages(int pad, const int* actions, int actionCount, unsigned int buttons, int* images,
+                            int maxImages)
 {
-    int style = GetPromptStyle(pad);
-    if (style == EPromptStyle_Gamepad)
+    int count = 0;
+    int joypad = PromptJoypad(pad);
+    if (joypad != kKeyboardJoypad)
     {
-        return false;
+        EPcPadFamily family = static_cast<EPcPadFamily>(PadFamily(joypad));
+        unsigned int handled = 0;
+        for (int bit = 0; bit < 32 && count < maxImages; ++bit)
+        {
+            unsigned int button = 1u << bit;
+            if ((buttons & button) == 0 || (handled & button) != 0)
+            {
+                continue;
+            }
+            int element = PadElement(joypad, button);
+            if (element < 0)
+            {
+                continue;
+            }
+            if (element == EPcPadElement_LeftStick)
+            {
+                handled |= EPcButton_LeftStickUp | EPcButton_LeftStickDown | EPcButton_LeftStickLeft
+                           | EPcButton_LeftStickRight;
+            }
+            else if (element == EPcPadElement_RightStick)
+            {
+                handled |= EPcButton_RightStickUp | EPcButton_RightStickDown | EPcButton_RightStickLeft
+                           | EPcButton_RightStickRight;
+            }
+            images[count++] = PcPadPromptArt(family, static_cast<EPcPadElement>(element));
+        }
+        return count;
     }
-    *input = -1;
-    *modifier = -1;
-    if (style == EPromptStyle_Pointer && PcKeyboardMouse::PointerPromptInput(action, input, modifier))
+
+    bool pointer = menuDrawsPointer;
+    bool mouseShown = false;
+    for (int index = 0; index < actionCount && count < maxImages; ++index)
     {
-        return true;
+        int action = actions[index];
+        int input = -1;
+        int modifier = -1;
+        if (pointer && PcKeyboardMouse::PointerPromptInput(action, &input, &modifier))
+        {
+            if (modifier >= 0 && count < maxImages)
+            {
+                images[count++] = modifier;
+            }
+        }
+        else if (PcKeyboardMouse::IsLookAction(action))
+        {
+            if (mouseShown)
+            {
+                continue;
+            }
+            mouseShown = true;
+            input = PC_PROMPT_ART_MOUSE;
+        }
+        else if (action >= 0 && action < PcKeyboardMouse::ACTION_COUNT)
+        {
+            const std::vector<int>& inputs =
+                keyboardMouse.GetBindings(PcKeyboardMouse::ActionContext(action), action);
+            if (!inputs.empty())
+            {
+                input = inputs[0];
+            }
+        }
+        if (input >= 0 && count < maxImages)
+        {
+            images[count++] = input;
+        }
     }
-    if (action < 0 || action >= PcKeyboardMouse::ACTION_COUNT)
-    {
-        return true;
-    }
-    const std::vector<int>& inputs = keyboardMouse.GetBindings(PcKeyboardMouse::ActionContext(action), action);
-    if (!inputs.empty())
-    {
-        *input = inputs[0];
-    }
-    return true;
+    return count;
 }
 
 int CInput::ConsumeMenuWheel(int pad)

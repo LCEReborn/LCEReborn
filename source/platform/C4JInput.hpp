@@ -19,9 +19,9 @@ public:
     };
     enum EPromptStyle
     {
-        EPromptStyle_Gamepad,
         EPromptStyle_Keyboard,
-        EPromptStyle_Pointer
+        EPromptStyle_Pointer,
+        EPromptStyle_Gamepad
     };
 #endif
     enum ETouchType
@@ -112,7 +112,8 @@ public:
     virtual bool UseKeyboardPrompts(int pad) = 0;
     virtual void SetMenuDrawsPointer(bool drawsPointer) = 0;
     virtual int GetPromptStyle(int pad) = 0;
-    virtual bool GetPromptInput(int pad, int action, int* input, int* modifier) = 0;
+    virtual int GetPromptImages(int pad, const int* actions, int actionCount, unsigned int buttons, int* images,
+                                int maxImages) = 0;
 #endif
 };
 

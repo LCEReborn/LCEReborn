@@ -22,7 +22,7 @@
 extern C_4JProfile* gProfile;
 
 #if LCE_PLATFORM_PC
-static const int kKeyPromptHeight = 28;
+static const int kPromptHeight = 28;
 #endif
 
 UIComponent_Tooltips::_TooltipValues::_TooltipValues()
@@ -223,16 +223,20 @@ void UIComponent_Tooltips::_SetTooltip(unsigned int index, int type, int subtype
         value.m_text = text;
         const std::wstring& textString = text.getString();
 #if LCE_PLATFORM_PC
-        int input = -1;
-        int modifier = -1;
-        if (enabled && GetPromptInput(index, &input, &modifier))
+        if (enabled)
         {
             FJ_ToolTips* toolTips = static_cast<FJ_ToolTips*>(m_movie->getRootNode()->getFuiNode());
-            if (input < 0)
+            std::wstring prompt = PromptHtml(index, finalType, finalSubtype);
+            if (!prompt.empty())
+            {
+                toolTips->SetHtmlToolTip((int)index, prompt + L" " + EscapeHtml(textString), enabled);
+                return;
+            }
+            if (g_pInput->GetPromptStyle(m_promptPad) < C_4JInput::EPromptStyle_Gamepad)
+            {
                 toolTips->SetToolTip((int)index, -1, -1, textString, enabled);
-            else
-                toolTips->SetHtmlToolTip((int)index, KeyPromptHtml(input, modifier, textString), enabled);
-            return;
+                return;
+            }
         }
 #endif
         static_cast<FJ_ToolTips*>(m_movie->getRootNode()->getFuiNode())
@@ -302,19 +306,25 @@ void UIComponent_Tooltips::tick()
 }
 
 #if LCE_PLATFORM_PC
-std::wstring UIComponent_Tooltips::KeyPromptHtml(int input, int modifier, const std::wstring& text)
+std::wstring UIComponent_Tooltips::PromptImagesHtml(int pad, const int* actions, int actionCount,
+                                                   unsigned int buttons, int height)
 {
+    int images[8];
+    int count = g_pInput->GetPromptImages(pad, actions, actionCount, buttons, images, 8);
     std::wstring html;
-    wchar_t image[96];
-    if (modifier >= 0)
+    for (int index = 0; index < count; ++index)
     {
-        swprintf(image, sizeof(image) / sizeof(image[0]), L"<img src=\"pckey:%d\" height=\"%d\"/>", modifier,
-                 kKeyPromptHeight);
+        wchar_t image[64];
+        swprintf(image, sizeof(image) / sizeof(image[0]), L"<img src=\"pcprompt:%d\" height=\"%d\"/>", images[index],
+                 height);
         html += image;
     }
-    swprintf(image, sizeof(image) / sizeof(image[0]), L"<img src=\"pckey:%d\" height=\"%d\"/> ", input,
-             kKeyPromptHeight);
-    html += image;
+    return html;
+}
+
+std::wstring UIComponent_Tooltips::EscapeHtml(const std::wstring& text)
+{
+    std::wstring html;
     for (size_t i = 0; i < text.size(); ++i)
     {
         switch (text[i])
@@ -336,7 +346,7 @@ std::wstring UIComponent_Tooltips::KeyPromptHtml(int input, int modifier, const 
     return html;
 }
 
-bool UIComponent_Tooltips::GetPromptInput(unsigned int index, int* input, int* modifier)
+std::wstring UIComponent_Tooltips::PromptHtml(unsigned int index, int type, int subtype)
 {
     static const int kMenuActions[16] = {EControllerActions_MenuOk,
                                          EControllerActions_MenuCancel,
@@ -354,13 +364,43 @@ bool UIComponent_Tooltips::GetPromptInput(unsigned int index, int* input, int* m
                                          EControllerActions_MenuUp,
                                          EControllerActions_MenuDown,
                                          -1};
+    static const unsigned int kGlyphButtons[16] = {EJoypadButton_Face1,
+                                                   EJoypadButton_Face2,
+                                                   EJoypadButton_Face3,
+                                                   EJoypadButton_Face4,
+                                                   EJoypadButton_LeftTrigger,
+                                                   EJoypadButton_RightTrigger,
+                                                   EJoypadButton_LeftBumper,
+                                                   EJoypadButton_RightBumper,
+                                                   EJoypadButton_LeftStickPress,
+                                                   EJoypadButton_RightStickPress,
+                                                   EJoypadButton_Back,
+                                                   EJoypadButton_DPadLeft,
+                                                   EJoypadButton_DPadRight,
+                                                   EJoypadButton_DPadUp,
+                                                   EJoypadButton_DPadDown,
+                                                   EJoypadButton_LeftStickUp | EJoypadButton_LeftStickDown
+                                                       | EJoypadButton_LeftStickLeft | EJoypadButton_LeftStickRight};
     const _TooltipValues& value = m_tooltipValues[index];
     int action = -1;
     if (value.m_dynamic)
         action = value.m_button;
     else if (index < 16)
         action = kMenuActions[index];
-    return g_pInput->GetPromptInput(m_promptPad, action, input, modifier);
+
+    if (g_pInput->GetPromptStyle(m_promptPad) < C_4JInput::EPromptStyle_Gamepad)
+        return PromptImagesHtml(m_promptPad, &action, 1, 0, kPromptHeight);
+
+    if (type < 0 || type >= 16)
+        return std::wstring();
+    std::wstring html = PromptImagesHtml(m_promptPad, &action, 1, kGlyphButtons[type], kPromptHeight);
+    if (!html.empty() && subtype >= 0 && subtype < 16)
+    {
+        std::wstring second = PromptImagesHtml(m_promptPad, &action, 1, kGlyphButtons[subtype], kPromptHeight);
+        if (!second.empty())
+            html += L" + " + second;
+    }
+    return html;
 }
 
 void UIComponent_Tooltips::RefreshPrompts()

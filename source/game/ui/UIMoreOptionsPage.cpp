@@ -10,8 +10,12 @@
 void UIMoreOptionsPage::Build(UIScene_CustomMenu& menu)
 {
 #if LCE_PLATFORM_PC
-    menu.AddCheckbox(eItem_Fullscreen, L"Fullscreen", PcWindowIsFullscreen(), std::wstring());
-    menu.AddCheckbox(eItem_VSync, L"V-Sync", PcWindowIsVSync(), std::wstring());
+    menu.AddCheckbox(eItem_Fullscreen, L"Fullscreen", PcWindowIsFullscreen(),
+                     L"Fills the whole screen with the game. Turn it off to play in a window you can move and resize. "
+                     L"F11 switches between the two at any time.");
+    menu.AddCheckbox(eItem_VSync, L"V-Sync", PcWindowIsVSync(),
+                     L"Matches the frame rate to your display's refresh rate, which stops screen tearing. "
+                     L"Turn it off for the lowest input delay.");
 #endif
 }
 

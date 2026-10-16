@@ -173,6 +173,13 @@ void FJ_ToolTip::Animate()
         m_secondaryText->gotoAndPlay(g_toolTipLabels[m_secondaryType][1] + label);
 }
 
+#if LCE_PLATFORM_PC
+void FJ_ToolTip::SetHtmlLabel(bool html)
+{
+    m_htmlText = html;
+}
+#endif
+
 void FJ_ToolTip::SetLabel(const std::wstring& label)
 {
     FJ_Base::SetLabel(label);

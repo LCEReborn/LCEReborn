@@ -1,5 +1,7 @@
 #include "platform/pc/PcPaths.hpp"
 
+#include <SDL3/SDL.h>
+
 #include <cstdlib>
 #include <filesystem>
 
@@ -41,4 +43,21 @@ const std::string& PcContentRoot()
 const std::string& PcSaveRoot()
 {
     return SaveRoot();
+}
+
+const std::string& PcResourceRoot()
+{
+    static std::string root;
+    if (root.empty())
+    {
+        const char* value = std::getenv("LCE_RESOURCE_DIR");
+        const char* base = SDL_GetBasePath();
+        if (value != nullptr && value[0] != '\0')
+            root = std::filesystem::absolute(value).generic_string();
+        else if (base != nullptr)
+            root = (std::filesystem::path(base) / "resources").generic_string();
+        else
+            root = (std::filesystem::current_path() / "resources").generic_string();
+    }
+    return root;
 }

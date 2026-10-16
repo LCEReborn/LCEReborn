@@ -49,7 +49,8 @@ public:
     unsigned int HandleToolTipButton(unsigned int player, EControllerActions action, unsigned int& button, int type);
     void UpdateControllerType(int controllerType);
 #if LCE_PLATFORM_PC
-    bool GetPromptKeyName(unsigned int index, std::wstring* name);
+    bool GetPromptInput(unsigned int index, int* input, int* modifier);
+    static std::wstring KeyPromptHtml(int input, int modifier, const std::wstring& text);
     void RefreshPrompts();
 #endif
     virtual void SetTooltips(int player, int* tooltips, bool visible);
@@ -75,7 +76,7 @@ private:
     bool m_overrideSFX[4][23];
 #if LCE_PLATFORM_PC
     int m_promptPad;
-    bool m_keyboardPrompts;
+    int m_promptStyle;
 #endif
 };
 

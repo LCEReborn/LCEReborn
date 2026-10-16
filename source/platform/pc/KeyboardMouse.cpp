@@ -288,6 +288,26 @@ std::string PcKeyboardMouse::InputName(int input)
     return std::string();
 }
 
+bool PcKeyboardMouse::PointerPromptInput(int action, int* input, int* modifier)
+{
+    switch (action)
+    {
+    case EControllerActions_MenuA:
+    case EControllerActions_MenuOk:
+        *input = kMouseInputBase + SDL_BUTTON_LEFT;
+        return true;
+    case EControllerActions_MenuX:
+        *input = kMouseInputBase + SDL_BUTTON_RIGHT;
+        return true;
+    case EControllerActions_MenuY:
+        *modifier = SDL_SCANCODE_LSHIFT;
+        *input = kMouseInputBase + SDL_BUTTON_LEFT;
+        return true;
+    default:
+        return false;
+    }
+}
+
 EPcInputContext PcKeyboardMouse::ActionContext(int action)
 {
     return action <= EControllerActions_MenuCancel ? EPcInputContext_Menu : EPcInputContext_Game;

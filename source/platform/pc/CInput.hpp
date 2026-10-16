@@ -87,7 +87,8 @@ public:
     virtual int ConsumeMenuWheel(int pad);
     virtual bool UseKeyboardPrompts(int pad);
     virtual void SetMenuDrawsPointer(bool drawsPointer);
-    virtual bool GetPromptKeyName(int pad, int action, std::wstring* name);
+    virtual int GetPromptStyle(int pad);
+    virtual bool GetPromptInput(int pad, int action, int* input, int* modifier);
 
 private:
     friend void PcInputHandleEvent(const SDL_Event& event);

@@ -25,6 +25,9 @@ public:
     void Animate();
     virtual void SetLabel(const std::wstring& label);
     void ChangeType(int type, int subtype);
+#if LCE_PLATFORM_PC
+    void SetHtmlLabel(bool html);
+#endif
 
 private:
     int m_controllerType;

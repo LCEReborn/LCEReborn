@@ -17,6 +17,12 @@ public:
         EPcMenuClick_Secondary = 0x2,
         EPcMenuClick_Quick = 0x4
     };
+    enum EPromptStyle
+    {
+        EPromptStyle_Gamepad,
+        EPromptStyle_Keyboard,
+        EPromptStyle_Pointer
+    };
 #endif
     enum ETouchType
     {
@@ -105,7 +111,8 @@ public:
     virtual int ConsumeMenuWheel(int pad) = 0;
     virtual bool UseKeyboardPrompts(int pad) = 0;
     virtual void SetMenuDrawsPointer(bool drawsPointer) = 0;
-    virtual bool GetPromptKeyName(int pad, int action, std::wstring* name) = 0;
+    virtual int GetPromptStyle(int pad) = 0;
+    virtual bool GetPromptInput(int pad, int action, int* input, int* modifier) = 0;
 #endif
 };
 

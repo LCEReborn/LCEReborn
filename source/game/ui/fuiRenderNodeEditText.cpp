@@ -13,6 +13,9 @@
 #include "game/ui/fuiBitmap.hpp"
 #include "game/ui/fuiEdittext.hpp"
 #include "game/ui/fuiFontName.hpp"
+#if LCE_PLATFORM_PC
+#include "platform/pc/PcKeycaps.hpp"
+#endif
 
 extern Renderer* gRenderer;
 
@@ -337,6 +340,18 @@ std::wstring fuiRenderNodeEditText::getHtmlTagAttribute(const std::wstring& tag,
     return value;
 }
 
+#if LCE_PLATFORM_PC
+static int KeycapInput(const char* symbolName)
+{
+    static const char kPrefix[] = "pckey:";
+    if (std::strncmp(symbolName, kPrefix, sizeof(kPrefix) - 1) != 0)
+        return -1;
+    char* end = NULL;
+    long input = std::strtol(symbolName + sizeof(kPrefix) - 1, &end, 10);
+    return end != symbolName + sizeof(kPrefix) - 1 && *end == '\0' ? static_cast<int>(input) : -1;
+}
+#endif
+
 bool fuiRenderNodeEditText::htmlImage(const std::wstring& tag, RenderStringStateData& state)
 {
     std::wstring widthAttribute = getHtmlTagAttribute(tag, L"width");
@@ -348,6 +363,26 @@ bool fuiRenderNodeEditText::htmlImage(const std::wstring& tag, RenderStringState
     std::wcstombs(symbolName, srcAttribute.c_str(), sizeof(symbolName) - 1);
     symbolName[sizeof(symbolName) - 1] = '\0';
     fuiFile* file = NULL;
+#if LCE_PLATFORM_PC
+    int keycapWidth = 0;
+    int keycapHeight = 0;
+    bool keycap = KeycapInput(symbolName) >= 0 && PcKeycapSize(KeycapInput(symbolName), &keycapWidth, &keycapHeight);
+    intptr_t bitmap = keycap ? 0 : gFui->findBitmapFromSymbol(symbolName, &file);
+    if (keycap || bitmap != 0)
+    {
+        float imageWidth = keycap ? static_cast<float>(keycapWidth)
+                                  : static_cast<float>(reinterpret_cast<fuiBitmap*>(bitmap)->width);
+        float imageHeight = keycap ? static_cast<float>(keycapHeight)
+                                   : static_cast<float>(reinterpret_cast<fuiBitmap*>(bitmap)->height);
+        if (width == 0.0f)
+        {
+            width = imageWidth * height / imageHeight;
+        }
+        if (height == 0.0f)
+        {
+            height = imageHeight * width / imageWidth;
+        }
+#else
     intptr_t bitmap = gFui->findBitmapFromSymbol(symbolName, &file);
     if (bitmap != 0)
     {
@@ -360,6 +395,7 @@ bool fuiRenderNodeEditText::htmlImage(const std::wstring& tag, RenderStringState
         {
             height = static_cast<float>(bitmapObject->height) * width / static_cast<float>(bitmapObject->width);
         }
+#endif
         state.x += 8.0f;
         float left = state.x;
         if (m_wordWrap && m_fieldWidth < (left - state.lineStartX) + width)
@@ -373,7 +409,12 @@ bool fuiRenderNodeEditText::htmlImage(const std::wstring& tag, RenderStringState
                         + state.y;
             float right = left + width;
             float bottom = top + height;
+#if LCE_PLATFORM_PC
+            if (!keycap)
+                file->initialiseRenderTexture(reinterpret_cast<fuiBitmap*>(bitmap), false);
+#else
             file->initialiseRenderTexture(bitmapObject, false);
+#endif
             HtmlImageDrawData image;
             image.symbolName.assign(symbolName);
             image.vertices[0].x = left;
@@ -810,6 +851,23 @@ void fuiRenderNodeEditText::DrawRenderData(RenderStringStateData& state)
     for (unsigned int index = 0; index < state.activeImageData->size(); ++index)
     {
         HtmlImageDrawData& image = state.activeImageData->at(index);
+#if LCE_PLATFORM_PC
+        int keycapInput = KeycapInput(image.symbolName.c_str());
+        if (keycapInput >= 0)
+        {
+            int texture = PcKeycapTexture(keycapInput);
+            if (texture != -1)
+            {
+                gRenderer->TextureBind(texture);
+                gRenderer->TextureSetParam(1, 1);
+                gRenderer->TextureSetParam(2, 0);
+                gRenderer->DrawVertices(C4JRender::ePrimitiveType_Triangles, 6, &image,
+                                        C4JRender::eVertexType_ColouredUI, C4JRender::ePixelShaderType_UIColourAdd,
+                                        NULL);
+            }
+            continue;
+        }
+#endif
         fuiFile* file = NULL;
         intptr_t bitmap = gFui->findBitmapFromSymbol(image.symbolName.c_str(), &file);
         if (bitmap != 0)

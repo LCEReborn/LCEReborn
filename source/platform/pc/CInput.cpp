@@ -187,6 +187,17 @@ void PcInputHandleEvent(const SDL_Event& event)
     }
 }
 
+bool PcInputGetKeyboardText(std::wstring* title, std::wstring* text)
+{
+    if (g_pInputInstance == 0 || g_pInputInstance->keyboardState != CInput::EKeyboardState_Active)
+    {
+        return false;
+    }
+    *title = g_pInputInstance->keyboardTitle;
+    text->assign(g_pInputInstance->keyboardEditText.begin(), g_pInputInstance->keyboardEditText.end());
+    return true;
+}
+
 CInput::CInput()
 {
     g_pInputInstance = this;
@@ -1490,11 +1501,11 @@ unsigned int CInput::RequestKeyboard(const wchar_t* title, const wchar_t* initia
                                      unsigned int maximumLength, KeyboardCallback callback, void* context,
                                      EKeyboardMode mode)
 {
-    (void)title;
     if (keyboardState != EKeyboardState_Idle)
     {
         return 1;
     }
+    keyboardTitle = title != 0 ? title : L"";
     keyboardState = EKeyboardState_Requested;
     keyboardCallback = callback;
     keyboardMaximumLength = maximumLength > static_cast<unsigned int>(kKeyboardTextLimit)

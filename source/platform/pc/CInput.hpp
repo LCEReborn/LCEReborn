@@ -4,7 +4,6 @@
 #include "platform/C4JInput.hpp"
 #include "platform/pc/PcInputEvents.hpp"
 
-#include <deque>
 #include <string>
 #include <vector>
 
@@ -83,6 +82,7 @@ public:
 
 private:
     friend void PcInputHandleEvent(const SDL_Event& event);
+    friend bool PcInputGetKeyboardText(std::wstring* title, std::wstring* text);
 
     enum
     {
@@ -253,6 +253,7 @@ private:
     EKeyboardMode keyboardMode;
     wchar_t keyboardText[KEYBOARD_TEXT_CAPACITY];
     std::vector<wchar_t> keyboardEditText;
+    std::wstring keyboardTitle;
     bool keyboardAccepted;
     bool keyboardCancelled;
     bool destroyKeyboardRequested;

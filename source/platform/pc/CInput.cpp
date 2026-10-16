@@ -34,6 +34,8 @@ const int kHotbarSize = 9;
 const int kHotbarStepLimit = 36;
 const int kKeyboardJoypad = 1;
 const int kKeyboardTextLimit = 256;
+const float kTouchSpaceWidth = 1280.0f;
+const float kTouchSpaceHeight = 720.0f;
 
 int ClampStick(int value)
 {
@@ -248,6 +250,9 @@ CInput::CInput()
     std::memset(mouseButtons, 0, sizeof(mouseButtons));
     std::memset(mouseButtonDown, 0, sizeof(mouseButtonDown));
     mouseLookEnabled = false;
+    mousePointerX = 0.0f;
+    mousePointerY = 0.0f;
+    std::memset(touchData, 0, sizeof(touchData));
     mouseCaptured = false;
     windowFocused = true;
     lastWindowId = 0;
@@ -499,6 +504,8 @@ void CInput::HandleEvent(const SDL_Event& event)
         }
         break;
     case SDL_EVENT_MOUSE_MOTION:
+        mousePointerX = event.motion.x;
+        mousePointerY = event.motion.y;
         if (mouseLookEnabled && (event.motion.xrel != 0.0f || event.motion.yrel != 0.0f))
         {
             mouseLookX += event.motion.xrel;
@@ -1483,10 +1490,28 @@ unsigned char CInput::GetJoypadRTrigger(int pad, bool raw)
 
 unsigned short* CInput::GetTouchPadData(int pad, ETouchType touchType, bool previous)
 {
-    (void)pad;
     (void)touchType;
     (void)previous;
-    return 0;
+    if (!RemapIpad(pad) || pad != kKeyboardJoypad || mouseCaptured || keyboardState != EKeyboardState_Idle)
+    {
+        return 0;
+    }
+    SDL_Window* window = LocateWindow();
+    int width = 0;
+    int height = 0;
+    if (window == 0 || !SDL_GetWindowSize(window, &width, &height) || width <= 0 || height <= 0)
+    {
+        return 0;
+    }
+    float x = mousePointerX * kTouchSpaceWidth / static_cast<float>(width);
+    float y = mousePointerY * kTouchSpaceHeight / static_cast<float>(height);
+    x = x < 0.0f ? 0.0f : (x > kTouchSpaceWidth - 1.0f ? kTouchSpaceWidth - 1.0f : x);
+    y = y < 0.0f ? 0.0f : (y > kTouchSpaceHeight - 1.0f ? kTouchSpaceHeight - 1.0f : y);
+    touchData[0] = static_cast<unsigned short>(x);
+    touchData[1] = static_cast<unsigned short>(y);
+    touchData[2] = (SDL_GetMouseState(0, 0) & SDL_BUTTON_LMASK) != 0 ? 1 : 0;
+    touchData[3] = 0;
+    return touchData;
 }
 
 void CInput::SetMenuDisplayed(int pad, bool displayed)

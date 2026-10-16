@@ -235,6 +235,9 @@ private:
     bool mouseButtonDown[MOUSE_BUTTON_COUNT];
     float mouseLookX;
     float mouseLookY;
+    float mousePointerX;
+    float mousePointerY;
+    unsigned short touchData[4];
     bool mouseLookEnabled;
     bool mouseCaptured;
     bool windowFocused;

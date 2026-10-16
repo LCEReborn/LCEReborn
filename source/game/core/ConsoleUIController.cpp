@@ -1789,7 +1789,11 @@ void ConsoleUIController::handleKeyPress(unsigned int key, unsigned int characte
             touchY = touchData[1];
             touchDataValid = true;
         }
+#if LCE_PLATFORM_PC
+        if (!gConsoleUIController.IsReloadingSkin() && !m_rebuildingTouchBoxes && touchData != 0)
+#else
         if (!gConsoleUIController.IsReloadingSkin() && !m_rebuildingTouchBoxes && touchData != 0 && GetDRCEnabled())
+#endif
         {
             if (touchDataValid)
             {

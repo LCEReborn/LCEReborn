@@ -60,6 +60,7 @@ public:
     bool ConsumeHotbar(int* slot, int* scroll);
     int ConsumeMenuWheel();
     bool PointerMoved() const;
+    bool MouseMovedThisTick() const;
     void ClearPointerMoved();
     float PointerX() const;
     float PointerY() const;
@@ -98,6 +99,8 @@ private:
     float mPointerX;
     float mPointerY;
     bool mPointerMoved;
+    float mMotionSinceTick;
+    bool mMovedThisTick;
     unsigned int mClicks;
     unsigned long long mRepeatDelay;
 };

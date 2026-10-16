@@ -40,7 +40,15 @@ ConsoleSaveFileOriginal::ConsoleSaveFileOriginal(const std::wstring& filename, v
     if (resetData)
         saveDataSize = 0;
 
+#if LCE_PLATFORM_PC
+    if (deleteBaseSaveData)
+        platform = eSavePlatform_WIIU;
+#endif
     _initSaveFromData(filename, saveDataSize, data, platform);
+#if LCE_PLATFORM_PC
+    if (deleteBaseSaveData)
+        ConvertToLocalPlatform();
+#endif
     if (deleteBaseSaveData)
         options->deleteBaseSaveData();
 }
@@ -68,7 +76,12 @@ void ConsoleSaveFileOriginal::refreshFromLevelgen()
             VirtualFree(s_saveData, 0x4000000, 0x4000);
             s_saveDataSize = 0;
             mFileHeader.Reset();
+#if LCE_PLATFORM_PC
+            _initSaveFromData(mFilename, dataSize, data, eSavePlatform_WIIU);
+            ConvertToLocalPlatform();
+#else
             _initSaveFromData(mFilename, dataSize, data, mFileHeader.m_savePlatform);
+#endif
             options->deleteBaseSaveData();
         }
     }

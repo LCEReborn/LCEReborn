@@ -81,7 +81,7 @@ void ConsoleSaveFileCommon::_initSaveFromData(const std::wstring& filename, unsi
             Compression::getCompression()->SetDecompressionType(platform);
             int result = Compression::getCompression()->Decompress(uncompressedData, &uncompressedSize,
                                                                    compressedHeader + 2, dataSize - 8);
-            Compression::getCompression()->SetDecompressionType(eSavePlatform_WIIU);
+            Compression::getCompression()->SetDecompressionType(SAVE_FILE_PLATFORM_LOCAL);
             if (result == 0)
                 std::memcpy(mData, uncompressedData, uncompressedSize);
             else
@@ -295,12 +295,12 @@ ESavePlatform ConsoleSaveFileCommon::getSavePlatform()
 }
 bool ConsoleSaveFileCommon::isSaveEndianDifferent()
 {
-    return mFileHeader.m_saveEndian != eByteOrder_BigEndian;
+    return mFileHeader.m_saveEndian != SAVE_FILE_ENDIAN_LOCAL;
 }
 void ConsoleSaveFileCommon::setLocalPlatform()
 {
-    mFileHeader.m_saveEndian = eByteOrder_BigEndian;
-    mFileHeader.m_savePlatform = eSavePlatform_WIIU;
+    mFileHeader.m_saveEndian = SAVE_FILE_ENDIAN_LOCAL;
+    mFileHeader.m_savePlatform = SAVE_FILE_PLATFORM_LOCAL;
 }
 void ConsoleSaveFileCommon::setPlatform(ESavePlatform platform)
 {
@@ -312,7 +312,7 @@ ByteOrder ConsoleSaveFileCommon::getSaveEndian()
 }
 ByteOrder ConsoleSaveFileCommon::getLocalEndian()
 {
-    return eByteOrder_BigEndian;
+    return SAVE_FILE_ENDIAN_LOCAL;
 }
 void ConsoleSaveFileCommon::setEndian(ByteOrder endian)
 {
@@ -355,7 +355,7 @@ void ConsoleSaveFileCommon::ConvertRegionFile(File regionFile)
 
 void ConsoleSaveFileCommon::ConvertToLocalPlatform()
 {
-    if (getSavePlatform() == eSavePlatform_WIIU)
+    if (getSavePlatform() == SAVE_FILE_PLATFORM_LOCAL)
         return;
     std::vector<FileEntry*>* files = getFilesWithPrefix(L"");
     std::vector<FileEntry*>::iterator it;

@@ -24,6 +24,14 @@ enum ByteOrder
     eByteOrder_LittleEndian = 1
 };
 
+#if LCE_PLATFORM_PC
+#define SAVE_FILE_PLATFORM_LOCAL eSavePlatform_WIN
+#define SAVE_FILE_ENDIAN_LOCAL eByteOrder_LittleEndian
+#else
+#define SAVE_FILE_PLATFORM_LOCAL eSavePlatform_WIIU
+#define SAVE_FILE_ENDIAN_LOCAL eByteOrder_BigEndian
+#endif
+
 class FileHeader
 {
 public:

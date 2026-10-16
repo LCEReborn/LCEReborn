@@ -57,7 +57,7 @@ LevelData* DirectoryLevelStorageSource::getDataTagFor(ConsoleSaveFile* saveFile,
 
 void DirectoryLevelStorageSource::renameLevel(const std::wstring& levelId, const std::wstring& levelName)
 {
-    ConsoleSaveFileOriginal saveFile(levelId, 0, 0, false, eSavePlatform_WIIU);
+    ConsoleSaveFileOriginal saveFile(levelId, 0, 0, false, SAVE_FILE_PLATFORM_LOCAL);
     ConsoleSavePath path(L"level.dat");
     if (saveFile.doesFileExist(path))
     {

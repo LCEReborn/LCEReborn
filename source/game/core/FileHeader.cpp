@@ -25,8 +25,8 @@ FileHeader::FileHeader()
     m_currentFile = NULL;
     m_saveVersion = 0;
     m_originalSaveVersion = CURRENT_SAVE_VERSION;
-    m_savePlatform = eSavePlatform_WIIU;
-    m_saveEndian = eByteOrder_BigEndian;
+    m_savePlatform = SAVE_FILE_PLATFORM_LOCAL;
+    m_saveEndian = SAVE_FILE_ENDIAN_LOCAL;
 }
 
 FileHeader::~FileHeader()
@@ -49,8 +49,8 @@ void FileHeader::Reset()
     m_currentFile = NULL;
     m_saveVersion = 0;
     m_originalSaveVersion = CURRENT_SAVE_VERSION;
-    m_savePlatform = eSavePlatform_WIIU;
-    m_saveEndian = eByteOrder_BigEndian;
+    m_savePlatform = SAVE_FILE_PLATFORM_LOCAL;
+    m_saveEndian = SAVE_FILE_ENDIAN_LOCAL;
 }
 
 unsigned int FileHeader::GetStartOfNextData()
@@ -171,26 +171,26 @@ void FileHeader::ReadHeader(void* pData, ESavePlatform platform)
         break;
 
     default:
-        m_savePlatform = eSavePlatform_WIIU;
-        m_saveEndian = eByteOrder_BigEndian;
+        m_savePlatform = SAVE_FILE_PLATFORM_LOCAL;
+        m_saveEndian = SAVE_FILE_ENDIAN_LOCAL;
         break;
     }
 
     unsigned int indexOffset = *(unsigned int*)pData;
-    if (m_saveEndian != eByteOrder_BigEndian)
+    if (m_saveEndian != SAVE_FILE_ENDIAN_LOCAL)
         System::ReverseULONG(&indexOffset);
 
     unsigned int fileCount = *(unsigned int*)((char*)pData + sizeof(indexOffset));
-    if (m_saveEndian != eByteOrder_BigEndian)
+    if (m_saveEndian != SAVE_FILE_ENDIAN_LOCAL)
         System::ReverseULONG(&fileCount);
 
     char* pVersions = (char*)pData + sizeof(indexOffset) + sizeof(fileCount);
     m_originalSaveVersion = *(short*)pVersions;
-    if (m_saveEndian != eByteOrder_BigEndian)
+    if (m_saveEndian != SAVE_FILE_ENDIAN_LOCAL)
         System::ReverseSHORT(&m_originalSaveVersion);
 
     m_saveVersion = *(short*)(pVersions + sizeof(m_originalSaveVersion));
-    if (m_saveEndian != eByteOrder_BigEndian)
+    if (m_saveEndian != SAVE_FILE_ENDIAN_LOCAL)
         System::ReverseSHORT(&m_saveVersion);
 
     unsigned char* pEntryData = (unsigned char*)pData + indexOffset;
@@ -229,7 +229,7 @@ void FileHeader::ReadHeader(void* pData, ESavePlatform platform)
 
             memcpy(&pEntry->m_data, pEntryData, FILE_ENTRY_DATA_SIZE);
 
-            if (m_saveEndian != eByteOrder_BigEndian)
+            if (m_saveEndian != SAVE_FILE_ENDIAN_LOCAL)
             {
                 System::ReverseCHAR16A(pEntry->m_data.m_name, 64);
                 System::ReverseULONG(&pEntry->m_data.m_fileSize);

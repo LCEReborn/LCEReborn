@@ -3071,6 +3071,14 @@ unsigned int CMinecraftApp::GetHTMLColor(eMinecraftColour colour)
 }
 std::wstring CMinecraftApp::GetSingleActionReplacement(int32_t pad, uint32_t buttons)
 {
+#if LCE_PLATFORM_PC
+    {
+        std::wstring prompt =
+            UIComponent_Tooltips::PromptImagesHtml(pad, NULL, 0, buttons, GetLocalPlayerCount() > 1 ? 20 : 30);
+        if (!prompt.empty())
+            return prompt;
+    }
+#endif
     std::wstring button = L"";
     std::wstring controller = L"";
     std::wstring size = L"";
@@ -3485,6 +3493,7 @@ std::wstring CMinecraftApp::FormatHTMLString(int player, const std::wstring& val
     result = replaceAll(result, L"{*ICON_SHANK_03*}", GetIconReplacement(3));
     result = replaceAll(result, L"{*ICON_ARMOR_01*}", GetIconReplacement(4));
     result = replaceAll(result, L"{*CONTROLLER_VK_START*}", GetVKReplacement(player, VK_PAD_START, false));
+    result = replaceAll(result, L"{*CONTROLLER_VK_BACK*}", GetVKReplacement(player, VK_PAD_BACK, false));
     result = replaceAll(result, L"{*CONTROLLER_VK_BACK*}", L10N::GetString(IDS_BACK_BUTTON));
     result = replaceAll(result, L"{*PLATFORM_NAME*}", L10N::GetString(IDS_PLATFORM_NAME));
     const unsigned int language = XGetLanguage();

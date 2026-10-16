@@ -346,7 +346,8 @@ void CInput::Initialise(int count, unsigned char gameMapCount, unsigned char men
         padRemap[pad] = -1;
     }
     initialised = true;
-    keyboardMouse.LoadBindings(PcSaveRoot() + "/keybinds.txt");
+    keyBindingsPath = PcSaveRoot() + "/keybinds.txt";
+    keyboardMouse.LoadBindings(keyBindingsPath);
 
     int gamepadCount = 0;
     SDL_JoystickID* gamepads = SDL_GetGamepads(&gamepadCount);
@@ -829,14 +830,14 @@ void CInput::UpdateJoypads()
                 joypad.pressedValue = joypad.rawValue & ~joypad.previousValue;
                 joypad.releasedValue = joypad.previousValue & ~joypad.rawValue;
             }
-            if (joypad.pressedValue != 0)
-            {
-                lastInputJoypad = pad;
-            }
             else
             {
                 joypad.pressedValue = 0;
                 joypad.releasedValue = 0;
+            }
+            if (joypad.pressedValue != 0)
+            {
+                lastInputJoypad = pad;
             }
             for (int button = 0; button < BUTTON_COUNT; ++button)
             {
@@ -1375,6 +1376,53 @@ unsigned char CInput::GetJoypadRTrigger(int pad, bool raw)
 bool CInput::IsKeyboardPad(int pad)
 {
     return RemapIpad(pad) && pad == kKeyboardJoypad;
+}
+
+bool CInput::UsesKeyboard(int pad)
+{
+    return IsKeyboardPad(pad);
+}
+
+void CInput::BeginKeyCapture()
+{
+    keyboardMouse.BeginCapture();
+}
+
+void CInput::CancelKeyCapture()
+{
+    keyboardMouse.CancelCapture();
+}
+
+int CInput::ConsumeCapturedKey()
+{
+    return keyboardMouse.ConsumeCapture();
+}
+
+bool CInput::HasKeyBinding(int action)
+{
+    return !keyboardMouse.GetBindings(PcKeyboardMouse::ActionContext(action), action).empty();
+}
+
+bool CInput::SameKeyBinding(int action, int otherAction)
+{
+    const std::vector<int>& bindings = keyboardMouse.GetBindings(PcKeyboardMouse::ActionContext(action), action);
+    return !bindings.empty()
+           && bindings == keyboardMouse.GetBindings(PcKeyboardMouse::ActionContext(otherAction), otherAction);
+}
+
+void CInput::SetKeyBinding(int action, int input)
+{
+    std::vector<int> inputs;
+    if (input >= 0)
+        inputs.push_back(input);
+    keyboardMouse.SetBindings(PcKeyboardMouse::ActionContext(action), action, inputs);
+    keyboardMouse.SaveBindings(keyBindingsPath);
+}
+
+void CInput::ResetKeyBindings()
+{
+    keyboardMouse.SetDefaultBindings();
+    keyboardMouse.SaveBindings(keyBindingsPath);
 }
 
 bool CInput::MenuPointerPosition(float* x, float* y)

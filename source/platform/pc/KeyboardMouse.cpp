@@ -148,6 +148,8 @@ PcKeyboardMouse::PcKeyboardMouse()
         mInputContext[input] = EPcInputContext_Menu;
     std::memset(mActions, 0, sizeof(mActions));
     std::memset(mFakeTicks, 0, sizeof(mFakeTicks));
+    mCapturing = false;
+    mCaptured = C_4JInput::EKeyCapture_None;
     mAnyPressed = false;
     mMoveX = 0.0f;
     mMoveY = 0.0f;
@@ -466,8 +468,60 @@ void PcKeyboardMouse::ReleaseInput(int input)
     mInputDown[input] = false;
 }
 
+void PcKeyboardMouse::BeginCapture()
+{
+    mCapturing = true;
+    mCaptured = C_4JInput::EKeyCapture_None;
+}
+
+void PcKeyboardMouse::CancelCapture()
+{
+    mCapturing = false;
+    mCaptured = C_4JInput::EKeyCapture_None;
+}
+
+int PcKeyboardMouse::ConsumeCapture()
+{
+    int captured = mCaptured;
+    mCaptured = C_4JInput::EKeyCapture_None;
+    return captured;
+}
+
+bool PcKeyboardMouse::CaptureEvent(const SDL_Event& event)
+{
+    int input = C_4JInput::EKeyCapture_None;
+    switch (event.type)
+    {
+    case SDL_EVENT_KEY_DOWN:
+        if (event.key.repeat || event.key.scancode >= SCANCODE_COUNT)
+            return event.key.repeat;
+        input = event.key.scancode == SDL_SCANCODE_ESCAPE ? static_cast<int>(C_4JInput::EKeyCapture_Cancelled)
+                                                          : static_cast<int>(event.key.scancode);
+        break;
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        if (event.button.button >= MOUSE_BUTTON_COUNT)
+            return false;
+        input = kMouseInputBase + event.button.button;
+        break;
+    case SDL_EVENT_MOUSE_WHEEL:
+        if (event.wheel.integer_y == 0)
+            return false;
+        input = (event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -event.wheel.integer_y : event.wheel.integer_y) > 0
+                    ? INPUT_WHEEL_UP
+                    : INPUT_WHEEL_DOWN;
+        break;
+    default:
+        return false;
+    }
+    mCapturing = false;
+    mCaptured = input;
+    return true;
+}
+
 void PcKeyboardMouse::HandleEvent(const SDL_Event& event, EPcInputContext context, bool mouseCaptured)
 {
+    if (mCapturing && CaptureEvent(event))
+        return;
     switch (event.type)
     {
     case SDL_EVENT_KEY_DOWN:

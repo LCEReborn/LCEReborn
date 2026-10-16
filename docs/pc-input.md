@@ -131,6 +131,27 @@ symbols. Labels are not part of the art: the game writes them in the Mojangles
 font, on the font's own pixel grid, when it first needs a picture, and scales
 the result by whole numbers so it stays sharp.
 
+## Rebinding controls
+
+Help & Options > Controls rebinds the controls of whichever device the player
+is using, and every row shows that device's buttons or keys.
+
+- **Controllers** use the game's own rebinding: choose a row, press the new
+  button, and the mapping is stored in the player's profile in the game's
+  button numbering, so it follows the face button positions on every
+  controller family. The help text and the cancel prompt show the
+  controller's own Back button (View, Create, Minus).
+- **Keyboard and mouse:** choosing a row starts a capture in
+  `PcKeyboardMouse`. The next key, mouse button or wheel step becomes that
+  action's only binding and is written to `keybinds.txt` straight away; Esc
+  cancels. The captured press never reaches the menus, so Enter, Esc or a
+  click can be bound like any other input.
+- Both devices share the game's conflict rule: binding an input already used
+  by another action in the same group clears that action and asks the player
+  to give it a new one. Leaving the menu with a required action unbound
+  raises the game's warning. Reset to Defaults resets the keyboard bindings as
+  well when the keyboard is the player's device.
+
 ## What changes in the game
 
 The game core stays platform-pure. Where PC input needs the game to do

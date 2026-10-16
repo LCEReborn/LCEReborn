@@ -33,6 +33,10 @@ UIScene_ControlsMenu::UIScene_ControlsMenu(int player, void* data, UILayer* laye
 
 UIScene_ControlsMenu::~UIScene_ControlsMenu()
 {
+#if LCE_PLATFORM_PC
+    if (m_editingButton && UsesKeyboard(m_playerId))
+        g_pInput->CancelKeyCapture();
+#endif
     if (m_mappingsChanged)
     {
         GameSettings::CheckGameSettingsChanged(true, m_playerId);
@@ -43,8 +47,12 @@ UIScene_ControlsMenu::~UIScene_ControlsMenu()
 std::wstring UIScene_ControlsMenu::GetControlsString(int player, EControllerActions action, bool& mapped)
 {
     std::wstring result;
-    if (GameSettings::GetInputButton(player, false, action) == 0 && action >= EControllerActions_Jump
-        && action <= EControllerActions_LookBehind)
+    bool unmapped = GameSettings::GetInputButton(player, false, action) == 0;
+#if LCE_PLATFORM_PC
+    if (g_pInput->UsesKeyboard(player))
+        unmapped = !g_pInput->HasKeyBinding(action);
+#endif
+    if (unmapped && action >= EControllerActions_Jump && action <= EControllerActions_LookBehind)
     {
         result = L" ";
         result += L10N::GetString(IDS_CONTROLS_NONE);
@@ -246,6 +254,14 @@ void UIScene_ControlsMenu::updateTooltips()
 {
     if (m_editingButton)
     {
+#if LCE_PLATFORM_PC
+        if (UsesKeyboard(m_playerId))
+        {
+            gConsoleUIController.SetTooltips(m_playerId, -1, IDS_TOOLTIPS_CANCEL, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                                             -1, -1, -1, -1, -1, false, false);
+            return;
+        }
+#endif
         gConsoleUIController.SetTooltips(m_playerId, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, IDS_TOOLTIPS_CANCEL, -1,
                                          -1, -1, -1, -1, false, false);
     }
@@ -456,10 +472,13 @@ void UIScene_ControlsMenu::tick()
     }
     if (m_updateControls)
         UpdateControls(m_playerId);
+#if LCE_PLATFORM_PC
+    if (m_editingButton && UsesKeyboard(m_playerId))
+        HandleKeyCapture(m_playerId);
+#endif
     if (m_showAssignHelp)
     {
-        SetControlsHelp(m_playerId, m_controlsList.getCurrentSelection(),
-                        L10N::GetString(IDS_CONTROLS_BUTTON_ASSIGN_HELP));
+        SetControlsHelp(m_playerId, m_controlsList.getCurrentSelection(), AssignHelp(m_playerId));
         m_showAssignHelp = false;
     }
     if (m_clearHelp)
@@ -496,6 +515,10 @@ int UIScene_ControlsMenu::ResetDefaultsDialogReturned(void* context, int pad, C4
         gConsoleUIController.GetSceneFromCallbackId((unsigned int)(uintptr_t)context));
     if (scene != NULL && result == C4JStorage::EMessageResult_Decline)
     {
+#if LCE_PLATFORM_PC
+        if (scene->UsesKeyboard(scene->m_playerId))
+            g_pInput->ResetKeyBindings();
+#endif
         GameSettings::SetDefaultControls(gStorage->GetDashboardProfileSettings(scene->m_playerId), scene->m_playerId,
                                          true);
         GameSettings::CheckGameSettingsChanged(true, pad);
@@ -525,76 +548,43 @@ void UIScene_ControlsMenu::handleReload()
 
 unsigned int UIScene_ControlsMenu::CheckControls(int player, EControl control)
 {
-    bool found = false;
-    int conflicting = 0;
-    int mapping = GameSettings::GetActionMapping(player, GetControlsAction(control) - EControllerActions_Jump);
-
+    int first;
+    int last;
     if (control >= EControl_Use && control <= EControl_FlyDown)
     {
-        for (int candidate = EControl_Use; candidate <= EControl_FlyDown; ++candidate)
-        {
-            if (candidate != control
-                && mapping
-                       == GameSettings::GetActionMapping(player, GetControlsAction(static_cast<EControl>(candidate))
-                                                                     - EControllerActions_Jump))
-            {
-                found = true;
-                conflicting = candidate;
-                GameSettings::SetActionMapping(
-                    player, GetControlsAction(static_cast<EControl>(conflicting)) - EControllerActions_Jump, 0);
-                break;
-            }
-        }
+        first = EControl_Use;
+        last = EControl_FlyDown;
     }
     else if (control >= EControl_ConfirmReady && control <= EControl_Vote)
     {
-        for (int candidate = EControl_ConfirmReady; candidate <= EControl_Vote; ++candidate)
-        {
-            if (candidate != control
-                && mapping
-                       == GameSettings::GetActionMapping(player, GetControlsAction(static_cast<EControl>(candidate))
-                                                                     - EControllerActions_Jump))
-            {
-                found = true;
-                conflicting = candidate;
-                GameSettings::SetActionMapping(
-                    player, GetControlsAction(static_cast<EControl>(conflicting)) - EControllerActions_Jump, 0);
-                break;
-            }
-        }
+        first = EControl_ConfirmReady;
+        last = EControl_Vote;
     }
     else if (control >= EControl_SpectatePrevious && control <= EControl_SpectateCancel)
     {
-        for (int candidate = EControl_SpectatePrevious; candidate <= EControl_SpectateCancel; ++candidate)
-        {
-            if (candidate != control
-                && mapping
-                       == GameSettings::GetActionMapping(player, GetControlsAction(static_cast<EControl>(candidate))
-                                                                     - EControllerActions_Jump))
-            {
-                found = true;
-                conflicting = candidate;
-                GameSettings::SetActionMapping(
-                    player, GetControlsAction(static_cast<EControl>(conflicting)) - EControllerActions_Jump, 0);
-                break;
-            }
-        }
+        first = EControl_SpectatePrevious;
+        last = EControl_SpectateCancel;
     }
     else if (control >= EControl_RestartSection && control <= EControl_LookBehind)
     {
-        for (int candidate = EControl_RestartSection; candidate <= EControl_LookBehind; ++candidate)
+        first = EControl_RestartSection;
+        last = EControl_LookBehind;
+    }
+    else
+    {
+        return 0;
+    }
+
+    bool found = false;
+    int conflicting = 0;
+    for (int candidate = first; candidate <= last; ++candidate)
+    {
+        if (candidate != control && SameMapping(player, control, static_cast<EControl>(candidate)))
         {
-            if (candidate != control
-                && mapping
-                       == GameSettings::GetActionMapping(player, GetControlsAction(static_cast<EControl>(candidate))
-                                                                     - EControllerActions_Jump))
-            {
-                found = true;
-                conflicting = candidate;
-                GameSettings::SetActionMapping(
-                    player, GetControlsAction(static_cast<EControl>(conflicting)) - EControllerActions_Jump, 0);
-                break;
-            }
+            found = true;
+            conflicting = candidate;
+            ClearMapping(player, static_cast<EControl>(conflicting));
+            break;
         }
     }
 
@@ -607,6 +597,96 @@ unsigned int UIScene_ControlsMenu::CheckControls(int player, EControl control)
         SetControlsHelp(player, conflicting, L10N::GetString(IDS_CONTROLS_BUTTON_ASSIGN_CONFLICT));
     }
     return found;
+}
+
+bool UIScene_ControlsMenu::HasMapping(int player, EControl control)
+{
+#if LCE_PLATFORM_PC
+    if (UsesKeyboard(player))
+        return g_pInput->HasKeyBinding(GetControlsAction(control));
+#endif
+    return GameSettings::GetActionMapping(player, GetControlsAction(control) - EControllerActions_Jump) != 0;
+}
+
+bool UIScene_ControlsMenu::SameMapping(int player, EControl control, EControl otherControl)
+{
+#if LCE_PLATFORM_PC
+    if (UsesKeyboard(player))
+        return g_pInput->SameKeyBinding(GetControlsAction(control), GetControlsAction(otherControl));
+#endif
+    return GameSettings::GetActionMapping(player, GetControlsAction(control) - EControllerActions_Jump)
+           == GameSettings::GetActionMapping(player, GetControlsAction(otherControl) - EControllerActions_Jump);
+}
+
+void UIScene_ControlsMenu::ClearMapping(int player, EControl control)
+{
+#if LCE_PLATFORM_PC
+    if (UsesKeyboard(player))
+    {
+        g_pInput->SetKeyBinding(GetControlsAction(control), -1);
+        return;
+    }
+#endif
+    GameSettings::SetActionMapping(player, GetControlsAction(control) - EControllerActions_Jump, 0);
+}
+
+bool UIScene_ControlsMenu::UsesKeyboard(int player)
+{
+#if LCE_PLATFORM_PC
+    return g_pInput->UsesKeyboard(player);
+#else
+    return false;
+#endif
+}
+
+std::wstring UIScene_ControlsMenu::AssignHelp(int player)
+{
+    std::wstring help = L10N::GetString(IDS_CONTROLS_BUTTON_ASSIGN_HELP);
+#if LCE_PLATFORM_PC
+    if (UsesKeyboard(player))
+        return L"Press a key or mouse button, or {*CONTROLLER_VK_B*} to cancel.";
+    std::wstring::size_type select = help.find(L"SELECT");
+    if (select != std::wstring::npos)
+        help.replace(select, 6, L"{*CONTROLLER_VK_BACK*}");
+#endif
+    return help;
+}
+
+void UIScene_ControlsMenu::FinishButtonEdit(int player)
+{
+    bool mapped = true;
+    std::wstring controlString = GetControlsString((EControl)m_controlsList.getCurrentSelection(), mapped);
+    m_controlsList.SetSecondaryLabel(m_controlsList.getCurrentSelection(), UIString(controlString), true, mapped,
+                                     false);
+    m_editingButton = false;
+    m_unusedEditFlag = false;
+    updateTooltips();
+    m_firstButton = 0;
+    m_firstButtonMask = 0;
+    m_lastEditAction = -1;
+    m_secondButton = 0;
+    m_buttonCount = 0;
+}
+
+void UIScene_ControlsMenu::HandleKeyCapture(int player)
+{
+#if LCE_PLATFORM_PC
+    int input = g_pInput->ConsumeCapturedKey();
+    if (input == C_4JInput::EKeyCapture_None)
+        return;
+    EControl control = static_cast<EControl>(m_controlsList.getCurrentSelection());
+    if (input == C_4JInput::EKeyCapture_Cancelled)
+    {
+        FinishButtonEdit(player);
+        SetControlsHelp(player, 0, L"");
+        return;
+    }
+    g_pInput->SetKeyBinding(GetControlsAction(control), input);
+    gConsoleUIController.PlayUISFX(SoundEvents::UI_PRESS);
+    FinishButtonEdit(player);
+    if (CheckControls(player, control) == 0)
+        SetControlsHelp(player, 0, L"");
+#endif
 }
 
 void UIScene_ControlsMenu::HandleButtonEdit(int player, int action, bool repeat, bool pressed, bool released)
@@ -776,7 +856,7 @@ unsigned int UIScene_ControlsMenu::CheckControlsOnExit(int player)
         if (control == EControl_Sprint || control == EControl_PickBlock
             || (control >= EControl_FlyLeft && control <= EControl_FlyDown))
             continue;
-        if (GameSettings::GetActionMapping(player, GetControlsAction((EControl)control) - EControllerActions_Jump) == 0)
+        if (!HasMapping(player, (EControl)control))
         {
             m_controlsList.SetSecondaryLabel(control, UIString(L10N::GetString(IDS_CONTROLS_NONE)), true, false, false);
             m_controlsList.HighlightItem(control, false);
@@ -795,7 +875,8 @@ void UIScene_ControlsMenu::handleInput(int player, int action, bool repeat, bool
 {
     if (m_editingButton)
     {
-        HandleButtonEdit(player, action, repeat, pressed, released);
+        if (!UsesKeyboard(player))
+            HandleButtonEdit(player, action, repeat, pressed, released);
         return;
     }
     gConsoleUIController.AnimateKeyPress(m_playerId, action, repeat, pressed, released);
@@ -847,6 +928,10 @@ void UIScene_ControlsMenu::handlePress(int controlId, int childId)
         m_controlsList.SetSecondaryLabel(childId, UIString(ellipsis), true, false, false);
         m_editingButton = true;
         m_showAssignHelp = true;
+#if LCE_PLATFORM_PC
+        if (UsesKeyboard(m_playerId))
+            g_pInput->BeginKeyCapture();
+#endif
         updateTooltips();
     }
 }

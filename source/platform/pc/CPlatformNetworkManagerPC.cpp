@@ -81,6 +81,7 @@ void CPlatformNetworkManagerPC::Initialise(CGameNetworkManager* manager, int max
     }
     SetState(eState_Idle);
     LeaveCriticalSection(&m_lock);
+    gProfile->SetNetworkStatusWithoutSigninChange(true);
 }
 
 void CPlatformNetworkManagerPC::Terminate()

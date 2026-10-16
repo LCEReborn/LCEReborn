@@ -910,7 +910,21 @@ void Textures::replaceTextureDirect(arrayWithLength<int> pixels, int width, int 
     GlStateManager::texParameteri(2, 0);
     GlStateManager::texParameteri(3, 1);
     GlStateManager::texParameteri(4, 1);
+#if LCE_PLATFORM_PC
+    arrayWithLength<unsigned char> bytes(pixels.length * 4, true);
+    for (unsigned int i = 0; i < pixels.length; ++i)
+    {
+        unsigned int value = (unsigned int)pixels.data[i];
+        bytes.data[i * 4] = (unsigned char)(value >> 24);
+        bytes.data[i * 4 + 1] = (unsigned char)(value >> 16);
+        bytes.data[i * 4 + 2] = (unsigned char)(value >> 8);
+        bytes.data[i * 4 + 3] = (unsigned char)value;
+    }
+    gRenderer->TextureDataUpdate(0, 0, width, height, bytes.data, 0);
+    delete[] bytes.data;
+#else
     gRenderer->TextureDataUpdate(0, 0, width, height, pixels.data, 0);
+#endif
 }
 
 void Textures::replaceTextureDirect(arrayWithLength<short> pixels, int width, int height, int texture)

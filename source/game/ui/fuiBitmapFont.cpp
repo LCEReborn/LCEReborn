@@ -22,7 +22,9 @@ fuiBitmapFont::fuiBitmapFont(SFontData& fontData, unsigned short missingGlyphCha
     const int height = static_cast<int>(image.getHeight());
 
     m_textureIndex = static_cast<unsigned int>(gRenderer->TextureCreate());
+#if LCE_PLATFORM_WIIU
     fui::EndianSwapImageData(pixels, image.getWidth() * image.getHeight());
+#endif
     gRenderer->TextureBind(static_cast<int>(m_textureIndex));
     gRenderer->TextureSetTextureLevels(1);
     gRenderer->TextureData(width, height, pixels, 0, C4JRender::eTextureFormat_RGBA8);

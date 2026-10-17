@@ -40,6 +40,7 @@
 #include "platform/pc/PcApplication.hpp"
 #include "platform/pc/Log.hpp"
 #include "platform/pc/PcLaunchOptions.hpp"
+#include "platform/pc/PcLicenses.hpp"
 #include "platform/pc/PcWindow.hpp"
 
 extern CConsoleMinecraftApp gApp;
@@ -90,6 +91,7 @@ int main(int argc, char** argv)
     gApp.InitialiseDLCInfo();
     if (gApp.ReadProductCodes() == 0)
         gApp.FatalLoadError(L"ReadProductCodes");
+    PcApplyLicenses();
 
     switch (gApp.GetProductSKU())
     {

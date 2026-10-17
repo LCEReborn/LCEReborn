@@ -45,7 +45,8 @@ QStringList GameRunner::Arguments(const Profile& profile)
     QStringList arguments;
     arguments << "--username" << profile.username << "--uuid" << profile.uuid << "--content-dir"
               << LauncherPaths::AssetsDir() << "--resource-dir" << LauncherPaths::ResourcesDir() << "--save-dir"
-              << gameDir + "/saves" << "--log-dir" << gameDir + "/logs";
+              << gameDir + "/saves" << "--log-dir" << gameDir + "/logs" << "--license-file"
+              << LauncherPaths::LicenseFile();
     if (!profile.language.isEmpty())
         arguments << "--language" << profile.language;
     return arguments;

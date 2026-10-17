@@ -8,6 +8,7 @@ void PcSetSaveRoot(const std::string& path);
 const std::string& PcContentRoot();
 const std::string& PcSaveRoot();
 const std::string& PcResourceRoot();
+const std::string& PcLicenseFile();
 bool PcCheckGameFolders(std::string& message);
 
 #endif

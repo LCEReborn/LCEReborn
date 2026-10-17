@@ -64,10 +64,17 @@ comes from its arguments (`platform/pc/PcLaunchOptions`, `--help` lists them).
 `--username` sets the player name, falling back to the OS user name, and
 `--language` the language, falling back to the system's. `--uuid` sets the
 first player's identity, 32 hexadecimal digits with or without dashes;
-without it the identity is made from the player name, so renaming a player
-changes it. The launcher passes each profile's own UUID, so a profile keeps
-its worlds when its player name changes. Most players start the game from the
-launcher (`pc-launcher.md`) rather than with these arguments.
+without it the identity is made from the player name. `--license-file` sets
+the license file (see Licenses). Most players start the game from the
+launcher (`pc-launcher.md`).
+
+## Licenses
+
+The PC has no store, so the game reads what is unlocked from `license.cfg`
+(or `--license-file`) and writes it on first start with everything locked.
+Nothing is unlocked until you edit it, and you should only unlock what you
+own. `full_game = true` unlocks the full game, otherwise it runs as the trial.
+`dlc` is `none`, `all`, or pack names separated by commas.
 
 ## Logging
 

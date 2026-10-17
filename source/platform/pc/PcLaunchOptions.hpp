@@ -12,6 +12,7 @@ struct PcLaunchOptions
     std::string language;
     std::string logDir;
     std::string uuid;
+    std::string licenseFile;
 };
 
 bool PcParseLaunchOptions(int argc, char** argv, int& exitCode);

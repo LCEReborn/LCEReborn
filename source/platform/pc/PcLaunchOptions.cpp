@@ -47,6 +47,7 @@ static void PrintUsage(std::FILE* stream)
                "  --resource-dir <dir>        PC interface art (default: resources in the working folder)\n"
                "  --language <code>           language, such as en-GB or ja (default: the system language)\n"
                "  --log-dir <dir>             logs (default: logs in the working folder)\n"
+               "  --license-file <file>       what is unlocked (default: license.cfg in the working folder)\n"
                "  --help                      show this message\n",
                stream);
 }
@@ -92,6 +93,8 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
             target = &sOptions.logDir;
         else if (name == "--uuid")
             target = &sOptions.uuid;
+        else if (name == "--license-file")
+            target = &sOptions.licenseFile;
         else
         {
             std::fprintf(stderr, "Unknown option: %s\n", arguments[index].c_str());

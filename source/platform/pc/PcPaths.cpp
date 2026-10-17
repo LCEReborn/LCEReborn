@@ -58,6 +58,12 @@ const std::string& PcResourceRoot()
     return root;
 }
 
+const std::string& PcLicenseFile()
+{
+    static std::string root = RootFromOption(PcGetLaunchOptions().licenseFile, "license.cfg");
+    return root;
+}
+
 static std::string DisplayPath(const std::string& path)
 {
     return std::filesystem::path(path).make_preferred().u8string();

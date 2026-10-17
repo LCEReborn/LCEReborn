@@ -18,6 +18,7 @@
 #include "game/client/render/Textures.hpp"
 #include "game/core/BufferedImage.hpp"
 #include "game/core/CAchievements.hpp"
+#include "game/core/ConsoleUIController.hpp"
 #include "game/core/Minecraft.hpp"
 #include "platform/C4JStorage.hpp"
 #include "platform/CInput.hpp"
@@ -25,6 +26,7 @@
 #include "platform/pc/Log.hpp"
 #include "platform/pc/PcLaunchOptions.hpp"
 #include "platform/pc/PcPaths.hpp"
+#include "platform/pc/PcUnlockPage.hpp"
 
 PlayerUID getPlayerUID(int, bool);
 int getSlotId(int);
@@ -1008,7 +1010,7 @@ void CProfile::ClearGameUsers()
 
 bool CProfile::IsFullVersion()
 {
-    return true;
+    return mFullVersion;
 }
 
 void CProfile::SetFullVersion(bool fullVersion)
@@ -1060,12 +1062,14 @@ void CProfile::SetUpsellType(eUpsellType type, int upsellParam)
     mUpsellParam = upsellParam;
 }
 
-void CProfile::DisplayFullVersionPurchase(bool fromTrial, int, int upsellParam)
+void CProfile::DisplayFullVersionPurchase(bool fromTrial, int playerId, int upsellParam)
 {
     SetUpsellType(eUpsellType_None, upsellParam);
     if (fromTrial)
         mUpsellFromTrial = true;
     SetProfileProcessState(eProfileProcessState_Upsell);
+    gConsoleUIController.NavigateToScene(playerId, EUIScene_CustomMenu, new PcUnlockPage(), EUILayer_Scene,
+                                         EUIGroup_PlayerDefault);
 }
 
 void CProfile::SetUpsellCallback(UpsellHandler handler, void* context)

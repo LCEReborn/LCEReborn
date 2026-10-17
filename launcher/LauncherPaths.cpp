@@ -20,6 +20,11 @@ QString ResourcesDir()
     return DataDir() + "/resources";
 }
 
+QString LicenseFile()
+{
+    return DataDir() + "/license.cfg";
+}
+
 QString GameExecutable()
 {
 #if defined(Q_OS_WIN)

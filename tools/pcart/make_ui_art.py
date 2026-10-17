@@ -97,6 +97,11 @@ def rotate(rows):
 
 
 def write_png(path, width, height, pixels):
+    with open(path, "wb") as handle:
+        handle.write(png_bytes(width, height, pixels))
+
+
+def png_bytes(width, height, pixels):
     raw = bytearray()
     for y in range(height):
         raw.append(0)
@@ -110,8 +115,7 @@ def write_png(path, width, height, pixels):
     header = struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)
     data = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(bytes(raw), 9))
     data += chunk(b"IEND", b"")
-    with open(path, "wb") as handle:
-        handle.write(data)
+    return data
 
 
 def paint(rows):

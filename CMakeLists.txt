@@ -149,6 +149,11 @@ add_executable(LCEReborn $<TARGET_OBJECTS:lce_game> $<TARGET_OBJECTS:lce_platfor
 target_link_libraries(LCEReborn PRIVATE lce_png lce_zlib SDL3::SDL3-static)
 if(WIN32)
   target_link_libraries(LCEReborn PRIVATE shell32)
+  # The executable's icon (tools/pcart/make_icon.py).
+  set(LCE_ICON "${CMAKE_SOURCE_DIR}/resources/pc/icon.ico")
+  file(WRITE "${CMAKE_BINARY_DIR}/LCEReborn.rc" "1 ICON \"${LCE_ICON}\"\n")
+  target_sources(LCEReborn PRIVATE "${CMAKE_BINARY_DIR}/LCEReborn.rc")
+  set_source_files_properties("${CMAKE_BINARY_DIR}/LCEReborn.rc" PROPERTIES OBJECT_DEPENDS "${LCE_ICON}")
 endif()
 # The PC interface art (tools/pcart) is read from resources/ in the working folder unless --resource-dir is given.
 add_custom_command(TARGET LCEReborn POST_BUILD

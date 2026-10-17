@@ -1,6 +1,7 @@
 #include "platform/pc/PcWindow.hpp"
 
 #include <SDL3/SDL.h>
+#include <stb_image.h>
 
 #include <stdio.h>
 
@@ -79,6 +80,25 @@ bool IsFullscreenToggle(const SDL_Event& event)
     return (event.key.scancode == SDL_SCANCODE_RETURN || event.key.scancode == SDL_SCANCODE_KP_ENTER)
            && (event.key.mod & SDL_KMOD_ALT) != 0;
 }
+
+void SetWindowIcon()
+{
+    const std::string path = PcResourceRoot() + "/icon.png";
+    int width = 0;
+    int height = 0;
+    int channels = 0;
+    unsigned char* pixels = stbi_load(path.c_str(), &width, &height, &channels, 4);
+    if (pixels == NULL)
+    {
+        LOG_WARN(sLog, "Window icon %s could not be loaded", path.c_str());
+        return;
+    }
+    SDL_Surface* icon = SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGBA32, pixels, width * 4);
+    if (icon == NULL || !SDL_SetWindowIcon(sWindow, icon))
+        LOG_WARN(sLog, "The window icon could not be set: %s", SDL_GetError());
+    SDL_DestroySurface(icon);
+    stbi_image_free(pixels);
+}
 }
 
 bool PcWindowCreate(int width, int height)
@@ -109,6 +129,7 @@ bool PcWindowCreate(int width, int height)
         LOG_FATAL(sLog, "SDL_CreateWindow failed: %s", SDL_GetError());
         return false;
     }
+    SetWindowIcon();
 
     sContext = SDL_GL_CreateContext(sWindow);
     if (sContext == NULL)

@@ -206,7 +206,7 @@ void ProfileChip::paintEvent(QPaintEvent*)
     if (!mFace.isNull())
     {
         const QRect face(10, (height() - 44) / 2, 44, 44);
-        painter.setRenderHint(QPainter::SmoothPixmapTransform, false);
+        painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
         painter.drawPixmap(face, mFace);
         textLeft = 66;
     }

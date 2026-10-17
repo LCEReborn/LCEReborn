@@ -62,7 +62,7 @@ void ProfileRow::paintEvent(QPaintEvent*)
     const QRect face(8, (height() - kFaceSize) / 2, kFaceSize, kFaceSize);
     if (!mFace.isNull())
     {
-        painter.setRenderHint(QPainter::SmoothPixmapTransform, false);
+        painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
         painter.drawPixmap(face, mFace);
     }
     else
@@ -114,7 +114,7 @@ ProfilePopup::ProfilePopup(const ProfileStore& store, QWidget* parent) : QFrame(
     layout->setSpacing(2);
     for (const Profile& profile : store.Profiles())
     {
-        const QImage face = Skins::Face(Skins::SkinFor(profile));
+        const QImage face = Skins::FaceFor(profile);
         auto* row = new ProfileRow(face.isNull() ? QPixmap() : QPixmap::fromImage(face), profile.name, profile.username,
                                    profile.id == store.SelectedId(), this);
         const QString id = profile.id;

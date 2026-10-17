@@ -74,9 +74,9 @@ void ProfilesTab::Reload()
         const Profile& profile = profiles[row];
         auto* name = new QTableWidgetItem(profile.name);
         name->setData(Qt::UserRole, profile.id);
-        const QImage face = Skins::Face(Skins::SkinFor(profile));
+        const QImage face = Skins::FaceFor(profile);
         if (!face.isNull())
-            name->setIcon(QIcon(QPixmap::fromImage(face.scaled(32, 32, Qt::IgnoreAspectRatio, Qt::FastTransformation))));
+            name->setIcon(QIcon(QPixmap::fromImage(face.scaled(64, 64, Qt::IgnoreAspectRatio, Qt::SmoothTransformation))));
         mTable->setItem(row, 0, name);
         mTable->setItem(row, 1, new QTableWidgetItem(profile.username));
         mTable->setItem(row, 2, new QTableWidgetItem(QDir::toNativeSeparators(ProfileStore::GameDirFor(profile))));

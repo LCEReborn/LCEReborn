@@ -190,7 +190,7 @@ void MainWindow::RefreshProfiles()
 {
     if (const Profile* profile = mStore.Selected())
     {
-        const QImage face = Skins::Face(Skins::SkinFor(*profile));
+        const QImage face = Skins::FaceFor(*profile);
         mProfileChip->SetProfile(face.isNull() ? QPixmap() : QPixmap::fromImage(face), profile->username,
                                  profile->name);
         mLog->SetLogsFolder(ProfileStore::GameDirFor(*profile) + "/logs");

@@ -24,6 +24,7 @@
 #include "platform/CInput.hpp"
 #include "platform/pc/C4JThreadImpl.hpp"
 #include "platform/pc/Log.hpp"
+#include "platform/pc/PcAvatar.hpp"
 #include "platform/pc/PcLaunchOptions.hpp"
 #include "platform/pc/PcPaths.hpp"
 #include "platform/pc/PcUnlockPage.hpp"
@@ -709,44 +710,10 @@ int CProfile::CreateAvatarTexture(int quadrant)
     Minecraft* minecraft = Minecraft::GetInstance();
     if (minecraft == NULL || minecraft->getTextureManager() == NULL)
         return 0;
-    Textures* textures = minecraft->getTextureManager();
-    BufferedImage* skin = textures->readImage(TN_MOB_STEVE, L"mob/steve");
-    if (skin == NULL)
+    BufferedImage* avatar = PcRenderAvatarHead(quadrant, kAvatarSize);
+    if (avatar == NULL)
         return 0;
-    const int skinWidth = static_cast<int>(skin->getWidth());
-    const int skinHeight = static_cast<int>(skin->getHeight());
-    const int* skinData = skin->getData();
-    const int scale = skinWidth / 64;
-    if (skinData == NULL || scale == 0 || skinHeight < scale * 16)
-    {
-        delete skin;
-        return 0;
-    }
-    BufferedImage* avatar = new BufferedImage(kAvatarSize, kAvatarSize, 1);
-    int* avatarData = avatar->getData();
-    const int faceSize = scale * 8;
-    for (int y = 0; y < kAvatarSize; ++y)
-    {
-        const int sourceY = faceSize + y * faceSize / kAvatarSize;
-        for (int x = 0; x < kAvatarSize; ++x)
-        {
-            const int sourceX = x * faceSize / kAvatarSize;
-            const unsigned int face = static_cast<unsigned int>(skinData[sourceY * skinWidth + faceSize + sourceX]);
-            const unsigned int hat =
-                static_cast<unsigned int>(skinData[sourceY * skinWidth + scale * 40 + sourceX]);
-            const unsigned int alpha = hat >> 24;
-            unsigned int pixel = 0xff000000u;
-            for (int shift = 0; shift < 24; shift += 8)
-            {
-                const unsigned int faceChannel = (face >> shift) & 0xff;
-                const unsigned int hatChannel = (hat >> shift) & 0xff;
-                pixel |= ((hatChannel * alpha + faceChannel * (255 - alpha)) / 255) << shift;
-            }
-            avatarData[y * kAvatarSize + x] = static_cast<int>(pixel);
-        }
-    }
-    delete skin;
-    return textures->getTexture(avatar, C4JRender::eTextureFormat_RGBA8, false);
+    return minecraft->getTextureManager()->getTexture(avatar, C4JRender::eTextureFormat_RGBA8, false);
 }
 
 void CProfile::SetFriendPresenceOnline(bool online)

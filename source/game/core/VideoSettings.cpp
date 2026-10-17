@@ -6,6 +6,9 @@
 #include "game/client/render/LevelRenderer.hpp"
 #include "game/core/Minecraft.hpp"
 #include "game/core/Options.hpp"
+#if LCE_PLATFORM_PC
+#include "platform/pc/Log.hpp"
+#endif
 
 int VideoSettings::sFov = VideoSettings::FOV_NORMAL;
 int VideoSettings::sRenderDistance = VideoSettings::RENDER_DISTANCE_DEFAULT;
@@ -132,7 +135,12 @@ void VideoSettings::Save()
     FILE* file = std::fopen(sPath.c_str(), "w");
     if (file == NULL)
     {
+#if LCE_PLATFORM_PC
+        static const Logger log("VideoSettings");
+        LOG_WARN(log, "Video settings could not be written to %s", sPath.c_str());
+#else
         std::fprintf(stderr, "video settings could not be written to %s\n", sPath.c_str());
+#endif
         return;
     }
     std::fprintf(file, "Fov = %d\n", sFov);

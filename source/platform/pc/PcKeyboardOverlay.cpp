@@ -11,12 +11,14 @@
 #include <vector>
 
 #include "platform/pc/GlApi.hpp"
+#include "platform/pc/Log.hpp"
 #include "platform/pc/PcInputEvents.hpp"
 #include "platform/pc/PcPaths.hpp"
 #include "vendor/stb_truetype.hpp"
 
 namespace
 {
+const Logger sLog("KeyboardOverlay");
 const int kAtlasSize = 512;
 const int kFirstGlyph = 32;
 const int kGlyphCount = 224;
@@ -98,7 +100,7 @@ GLuint CompileShader(GLenum type, const char* source)
         char log[1024];
         GLsizei length = 0;
         Gl::GetShaderInfoLog(shader, sizeof(log), &length, log);
-        fprintf(stderr, "Keyboard overlay shader failed: %.*s\n", (int)length, log);
+        LOG_ERROR(sLog, "Keyboard overlay shader failed: %.*s", (int)length, log);
         Gl::DeleteShader(shader);
         return 0;
     }
@@ -129,7 +131,7 @@ bool CreateProgram()
     Gl::GetProgramiv(sOverlay.program, Gl::LINK_STATUS, &status);
     if (status == 0)
     {
-        fprintf(stderr, "Keyboard overlay program failed to link\n");
+        LOG_ERROR(sLog, "Keyboard overlay program failed to link");
         Gl::DeleteProgram(sOverlay.program);
         sOverlay.program = 0;
         return false;
@@ -146,7 +148,7 @@ bool LoadFont()
     std::ifstream file(path.c_str(), std::ios::binary);
     if (!file)
     {
-        fprintf(stderr, "Keyboard overlay font missing: %s\n", path.c_str());
+        LOG_ERROR(sLog, "Keyboard overlay font missing: %s", path.c_str());
         return false;
     }
 
@@ -156,7 +158,7 @@ bool LoadFont()
                              kGlyphCount, sOverlay.glyphs)
         <= 0)
     {
-        fprintf(stderr, "Keyboard overlay font atlas too small for %s\n", path.c_str());
+        LOG_ERROR(sLog, "Keyboard overlay font atlas too small for %s", path.c_str());
         return false;
     }
 

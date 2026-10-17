@@ -2,14 +2,18 @@
 
 #include <cstdlib>
 
+#include "platform/pc/PcLaunchOptions.hpp"
+
+#include "platform/pc/PcLaunchOptions.hpp"
+
 #if defined(_WIN32)
 #include <windows.h>
 #endif
 
 std::string PcSystemLocaleName()
 {
-    const char* configured = std::getenv("LCE_LANGUAGE");
-    if (configured != nullptr && configured[0] != '\0')
+    const std::string& configured = PcGetLaunchOptions().language;
+    if (!configured.empty())
         return configured;
 #if defined(_WIN32)
     wchar_t name[LOCALE_NAME_MAX_LENGTH];

@@ -1,3 +1,8 @@
+#include <SDL3/SDL.h>
+
+#include <cstdio>
+#include <string>
+
 #include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/core/ConsoleUIController.hpp"
 #include "game/core/GameSettings.hpp"
@@ -33,6 +38,8 @@
 #include "platform/CStorage.hpp"
 #include "platform/FileApi.hpp"
 #include "platform/pc/PcApplication.hpp"
+#include "platform/pc/Log.hpp"
+#include "platform/pc/PcLaunchOptions.hpp"
 #include "platform/pc/PcWindow.hpp"
 
 extern CConsoleMinecraftApp gApp;
@@ -42,11 +49,31 @@ void RegisterAwardsWithProfileManager();
 void ShutdownAndExit();
 
 static unsigned char s_trialTimerShown = 1;
+static const Logger sLog("Main");
 
-int main(int, char**)
+int main(int argc, char** argv)
 {
-    ShutdownManager::Initialise();
+    int exitCode;
+    if (!PcParseLaunchOptions(argc, argv, exitCode))
+        return exitCode;
+
     C4JThreadImpl::SetMainThreadID();
+    const std::string& logDir = PcGetLaunchOptions().logDir;
+    Log::Start(logDir.empty() ? std::string("logs") : logDir);
+
+    std::string folderError;
+    if (!PcCheckGameFolders(folderError))
+    {
+        sLog.WriteText(LogLevel::Fatal, folderError);
+        Log::Stop();
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "LCEReborn", folderError.c_str(), NULL);
+        return 1;
+    }
+    LOG_INFO(sLog, "Content: %s", PcContentRoot().c_str());
+    LOG_INFO(sLog, "Saves: %s", PcSaveRoot().c_str());
+    LOG_INFO(sLog, "Resources: %s", PcResourceRoot().c_str());
+
+    ShutdownManager::Initialise();
     if (gProfile == 0)
         gProfile = new CProfile();
     Compression::CreateNewThreadStorage();

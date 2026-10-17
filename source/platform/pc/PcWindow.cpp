@@ -9,12 +9,14 @@
 #include <string>
 
 #include "platform/CInput.hpp"
+#include "platform/pc/Log.hpp"
 #include "platform/pc/PcApplication.hpp"
 #include "platform/pc/PcInputEvents.hpp"
 #include "platform/pc/PcPaths.hpp"
 
 namespace
 {
+const Logger sLog("Window");
 SDL_Window* sWindow = NULL;
 SDL_GLContext sContext = NULL;
 bool sShown = false;
@@ -55,7 +57,7 @@ void SaveDisplaySettings()
     std::ofstream file(DisplaySettingsPath().c_str(), std::ios::trunc);
     if (!file)
     {
-        fprintf(stderr, "display settings could not be written to %s\n", DisplaySettingsPath().c_str());
+        LOG_WARN(sLog, "Display settings could not be written to %s", DisplaySettingsPath().c_str());
         return;
     }
     file << "Fullscreen = " << (sFullscreen ? 1 : 0) << "\n";
@@ -65,7 +67,7 @@ void SaveDisplaySettings()
 void ApplyVSync()
 {
     if (sContext != NULL && !SDL_GL_SetSwapInterval(sVSync ? 1 : 0))
-        fprintf(stderr, "SDL_GL_SetSwapInterval failed: %s\n", SDL_GetError());
+        LOG_WARN(sLog, "SDL_GL_SetSwapInterval failed: %s", SDL_GetError());
 }
 
 bool IsFullscreenToggle(const SDL_Event& event)
@@ -83,7 +85,7 @@ bool PcWindowCreate(int width, int height)
 {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS))
     {
-        fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
+        LOG_FATAL(sLog, "SDL_Init failed: %s", SDL_GetError());
         return false;
     }
 
@@ -104,14 +106,14 @@ bool PcWindowCreate(int width, int height)
                                    | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     if (sWindow == NULL)
     {
-        fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
+        LOG_FATAL(sLog, "SDL_CreateWindow failed: %s", SDL_GetError());
         return false;
     }
 
     sContext = SDL_GL_CreateContext(sWindow);
     if (sContext == NULL)
     {
-        fprintf(stderr, "SDL_GL_CreateContext failed: %s\n", SDL_GetError());
+        LOG_FATAL(sLog, "SDL_GL_CreateContext failed: %s", SDL_GetError());
         SDL_DestroyWindow(sWindow);
         sWindow = NULL;
         return false;
@@ -122,7 +124,7 @@ bool PcWindowCreate(int width, int height)
     ApplyVSync();
     if (sFullscreen && !SDL_SetWindowFullscreen(sWindow, true))
     {
-        fprintf(stderr, "SDL_SetWindowFullscreen failed: %s\n", SDL_GetError());
+        LOG_WARN(sLog, "SDL_SetWindowFullscreen failed: %s", SDL_GetError());
         sFullscreen = false;
     }
     sShown = false;
@@ -243,7 +245,7 @@ void PcWindowSetFullscreen(bool fullscreen)
         return;
     if (!SDL_SetWindowFullscreen(sWindow, fullscreen))
     {
-        fprintf(stderr, "SDL_SetWindowFullscreen failed: %s\n", SDL_GetError());
+        LOG_WARN(sLog, "SDL_SetWindowFullscreen failed: %s", SDL_GetError());
         return;
     }
     sFullscreen = fullscreen;

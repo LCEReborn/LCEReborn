@@ -22,6 +22,8 @@
 #include "platform/C4JStorage.hpp"
 #include "platform/CInput.hpp"
 #include "platform/pc/C4JThreadImpl.hpp"
+#include "platform/pc/Log.hpp"
+#include "platform/pc/PcLaunchOptions.hpp"
 #include "platform/pc/PcPaths.hpp"
 
 PlayerUID getPlayerUID(int, bool);
@@ -94,7 +96,6 @@ static std::string ToUtf8(const std::wstring& text)
     return result;
 }
 
-#if !defined(_WIN32)
 static std::wstring FromUtf8(const char* text)
 {
     std::wstring result;
@@ -131,11 +132,15 @@ static std::wstring FromUtf8(const char* text)
         }
         if (continuation != 0)
             codePoint = 0xfffd;
+        if (sizeof(wchar_t) == 2 && codePoint >= 0x10000)
+        {
+            result.push_back(static_cast<wchar_t>(0xd800 + ((codePoint - 0x10000) >> 10)));
+            codePoint = 0xdc00 + ((codePoint - 0x10000) & 0x3ff);
+        }
         result.push_back(static_cast<wchar_t>(codePoint));
     }
     return result;
 }
-#endif
 
 static std::wstring EnvironmentString(const char* variable)
 {
@@ -274,7 +279,7 @@ CProfile::~CProfile()
 
 std::wstring CProfile::LocalPlayerName()
 {
-    std::wstring name = TrimName(EnvironmentString("LCE_PLAYER_NAME"));
+    std::wstring name = TrimName(FromUtf8(PcGetLaunchOptions().username.c_str()));
     if (name.empty())
         name = TrimName(OperatingSystemUserName());
     if (name.empty())
@@ -1069,14 +1074,33 @@ void CProfile::SetDebugFullOverride(bool enabled)
 
 void CProfile::DebugPrintf(const char* format, ...)
 {
-#ifndef NDEBUG
+    static const Logger log("Profile");
+    thread_local std::string pending;
+
+    char buffer[512];
     va_list arguments;
     va_start(arguments, format);
-    std::vfprintf(stderr, format, arguments);
+    const int length = std::vsnprintf(buffer, sizeof(buffer), format, arguments);
     va_end(arguments);
-#else
-    (void)format;
-#endif
+    if (length < 0)
+        pending += format;
+    else if (static_cast<std::size_t>(length) < sizeof(buffer))
+        pending.append(buffer, static_cast<std::size_t>(length));
+    else
+    {
+        std::string text(static_cast<std::size_t>(length), '\0');
+        va_start(arguments, format);
+        std::vsnprintf(&text[0], text.size() + 1, format, arguments);
+        va_end(arguments);
+        pending += text;
+    }
+
+    std::string::size_type lineEnd;
+    while ((lineEnd = pending.find('\n')) != std::string::npos)
+    {
+        log.WriteText(LogLevel::Debug, pending.substr(0, lineEnd));
+        pending.erase(0, lineEnd + 1);
+    }
 }
 
 void CProfile::SystemOnCreate()

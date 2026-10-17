@@ -1,5 +1,9 @@
 #include "platform/pc/GlApi.hpp"
 
+#include "platform/pc/Log.hpp"
+
+static const Logger sLog("OpenGL");
+
 #include <stdio.h>
 
 namespace Gl
@@ -16,7 +20,7 @@ bool LoadFunctions(void* (*getProcAddress)(const char* name))
     name = reinterpret_cast<name##Function>(getProcAddress("gl" #name));                                               \
     if (name == NULL)                                                                                                  \
     {                                                                                                                  \
-        fprintf(stderr, "OpenGL function gl%s is unavailable\n", #name);                                               \
+        LOG_ERROR(sLog, "OpenGL function gl%s is unavailable", #name);                                                 \
         bComplete = false;                                                                                             \
     }
     LCE_GL_FUNCTIONS(LCE_GL_LOAD)

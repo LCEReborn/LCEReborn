@@ -51,10 +51,41 @@ data, Nintendo friend presence, Pia) are declared under that platform's
 
 ## Files and folders on PC
 
-Game content is read from `assets/` (what `tools/prepare.py` writes) and
-saves go to `saves/`, both relative to the working directory. The
-`LCE_CONTENT_DIR` and `LCE_SAVE_DIR` environment variables override them
-(`platform/pc/PcPaths`).
+Game content is read from `assets/` (what `tools/prepare.py` writes), saves
+go to `saves/` and the PC interface art is read from `resources/`, all
+relative to the working directory. The `--content-dir`, `--save-dir` and
+`--resource-dir` arguments override them (`platform/pc/PcPaths`). A resource
+folder with a `pc` subfolder, such as the repository's own `resources/`, is
+read from that subfolder.
+
+The game reads no environment variables for its own settings; everything
+comes from its arguments (`platform/pc/PcLaunchOptions`, `--help` lists them).
+`--username` sets the player name, falling back to the OS user name, and
+`--language` the language, falling back to the system's.
+
+## Logging
+
+The game logs through `platform/pc/Log`. Each file declares a named logger
+(`static const Logger sLog("Renderer");`) and writes with `LOG_INFO(sLog, ...)`
+and the other level macros, which take printf-style arguments. Every line has
+the same parseable form:
+
+```
+[14:01:36.665] [(4J) Main thread/INFO] [Renderer]: NVIDIA Corporation / ...
+```
+
+All levels from DEBUG up are written, both to standard output and to
+`logs/latest.log` (`--log-dir` moves the folder). The game doesn't filter
+anything: a launcher reading the output does that itself. TRACE calls are
+compiled out unless the build defines `LCE_LOG_MIN_LEVEL=0`. At startup the
+previous `latest.log` is renamed by its date, as Java Edition does
+(`2026-10-17-1.log`, then `-2`, ...), and gzipped on a background thread.
+
+Callers only format the message; a writer thread adds the time, thread and
+level and writes in batches, so logging doesn't wait on the console or the
+disk. ERROR and FATAL wait until their line is on disk, so it survives a crash
+right after. `CProfile::DebugPrintf` and fatal load errors go through the
+same logger.
 
 ## Window and display
 

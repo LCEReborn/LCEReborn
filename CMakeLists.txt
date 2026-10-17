@@ -147,7 +147,10 @@ endif()
 
 add_executable(LCEReborn $<TARGET_OBJECTS:lce_game> $<TARGET_OBJECTS:lce_platform> $<TARGET_OBJECTS:lce_audio>)
 target_link_libraries(LCEReborn PRIVATE lce_png lce_zlib SDL3::SDL3-static)
-# The PC interface art (tools/pcart) is read from resources/ next to the executable.
+if(WIN32)
+  target_link_libraries(LCEReborn PRIVATE shell32)
+endif()
+# The PC interface art (tools/pcart) is read from resources/ in the working folder unless --resource-dir is given.
 add_custom_command(TARGET LCEReborn POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/resources/pc"
           "$<TARGET_FILE_DIR:LCEReborn>/resources")

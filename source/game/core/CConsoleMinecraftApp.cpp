@@ -27,8 +27,11 @@ extern "C" void ProcUIShutdown();
 #include <cstdarg>
 #include <cstdio>
 
+#include "platform/pc/Log.hpp"
 #include "platform/pc/PcApplication.hpp"
 #include "platform/pc/PcPlatform.hpp"
+
+static const Logger sLog("App");
 #endif
 
 extern void altMain();
@@ -89,6 +92,7 @@ void ShutdownAndExit()
     ProcUIShutdown();
 #elif LCE_PLATFORM_PC
     ShutdownManager::MainThreadHandleShutdown();
+    Log::Stop();
 #endif
     _Exit(0);
 }
@@ -156,9 +160,8 @@ void CConsoleMinecraftApp::FatalLoadError(const wchar_t* message, ...)
 #elif LCE_PLATFORM_PC
     va_list arguments;
     va_start(arguments, message);
-    std::vfwprintf(stderr, message, arguments);
+    sLog.WriteWideV(LogLevel::Fatal, message, arguments);
     va_end(arguments);
-    std::fputwc(L'\n', stderr);
     ShutdownAndExit();
 #endif
 }

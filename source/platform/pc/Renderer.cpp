@@ -12,6 +12,7 @@
 
 #include "platform/FileApi.hpp"
 #include "platform/pc/GlApi.hpp"
+#include "platform/pc/Log.hpp"
 #include "platform/pc/PcKeyboardOverlay.hpp"
 #include "platform/pc/PcWindow.hpp"
 #include "platform/pc/RenderShaders.hpp"
@@ -38,6 +39,7 @@ struct RenderSamplerState
 
 namespace
 {
+const Logger sLog("Renderer");
 const int TEXTURE_COUNT = 512;
 const int TEXTURE_STAGE_COUNT = 4;
 const int COMMAND_BUFFER_COUNT = 16000;
@@ -201,8 +203,8 @@ GLenum PrimitiveMode(int primitiveType)
 
 void FatalRendererError(const char* message)
 {
-    fprintf(stderr, "Renderer: %s\n", message);
-    fflush(stderr);
+    LOG_FATAL(sLog, "%s", message);
+    Log::Stop();
     abort();
 }
 
@@ -1071,7 +1073,7 @@ GLuint CompileShader(GLenum type, const std::string& source)
         Gl::GetShaderiv(shader, Gl::INFO_LOG_LENGTH, &length);
         std::vector<GLchar> log((size_t)(length > 1 ? length : 1));
         Gl::GetShaderInfoLog(shader, (GLsizei)log.size(), NULL, &log[0]);
-        fprintf(stderr, "%s\n%s\n", &log[0], source.c_str());
+        LOG_ERROR(sLog, "%s\n%s", &log[0], source.c_str());
         FatalRendererError("shader compilation failed");
     }
 
@@ -1105,7 +1107,7 @@ const Renderer::Device::Program& Renderer::Device::GetProgram(int vertexShader, 
         Gl::GetProgramiv(name, Gl::INFO_LOG_LENGTH, &length);
         std::vector<GLchar> log((size_t)(length > 1 ? length : 1));
         Gl::GetProgramInfoLog(name, (GLsizei)log.size(), NULL, &log[0]);
-        fprintf(stderr, "%s\n", &log[0]);
+        LOG_ERROR(sLog, "%s", &log[0]);
         FatalRendererError("shader program link failed");
     }
 
@@ -2035,9 +2037,9 @@ void Renderer::Initialise(bool bFirstTime)
             FatalRendererError("the OpenGL 3.3 functions could not be loaded");
         }
 
-        fprintf(stderr, "Renderer: %s / %s / %s\n", reinterpret_cast<const char*>(Gl::GetString(Gl::VENDOR)),
-                reinterpret_cast<const char*>(Gl::GetString(Gl::RENDERER)),
-                reinterpret_cast<const char*>(Gl::GetString(Gl::VERSION)));
+        LOG_INFO(sLog, "%s / %s / %s", reinterpret_cast<const char*>(Gl::GetString(Gl::VENDOR)),
+                 reinterpret_cast<const char*>(Gl::GetString(Gl::RENDERER)),
+                 reinterpret_cast<const char*>(Gl::GetString(Gl::VERSION)));
 
         mDevice = new Device;
         mDevice->Create(UI_WIDTH, UI_HEIGHT);

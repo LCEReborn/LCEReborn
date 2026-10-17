@@ -330,16 +330,6 @@ void GameModeUtilities::DistributePlayers(std::vector<boost::shared_ptr<ServerPl
             break;
         }
 
-#if defined(_WIN32)
-        const char* referenceSpawn = std::getenv("MC_BATTLE_REFERENCE_SPAWN");
-        if (referenceSpawn != NULL && rules->size() == 16 && players->size() == 1)
-        {
-            const int requestedRule = std::atoi(referenceSpawn);
-            if (requestedRule == 1 || requestedRule == 12)
-                ruleIndex = requestedRule;
-        }
-#endif
-
         if (data != NULL && ruleIndex >= 0 && static_cast<unsigned int>(ruleIndex) < data->length)
             data->data[ruleIndex] = player->mPlayerIndex;
 

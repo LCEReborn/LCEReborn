@@ -12,12 +12,14 @@
 #include <vector>
 
 #include "platform/pc/KeyboardMouse.hpp"
+#include "platform/pc/Log.hpp"
 #include "platform/pc/PcPaths.hpp"
 #include "platform/pc/Renderer.hpp"
 #include "vendor/stb_truetype.hpp"
 
 namespace
 {
+const Logger sLog("PromptArt");
 const int kArtScale = 4;
 const int kKeyHeight = 14;
 const int kKeyMinimumWidth = 13;
@@ -122,7 +124,7 @@ bool LoadImage(const std::string& name, Image* image)
     unsigned char* pixels = stbi_load(path.c_str(), &image->width, &image->height, &channels, 4);
     if (pixels == NULL)
     {
-        fprintf(stderr, "PC interface art %s could not be loaded\n", path.c_str());
+        LOG_ERROR(sLog, "PC interface art %s could not be loaded", path.c_str());
         return false;
     }
     image->rgba.assign(pixels, pixels + image->width * image->height * 4);
@@ -136,7 +138,7 @@ bool LoadFont()
     std::ifstream file(path.c_str(), std::ios::binary);
     if (!file)
     {
-        fprintf(stderr, "prompt font %s could not be opened\n", path.c_str());
+        LOG_ERROR(sLog, "Prompt font %s could not be opened", path.c_str());
         return false;
     }
     sResources.fontData.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
@@ -144,7 +146,7 @@ bool LoadFont()
         || !stbtt_InitFont(&sResources.font, sResources.fontData.data(),
                            stbtt_GetFontOffsetForIndex(sResources.fontData.data(), 0)))
     {
-        fprintf(stderr, "prompt font %s could not be read\n", path.c_str());
+        LOG_ERROR(sLog, "Prompt font %s could not be read", path.c_str());
         return false;
     }
     return true;

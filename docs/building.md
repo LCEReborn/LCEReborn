@@ -63,6 +63,9 @@ python tools/prepare.py --base <base game dump> --update <update v688 dump>
 Both folders are ignored by git. `--shaders-only` regenerates just the
 shaders and needs only `--update`.
 
+On PC the launcher's setup imports the same `assets/` without Python; see
+`pc-launcher.md`.
+
 ## 2. Build the RPX
 
 ```

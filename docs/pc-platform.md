@@ -51,7 +51,8 @@ data, Nintendo friend presence, Pia) are declared under that platform's
 
 ## Files and folders on PC
 
-Game content is read from `assets/` (what `tools/prepare.py` writes), saves
+Game content is read from `assets/` (what the launcher's setup or
+`tools/prepare.py` writes), saves
 go to `saves/` and the PC interface art is read from `resources/`, all
 relative to the working directory. The `--content-dir`, `--save-dir` and
 `--resource-dir` arguments override them (`platform/pc/PcPaths`). A resource
@@ -61,7 +62,12 @@ read from that subfolder.
 The game reads no environment variables for its own settings; everything
 comes from its arguments (`platform/pc/PcLaunchOptions`, `--help` lists them).
 `--username` sets the player name, falling back to the OS user name, and
-`--language` the language, falling back to the system's.
+`--language` the language, falling back to the system's. `--uuid` sets the
+first player's identity, 32 hexadecimal digits with or without dashes;
+without it the identity is made from the player name, so renaming a player
+changes it. The launcher passes each profile's own UUID, so a profile keeps
+its worlds when its player name changes. Most players start the game from the
+launcher (`pc-launcher.md`) rather than with these arguments.
 
 ## Logging
 
@@ -109,12 +115,15 @@ or the V-Sync setting.
 ```
 python tools/build/deps.py build/deps
 python tools/build/layout.py build/deps build/third_party
+python tools/build/qt.py
 cmake -S . -B build/pc -G Ninja -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl
 cmake --build build/pc
 ```
 
 Run CMake from a Visual Studio x64 developer prompt. The game core is
 compiled as C++14, the dialect it was written in; the PC layer as C++17.
+`tools/build/qt.py` installs the Qt the launcher needs (`pc-launcher.md`);
+`-DLCE_BUILD_LAUNCHER=OFF` builds the game without it.
 
 ## Custom menus
 

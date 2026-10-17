@@ -45,6 +45,8 @@ families to Luna and Opus 5 workers.
   the way the original was linked; `tools/build/` holds the pinned library
   list, the toolchain image and the few altered library files;
   `tools/measure/` compares a build with the original executable.
+- `launcher/` - the PC port's Qt launcher, which imports the game files
+  without Python, keeps profiles and shows the game's log (`pc-launcher.md`).
 
 ## What is not here
 

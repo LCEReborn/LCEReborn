@@ -408,6 +408,13 @@ int CProfile::SignInUser(int pad)
     std::memset(profile.name, 0, sizeof(profile.name));
     std::wcsncpy(profile.name, name.c_str(), sizeof(profile.name) / sizeof(profile.name[0]) - 1);
     profile.uuid = LocalPlayerUuid(std::wstring(profile.name));
+    const std::string& launchUuid = PcGetLaunchOptions().uuid;
+    if (quadrant == 0 && launchUuid.size() == 32)
+    {
+        for (int index = 0; index < 16; ++index)
+            profile.uuid.data[index] =
+                static_cast<unsigned char>(std::strtoul(launchUuid.substr(index * 2, 2).c_str(), NULL, 16));
+    }
     profile.onlineAccount = false;
     profile.signedIn = true;
     OnSignin(pad);

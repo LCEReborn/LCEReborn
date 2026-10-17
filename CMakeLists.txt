@@ -162,3 +162,8 @@ add_custom_command(TARGET LCEReborn POST_BUILD
 if(MSVC)
   target_link_options(LCEReborn PRIVATE /errorlimit:0)
 endif()
+
+option(LCE_BUILD_LAUNCHER "Build the Qt launcher (needs python tools/build/qt.py first)" ON)
+if(LCE_BUILD_LAUNCHER)
+  add_subdirectory(launcher)
+endif()

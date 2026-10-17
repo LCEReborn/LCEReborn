@@ -1,5 +1,6 @@
 #include "platform/pc/PcLaunchOptions.hpp"
 
+#include <cctype>
 #include <cstdio>
 #include <vector>
 
@@ -40,6 +41,7 @@ static void PrintUsage(std::FILE* stream)
 {
     std::fputs("Usage: LCEReborn [options]\n"
                "  --username <name>           player name\n"
+               "  --uuid <uuid>               player identity, 32 hex digits (default: made from the name)\n"
                "  --content-dir <dir>         game content (default: assets in the working folder)\n"
                "  --save-dir <dir>            saves and settings (default: saves in the working folder)\n"
                "  --resource-dir <dir>        PC interface art (default: resources in the working folder)\n"
@@ -88,6 +90,8 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
             target = &sOptions.language;
         else if (name == "--log-dir")
             target = &sOptions.logDir;
+        else if (name == "--uuid")
+            target = &sOptions.uuid;
         else
         {
             std::fprintf(stderr, "Unknown option: %s\n", arguments[index].c_str());
@@ -113,6 +117,28 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
         }
 
         *target = value;
+    }
+
+    if (!sOptions.uuid.empty())
+    {
+        std::string digits;
+        for (char character : sOptions.uuid)
+        {
+            if (character == '-')
+                continue;
+            if (!std::isxdigit(static_cast<unsigned char>(character)))
+            {
+                digits.clear();
+                break;
+            }
+            digits += static_cast<char>(std::tolower(static_cast<unsigned char>(character)));
+        }
+        if (digits.size() != 32)
+        {
+            std::fprintf(stderr, "--uuid must be 32 hexadecimal digits, not %s\n", sOptions.uuid.c_str());
+            return false;
+        }
+        sOptions.uuid = digits;
     }
 
     return true;

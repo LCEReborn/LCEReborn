@@ -1,0 +1,24 @@
+{
+  "version": "6.12.0",
+  "aqtinstall": "git+https://github.com/miurahr/aqtinstall@076e1659807d0b362a3ed684d54c2e9c775eb9c7",
+  "archives": [
+    "qtbase"
+  ],
+  "hosts": {
+    "windows": {
+      "aqt_host": "windows",
+      "arch": "win64_msvc2022_64",
+      "folder": "msvc2022_64"
+    },
+    "linux": {
+      "aqt_host": "linux",
+      "arch": "linux_gcc_64",
+      "folder": "gcc_64"
+    },
+    "darwin": {
+      "aqt_host": "mac",
+      "arch": "clang_64",
+      "folder": "macos"
+    }
+  }
+}

@@ -80,6 +80,22 @@
 
 static const unsigned int gChunkDimensionSizes[2] = {80, 20};
 
+#if LCE_PLATFORM_PC
+static unsigned int CommandBufferBudget()
+{
+    const unsigned long long baseBudget = 115343360ull;
+    const unsigned long long renderDistance = (unsigned long long)VideoSettings::GetRenderDistance();
+    const unsigned long long defaultDistance = (unsigned long long)VideoSettings::RENDER_DISTANCE_DEFAULT;
+
+    if (renderDistance <= defaultDistance)
+    {
+        return (unsigned int)baseBudget;
+    }
+
+    return (unsigned int)(baseBudget * renderDistance * renderDistance / (defaultDistance * defaultDistance));
+}
+#endif
+
 static ResourceLocation sMoonPhasesLocation(TN_TERRAIN_MOON_PHASES);
 static ResourceLocation sSunLocation(TN_TERRAIN_SUN);
 static ResourceLocation sCloudsLocation(TN_ENVIRONMENT_CLOUDS);
@@ -2183,8 +2199,13 @@ unsigned int LevelRenderer::updateDirtyChunks(unsigned int* count)
 
     unsigned int commandBufferSize = (unsigned int)gRenderer->CBuffSize(-1);
     float commandBufferBytes = (float)commandBufferSize;
+#if LCE_PLATFORM_PC
+    const unsigned int commandBufferBudget = CommandBufferBudget();
+#else
+    const unsigned int commandBufferBudget = 115343360u;
+#endif
 
-    InfoBarManager::SetCommandBufferSize(commandBufferBytes / 115343360.0f);
+    InfoBarManager::SetCommandBufferSize(commandBufferBytes / (float)commandBufferBudget);
     PIXAddNamedCounter((float)(int)(commandBufferBytes / 1048576.0f), "Command buffer allocations");
 
     EnterCriticalSection(&mChunkMutex);
@@ -2265,7 +2286,7 @@ unsigned int LevelRenderer::updateDirtyChunks(unsigned int* count)
                             continue;
                         }
 
-                        if (commandBufferSize >= 115343360u && (flags & 1) == 0 && distance >= 400)
+                        if (commandBufferSize >= commandBufferBudget && (flags & 1) == 0 && distance >= 400)
                         {
                             continue;
                         }

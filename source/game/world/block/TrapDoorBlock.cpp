@@ -75,7 +75,7 @@ void TrapDoorBlock::blockStaticCtor()
         {
             halves.insert(HALVES[i]);
         }
-        half = EnumProperty<Half*>::create(name, typeid(Half*), halves, filter);
+        half = EnumProperty<Half*>::create(name, typeid(Half), halves, filter);
     }
     HALF = half;
 }

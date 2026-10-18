@@ -74,14 +74,14 @@ void JukeboxBlock::dropRecording(Level* level, const BlockPos& pos, const BlockS
     level->levelEvent(LevelEvent::SOUND_PLAY_RECORDING, pos, 0);
     entity->setRecord(ItemInstance::EMPTY);
 
-    Random* random = level->mRandom;
     const float spread = 0.7f;
-    double xOffset = (double)(random->nextFloat() * spread) + (double)(1.0f - spread) * 0.5;
-    double yOffset = (double)(random->nextFloat() * spread) + (1.0f - spread) * 0.2f + 0.6;
-    double zOffset = (double)(random->nextFloat() * spread) + (double)(1.0f - spread) * 0.5;
+    double xOffset = (double)(level->mRandom->nextFloat() * spread) + (double)(1.0f - spread) * 0.5;
+    double yOffset = (double)(level->mRandom->nextFloat() * spread) + (1.0f - spread) * 0.2f + 0.6;
+    double zOffset = (double)(level->mRandom->nextFloat() * spread) + (double)(1.0f - spread) * 0.5;
 
+    not_null_ptr<ItemInstance> droppedRecord = record->copy();
     boost::shared_ptr<ItemEntity> item(
-        new ItemEntity(level, pos.x + xOffset, pos.y + yOffset, pos.z + zOffset, record->copy()));
+        new ItemEntity(level, pos.x + xOffset, pos.y + yOffset, pos.z + zOffset, droppedRecord));
     item->setDefaultPickUpDelay();
     level->addEntity(item);
 }

@@ -47,8 +47,8 @@ const std::wstring CauldronBlock::TEXTURE_WATER = L"cauldron_water";
 static const AABB* AABB_LEGS = AABB::newPermanent(0.0, 0.0, 0.0, 1.0, 0.3125, 1.0);
 static const AABB* AABB_WALL_NORTH = AABB::newPermanent(0.0, 0.0, 0.0, 1.0, 1.0, 0.125);
 static const AABB* AABB_WALL_SOUTH = AABB::newPermanent(0.0, 0.0, 0.875, 1.0, 1.0, 1.0);
-static const AABB* AABB_WALL_EAST = AABB::newPermanent(0.875, 0.0, 0.125, 1.0, 1.0, 0.875);
-static const AABB* AABB_WALL_WEST = AABB::newPermanent(0.0, 0.0, 0.125, 0.125, 1.0, 0.875);
+static const AABB* AABB_WALL_EAST = AABB::newPermanent(0.875, 0.0, 0.0, 1.0, 1.0, 1.0);
+static const AABB* AABB_WALL_WEST = AABB::newPermanent(0.0, 0.0, 0.0, 0.125, 1.0, 1.0);
 AbstractProperty<int>* CauldronBlock::LEVEL = static_cast<AbstractProperty<int>*>(
     IntegerProperty::create(L"level", 0, 6));
 

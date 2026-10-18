@@ -97,7 +97,7 @@ void ComparatorBlock::blockStaticCtor()
         boost::unordered_set<ComparatorMode*> values;
         for (int i = 0; i < 2; ++i)
             values.insert(sModes[i]);
-        mode = EnumProperty<ComparatorMode*>::create(name, typeid(ComparatorMode*), values, filter);
+        mode = EnumProperty<ComparatorMode*>::create(name, typeid(ComparatorMode), values, filter);
     }
     MODE = mode;
 }

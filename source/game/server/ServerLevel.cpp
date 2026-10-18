@@ -245,50 +245,49 @@ int ServerLevel::runUpdate(void* param)
             if (Minecraft::InMiniGame(eMiniGameId_Any, true) && !miniGame->shouldTickBlocks())
                 continue;
             EnterCriticalSection(&sBlockUpdateMutex[dimension]);
-            ServerLevel* level = sBlockUpdateLevels[dimension];
             for (int index = 0; index < sBlockUpdateChunkCounts[dimension]; ++index)
             {
                 int chunkX = sBlockUpdateChunkX[dimension][index];
                 int chunkZ = sBlockUpdateChunkZ[dimension][index];
-                if (!level->hasChunk(chunkX, chunkZ, true))
+                if (!sBlockUpdateLevels[dimension]->hasChunk(chunkX, chunkZ, true))
                     continue;
                 int minX = 0;
                 int maxX = 15;
                 int minZ = 0;
                 int maxZ = 15;
-                if (!level->hasChunk(chunkX + 1, chunkZ, true))
+                if (!sBlockUpdateLevels[dimension]->hasChunk(chunkX + 1, chunkZ, true))
                     maxX = 11;
-                if (!level->hasChunk(chunkX, chunkZ + 1, true))
+                if (!sBlockUpdateLevels[dimension]->hasChunk(chunkX, chunkZ + 1, true))
                     maxZ = 11;
-                if (!level->hasChunk(chunkX - 1, chunkZ, true))
+                if (!sBlockUpdateLevels[dimension]->hasChunk(chunkX - 1, chunkZ, true))
                     minX = 4;
-                if (!level->hasChunk(chunkX, chunkZ - 1, true))
+                if (!sBlockUpdateLevels[dimension]->hasChunk(chunkX, chunkZ - 1, true))
                     minZ = 4;
-                if (!level->hasChunk(chunkX + 1, chunkZ + 1, true))
-                {
-                    maxX = 11;
-                    maxZ = 11;
-                }
-                if (!level->hasChunk(chunkX + 1, chunkZ - 1, true))
+                if (!sBlockUpdateLevels[dimension]->hasChunk(chunkX + 1, chunkZ + 1, true))
                 {
                     maxX = 11;
+                    maxZ = 11;
+                }
+                if (!sBlockUpdateLevels[dimension]->hasChunk(chunkX + 1, chunkZ - 1, true))
+                {
+                    maxX = 11;
                     minZ = 4;
                 }
-                if (!level->hasChunk(chunkX - 1, chunkZ - 1, true))
+                if (!sBlockUpdateLevels[dimension]->hasChunk(chunkX - 1, chunkZ - 1, true))
                 {
                     minX = 4;
                     minZ = 4;
                 }
-                if (!level->hasChunk(chunkX - 1, chunkZ + 1, true))
+                if (!sBlockUpdateLevels[dimension]->hasChunk(chunkX - 1, chunkZ + 1, true))
                 {
                     minX = 4;
                     maxZ = 11;
                 }
-                LevelChunk* chunk = level->getChunk(chunkX, chunkZ);
+                LevelChunk* chunk = sBlockUpdateLevels[dimension]->getChunk(chunkX, chunkZ);
                 chunk->getElementReadLock();
                 for (int sample = 0; sample < 80; ++sample)
                 {
-                    int random = sBlockUpdateRandom[dimension] * 3 + level->mAddend;
+                    int random = sBlockUpdateRandom[dimension] * 3 + sBlockUpdateLevels[dimension]->mAddend;
                     sBlockUpdateRandom[dimension] = random;
                     int packed = random >> 2;
                     int x = packed & 15;
@@ -313,7 +312,8 @@ int ServerLevel::runUpdate(void* param)
                             const BlockState* state = block->getBlockState(chunk->getData(x, y, z));
                             int worldX = x + chunkX * 16;
                             int worldZ = z + chunkZ * 16;
-                            if (block->shouldBlockTick(level, BlockPos(worldX, y, worldZ), state))
+                            if (block->shouldBlockTick(sBlockUpdateLevels[dimension], BlockPos(worldX, y, worldZ),
+                                                       state))
                             {
                                 if (block == Blocks::grass)
                                     ++grassCount;
@@ -337,7 +337,8 @@ int ServerLevel::runUpdate(void* param)
                         const BlockState* state = extraBlock->getBlockState(chunk->getExtraBlockData(x, y, z));
                         int worldX = x + chunkX * 16;
                         int worldZ = z + chunkZ * 16;
-                        if (extraBlock->shouldBlockTick(level, BlockPos(worldX, y, worldZ), state))
+                        if (extraBlock->shouldBlockTick(sBlockUpdateLevels[dimension], BlockPos(worldX, y, worldZ),
+                                                        state))
                         {
                             if (extraBlock == Blocks::grass)
                                 ++grassCount;
@@ -509,7 +510,8 @@ void ServerLevel::tick()
             newTime -= newTime % 24000;
             long long oldTime = mLevelData->getDayTime();
             setDayTime(newTime);
-            for (std::vector<boost::shared_ptr<Player> >::iterator it = mPlayers.begin(); it != mPlayers.end(); ++it)
+            for (std::vector<boost::shared_ptr<Player> >::iterator it = mPlayers.begin(), end = mPlayers.end();
+                 it != end; ++it)
                 (*it)->AdvanceTimerAchievement(Player::eTimerAchievement_Castaway, static_cast<int>(newTime - oldTime));
         }
         awakenAllPlayers();
@@ -533,9 +535,8 @@ void ServerLevel::tick()
     if (skyDarken != getSkyDarken())
         setSkyDarken(skyDarken);
 
-    int dimensionId = mDimension->getType()->getId();
     if ((mLevelData->getGameTime() + 1) % saveInterval
-        == dimensionId * mDimension->getType()->getId() * (saveInterval / 2))
+        == mDimension->getType()->getId() * mDimension->getType()->getId() * (saveInterval / 2))
     {
         PIXBeginNamedEvent(0.0f, "Incremental save");
         save(false, NULL, false);
@@ -557,7 +558,7 @@ void ServerLevel::tick()
     MemSect(0);
     PIXEndNamedEvent();
     unsigned long long endTime = System::processTimeInMilliSecs();
-    if (mDimension->getType()->getId() == 0)
+    if (mDimension->getType() == NULL)
         PIXAddNamedCounter(static_cast<float>(static_cast<long long>(endTime - startTime)), "Tick blocks");
 
     chunkMap->tick();
@@ -610,9 +611,9 @@ void ServerLevel::updateSleepingPlayerList()
     }
 
     int spectators = 0;
-    unsigned int sleeping = 0;
+    int sleeping = 0;
     allPlayersSleeping = false;
-    for (std::vector<boost::shared_ptr<Player> >::iterator it = mPlayers.begin(); it != mPlayers.end(); ++it)
+    for (std::vector<boost::shared_ptr<Player> >::iterator it = mPlayers.begin(), end = mPlayers.end(); it != end; ++it)
     {
         if ((*it)->isSpectator())
         {
@@ -624,7 +625,8 @@ void ServerLevel::updateSleepingPlayerList()
             somePlayerSleeping = true;
         }
     }
-    allPlayersSleeping = sleeping > 0 && static_cast<unsigned int>(mPlayers.size() - spectators) <= sleeping;
+    allPlayersSleeping =
+        sleeping > 0 && static_cast<unsigned int>(mPlayers.size() - spectators) <= static_cast<unsigned int>(sleeping);
 }
 
 void ServerLevel::validateSpawn()
@@ -1007,13 +1009,18 @@ std::vector<TickNextTickData>* ServerLevel::fetchTicksInArea(BoundingBox* box, b
         if (pass == 0)
         {
             for (std::set<TickNextTickData, TickNextTickDataKeyCompare>::iterator it = tickNextTickList.begin();
-                 it != tickNextTickList.end(); ++it)
+                 it != tickNextTickList.end();)
             {
                 TickNextTickData data = *it;
                 if (data.pos.x < box->x0 || data.pos.x >= box->x1 || data.pos.z < box->z0 || data.pos.z >= box->z1)
+                {
+                    ++it;
                     continue;
+                }
                 if (removeTicks)
                     tickNextTickSet.erase(data);
+                else
+                    ++it;
                 ticks->push_back(data);
             }
         }
@@ -1027,10 +1034,7 @@ std::vector<TickNextTickData>* ServerLevel::fetchTicksInArea(BoundingBox* box, b
                     ++it;
                     continue;
                 }
-                std::pair<std::set<TickNextTickData, TickNextTickDataKeyCompare>::iterator,
-                          std::set<TickNextTickData, TickNextTickDataKeyCompare>::iterator>
-                    range = tickNextTickList.equal_range(data);
-                tickNextTickList.erase(range.first, range.second);
+                tickNextTickList.erase(data);
                 it = toBeTicked.erase(it);
                 ticks->push_back(data);
             }
@@ -1201,9 +1205,10 @@ void ServerLevel::saveToDisc(ProgressListener* progressListener, bool autosave)
 {
     if (gStorage->GetSaveDisabled())
         return;
-    TexturePack* selected = Minecraft::GetInstance()->mTexturePackRepository->getSelected();
-    if (selected != TexturePackRepository::defaultTexturePack
-        && !static_cast<DLCTexturePack*>(selected)->getDLCInfoParentPack()->hasPurchasedPack())
+    if (Minecraft::GetInstance()->mTexturePackRepository->getSelected() != TexturePackRepository::defaultTexturePack
+        && !static_cast<DLCTexturePack*>(Minecraft::GetInstance()->mTexturePackRepository->getSelected())
+                ->getDLCInfoParentPack()
+                ->hasPurchasedPack())
         return;
     if (progressListener != NULL)
         progressListener->progressStage(static_cast<int>(0xaebf0574u));
@@ -1240,7 +1245,8 @@ void ServerLevel::addEntities(std::vector<boost::shared_ptr<Entity> >* entities)
 {
     EnterCriticalSection(&mEntityMutex);
     bool addedDragon = false;
-    for (std::vector<boost::shared_ptr<Entity> >::iterator it = entities->begin(); it != entities->end(); ++it)
+    for (std::vector<boost::shared_ptr<Entity> >::iterator it = entities->begin(), end = entities->end(); it != end;
+         ++it)
     {
         if (!removeDuplicateAndPendingEntity(*it))
             continue;

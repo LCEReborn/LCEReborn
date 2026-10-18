@@ -205,19 +205,19 @@ void UIScene_HowToPlay::StartPage(EHowToPlayPage page)
 
     stripWhitespaceForHtml(text, true);
 
+    std::wstring coloured(text.c_str());
     wchar_t colorTag[64];
-    std::swprintf(colorTag, 0x40, L"<font color=#%08x>", gApp.GetHTMLColour(eMinecraftColour_HTMLColor_White));
-    std::wstring coloured(colorTag);
-    coloured += text;
+    std::swprintf(colorTag, 0x40, L"<font color=\"#%08x\">", gApp.GetHTMLColour(eMinecraftColour_HTMLColor_White));
+    coloured = colorTag + coloured;
 
     std::vector<std::wstring> pages;
     std::wstring::size_type start = 0;
-    std::wstring::size_type pos = coloured.find(L"\r\n");
+    std::wstring::size_type pos = coloured.find(L"\r\n", 0, 2);
     while (pos != std::wstring::npos)
     {
         pages.push_back(coloured.substr(start, pos - start) + L" ");
         start = pos + 2;
-        pos = coloured.find(L"\r\n", start);
+        pos = coloured.find(L"\r\n", start, 2);
     }
     pages.push_back(coloured.substr(start, coloured.length() - start));
 

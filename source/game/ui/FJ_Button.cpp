@@ -270,9 +270,8 @@ void FJ_Button::EnableButton(bool enabled)
 
 void FJ_Button::GetLabelTooWide(fuiRenderNodeEditText* textField)
 {
-    int widest = m_maxLabelWidth;
-    if (static_cast<float>(widest) <= textField->m_textWidth)
-        widest = static_cast<int>(textField->m_textWidth);
+    float label = static_cast<float>(m_maxLabelWidth);
+    int widest = static_cast<int>(label <= textField->m_textWidth ? textField->m_textWidth : label);
     int scaledWidth = static_cast<int>(widest * 1.26);
     if (m_newWidth < scaledWidth)
         m_newWidth = scaledWidth;

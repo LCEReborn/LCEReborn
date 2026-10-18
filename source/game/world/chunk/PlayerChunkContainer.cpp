@@ -322,6 +322,7 @@ bool PlayerChunkContainer::broadcastChanges(bool allowRegionUpdate)
         mMinY = (mMinY / 2) * 2;
         mMaxY = (mMaxY / 2) * 2 + 2;
         int x = mPos.x * 16 + mMinX;
+        int y = mMinY;
         int z = mPos.z * 16 + mMinZ;
         int width = mMaxX - mMinX + 1;
         int height = mMaxY - mMinY + 2;
@@ -333,13 +334,12 @@ bool PlayerChunkContainer::broadcastChanges(bool allowRegionUpdate)
 
         {
             boost::shared_ptr<Packet> packet(
-                new BlockRegionUpdatePacket(x, mMinY, z, width, height, depth, level, false, NULL));
+                new BlockRegionUpdatePacket(x, y, z, width, height, depth, level, false, NULL));
             broadcast(packet);
         }
 
         std::vector<boost::shared_ptr<BlockEntity> >* blockEntities =
-            static_cast<ServerLevel*>(level)->getBlockEntitiesInRegion(x, mMinY, z, x + width, mMinY + height,
-                                                                       z + depth);
+            static_cast<ServerLevel*>(level)->getBlockEntitiesInRegion(x, y, z, x + width, y + height, z + depth);
         for (unsigned int i = 0; i < blockEntities->size(); ++i)
         {
             broadcast(blockEntities->at(i));

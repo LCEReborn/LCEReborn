@@ -35,9 +35,9 @@ private:
 };
 
 template <class K, class V>
-DefaultedMappedRegistry<K, V>::DefaultedMappedRegistry(K defaultKey) : mDefaultKey(defaultKey)
+DefaultedMappedRegistry<K, V>::DefaultedMappedRegistry(K defaultKey)
 {
-    mDefaultValue = V();
+    mDefaultKey = defaultKey;
 }
 
 template <class K, class V>

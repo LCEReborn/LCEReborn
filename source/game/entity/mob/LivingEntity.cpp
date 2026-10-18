@@ -24,7 +24,7 @@
 #include "game/core/ModifiableAttributeMap.hpp"
 #include "game/core/CombatRules.hpp"
 #include "game/core/CombatTracker.hpp"
-#include "game/core/Drowned.hpp"
+#include "game/core/Dolphin.hpp"
 #include "game/core/DamageSource.hpp"
 #include "game/core/Difficulty.hpp"
 #include "game/core/DifficultyInstance.hpp"
@@ -965,11 +965,6 @@ void LivingEntity::tickEffects()
                 onEffectRemoved(effectInstance);
                 --effectCount;
                 delete effectInstance;
-
-                if (mActiveEffects.size() != effectCount)
-                {
-                    break;
-                }
             }
         }
         else
@@ -980,6 +975,11 @@ void LivingEntity::tickEffects()
             }
 
             ++it;
+        }
+
+        if (mActiveEffects.size() != effectCount)
+        {
+            break;
         }
     }
 
@@ -1011,7 +1011,7 @@ void LivingEntity::tickEffects()
 
         if (ambient)
         {
-            spawn = spawn && mRandom->nextInt(5) == 0;
+            spawn &= mRandom->nextInt(5) == 0;
         }
 
         if (spawn)
@@ -1396,13 +1396,13 @@ bool LivingEntity::hurt(const DamageSource* source, float damage)
         setSecondsOnFire(5);
     }
 
-    if (mLevel->mIsClientSide)
-    {
-        return false;
-    }
-
     if (freshHurt)
     {
+        if (mLevel->mIsClientSide)
+        {
+            return false;
+        }
+
         if (blocked)
         {
             mLevel->broadcastEntityEvent(shared_from_this(), EntityEvent::ATTACK_BLOCKED, 0);
@@ -1449,7 +1449,7 @@ bool LivingEntity::hurt(const DamageSource* source, float damage)
         }
         else
         {
-            mHurtDir = (float)((int)(Math::random() * 2.0) * 180);
+            mHurtDir = (float)(int)(Math::random() * 2.0 * 180.0);
         }
     }
 
@@ -1469,11 +1469,11 @@ bool LivingEntity::hurt(const DamageSource* source, float damage)
             die(source);
         }
     }
-    else if (freshHurt)
+    else
     {
         const SoundEvent* hurtSound = getHurtSound(source);
 
-        if (hurtSound != NULL)
+        if (freshHurt && hurtSound != NULL)
         {
             playSound(hurtSound, getSoundVolume(), getVoicePitch());
         }
@@ -1925,7 +1925,13 @@ boost::shared_ptr<LivingEntity> LivingEntity::getKillCredit()
     }
 
     boost::shared_ptr<LivingEntity> attacker = mLastHurtByMob.lock();
-    return attacker;
+
+    if (attacker)
+    {
+        return attacker;
+    }
+
+    return boost::shared_ptr<LivingEntity>();
 }
 
 float LivingEntity::getMaxHealth()
@@ -2792,10 +2798,10 @@ void LivingEntity::travel(float xxa, float yya, float zza)
             {
                 mWaterTravelCheckTicks = 60;
                 AABB* searchBox = mBoundingBox->grow(5.0);
-                std::vector<boost::shared_ptr<Entity> >* drownedEntities = mLevel->getEntitiesOfClass(typeid(Drowned),
-                                                                                                      searchBox);
-                mWaterTravelSpeedFactor = drownedEntities->empty() ? 1.0f : 2.0f;
-                delete drownedEntities;
+                std::vector<boost::shared_ptr<Entity> >* dolphins =
+                    mLevel->getEntitiesOfClass(typeid(Dolphin), searchBox);
+                mWaterTravelSpeedFactor = dolphins->empty() ? 1.0f : 2.0f;
+                delete dolphins;
 
                 moveRelative(xxa, yya, zza, moveSpeed * mWaterTravelSpeedFactor);
                 move(eMoverType_Self, mXd, mYd, mZd, false);
@@ -3478,9 +3484,12 @@ void LivingEntity::tick()
 
     mORun = mRun;
 
+    float run = 0.0f;
+
     if (travelled > 0.0025000002f)
     {
-        travelled = sqrtf(travelled) * 3.0f;
+        run = 1.0f;
+        headTurn = sqrtf(travelled) * 3.0f;
 
         float wanted = (float)atan2(dz, dx) * 57.295776f - 90.0f;
         float diff = Mth::abs(Mth::wrapDegrees(mYRot) - wanted);
@@ -3494,10 +3503,6 @@ void LivingEntity::tick()
             bodyRot = wanted;
         }
     }
-    else
-    {
-        travelled = 0.0f;
-    }
 
     if (mAttackAnim > 0.0f)
     {
@@ -3506,10 +3511,10 @@ void LivingEntity::tick()
 
     if (!mOnGround)
     {
-        travelled = 0.0f;
+        run = 0.0f;
     }
 
-    mRun = mRun + (travelled - mRun) * 0.3f;
+    mRun = mRun + (run - mRun) * 0.3f;
 
     headTurn = tickHeadTurn(bodyRot, headTurn);
 
@@ -3836,7 +3841,9 @@ void LivingEntity::pushEntities()
         }
     }
 
-    for (std::vector<boost::shared_ptr<Entity> >::iterator it = entities->begin(); it != entities->end(); ++it)
+    std::vector<boost::shared_ptr<Entity> >::iterator itEnd = entities->end();
+
+    for (std::vector<boost::shared_ptr<Entity> >::iterator it = entities->begin(); it != itEnd; ++it)
     {
         boost::shared_ptr<Entity> entity = *it;
         entity->push(shared_from_this());
@@ -3929,7 +3936,8 @@ float LivingEntity::getAttackAnim(float partialTicks)
 
 AABB* LivingEntity::getSweptVolume()
 {
-    return AABB::newTemp(mX, mY, mZ, mXOld, mYOld, mZOld);
+    return AABB::newTemp(std::min(mXOld, mX), std::min(mYOld, mY), std::min(mZOld, mZ), std::max(mXOld, mX),
+                         std::max(mYOld, mY), std::max(mZOld, mZ));
 }
 
 bool LivingEntity::isEffectiveAi()
@@ -4018,7 +4026,9 @@ void LivingEntity::updatingUsingItem()
         return;
     }
 
-    if (getItemInHand(getUsedItemHand()) == mUseItem)
+    not_null_ptr<ItemInstance> itemInHand = getItemInHand(getUsedItemHand());
+
+    if (itemInHand == mUseItem)
     {
         int remaining = getUseItemRemainingTicks();
 

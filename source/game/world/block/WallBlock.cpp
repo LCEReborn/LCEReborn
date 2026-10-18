@@ -249,7 +249,7 @@ const BlockState* WallBlock::fillVirtualBlockStateProperties(const BlockState* s
 
 BlockStateDefinition* WallBlock::createBlockStateDefinition()
 {
-    static const Property* properties[] = {UP, NORTH, EAST, SOUTH, WEST, VARIANT};
+    static const Property* properties[] = {UP, NORTH, EAST, WEST, SOUTH, VARIANT};
     return new BlockStateDefinition(this, properties, 6);
 }
 

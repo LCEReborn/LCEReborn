@@ -5,9 +5,9 @@
 #include "game/minigame/GameRuleDefinition.hpp"
 #include "game/world/generation/BowlLayerFill.hpp"
 
-static const std::wstring CURVE_NAMES[2] = {L"Dome", L"Bowl"};
+static const std::wstring CURVE_NAMES[2] = {L"bowl", L"dome"};
 
-CurvedLayerFillRuleDefinition::CurvedLayerFillRuleDefinition() : mCurve(eCurve_Dome), mOffset(4), mThickness(1)
+CurvedLayerFillRuleDefinition::CurvedLayerFillRuleDefinition() : mCurve(eCurve_Bowl), mOffset(4), mThickness(1)
 {
 }
 
@@ -54,7 +54,7 @@ void CurvedLayerFillRuleDefinition::addAttribute(const std::wstring& name, const
 LayerFill* CurvedLayerFillRuleDefinition::Generate() const
 {
     float (*curve)(float) = BowlLayerFill::DOME;
-    if (mCurve == eCurve_Dome)
+    if (mCurve == eCurve_Bowl)
     {
         curve = BowlLayerFill::BOWL;
     }

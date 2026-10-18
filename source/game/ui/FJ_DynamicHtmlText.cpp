@@ -174,9 +174,9 @@ void FJ_DynamicHtmlText::UpdateScrolling(FJ_Event*)
             m_iTouchScroll = 0;
             m_bListReady = false;
         }
-        else if (m_labelTextIndices[m_labelTextIndices.size() - 1] + 1 < m_text.size())
+        else if (m_labelTextIndices[m_labels.size() - 1] + 1 < m_text.size())
         {
-            SetNextLabel(m_labelTextIndices[m_labelTextIndices.size() - 1] + 1, true);
+            SetNextLabel(m_labelTextIndices[m_labels.size() - 1] + 1, true);
             m_bListReady = false;
         }
         else
@@ -262,7 +262,7 @@ void FJ_DynamicHtmlText::UpdateScrolling(FJ_Event*)
                 delta = 75;
             int activeHeight = getActiveLabelHeight();
             if (static_cast<float>(activeHeight - delta) < m_fRealHeight
-                && m_labelTextIndices[m_labelTextIndices.size() - 1] == static_cast<int>(m_text.size()) - 1)
+                && m_labelTextIndices[m_labels.size() - 1] == static_cast<int>(m_text.size()) - 1)
             {
                 delta = activeHeight - static_cast<int>(m_fRealHeight);
                 if (m_labels.size() > 1)
@@ -283,7 +283,7 @@ void FJ_DynamicHtmlText::UpdateScrolling(FJ_Event*)
         {
             m_iTargetDirection = 0;
             m_bListReady = true;
-            delta = static_cast<int>(m_labels.front()->getY());
+            delta = static_cast<int>(delta + m_labels.front()->getY() - delta);
         }
         for (std::vector<FJ_Label*>::iterator label = m_labels.begin(); label != m_labels.end(); ++label)
             (*label)->setY((*label)->getY() - static_cast<float>(delta));
@@ -314,7 +314,7 @@ void FJ_DynamicHtmlText::UpdateScrolling(FJ_Event*)
         correction = static_cast<int>(m_labels.front()->getY());
     int activeHeight = getActiveLabelHeight();
     if (activeHeight - delta < static_cast<int>(m_fRealHeight)
-        && m_labelTextIndices[m_labelTextIndices.size() - 1] == static_cast<int>(m_text.size()) - 1)
+        && m_labelTextIndices[m_labels.size() - 1] == static_cast<int>(m_text.size()) - 1)
         correction = activeHeight - delta - static_cast<int>(m_fRealHeight);
 
     if (correction != 0)
@@ -345,6 +345,19 @@ void FJ_DynamicHtmlText::UpdateScrolling(FJ_Event*)
                 SetNextLabel(m_labelTextIndices.front() - 1, false);
                 added = true;
             }
+        }
+        else if (m_iScrollDirection > 0)
+        {
+            if (m_labels[m_labels.size() - 1]->getY() + m_labels[m_labels.size() - 1]->getHeight() < m_fRealHeight
+                && m_labelTextIndices[m_labels.size() - 1] + 1 < m_text.size())
+            {
+                SetNextLabel(m_labelTextIndices[m_labels.size() - 1] + 1, true);
+                added = true;
+            }
+        }
+
+        if (m_iScrollDirection < 0)
+        {
             if (m_labels[m_labels.size() - 1]->getY() > m_fRealHeight)
             {
                 m_labels[m_labels.size() - 1]->SetLabel(L"");
@@ -357,12 +370,6 @@ void FJ_DynamicHtmlText::UpdateScrolling(FJ_Event*)
         }
         else if (m_iScrollDirection > 0)
         {
-            if (m_labels[m_labels.size() - 1]->getY() + m_labels[m_labels.size() - 1]->getHeight() < m_fRealHeight
-                && m_labelTextIndices[m_labelTextIndices.size() - 1] + 1 < m_text.size())
-            {
-                SetNextLabel(m_labelTextIndices[m_labelTextIndices.size() - 1] + 1, true);
-                added = true;
-            }
             if (m_labels.front()->getY() + m_labels.front()->getHeight() + 10.0f < 0.0f)
             {
                 m_labels.front()->SetLabel(L"");

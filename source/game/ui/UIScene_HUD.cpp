@@ -495,10 +495,10 @@ void UIScene_HUD::customDraw(const char* name, fuiRect* rect)
         item = minecraft->mLocalPlayers[m_playerId]
                    ->mInventoryMenu->getSlot(InventoryMenu::ARMOR_SLOT_START + slot)
                    ->getItem();
-        bool hidden = false;
-        if (!item->isEmpty() && HideMainHUD())
-            hidden = true;
-        m_armorIcons[slot] = hidden;
+        bool showIcon = false;
+        if (item->isEmpty() && !HideMainHUD())
+            showIcon = true;
+        m_armorIcons[slot] = showIcon;
     }
     else
     {
@@ -1319,7 +1319,7 @@ void UIScene_HUD::updateFrameTick()
     const HumanoidArm* oppositeArm = player->getMainArm()->getOpposite();
     if (!offhandItem->isEmpty())
     {
-        SetIsRightHanded(oppositeArm == HumanoidArm::RIGHT);
+        SetIsRightHanded(oppositeArm == HumanoidArm::LEFT);
         ShowOffhandSlot(true);
     }
     else

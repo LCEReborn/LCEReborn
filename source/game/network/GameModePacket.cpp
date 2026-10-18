@@ -362,7 +362,8 @@ void GameModePacket::UpdateSeedGameModeData::ReadPacket(boost::shared_ptr<GameMo
 
 void GameModePacket::UpdateSeedGameModeData::WritePacket(boost::shared_ptr<GameModePacket> packet) const
 {
-    packet->strings.push_back(_toHexString<long long>(seed));
+    std::wstring seedString = _toHexString<long long>(seed);
+    packet->strings.push_back(seedString);
     packet->floats.push_back(mapSizeMultiplier);
 }
 

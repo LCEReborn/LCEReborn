@@ -203,10 +203,9 @@ unsigned short LevelChunk::getElement(int x, int y, int z, bool* present)
 }
 int LevelChunk::getHighestSectionPosition()
 {
-    for (int section = 15; section >= 0; --section)
+    for (int section = 15; section > 0; --section)
     {
-        int highest = 0;
-        if (!mElements->isRenderChunkEmpty(section * 16, &highest))
+        if (!mElements->isRenderChunkEmpty(section * 16, NULL))
             return section * 16 + 15;
     }
     return 0;
@@ -261,12 +260,12 @@ void LevelChunk::updateBiomeFlags(int x, int z)
 bool LevelChunk::biomeHasRain(int x, int z)
 {
     updateBiomeFlags(x, z);
-    return (mBiomeFlags[((x >> 1) | (z << 3)) & 127] & (8 << ((x & 1) << 2))) != 0;
+    return (mBiomeFlags[(x >> 1) | (z << 3)] & (8 << ((x & 1) << 2))) != 0;
 }
 bool LevelChunk::biomeHasSnow(int x, int z)
 {
     updateBiomeFlags(x, z);
-    return (mBiomeFlags[((x >> 1) | (z << 3)) & 127] & (4 << ((x & 1) << 2))) != 0;
+    return (mBiomeFlags[(x >> 1) | (z << 3)] & (4 << ((x & 1) << 2))) != 0;
 }
 long long LevelChunk::getInhabitedTime()
 {
@@ -1612,13 +1611,13 @@ int LevelChunk::getBrightness(LightLayer::variety layer, const BlockPos& pos)
             return 0;
 
         SparseLightStorage* storage = pos.y < 128 ? mSkyLight : mSkyLightUpper;
-        return storage == NULL ? 0 : storage->get(pos.x & 15, pos.y & 127, pos.z & 15);
+        return storage == NULL ? 0 : storage->get(pos.x & 15, pos.y % 128, pos.z & 15);
     }
 
     if (layer == LightLayer::BLOCK)
     {
         SparseLightStorage* storage = pos.y < 128 ? mBlockLight : mBlockLightUpper;
-        return storage == NULL ? 0 : storage->get(pos.x & 15, pos.y & 127, pos.z & 15);
+        return storage == NULL ? 0 : storage->get(pos.x & 15, pos.y % 128, pos.z & 15);
     }
 
     return 0;
@@ -2166,12 +2165,12 @@ int LevelChunk::getBlocksAndData(arrayWithLength<unsigned char>* output, int x, 
         if (y < 128)
             next += mBlockLight->getDataRegion(*output, x, y, z, width, height < 128 ? height : 128, depth, next);
         if (height > 128)
-            next += mBlockLightUpper->getDataRegion(*output, x, y < 128 ? 0 : y - 128, z, width, height - 128, depth,
-                                                    next);
+            next += mBlockLightUpper->getDataRegion(*output, x, y - 128 < 0 ? 0 : y - 128, z, width, height - 128,
+                                                    depth, next);
         if (y < 128)
             next += mSkyLight->getDataRegion(*output, x, y, z, width, height < 128 ? height : 128, depth, next);
         if (height > 128)
-            next += mSkyLightUpper->getDataRegion(*output, x, y < 128 ? 0 : y - 128, z, width, height - 128, depth,
+            next += mSkyLightUpper->getDataRegion(*output, x, y - 128 < 0 ? 0 : y - 128, z, width, height - 128, depth,
                                                   next);
     }
     return next;
@@ -2203,12 +2202,12 @@ int LevelChunk::setBlocksAndData(arrayWithLength<unsigned char> input, int x, in
         if (y < 128)
             offset += mBlockLight->setDataRegion(input, x, y, z, width, height < 128 ? height : 128, depth, offset);
         if (height > 128)
-            offset += mBlockLightUpper->setDataRegion(input, x, y < 128 ? 0 : y - 128, z, width, height - 128, depth,
-                                                      offset);
+            offset += mBlockLightUpper->setDataRegion(input, x, y - 128 < 0 ? 0 : y - 128, z, width, height - 128,
+                                                      depth, offset);
         if (y < 128)
             offset += mSkyLight->setDataRegion(input, x, y, z, width, height < 128 ? height : 128, depth, offset);
         if (height > 128)
-            offset += mSkyLightUpper->setDataRegion(input, x, y < 128 ? 0 : y - 128, z, width, height - 128, depth,
+            offset += mSkyLightUpper->setDataRegion(input, x, y - 128 < 0 ? 0 : y - 128, z, width, height - 128, depth,
                                                     offset);
         std::memcpy(mBiomes.data, input.data + offset, mBiomes.length);
         offset += mBiomes.length;

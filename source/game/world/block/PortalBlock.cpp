@@ -64,7 +64,7 @@ void PortalBlock::blockStaticCtor()
         boost::unordered_set<Direction::Axis*> values;
         values.insert(gPortalAxes[0]);
         values.insert(gPortalAxes[1]);
-        axis = EnumProperty<Direction::Axis*>::create(name, typeid(Direction::Axis*), values, filter);
+        axis = EnumProperty<Direction::Axis*>::create(name, typeid(Direction::Axis), values, filter);
     }
     AXIS = axis;
 }

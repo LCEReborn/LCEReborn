@@ -206,40 +206,39 @@ void ChestBlockEntity::clearCache()
 
 void ChestBlockEntity::heyImYourNeighbor(boost::shared_ptr<ChestBlockEntity> neighbour, const Direction* direction)
 {
-    if (!neighbour || !direction)
-    {
-        mNeighborsChecked = false;
-        return;
-    }
-
-    boost::shared_ptr<ChestBlockEntity> current;
-    switch (direction->get3DDataValue())
-    {
-    case Direction::eDirection_North:
-        current = mNorthNeighbour.lock();
-        mNorthNeighbour = neighbour;
-        break;
-    case Direction::eDirection_South:
-        current = mSouthNeighbour.lock();
-        mSouthNeighbour = neighbour;
-        break;
-    case Direction::eDirection_West:
-        current = mWestNeighbour.lock();
-        mWestNeighbour = neighbour;
-        break;
-    case Direction::eDirection_East:
-        current = mEastNeighbour.lock();
-        mEastNeighbour = neighbour;
-        break;
-    default:
-        return;
-    }
-    if (current != neighbour)
+    if (neighbour->isRemoved())
     {
         mNeighborsChecked = false;
     }
-    if (mLevel)
+    else if (mNeighborsChecked)
     {
+        switch (direction->get3DDataValue())
+        {
+        case Direction::eDirection_North:
+            if (mNorthNeighbour.lock() != neighbour)
+            {
+                mNeighborsChecked = false;
+            }
+            break;
+        case Direction::eDirection_South:
+            if (mSouthNeighbour.lock() != neighbour)
+            {
+                mNeighborsChecked = false;
+            }
+            break;
+        case Direction::eDirection_East:
+            if (mEastNeighbour.lock() != neighbour)
+            {
+                mNeighborsChecked = false;
+            }
+            break;
+        case Direction::eDirection_West:
+            if (mWestNeighbour.lock() != neighbour)
+            {
+                mNeighborsChecked = false;
+            }
+            break;
+        }
         mLevel->updateNeighborsAtExceptFromFacing(mPos, getBlock(), direction);
     }
 }

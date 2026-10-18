@@ -13,8 +13,6 @@ public:
     static AbstractProperty<bool>* POWERED;
     static AbstractProperty<bool>* ATTACHED;
     static AbstractProperty<bool>* SUSPENDED;
-    static const AABB* AABB_DOWN;
-    static const AABB* AABB_UP;
     static const AABB* AABB_NORTH;
     static const AABB* AABB_SOUTH;
     static const AABB* AABB_WEST;

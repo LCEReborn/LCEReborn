@@ -35,8 +35,8 @@ AbstractProperty<bool>* BrewingStandBlock::HAS_BOTTLE_1 = static_cast<AbstractPr
 AbstractProperty<bool>* BrewingStandBlock::HAS_BOTTLE_2 = static_cast<AbstractProperty<bool>*>(
     BooleanProperty::create(L"has_bottle_2"));
 
-static const AABB* gBrewingStandShape = AABB::newPermanent(0.0, 0.0, 0.0, 1.0, 0.875, 1.0);
-static const AABB* gBrewingStandBaseShape = AABB::newPermanent(0.125, 0.0, 0.125, 0.875, 0.125, 0.875);
+static const AABB* gBrewingStandBaseShape = AABB::newPermanent(0.0, 0.0, 0.0, 1.0, 0.125, 1.0);
+static const AABB* gBrewingStandStickShape = AABB::newPermanent(0.4375, 0.0, 0.4375, 0.5625, 0.875, 0.5625);
 
 BrewingStandBlock::BrewingStandBlock() : BaseEntityBlock(Material::METAL)
 {
@@ -69,7 +69,7 @@ bool BrewingStandBlock::isCubeShaped(const BlockState*)
 void BrewingStandBlock::addCollisionAABBs(const BlockState*, Level*, const BlockPos& pos, const AABB* entityBox,
                                           std::vector<AABB*>* collidingBoxes, boost::shared_ptr<Entity>, bool)
 {
-    addCollisionAABB(pos, entityBox, collidingBoxes, gBrewingStandShape);
+    addCollisionAABB(pos, entityBox, collidingBoxes, gBrewingStandStickShape);
     addCollisionAABB(pos, entityBox, collidingBoxes, gBrewingStandBaseShape);
 }
 

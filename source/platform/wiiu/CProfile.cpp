@@ -269,7 +269,7 @@ bool CProfile::IsSignedIn(int quadrant)
 
 bool CProfile::IsSignedInLive(int quadrant)
 {
-    return IsSignedIn(quadrant) && mNetworkAvailable && mFriendPresenceOnline;
+    return mProfiles[quadrant].signedIn && mNetworkAvailable && mFriendPresenceOnline;
 }
 
 bool CProfile::IsSigningIn(int quadrant)
@@ -528,7 +528,7 @@ void CProfile::SetFatalTrophyErrorID(int stringId)
 wchar_t* CProfile::GetMiiName(int quadrant)
 {
     static wchar_t empty[] = L"";
-    return IsSignedIn(quadrant) ? (wchar_t*)mProfiles[quadrant].mii->mName : empty;
+    return mProfiles[quadrant].signedIn ? (wchar_t*)mProfiles[quadrant].mii->mName : empty;
 }
 
 wchar_t* CProfile::GetGamertag(int quadrant)
@@ -895,8 +895,8 @@ void CProfile::CreatePresenceString(int quadrant, std::wstring& text)
         if (position != std::wstring::npos)
         {
             int setting = mContextValues[quadrant][context->first];
-            const wchar_t* replacement = getStringFromID(mPresenceContextStrings[context->first][setting]);
-            text.replace(position, std::wcslen(formatToken), replacement);
+            text.replace(position, std::wcslen(getStringFromID(context->second)),
+                         getStringFromID(mPresenceContextStrings[context->first][setting]));
         }
     }
 }
@@ -1166,7 +1166,7 @@ void CProfile::SetLeaderboardDisable(bool disabled)
 void CProfile::CallSignInChangeCallback(bool primaryChanged)
 {
     if (mSignInChangeHandler != NULL)
-        mSignInChangeHandler(mSignInChangeContext, primaryChanged, mSignedInUsersMask);
+        mSignInChangeHandler(mSignInChangeContext, primaryChanged, gProfileInstance->GetSignedInUsersMask());
 }
 
 void CProfile::TickSystem()
@@ -1211,7 +1211,7 @@ bool CProfile::CanBeAwarded(int, int)
 
 void CProfile::OnSignout(int quadrant)
 {
-    if (quadrant >= 0 && quadrant < 4 && IsValidPlayer(quadrant))
+    if (quadrant >= 0 && quadrant < 4 && gProfileInstance->IsValidPlayer(quadrant))
     {
         mAchievements.insert(mAchievementsByPad[quadrant]);
         mAchievementsByPad[quadrant] = NULL;
@@ -1220,7 +1220,7 @@ void CProfile::OnSignout(int quadrant)
 
 void CProfile::OnSignin(int quadrant)
 {
-    if (quadrant < 0 || quadrant >= 4 || !IsValidPlayer(quadrant))
+    if (quadrant < 0 || quadrant >= 4 || !gProfileInstance->IsValidPlayer(quadrant))
         return;
 
     PlayerUID uid = getPlayerUID(quadrant, false);
@@ -1229,7 +1229,7 @@ void CProfile::OnSignin(int quadrant)
     {
         achievements = new CAchievements(quadrant);
     }
-    else if (achievements->mPlayerUID != uid)
+    else if (uid != achievements->mPlayerUID)
     {
         OnSignout(quadrant);
         OnSignin(quadrant);

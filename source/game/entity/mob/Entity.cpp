@@ -611,11 +611,13 @@ void Entity::resetPos()
         return;
     }
 
+    boost::shared_ptr<Entity> self = shared_from_this();
+
     while (mY > 0.0 && mY < 256.0)
     {
         setPos(mX, mY, mZ);
 
-        if (mLevel->getCollisionAABBs(shared_from_this(), mBoundingBox, false, false, false)->empty())
+        if (mLevel->getCollisionAABBs(self, mBoundingBox, false, false, false)->empty())
         {
             break;
         }
@@ -1457,19 +1459,19 @@ void Entity::move(MoverType type, double x, double y, double z, bool pushedByPis
             raisedZ = (*it)->clipZCollide(raised, raisedZ);
         }
 
-        if (steppedX * steppedX + steppedZ * steppedZ <= raisedX * raisedX + raisedZ * raisedZ)
-        {
-            x = raisedX;
-            z = raisedZ;
-            y = -raisedY;
-            setBoundingBox(raised);
-        }
-        else
+        if (steppedX * steppedX + steppedZ * steppedZ > raisedX * raisedX + raisedZ * raisedZ)
         {
             x = steppedX;
             z = steppedZ;
             y = -stepY;
             setBoundingBox(stepped);
+        }
+        else
+        {
+            x = raisedX;
+            z = raisedZ;
+            y = -raisedY;
+            setBoundingBox(raised);
         }
 
         y = -(double)mMaxUpStep;
@@ -3181,28 +3183,26 @@ struct weakPtrEqualsShared
 
 void Entity::removePassenger(boost::shared_ptr<Entity> passenger)
 {
-    if (passenger)
+    if (passenger && passenger->getVehicle() == shared_from_this())
     {
-        passenger->getVehicle();
     }
 
-    for (std::vector<boost::weak_ptr<Entity> >::iterator it = mPassengers.begin(); it != mPassengers.end(); ++it)
+    for (std::vector<boost::weak_ptr<Entity> >::iterator it = mPassengers.begin(); it != mPassengers.end();)
     {
         if (!it->lock())
         {
-            mPassengers.erase(it);
-            break;
+            it = mPassengers.erase(it);
+        }
+        else
+        {
+            ++it;
         }
     }
 
     if (passenger)
     {
-        std::vector<boost::weak_ptr<Entity> >::iterator it = std::find_if(mPassengers.begin(), mPassengers.end(),
-                                                                          weakPtrEqualsShared(passenger));
-        if (it != mPassengers.end())
-        {
-            mPassengers.erase(it);
-        }
+        weakPtrEqualsShared isPassenger(passenger);
+        mPassengers.erase(std::find_if(mPassengers.begin(), mPassengers.end(), isPassenger));
 
         passenger->mBoardingCooldown = 60;
     }
@@ -3582,11 +3582,11 @@ void Entity::onAboveBubbleCol(bool down)
 {
     if (down)
     {
-        mYd = mYd - 0.03 < -0.9 ? -0.9 : mYd - 0.03;
+        mYd = std::max(-0.9, mYd - 0.03);
     }
     else
     {
-        mYd = mYd + 0.1 > 1.8 ? 1.8 : mYd + 0.1;
+        mYd = std::min(1.8, mYd + 0.1);
     }
 }
 
@@ -3594,11 +3594,11 @@ void Entity::onInsideBubbleColumn(bool down)
 {
     if (down)
     {
-        mYd = mYd - 0.03 < -0.3 ? -0.3 : mYd - 0.03;
+        mYd = std::max(-0.3, mYd - 0.03);
     }
     else
     {
-        mYd = mYd + 0.3 > 0.4 ? 0.4 : mYd + 0.3;
+        mYd = std::min(0.4, mYd + 0.3);
     }
 
     mFallDistance = 0.0f;
@@ -3934,7 +3934,7 @@ bool Entity::displayFireAnimation()
 
 void Entity::setUUID(const std::wstring& uuid)
 {
-    if (uuid.compare(0, uuid.size(), L"") == 0)
+    if (uuid.compare(L"no name") == 0)
     {
         return;
     }
@@ -3979,8 +3979,8 @@ void Entity::setCustomName(const std::wstring& customName, const std::wstring& o
 
     mEntityData->set(DATA_CREATED_ON_HOST, createdOnHost, true);
     mEntityData->set(DATA_NAMED_BY_RESTRICTED_PLAYER, namedByRestrictedPlayer, true);
-    mEntityData->set(DATA_CUSTOM_NAME, customName, true);
     mEntityData->set(DATA_OWNER_UUID, ownerUUID, true);
+    mEntityData->set(DATA_CUSTOM_NAME, customName, true);
 }
 
 std::wstring Entity::getCustomName()
@@ -4490,7 +4490,6 @@ void Entity::tickLeash()
     if (!isAlive())
     {
         dropLeash(true, true);
-        return;
     }
 
     boost::shared_ptr<Entity> holder = getLeashHolder();

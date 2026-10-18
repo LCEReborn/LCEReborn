@@ -118,7 +118,7 @@ InteractionResult::EInteractionResult BlockItem::useOn(boost::shared_ptr<Player>
     if (!simulate)
     {
         int auxValue = getLevelDataForAuxValue(itemInstance->getAuxValue());
-        const BlockState* placedState = mBlock->getStateForPlacement(level, placePos, placeDirection, hitX, hitY, hitZ,
+        const BlockState* placedState = mBlock->getStateForPlacement(level, placePos, placeDirection, hitX, hitY, hitX,
                                                                      auxValue, player);
         currentlyPlacingBlockPlayer = player;
         if (!level->setBlock(placePos, placedState, Block::UPDATE_ALL | Block::UPDATE_IMMEDIATE, false))
@@ -156,9 +156,10 @@ InteractionResult::EInteractionResult BlockItem::useOn(boost::shared_ptr<Player>
                              (soundType->getVolume() + 1.0f) * 0.5f, soundType->getPitch() * 0.8f, 16.0f);
             itemInstance->shrink(1);
         }
+
+        currentlyPlacingBlockPlayer.reset();
     }
 
-    currentlyPlacingBlockPlayer.reset();
     return InteractionResult::eInteractionResult_Success;
 }
 

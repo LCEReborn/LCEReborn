@@ -121,8 +121,7 @@ UIString::UIString(FJStringBuilder builder)
 
 UIString::UIString(const std::string& value)
 {
-    UIStringCore* core = new UIStringCore(convStringToWstring(value));
-    mCore = boost::shared_ptr<UIStringCore>(core);
+    mCore = boost::shared_ptr<UIStringCore>(new UIStringCore(convStringToWstring(value)));
 }
 
 UIString::UIString(const char* value)

@@ -73,7 +73,6 @@ ClientboundPlayerPositionPacket::ClientboundPlayerPositionPacket(
     this->yRot = yRot;
     this->xRot = xRot;
     this->hasRotation = true;
-    this->relativeArguments = relativeArguments;
     this->id = id;
 }
 
@@ -86,7 +85,6 @@ ClientboundPlayerPositionPacket::ClientboundPlayerPositionPacket(
     this->yRot = 0.0f;
     this->xRot = 0.0f;
     this->hasRotation = false;
-    this->relativeArguments = relativeArguments;
     this->id = id;
 }
 

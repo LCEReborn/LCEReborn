@@ -16,11 +16,15 @@ CraftItemPacket::CraftItemPacket(int recipe, int craftType, short containerId) :
 }
 
 CraftItemPacket::CraftItemPacket(std::vector<std::pair<int, int> >& stackedItems, int craftType, short containerId)
-    : mStackedItems(stackedItems),
-      mItemIds(),
-      mContainerId(containerId),
-      mCraftType(static_cast<unsigned char>(craftType))
+    : mStackedItems(), mItemIds()
 {
+    for (std::vector<std::pair<int, int> >::iterator it = stackedItems.begin(); it != stackedItems.end(); ++it)
+    {
+        std::pair<int, int> item = *it;
+        mStackedItems.push_back(item);
+    }
+    mCraftType = static_cast<unsigned char>(craftType);
+    mContainerId = containerId;
 }
 
 CraftItemPacket::CraftItemPacket(std::vector<int>& itemIds, short containerId) : mStackedItems(), mItemIds()

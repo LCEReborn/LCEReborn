@@ -7,17 +7,13 @@
 
 ClientboundUpdateAttributesPacket::AttributeSnapshot::AttributeSnapshot(
     eATTRIBUTE_ID attributeId, double baseValue, boost::unordered_set<AttributeModifier*>* sourceModifiers)
-    : id(attributeId),
-      base(baseValue),
-      modifiers()
 {
-    if (sourceModifiers != 0)
+    id = attributeId;
+    base = baseValue;
+    for (boost::unordered_set<AttributeModifier*>::iterator it = sourceModifiers->begin();
+         it != sourceModifiers->end(); ++it)
     {
-        for (boost::unordered_set<AttributeModifier*>::iterator it = sourceModifiers->begin();
-             it != sourceModifiers->end(); ++it)
-        {
-            modifiers.insert(new AttributeModifier(**it));
-        }
+        modifiers.insert(new AttributeModifier((*it)->getId(), (*it)->getAmount(), (*it)->getOperation()));
     }
 }
 
@@ -47,22 +43,15 @@ ClientboundUpdateAttributesPacket::ClientboundUpdateAttributesPacket()
 
 ClientboundUpdateAttributesPacket::ClientboundUpdateAttributesPacket(
     int idValue, int typeValue, boost::unordered_set<AttributeInstance*>* attributes)
-    : entityId(idValue),
-      entityType(typeValue),
-      values()
 {
-    if (attributes == 0)
-        return;
+    entityId = idValue;
+    entityType = typeValue;
     for (boost::unordered_set<AttributeInstance*>::iterator it = attributes->begin(); it != attributes->end(); ++it)
     {
         AttributeInstance* attribute = *it;
-        if (attribute != 0)
-        {
-            boost::unordered_set<AttributeModifier*> modifiers;
-            attribute->getModifiers(modifiers);
-            values.insert(
-                new AttributeSnapshot(attribute->getAttribute()->getId(), attribute->getBaseValue(), &modifiers));
-        }
+        boost::unordered_set<AttributeModifier*> modifiers;
+        attribute->getModifiers(modifiers);
+        values.insert(new AttributeSnapshot(attribute->getAttribute()->getId(), attribute->getBaseValue(), &modifiers));
     }
 }
 

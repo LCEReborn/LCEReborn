@@ -17,10 +17,10 @@
 
 DirectionProperty* LadderBlock::FACING = NULL;
 
-static const AABB* LADDER_SHAPE_EAST = AABB::newPermanent(0.0, 0.0, 0.0, 0.125, 1.0, 1.0);
-static const AABB* LADDER_SHAPE_WEST = AABB::newPermanent(0.875, 0.0, 0.0, 1.0, 1.0, 1.0);
-static const AABB* LADDER_SHAPE_SOUTH = AABB::newPermanent(0.0, 0.0, 0.0, 1.0, 1.0, 0.125);
-static const AABB* LADDER_SHAPE_NORTH = AABB::newPermanent(0.0, 0.0, 0.875, 1.0, 1.0, 1.0);
+static const AABB* LADDER_SHAPE_EAST = AABB::newPermanent(0.0, 0.0, 0.0, 0.1875, 1.0, 1.0);
+static const AABB* LADDER_SHAPE_WEST = AABB::newPermanent(0.8125, 0.0, 0.0, 1.0, 1.0, 1.0);
+static const AABB* LADDER_SHAPE_SOUTH = AABB::newPermanent(0.0, 0.0, 0.0, 1.0, 1.0, 0.1875);
+static const AABB* LADDER_SHAPE_NORTH = AABB::newPermanent(0.0, 0.0, 0.8125, 1.0, 1.0, 1.0);
 
 LadderBlock::LadderBlock() : Block(Material::DECORATION)
 {

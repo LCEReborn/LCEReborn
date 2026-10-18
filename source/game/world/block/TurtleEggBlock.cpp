@@ -136,7 +136,7 @@ void TurtleEggBlock::tick(Level* level, const BlockPos& pos, const BlockState* s
                     boost::shared_ptr<Turtle> turtle(new Turtle(level));
                     turtle->setAge(-24000);
                     turtle->setHomePos(pos);
-                    turtle->moveTo((double)pos.x + (double)i * 0.2 + 0.3, (double)pos.y, (double)pos.z + 0.3, 0.0f,
+                    turtle->moveTo((double)pos.x + 0.3 + (double)i * 0.2, (double)pos.y, (double)pos.z + 0.3, 0.0f,
                                    0.0f);
                     level->addEntity(turtle);
                 }

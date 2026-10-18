@@ -11,7 +11,10 @@
 #include "game/world/block/Material.hpp"
 #include "game/world/block/MaterialColor.hpp"
 
-static const AABB* BUSH_SHAPE = AABB::newPermanent(0.3, 0.0, 0.3, 0.7, 0.6, 0.7);
+static float BUSH_SHAPE_RADIUS = 0.2f;
+static const AABB* BUSH_SHAPE = AABB::newPermanent(0.5f - BUSH_SHAPE_RADIUS, 0.0, 0.5f - BUSH_SHAPE_RADIUS,
+                                                    0.5f + BUSH_SHAPE_RADIUS, BUSH_SHAPE_RADIUS * 3.0f,
+                                                    0.5f + BUSH_SHAPE_RADIUS);
 
 Bush::Bush() : Block(Material::PLANT)
 {

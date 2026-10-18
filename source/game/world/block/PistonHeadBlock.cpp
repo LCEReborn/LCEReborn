@@ -45,12 +45,12 @@ static const AABB* pistonArmShapeUp = AABB::newPermanent(0.375, -0.25, 0.375, 0.
 static const AABB* pistonArmShapeDown = AABB::newPermanent(0.375, 0.25, 0.375, 0.625, 1.25, 0.625);
 static const AABB* pistonArmShapeSouth = AABB::newPermanent(0.375, 0.375, -0.25, 0.625, 0.625, 0.75);
 static const AABB* pistonArmShapeNorth = AABB::newPermanent(0.375, 0.375, 0.25, 0.625, 0.625, 1.25);
-static const AABB* pistonArmShapeEast = AABB::newPermanent(0.25, 0.375, 0.375, 1.25, 0.625, 0.625);
-static const AABB* pistonArmShapeWest = AABB::newPermanent(-0.25, 0.375, 0.375, 0.75, 0.625, 0.625);
+static const AABB* pistonArmShapeEast = AABB::newPermanent(-0.25, 0.375, 0.375, 0.75, 0.625, 0.625);
+static const AABB* pistonArmShapeWest = AABB::newPermanent(0.25, 0.375, 0.375, 1.25, 0.625, 0.625);
 static const AABB* pistonShortArmShapeUp = AABB::newPermanent(0.375, 0.0, 0.375, 0.625, 0.75, 0.625);
 static const AABB* pistonShortArmShapeDown = AABB::newPermanent(0.375, 0.25, 0.375, 0.625, 1.0, 0.625);
 static const AABB* pistonShortArmShapeSouth = AABB::newPermanent(0.375, 0.375, 0.0, 0.625, 0.625, 0.75);
-static const AABB* pistonShortArmShapeNorth = AABB::newPermanent(0.375, 0.375, 0.25, 0.625, 0.625, 1.0);
+static const AABB* pistonShortArmShapeNorth = AABB::newPermanent(0.375, 0.375, 0.25, 0.625, 0.625, 1.25);
 static const AABB* pistonShortArmShapeEast = AABB::newPermanent(0.0, 0.375, 0.375, 0.75, 0.625, 0.625);
 static const AABB* pistonShortArmShapeWest = AABB::newPermanent(0.25, 0.375, 0.375, 1.0, 0.625, 0.625);
 
@@ -78,7 +78,7 @@ void PistonHeadBlock::blockStaticCtor()
         boost::unordered_set<PistonType*> values;
         values.insert(pistonTypeNormal);
         values.insert(pistonTypeSticky);
-        type = EnumProperty<PistonType*>::create(name, typeid(PistonType*), values, predicate);
+        type = EnumProperty<PistonType*>::create(name, typeid(PistonType), values, predicate);
     }
     TYPE = type;
 }

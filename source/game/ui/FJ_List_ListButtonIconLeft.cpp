@@ -30,11 +30,7 @@ void FJ_List_ListButtonIconLeft::addNewItem(const std::wstring& label, int id, c
     addNewListItem(item, label, id);
     item->Init(label, id);
     item->SetSlotID(m_id, m_useIggyIcons);
-
-    if (m_useIggyIcons)
-        item->SetTextureName(L"", textureName1);
-    else
-        item->SetTextureName(textureName, textureName1);
+    item->SetTextureName(m_useIggyIcons ? L"" : textureName, textureName1);
 }
 
 void FJ_List_ListButtonIconLeft::addNewTimerItem(const std::wstring& label, int id)

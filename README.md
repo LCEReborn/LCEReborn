@@ -1,10 +1,12 @@
 # Minecraft: Wii U Edition - source reconstruction
 
 Reconstructed C++ source for Minecraft: Wii U Edition, the 4J Studios
-Legacy Console Edition codebase. Every file is authored source, written to
-behave like the original; the repository contains no binaries, assets,
-symbol tables or decompiler output. It is not a decompilation or a static
-recompilation: no code is translated from the game's executable.
+Legacy Console Edition codebase. It is a matching decompilation: the source
+is written by reading the original executable's compiled code and is
+checked, function by function, against that executable. Every file is
+hand-authored text rather than raw tool output, and the repository contains
+no binaries, assets, symbol tables, disassembly or decompiler output. See
+`docs/provenance.md` for how the source is made.
 
 All of the code is written by AI agents. Today Claude coordinates Claude
 Opus 5.5 worker agents; earlier phases had the dispatchers Sol and Fable
@@ -62,8 +64,9 @@ under the GNU General Public License, version 3 or (at your option) any later
 version. See `LICENSE`.
 
 The license covers what this repository contributes. It grants no rights to
-Minecraft: Wii U Edition itself, its assets, or the trademarks of their
-owners.
+Minecraft: Wii U Edition itself, its code, its assets, or the trademarks of
+their owners; because the reconstructed source is derived from the original
+executable, see `docs/provenance.md` for what that means.
 
 Files from other projects keep their own licenses:
 `tools/build/third_party/rapidxml/` (Boost Software License 1.0), the altered

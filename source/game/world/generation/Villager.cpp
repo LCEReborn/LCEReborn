@@ -246,6 +246,7 @@ void Villager::TreasureMapForEmeralds::addMerchantRecipe(boost::shared_ptr<Merch
 
         recipes->push_back(new MerchantRecipe(not_null_ptr<ItemInstance>(new ItemInstance(Items::emerald, value)),
                                               not_null_ptr<ItemInstance>(new ItemInstance(Items::compass)), map, 0, 7));
+        delete target;
     }
 }
 

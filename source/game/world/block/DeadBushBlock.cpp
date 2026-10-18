@@ -15,7 +15,8 @@
 #include "game/world/block/MaterialColor.hpp"
 #include "game/world/generation/Player.hpp"
 
-static const AABB* gDeadBushShape = AABB::newPermanent(0.1, 0.0, 0.1, 0.9, 0.8, 0.9);
+static const AABB* gDeadBushShape = AABB::newPermanent(0.09999999403953552, 0.0, 0.09999999403953552,
+                                                       0.8999999761581421, 0.800000011920929, 0.8999999761581421);
 
 DeadBushBlock::DeadBushBlock() : Bush(Material::REPLACEABLE_PLANT)
 {

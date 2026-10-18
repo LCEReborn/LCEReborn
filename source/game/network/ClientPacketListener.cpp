@@ -326,33 +326,29 @@ ClientPacketListener::~ClientPacketListener()
 void ClientPacketListener::handleBlockEntityDataInternal(boost::shared_ptr<ClientboundBlockEntityDataPacket> packet,
                                                          Level* level)
 {
-    if (level == NULL || packet == NULL)
+    if (level == NULL)
     {
         return;
     }
 
-    BlockPos pos = packet->getPos();
-    if (!level->hasChunkAt(pos))
+    if (!level->hasChunkAt(packet->getPos()))
     {
         return;
     }
 
-    boost::shared_ptr<BlockEntity> blockEntity = level->getBlockEntity(pos);
+    boost::shared_ptr<BlockEntity> blockEntity = level->getBlockEntity(packet->getPos());
+    const int type = packet->getType();
     if (blockEntity == NULL)
     {
         return;
     }
 
-    const int type = packet->getType();
-    CompoundTag* tag = packet->getTag();
-
     if (type == 0xc)
     {
         if (eTYPE_DERIVED_FROM(BlockEntityType::CAULDRON, blockEntity->GetType()))
         {
-            boost::shared_ptr<CauldronBlockEntity> cauldron = boost::static_pointer_cast<CauldronBlockEntity>(
-                blockEntity);
-            cauldron->loadFromPacket(level, pos, tag);
+            boost::static_pointer_cast<CauldronBlockEntity>(blockEntity)->loadFromPacket(level, packet->getPos(),
+                                                                                          packet->getTag());
         }
         return;
     }
@@ -361,8 +357,8 @@ void ClientPacketListener::handleBlockEntityDataInternal(boost::shared_ptr<Clien
     {
         if (eTYPE_DERIVED_FROM(BlockEntityType::CONDUIT, blockEntity->GetType()))
         {
-            boost::shared_ptr<ConduitBlockEntity> conduit = boost::static_pointer_cast<ConduitBlockEntity>(blockEntity);
-            conduit->loadFromPacket(level, pos, tag);
+            boost::static_pointer_cast<ConduitBlockEntity>(blockEntity)->loadFromPacket(level, packet->getPos(),
+                                                                                         packet->getTag());
         }
         return;
     }
@@ -408,7 +404,7 @@ void ClientPacketListener::handleBlockEntityDataInternal(boost::shared_ptr<Clien
 
     if (loadTag)
     {
-        blockEntity->load(tag);
+        blockEntity->load(packet->getTag());
     }
 }
 
@@ -1077,15 +1073,9 @@ void ClientPacketListener::handleAddGlobalEntity(boost::shared_ptr<ClientboundAd
 
 void ClientPacketListener::handleAddPainting(boost::shared_ptr<ClientboundAddPaintingPacket> packet)
 {
-    if (packet == 0 || m_level == 0)
-        return;
-    MultiPlayerLevel* level = dynamic_cast<MultiPlayerLevel*>(m_level);
-    if (level == 0)
-        return;
     boost::shared_ptr<Painting> painting(
-        new Painting(level, packet->getPos(), packet->getDirection(), packet->getMotive()));
-    painting->setId(packet->getId());
-    level->putEntity(packet->getId(), painting);
+        new Painting(m_level, packet->getPos(), packet->getDirection(), packet->getMotive()));
+    m_level->putEntity(packet->getId(), painting);
 }
 
 
@@ -1332,13 +1322,11 @@ void ClientPacketListener::handleMoveEntitySmall(boost::shared_ptr<MoveEntityPac
 
 void ClientPacketListener::handleRemoveEntity(boost::shared_ptr<ClientboundRemoveEntitiesPacket> packet)
 {
-    if (packet == 0 || m_level == 0)
-        return;
-    MultiPlayerLevel* level = dynamic_cast<MultiPlayerLevel*>(m_level);
-    if (level == 0)
-        return;
-    for (unsigned int i = 0; i < packet->entityIds.length; ++i)
-        level->removeEntity(packet->entityIds.data[i]);
+    if (m_level != 0)
+    {
+        for (unsigned int i = 0; i < packet->entityIds.length; ++i)
+            m_level->removeEntity(packet->entityIds.data[i]);
+    }
 }
 
 void ClientPacketListener::handleMovePlayer(boost::shared_ptr<ClientboundPlayerPositionPacket> packet)
@@ -1444,12 +1432,8 @@ void ClientPacketListener::handleChunkVisibilityArea(boost::shared_ptr<ChunkVisi
 
 void ClientPacketListener::handleChunkVisibility(boost::shared_ptr<ChunkVisibilityPacket> packet)
 {
-    if (m_level != 0 && packet != 0)
-    {
-        MultiPlayerLevel* level = dynamic_cast<MultiPlayerLevel*>(m_level);
-        if (level != 0)
-            level->setChunkVisible(packet->x, packet->z, packet->visible, packet->loaded);
-    }
+    if (m_level != 0)
+        m_level->setChunkVisible(packet->x, packet->z, packet->visible, packet->loaded);
 }
 
 void ClientPacketListener::handleChunkBlocksUpdate(boost::shared_ptr<ClientboundChunkBlocksUpdatePacket> packet)
@@ -2597,11 +2581,10 @@ void ClientPacketListener::handlePreLogin(boost::shared_ptr<ClientboundPreLoginP
         gProfile->GetXUID(m_playerId, &offlineUid, false);
 
         const bool friendsOnly = CGameNetworkManager::sInstance.IsFriendsOnlyUGC(m_playerId);
-        boost::shared_ptr<Packet> login(new ClientboundLoginPacket(
+        send(boost::shared_ptr<ClientboundLoginPacket>(new ClientboundLoginPacket(
             m_minecraft->mUser->name, 0x13c, offlineUid, onlineUid, friendsOnly, packet->mSeed,
             GameSettings::GetPlayerSkinId(m_playerId), GameSettings::GetPlayerCapeId(m_playerId),
-            gProfile->IsGuest(m_playerId), false));
-        send(login);
+            gProfile->IsGuest(m_playerId), false)));
 
         if (!CGameNetworkManager::sInstance.IsHost())
             m_minecraft->mProgressRenderer->progressStagePercentage(50);
@@ -2710,7 +2693,8 @@ void ClientPacketListener::handleSetEntityPassengersPacket(boost::shared_ptr<Cli
         boost::shared_ptr<Entity> vehicle = m_level->getEntity(packet->getVehicle());
         if (vehicle != 0)
         {
-            vehicle->hasIndirectPassenger(m_minecraft->mLocalPlayers[m_playerId]);
+            boost::shared_ptr<MultiplayerLocalPlayer> player = m_minecraft->mLocalPlayers[m_playerId];
+            vehicle->hasIndirectPassenger(player);
             vehicle->ejectPassengers();
             arrayWithLength<int> passengers = packet->getPassengers();
             for (unsigned int i = 0; i < passengers.length; ++i)
@@ -2725,7 +2709,7 @@ void ClientPacketListener::handleSetEntityPassengersPacket(boost::shared_ptr<Cli
 
 void ClientPacketListener::handleEntityLinkPacket(boost::shared_ptr<ClientboundSetEntityLinkPacket> packet)
 {
-    if (packet == 0 || m_level == 0)
+    if (m_level == 0)
         return;
     MultiPlayerLevel* level = dynamic_cast<MultiPlayerLevel*>(m_level);
     if (level == 0)
@@ -2761,21 +2745,19 @@ void ClientPacketListener::handleEntityLinkPacket(boost::shared_ptr<ClientboundS
 
 void ClientPacketListener::handleEntityEvent(boost::shared_ptr<ClientboundEntityEventPacket> packet)
 {
-    if (packet == 0)
-        return;
     boost::shared_ptr<Entity> entity = getEntity(packet->getEntityId());
     if (entity == 0)
         return;
     const unsigned char eventId = packet->getEventId();
     if (eventId == 0x15)
     {
-        boost::shared_ptr<Guardian> guardian = boost::static_pointer_cast<Guardian>(entity);
-        m_minecraft->mSoundEngine->ConsoleSoundEngine::play(new GuardianAttackSoundInstance(guardian));
+        m_minecraft->mSoundEngine->ConsoleSoundEngine::play(
+            new GuardianAttackSoundInstance(boost::static_pointer_cast<Guardian>(entity)));
         return;
     }
     if (eventId != 0x23)
     {
-        entity->handleEntityEvent(eventId, packet->getData());
+        entity->handleEntityEvent(packet->getEventId(), packet->getData());
         return;
     }
     m_minecraft->mParticleEngine->createTrackingEmitter(entity, PARTICLE_TOTEM, 30);
@@ -2786,19 +2768,14 @@ void ClientPacketListener::handleEntityEvent(boost::shared_ptr<ClientboundEntity
     }
     if (entity == m_minecraft->mLocalPlayers[m_playerId])
     {
-        not_null_ptr<ItemInstance> totemItem(new ItemInstance(Items::totemOfUndying));
-        m_minecraft->mGameRenderer->displayItemActivation(totemItem, m_playerId);
+        m_minecraft->mGameRenderer->displayItemActivation(new ItemInstance(Items::totemOfUndying), m_playerId);
     }
 }
 
 void ClientPacketListener::handleDamageIndicator(boost::shared_ptr<ClientboundDamageIndicatorPacket> packet)
 {
-    if (packet == 0 || m_minecraft == 0 || m_playerId < 0 || m_playerId >= 4)
-        return;
-    boost::shared_ptr<MultiplayerLocalPlayer>& player = m_minecraft->mLocalPlayers[m_playerId];
-    if (player != 0)
-        player->updateDamageIndicator(static_cast<float>(packet->getX()), static_cast<float>(packet->getZ()),
-                                      packet->isAllDirections() != 0);
+    m_minecraft->mLocalPlayers[m_playerId]->updateDamageIndicator(packet->getX(), packet->getZ(),
+                                                                  packet->isAllDirections());
 }
 
 void ClientPacketListener::handleMiniGamePlayerSettingsUpdatePacket(
@@ -2902,12 +2879,8 @@ void ClientPacketListener::handleSetHealth(boost::shared_ptr<ClientboundSetHealt
 
 void ClientPacketListener::handleSetExperience(boost::shared_ptr<ClientboundSetExperiencePacket> packet)
 {
-    if (packet == 0 || m_minecraft == 0 || m_playerId < 0 || m_playerId >= 4)
-        return;
-    boost::shared_ptr<MultiplayerLocalPlayer>& player = m_minecraft->mLocalPlayers[m_playerId];
-    if (player != 0)
-        player->setExperienceValues(packet->getExperienceProgress(), packet->getTotalExperience(),
-                                    packet->getExperienceLevel());
+    m_minecraft->mLocalPlayers[m_playerId]->setExperienceValues(
+        packet->getExperienceProgress(), packet->getTotalExperience(), packet->getExperienceLevel());
 }
 
 void ClientPacketListener::handleRespawn(boost::shared_ptr<ClientboundRespawnPacket> packet)
@@ -3219,8 +3192,6 @@ void ClientPacketListener::handleContainerSetData(boost::shared_ptr<ClientboundC
 
 void ClientPacketListener::handleSetEquippedItem(boost::shared_ptr<ClientboundSetEquippedItemPacket> packet)
 {
-    if (packet == 0)
-        return;
     boost::shared_ptr<Entity> entity = getEntity(packet->getEntity());
     if (entity != 0)
         entity->setItemSlot(packet->getSlot(), packet->getItem());
@@ -3445,12 +3416,12 @@ void ClientPacketListener::handleLevelEvent(boost::shared_ptr<ClientboundLevelEv
 
 void ClientPacketListener::handleAwardStat(boost::shared_ptr<ClientboundAwardStatPacket> packet)
 {
-    if (packet == 0 || m_minecraft == 0 || m_playerId < 0 || m_playerId >= 4)
-        return;
     boost::shared_ptr<MultiplayerLocalPlayer>& player = m_minecraft->mLocalPlayers[m_playerId];
-    Stat* stat = Stats::get(packet->statId);
-    if (player != 0 && stat != 0)
+    if (player != 0)
+    {
+        Stat* stat = gStats->get_stat(packet->statId);
         player->awardStatFromServer(stat, packet->getParamData());
+    }
 }
 
 void ClientPacketListener::handleUpdateMobEffect(boost::shared_ptr<ClientboundUpdateMobEffectPacket> packet)
@@ -3545,6 +3516,7 @@ void ClientPacketListener::handlePlayerInfo(boost::shared_ptr<PlayerInfoPacket> 
             {
                 player->setPlayerGamePrivilege(Player::ePlayerGamePrivilege_All, packet->mPrivileges);
                 displayPrivilegeChanges(player, privileges);
+                break;
             }
         }
     }
@@ -3591,10 +3563,9 @@ void ClientPacketListener::handleSoundEvent(boost::shared_ptr<ClientboundSoundPa
     }
     else if (soundInstance == ClientboundSoundPacket::eSoundInstances_FollowLocalPlayer)
     {
-        boost::shared_ptr<Player> player = m_minecraft->mLocalPlayers[m_playerId];
-        m_minecraft->mSoundEngine->ConsoleSoundEngine::play(
-            new FollowPlayerSoundInstance(player, packet->getSound(), static_cast<float>(packet->getVolume()),
-                                          static_cast<float>(packet->getPitch()), packet->getLooping()));
+        m_minecraft->mSoundEngine->ConsoleSoundEngine::play(new FollowPlayerSoundInstance(
+            m_minecraft->mLocalPlayers[m_playerId], packet->getSound(), static_cast<float>(packet->getVolume()),
+            static_cast<float>(packet->getPitch()), packet->getLooping()));
     }
     else if (soundInstance == ClientboundSoundPacket::eSoundInstances_FollowEntity)
     {
@@ -3620,22 +3591,15 @@ void ClientPacketListener::handleMoveVehicle(boost::shared_ptr<ClientboundMoveVe
 
 void ClientPacketListener::handleBossUpdate(boost::shared_ptr<ClientboundBossEventPacket> packet)
 {
-    if (m_minecraft != 0 && m_minecraft->mGui != 0 && packet != 0)
-        m_minecraft->mGui->getBossOverlay(m_playerId)->update(packet);
+    m_minecraft->mGui->getBossOverlay(m_playerId)->update(packet);
 }
 
 void ClientPacketListener::handleItemCooldown(boost::shared_ptr<ClientboundCooldownPacket> packet)
 {
-    if (packet == 0 || m_minecraft == 0 || m_playerId < 0 || m_playerId >= 4)
-        return;
-    boost::shared_ptr<MultiplayerLocalPlayer>& player = m_minecraft->mLocalPlayers[m_playerId];
-    if (player != 0 && player->getCooldowns() != 0)
-    {
-        if (packet->getDuration() == 0)
-            player->getCooldowns()->removeCooldown(packet->getItem());
-        else
-            player->getCooldowns()->addCooldown(packet->getItem(), packet->getDuration());
-    }
+    if (packet->getDuration() == 0)
+        m_minecraft->mLocalPlayers[m_playerId]->getCooldowns()->removeCooldown(packet->getItem());
+    else
+        m_minecraft->mLocalPlayers[m_playerId]->getCooldowns()->addCooldown(packet->getItem(), packet->getDuration());
 }
 
 void ClientPacketListener::handleCustomPayload(boost::shared_ptr<ClientboundCustomPayloadPacket> packet)
@@ -3680,15 +3644,13 @@ void ClientPacketListener::handleServerSettingsChanged(boost::shared_ptr<ServerS
 
 void ClientPacketListener::handleTexture(boost::shared_ptr<TexturePacket> packet)
 {
-    if (packet == 0)
-        return;
     if (packet->length == 0)
     {
         unsigned char* data = 0;
         unsigned int length = 0;
         gApp.GetMemFileDetails(packet->textureName, &data, &length);
         if (length != 0)
-            send(boost::shared_ptr<Packet>(new TexturePacket(packet->textureName, data, length)));
+            send(boost::shared_ptr<TexturePacket>(new TexturePacket(packet->textureName, data, length)));
     }
     else
     {
@@ -3991,8 +3953,6 @@ void ClientPacketListener::handleUpdateAttributes(boost::shared_ptr<ClientboundU
 
 void ClientPacketListener::updateTutorialOnGameMode(eTutorial_GameMode gameMode)
 {
-    if (m_minecraft == 0 || m_playerId < 0 || m_playerId >= 4)
-        return;
     MultiPlayerGameMode* mode = m_minecraft->mGameModes[m_playerId];
     if (mode != 0 && mode->getTutorial() != 0)
         mode->getTutorial()->onGameModeChange(gameMode);

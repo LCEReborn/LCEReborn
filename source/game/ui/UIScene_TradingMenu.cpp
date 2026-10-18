@@ -318,9 +318,10 @@ void UIScene_TradingMenu::updateDisplay()
             DataOutputStream dataStream(&byteStream);
             dataStream.writeInt(bestIndex);
 
-            ClientPacketListener* connection = Minecraft::GetInstance()->getConnection(m_playerId);
-            connection->send(boost::shared_ptr<Packet>(new ServerboundCustomPayloadPacket(
-                ServerboundCustomPayloadPacket::TRADER_SELECTION_PACKET, byteStream.toByteArray())));
+            Minecraft::GetInstance()
+                ->getConnection(m_playerId)
+                ->send(boost::shared_ptr<Packet>(new ServerboundCustomPayloadPacket(
+                    ServerboundCustomPayloadPacket::TRADER_SELECTION_PACKET, byteStream.toByteArray())));
         }
 
         if (m_trades.size() < static_cast<unsigned int>(m_tradeOffset + 7))
@@ -357,8 +358,9 @@ void UIScene_TradingMenu::updateDisplay()
             villagerText = replaceAll(villagerText, std::wstring(L"{*VILLAGER_TYPE*}"),
                                       m_merchant.get()->getDisplayName());
             villagerText.replace(villagerText.find(L"%s"), 2, recipe->getSellItem().get()->getHoverName());
-            setTitle(villagerText);
-            setOfferDescription(GetItemDescription(recipe->getSellItem()));
+            setTitle(villagerText.c_str());
+            std::vector<HtmlString>* description = GetItemDescription(recipe->getSellItem());
+            setOfferDescription(description);
 
             not_null_ptr<ItemInstance> buyA = recipe->getBuyAItem();
             not_null_ptr<ItemInstance> buyB = recipe->getBuyBItem();

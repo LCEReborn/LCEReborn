@@ -33,8 +33,8 @@ DirectionProperty* AnvilBlock::FACING = NULL;
 AbstractProperty<int>* AnvilBlock::DAMAGE = static_cast<AbstractProperty<int>*>(
     IntegerProperty::create(L"damage", 0, 2));
 
-static const AABB* ANVIL_X_SHAPE = AABB::newPermanent(0.0, 0.0, 0.125, 1.0, 0.75, 0.875);
-static const AABB* ANVIL_Z_SHAPE = AABB::newPermanent(0.125, 0.0, 0.0, 0.875, 0.75, 1.0);
+static const AABB* ANVIL_X_SHAPE = AABB::newPermanent(0.0, 0.0, 0.125, 1.0, 1.0, 0.875);
+static const AABB* ANVIL_Z_SHAPE = AABB::newPermanent(0.125, 0.0, 0.0, 0.875, 1.0, 1.0);
 
 namespace
 {

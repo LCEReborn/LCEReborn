@@ -810,7 +810,7 @@ void WitherBoss::customServerAiStep()
         {
             for (int i = 0; i < 3; ++i)
             {
-                int error;
+                int error = 0;
                 boost::shared_ptr<Entity> entity = SpawnEggItem::spawnMobAt(
                     mLevel, EntityIO::getKey(EntityType::WITHER_SKELETON), mX, mY, mZ, &error, L"");
                 if (entity != NULL)

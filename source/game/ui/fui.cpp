@@ -386,7 +386,7 @@ fuiRenderNode* fui::createNodeFromSymbol(const char* name, fuiRenderNode* parent
                     {
                     case 0x1e:
                         timelineNode->addFrameAction(action.frameIndex, fuiRenderNodeTimeline::eFrameActionType_Stop,
-                                                     std::string("?"));
+                                                     std::string(""));
                         break;
                     case 0x1f:
                         timelineNode->addFrameAction(action.frameIndex,
@@ -422,7 +422,7 @@ intptr_t fui::findBitmapFromSymbol(const char* name, fuiFile** file)
         fuiFile* currentFile = *it;
         if (currentFile->fileIndex != m_resolution)
             continue;
-        for (unsigned int i = 0; i < currentFile->header.bitmapCount; ++i)
+        for (int i = 0; i < static_cast<int>(currentFile->header.bitmapCount); ++i)
         {
             fuiBitmap& bitmap = currentFile->bitmaps[i];
             if (bitmap.symbolIndex != static_cast<unsigned int>(-1)

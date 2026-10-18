@@ -1553,7 +1553,7 @@ int ConsoleUIController::RequestErrorMessage(int titleId, int messageId, int* me
 {
     gApp.setIgnoreMainMenuInputDuringInvite(false);
     return RequestMessageBox(titleId, messageId, messageParameters, parameterCount, userIndex, callback, callbackData,
-                             overrideText, 0, false, blocking);
+                             overrideText, 0, true, blocking);
 }
 
 int ConsoleUIController::RequestMessageBox(int titleId, int messageId, int* messageParameters,

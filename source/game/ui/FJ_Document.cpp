@@ -118,10 +118,10 @@ void FJ_Document::SetFocus(int id)
                 break;
             }
         }
-        if (focus == NULL && m_root->getNumChildren() > 0)
-            focus = m_root->getChildAt(0);
         if (focus != NULL)
             getStage()->setFocus(focus);
+        else if (m_root->getNumChildren() > 0)
+            getStage()->setFocus(m_root->getChildAt(0));
         OnFocusChange(false);
     }
 }

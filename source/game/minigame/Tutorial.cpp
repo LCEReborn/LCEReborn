@@ -50,7 +50,7 @@ unsigned int gTutorialVisibleTime = 7000;
 
 namespace
 {
-const unsigned int gTutorialStartDelay = 1500;
+const int gTutorialStartDelay = 1500;
 unsigned int gTutorialHintRepeatTime = 14000;
 unsigned int gTutorialMinimumDisplayTime = 2000;
 unsigned int gTutorialMessageRepeatDelay = 13000;
@@ -1491,13 +1491,13 @@ void Tutorial::tick()
 {
     if (!started)
     {
-        unsigned int now = GetTickCount();
+        int now = static_cast<int>(GetTickCount());
         if (startTime == 0)
         {
-            startTime = static_cast<int>(now);
+            startTime = now;
             return;
         }
-        if (now - static_cast<unsigned int>(startTime) <= gTutorialStartDelay)
+        if (now - startTime <= gTutorialStartDelay)
             return;
         started = true;
     }
@@ -1703,9 +1703,10 @@ void Tutorial::tick()
 
             bool showTaskMessage = gameModeConstraints->HasFailedConstraint(currentState) || taskChanged
                                    || stateChanged;
-            if (!showTaskMessage && !popupPending && !gameModeConstraints->HasFailedConstraint(currentState)
+            if (!showTaskMessage && !gameModeConstraints->HasFailedConstraint(currentState)
                 && currentTask[currentState] != NULL
-                && (currentMessage == NULL || currentTask[currentState]->getDescriptionId() != currentMessage->titleId))
+                && (currentMessage == NULL || currentTask[currentState]->getDescriptionId() != currentMessage->titleId)
+                && !popupPending)
             {
                 showTaskMessage = true;
             }

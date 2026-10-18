@@ -12,7 +12,7 @@
 #include "game/world/block/Material.hpp"
 #include "game/world/block/MaterialColor.hpp"
 
-static const AABB* CONDUIT_SHAPE = AABB::newPermanent(0.0, 0.0, 0.0, 1.0, 1.0, 1.0);
+static const AABB* CONDUIT_SHAPE = AABB::newPermanent(0.25, 0.0, 0.25, 0.75, 0.5, 0.75);
 
 ConduitBlock::ConduitBlock() : BaseEntityBlock(Material::CONDUIT, MaterialColor::STONE)
 {

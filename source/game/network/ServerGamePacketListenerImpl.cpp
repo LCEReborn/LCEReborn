@@ -106,6 +106,7 @@
 #include "game/world/block/Material.hpp"
 #include "game/world/DimensionType.hpp"
 #include "game/world/Dimension.hpp"
+#include "game/world/block/BlockItem.hpp"
 #include "game/world/block/SignBlockEntity.hpp"
 #include "game/world/WorldBorder.hpp"
 #include "game/server/ServerLevel.hpp"
@@ -257,22 +258,19 @@ void ServerGamePacketListenerImpl::teleport(
     mTeleportTime = mTickCount;
 
     if (includeRotation)
-        mPlayer->absMoveTo(x, y, z, yRot, xRot);
-    else
-        mPlayer->absMoveTo(x, y, z);
-
-    if (sendPacket)
     {
-        if (includeRotation)
-        {
-            send(boost::shared_ptr<Packet>(
+        mPlayer->absMoveTo(mPendingTeleportPosition->x, mPendingTeleportPosition->y, mPendingTeleportPosition->z, yRot,
+                           xRot);
+        if (sendPacket)
+            mPlayer->mConnection->send(boost::shared_ptr<ClientboundPlayerPositionPacket>(
                 new ClientboundPlayerPositionPacket(x, y, z, yRot, xRot, relativeArguments, mTeleportId)));
-        }
-        else
-        {
-            send(boost::shared_ptr<Packet>(
+    }
+    else
+    {
+        mPlayer->absMoveTo(mPendingTeleportPosition->x, mPendingTeleportPosition->y, mPendingTeleportPosition->z);
+        if (sendPacket)
+            mPlayer->mConnection->send(boost::shared_ptr<ClientboundPlayerPositionPacket>(
                 new ClientboundPlayerPositionPacket(x, y, z, relativeArguments, mTeleportId)));
-        }
     }
     resetPosition();
 }
@@ -596,16 +594,17 @@ void ServerGamePacketListenerImpl::handlePlayerAction(boost::shared_ptr<Serverbo
     case ServerboundPlayerActionPacket::START_DESTROY_BLOCK:
     case ServerboundPlayerActionPacket::ABORT_DESTROY_BLOCK:
     case ServerboundPlayerActionPacket::STOP_DESTROY_BLOCK:
+    {
+        double dx = mPlayer->mX - (pos.x + 0.5);
+        double dy = mPlayer->mY - (pos.y + 0.5) + 1.5;
+        double dz = mPlayer->mZ - (pos.z + 0.5);
+        if (dx * dx + dy * dy + dz * dz > 36.0 || pos.y >= mServer->getMaxBuildHeight())
+            return;
         break;
-    default:
-        return;
     }
-
-    double dx = mPlayer->mX - (pos.x + 0.5);
-    double dy = mPlayer->mY - (pos.y + 0.5) + 1.5;
-    double dz = mPlayer->mZ - (pos.z + 0.5);
-    if (dx * dx + dy * dy + dz * dz > 36.0 || pos.y >= mServer->getMaxBuildHeight())
-        return;
+    default:
+        break;
+    }
 
     if (packet->getAction() == ServerboundPlayerActionPacket::START_DESTROY_BLOCK)
     {
@@ -979,9 +978,9 @@ void ServerGamePacketListenerImpl::handleSetCreativeModeSlot(
 
     bool drop = packet->getSlotNum() < 0;
     not_null_ptr<ItemInstance> item = packet->getItem();
-    if (!item->isEmpty() && item->hasTag() && item->getTag()->contains(L"BlockEntityTag", Tag::TAG_COMPOUND))
+    if (!item->isEmpty() && item->hasTag() && item->getTag()->contains(BlockItem::BLOCK_ENTITY_TAG, Tag::TAG_COMPOUND))
     {
-        CompoundTag* blockEntityTag = item->getTag()->getCompound(L"BlockEntityTag");
+        CompoundTag* blockEntityTag = item->getTag()->getCompound(BlockItem::BLOCK_ENTITY_TAG);
         if (blockEntityTag->contains(L"x") && blockEntityTag->contains(L"y") && blockEntityTag->contains(L"z"))
         {
             BlockPos pos(blockEntityTag->getInt(L"x"), blockEntityTag->getInt(L"y"), blockEntityTag->getInt(L"z"));
@@ -992,7 +991,7 @@ void ServerGamePacketListenerImpl::handleSetCreativeModeSlot(
                 saved->remove(L"x");
                 saved->remove(L"y");
                 saved->remove(L"z");
-                item->addTagElement(L"BlockEntityTag", saved);
+                item->addTagElement(BlockItem::BLOCK_ENTITY_TAG, saved);
             }
         }
     }
@@ -1072,14 +1071,14 @@ void ServerGamePacketListenerImpl::handlePlayerInfo(boost::shared_ptr<PlayerInfo
         return;
 
     boost::shared_ptr<ServerPlayer> target;
-    std::vector<boost::shared_ptr<ServerPlayer> >* players = mServer->getPlayers()->getPlayers();
-    for (std::vector<boost::shared_ptr<ServerPlayer> >::iterator player = players->begin(); player != players->end();
-         ++player)
+    for (std::vector<boost::shared_ptr<ServerPlayer> >::iterator it = mServer->getPlayers()->getPlayers()->begin();
+         it != mServer->getPlayers()->getPlayers()->end(); ++it)
     {
-        INetworkPlayer* networkPlayer = (*player)->mConnection->getNetworkPlayer();
-        if (networkPlayer != 0 && networkPlayer->GetSmallId() == packet->mPlayerId)
+        boost::shared_ptr<ServerPlayer> player = *it;
+        if (player->mConnection->getNetworkPlayer() != 0
+            && player->mConnection->getNetworkPlayer()->GetSmallId() == packet->mPlayerId)
         {
-            target = *player;
+            target = player;
             break;
         }
     }
@@ -1373,12 +1372,15 @@ void ServerGamePacketListenerImpl::handleTradeItem(boost::shared_ptr<TradeItemPa
         return;
 
     MerchantMenu* menu = static_cast<MerchantMenu*>(mPlayer->mContainerMenu);
-    boost::shared_ptr<Merchant> merchant = menu->getMerchant();
-    MerchantRecipeList* offers = merchant->getOffers(mPlayer);
-    if (offers == 0 || packet->itemIndex < 0 || (unsigned int)packet->itemIndex >= (unsigned int)offers->size())
+    MerchantRecipeList* offers = menu->getMerchant()->getOffers(mPlayer);
+    if (offers == 0)
         return;
 
-    MerchantRecipe* recipe = offers->at(packet->itemIndex);
+    unsigned int itemIndex = packet->itemIndex;
+    if (itemIndex >= (unsigned int)offers->size())
+        return;
+
+    MerchantRecipe* recipe = offers->at(itemIndex);
     if (recipe->isDeprecated())
         return;
 
@@ -1671,21 +1673,21 @@ void ServerGamePacketListenerImpl::handleTextureAndGeometryReceived(const std::w
     unsigned char* data = 0;
     unsigned int length = 0;
     gApp.GetMemFileDetails(name, &data, &length);
+    DLCSkinFile* skinFile = static_cast<DLCSkinFile*>(gApp.mDLCManager.getSkinFile(name));
     if (length == 0)
         return;
 
-    unsigned int skinId = CMinecraftApp::getSkinIdFromPath(name);
-    DLCSkinFile* skinFile = static_cast<DLCSkinFile*>(gApp.mDLCManager.getSkinFile(name));
-    if (skinFile == 0)
+    if (skinFile != 0)
     {
+        send(boost::shared_ptr<TextureAndGeometryPacket>(new TextureAndGeometryPacket(name, data, length, skinFile)));
+    }
+    else
+    {
+        unsigned int skinId = CMinecraftApp::getSkinIdFromPath(name);
         std::vector<SKIN_BOX*>* boxes = gApp.GetAdditionalSkinBoxes(skinId);
         _SkinAdjustments adjustments = gApp.GetSkinAdjustments(skinId);
         send(boost::shared_ptr<TextureAndGeometryPacket>(
             new TextureAndGeometryPacket(name, data, length, boxes, adjustments)));
-    }
-    else
-    {
-        send(boost::shared_ptr<TextureAndGeometryPacket>(new TextureAndGeometryPacket(name, data, length, skinFile)));
     }
     mNames.erase(request);
 }

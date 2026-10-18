@@ -237,9 +237,8 @@ float fuiRenderNodeEditText::getRenderedGlyphWidth(wchar_t character, RenderStri
 float fuiRenderNodeEditText::getWordWidth(const std::wstring& word, RenderStringStateData& state)
 {
     float width = 0.0f;
-    std::wstring::const_iterator it;
-    for (it = word.begin(); it != word.end(); ++it)
-        width += getRenderedGlyphWidth(*it, state);
+    for (const wchar_t* cursor = word.c_str(); *cursor != L'\0'; ++cursor)
+        width += getRenderedGlyphWidth(*cursor, state);
     return width;
 }
 
@@ -305,8 +304,15 @@ void fuiRenderNodeEditText::htmlFontColour(const std::wstring& tag, RenderString
 {
     static const std::wstring prefix = L"font color=\"#";
     std::wstring hex = tag.substr(prefix.size(), 8);
-    unsigned long rgb = std::wcstoul(hex.c_str(), NULL, 16);
-    state.colour = (static_cast<unsigned int>(rgb) << 8) | (state.rgba.rgba & 0xffu);
+    char digits[16];
+    std::wcstombs(digits, hex.c_str(), sizeof(digits));
+    long rgb = std::strtol(digits, NULL, 16);
+    fuiRGBA colour;
+    colour.r = static_cast<unsigned char>(rgb >> 16);
+    colour.g = static_cast<unsigned char>(rgb >> 8);
+    colour.b = static_cast<unsigned char>(rgb);
+    colour.a = state.rgba.a;
+    state.colour = colour.rgba;
 }
 
 std::wstring fuiRenderNodeEditText::getHtmlTagAttribute(const std::wstring& tag, const std::wstring& attribute)
@@ -354,14 +360,14 @@ static int PromptArt(const char* symbolName)
 
 bool fuiRenderNodeEditText::htmlImage(const std::wstring& tag, RenderStringStateData& state)
 {
+    std::wstring srcAttribute = getHtmlTagAttribute(tag, L"src");
+    std::wstring alignAttribute = getHtmlTagAttribute(tag, L"align");
     std::wstring widthAttribute = getHtmlTagAttribute(tag, L"width");
     std::wstring heightAttribute = getHtmlTagAttribute(tag, L"height");
-    std::wstring srcAttribute = getHtmlTagAttribute(tag, L"src");
-    float width = widthAttribute.empty() ? 0.0f : static_cast<float>(std::wcstol(widthAttribute.c_str(), NULL, 10));
-    float height = heightAttribute.empty() ? 0.0f : static_cast<float>(std::wcstol(heightAttribute.c_str(), NULL, 10));
+    float width = static_cast<float>(std::wcstol(widthAttribute.c_str(), NULL, 10));
+    float height = static_cast<float>(std::wcstol(heightAttribute.c_str(), NULL, 10));
     char symbolName[128];
-    std::wcstombs(symbolName, srcAttribute.c_str(), sizeof(symbolName) - 1);
-    symbolName[sizeof(symbolName) - 1] = '\0';
+    std::wcstombs(symbolName, srcAttribute.c_str(), sizeof(symbolName));
     fuiFile* file = NULL;
 #if LCE_PLATFORM_PC
     int artWidth = 0;
@@ -375,29 +381,22 @@ bool fuiRenderNodeEditText::htmlImage(const std::wstring& tag, RenderStringState
                                        : static_cast<float>(reinterpret_cast<fuiBitmap*>(bitmap)->width);
         float imageHeight = promptImage ? static_cast<float>(artHeight)
                                         : static_cast<float>(reinterpret_cast<fuiBitmap*>(bitmap)->height);
+        state.x += 8.0f;
         if (width == 0.0f)
-        {
-            width = imageWidth * height / imageHeight;
-        }
+            width = imageWidth * (height / imageHeight);
         if (height == 0.0f)
-        {
-            height = imageHeight * width / imageWidth;
-        }
+            height = imageHeight * (width / imageWidth);
 #else
-    intptr_t bitmap = gFui->findBitmapFromSymbol(symbolName, &file);
+    int bitmap = gFui->findBitmapFromSymbol(symbolName, &file);
     if (bitmap != 0)
     {
         fuiBitmap* bitmapObject = reinterpret_cast<fuiBitmap*>(bitmap);
-        if (width == 0.0f)
-        {
-            width = static_cast<float>(bitmapObject->width) * height / static_cast<float>(bitmapObject->height);
-        }
-        if (height == 0.0f)
-        {
-            height = static_cast<float>(bitmapObject->height) * width / static_cast<float>(bitmapObject->width);
-        }
-#endif
         state.x += 8.0f;
+        if (width == 0.0f)
+            width = bitmapObject->width * (height / bitmapObject->height);
+        if (height == 0.0f)
+            height = bitmapObject->height * (width / bitmapObject->width);
+#endif
         float left = state.x;
         if (m_wordWrap && m_fieldWidth < (left - state.lineStartX) + width)
         {
@@ -450,7 +449,7 @@ bool fuiRenderNodeEditText::htmlImage(const std::wstring& tag, RenderStringState
             image.vertices[5].colour = 0xffffffff;
             state.activeImageData->push_back(image);
         }
-        state.x = left + width + 8.0f;
+        state.x = state.x + width + 8.0f;
         if (state.lineHeight < height + 16.0f)
             state.lineHeight = height + 16.0f;
     }
@@ -551,7 +550,7 @@ const wchar_t* fuiRenderNodeEditText::getNextWord(const wchar_t* text, std::wstr
 {
     wchar_t next = *text != L'\0' ? text[1] : L'\0';
     float width = 0.0f;
-    m_word.clear();
+    m_wrapBuffer = L"";
 
     const wchar_t* cursor = text;
     wchar_t current = *cursor;
@@ -560,21 +559,21 @@ const wchar_t* fuiRenderNodeEditText::getNextWord(const wchar_t* text, std::wstr
     {
         if (current == 0xa0)
         {
-            m_word.push_back(L' ');
+            m_wrapBuffer += L' ';
             cursor += 1;
             current = *cursor;
             done = endOfWord(0x41, current);
         }
         else if (std::wcsncmp(cursor, L"&nbsp;", 6) == 0)
         {
-            m_word.push_back(L' ');
+            m_wrapBuffer += L' ';
             cursor += 6;
             current = *cursor;
             done = endOfWord(0x41, current);
         }
         else if (std::wcsncmp(cursor, L"&gt;", 4) == 0)
         {
-            m_word.push_back(L'>');
+            m_wrapBuffer += L'>';
             current = cursor[4];
             done = endOfWord(L'>', current);
             cursor += 4;
@@ -583,7 +582,7 @@ const wchar_t* fuiRenderNodeEditText::getNextWord(const wchar_t* text, std::wstr
         {
             if (std::wcsncmp(cursor, L"&amp;", 5) == 0)
             {
-                m_word.push_back(L'&');
+                m_wrapBuffer += L'&';
                 cursor += 5;
                 current = *cursor;
                 done = endOfWord(L'&', current);
@@ -592,7 +591,7 @@ const wchar_t* fuiRenderNodeEditText::getNextWord(const wchar_t* text, std::wstr
             {
                 current = *cursor;
                 done = endOfWord(current, next);
-                m_word.push_back(current);
+                m_wrapBuffer += current;
                 width += getRenderedGlyphWidth(*cursor, state);
                 float lookaheadWidth = 0.0f;
                 if (next != L'\0')
@@ -605,7 +604,7 @@ const wchar_t* fuiRenderNodeEditText::getNextWord(const wchar_t* text, std::wstr
         }
         else
         {
-            m_word.push_back(L'<');
+            m_wrapBuffer += L'<';
             current = cursor[4];
             done = endOfWord(L'<', current);
             cursor += 4;
@@ -614,7 +613,7 @@ const wchar_t* fuiRenderNodeEditText::getNextWord(const wchar_t* text, std::wstr
         next = current != L'\0' ? cursor[1] : L'\0';
         if (done)
         {
-            *word = m_word;
+            *word = m_wrapBuffer;
             return cursor;
         }
     }

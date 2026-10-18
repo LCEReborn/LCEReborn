@@ -25,8 +25,8 @@ AbstractProperty<bool>* THIN_FENCE_EAST = static_cast<AbstractProperty<bool>*>(B
 AbstractProperty<bool>* THIN_FENCE_SOUTH = static_cast<AbstractProperty<bool>*>(BooleanProperty::create(L"south"));
 AbstractProperty<bool>* THIN_FENCE_WEST = static_cast<AbstractProperty<bool>*>(BooleanProperty::create(L"west"));
 
-static const double THIN_FENCE_POST_MIN = 0.375;
-static const double THIN_FENCE_POST_MAX = 0.625;
+static const double THIN_FENCE_POST_MIN = 0.4375;
+static const double THIN_FENCE_POST_MAX = 0.5625;
 
 static const AABB* thinFenceShapes[16] = {
     AABB::newPermanent(THIN_FENCE_POST_MIN, 0.0, THIN_FENCE_POST_MIN, THIN_FENCE_POST_MAX, 1.0, THIN_FENCE_POST_MAX),

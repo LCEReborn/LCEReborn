@@ -276,25 +276,26 @@ int UIScene_WritableBookMenu::FormatAndDisplayText(EFormatTextType type)
     if (!m_signing)
     {
         text = m_pageText;
-        FJ_BookAndQuillMenu* menu = static_cast<FJ_BookAndQuillMenu*>(m_movie->getRootNode()->getFuiNode());
-        return menu->SetPageText(text, type) ? 1 : 0;
     }
-
-    std::wstring newline = L"\n";
-    m_signText = L10N::GetString(IDS_BOOK_SIGN_TEXT);
-    std::wstring::size_type pos = m_signText.find(L"\\r", 0);
-    m_caretOffset = static_cast<int>(pos) + 1;
-    SetCaretPosition(m_caretPosition);
-    while (pos != std::wstring::npos)
+    else
     {
-        m_signText.replace(pos, 2, newline);
-        pos = m_signText.find(L"\\r", 0);
+        std::wstring author;
+        std::wstring newline = L"\n";
+        m_signText = L10N::GetString(IDS_BOOK_SIGN_TEXT);
+        std::wstring::size_type pos = m_signText.find(L"\\r", 0);
+        m_caretOffset = static_cast<int>(pos) + 1;
+        SetCaretPosition(m_caretPosition);
+        while (pos != std::wstring::npos)
+        {
+            m_signText.replace(pos, 2, newline);
+            pos = m_signText.find(L"\\r", 0);
+        }
+        m_signText.replace(m_signText.find(L"%s", 0), 2, m_titleText);
+        pos = m_signText.find(L"%s", 0);
+        author = gProfile->GetDisplayName(m_playerId);
+        m_signText.replace(pos, 2, author.c_str(), wcslen(author.c_str()));
+        text = m_signText;
     }
-    m_signText.replace(m_signText.find(L"%s", 0), 2, m_titleText);
-    pos = m_signText.find(L"%s", 0);
-    std::wstring author = gProfile->GetDisplayName(m_playerId);
-    m_signText.replace(pos, 2, author.c_str(), wcslen(author.c_str()));
-    text = m_signText;
 
     FJ_BookAndQuillMenu* menu = static_cast<FJ_BookAndQuillMenu*>(m_movie->getRootNode()->getFuiNode());
     return menu->SetPageText(text, type) ? 1 : 0;

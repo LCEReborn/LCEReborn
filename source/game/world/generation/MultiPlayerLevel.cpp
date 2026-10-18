@@ -157,8 +157,9 @@ void MultiPlayerLevel::removeAllPendingEntityRemovals()
     }
     LeaveCriticalSection(&mEntityMutex);
 
-    for (std::vector<boost::shared_ptr<Entity> >::iterator it = mEntitiesToRemove.begin();
-         it != mEntitiesToRemove.end(); ++it)
+    for (std::vector<boost::shared_ptr<Entity> >::iterator it = mEntitiesToRemove.begin(),
+                                                           end = mEntitiesToRemove.end();
+         it != end; ++it)
     {
         boost::shared_ptr<Entity> entity = *it;
         int chunkX = entity->mChunkX;
@@ -169,8 +170,9 @@ void MultiPlayerLevel::removeAllPendingEntityRemovals()
         }
     }
 
-    for (std::vector<boost::shared_ptr<Entity> >::iterator it = mEntitiesToRemove.begin();
-         it != mEntitiesToRemove.end(); ++it)
+    for (std::vector<boost::shared_ptr<Entity> >::iterator it = mEntitiesToRemove.begin(),
+                                                           end = mEntitiesToRemove.end();
+         it != end; ++it)
     {
         entityRemoved(*it);
     }

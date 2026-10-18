@@ -64,12 +64,7 @@ void UIComponent_TutorialPopup::SetVisible(bool visible)
 
 void UIComponent_TutorialPopup::setupIconHolder(EIcons icon)
 {
-    if (m_movie != 0 && m_movie->getRootNode() != 0)
-    {
-        FJ_TutorialPopup* popup = static_cast<FJ_TutorialPopup*>(m_movie->getRootNode()->getFuiNode());
-        if (popup != 0)
-            popup->SetupIconHolder(static_cast<int>(icon));
-    }
+    static_cast<FJ_TutorialPopup*>(m_movie->getRootNode()->getFuiNode())->SetupIconHolder(static_cast<int>(icon));
     m_iconHolder = icon;
 }
 

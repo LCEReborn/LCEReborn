@@ -75,7 +75,10 @@ void UnderwaterLargeCaveFeature::addTunnel(Level* level, long long seed, int chu
         x += std::cos(yaw) * cosPitch;
         y += sinPitch;
         z += std::sin(yaw) * cosPitch;
-        pitch *= narrowing ? 0.92F : 0.7F;
+        if (narrowing)
+            pitch *= 0.92F;
+        else
+            pitch *= 0.7F;
         pitch += pitchVariance * 0.1F;
         yaw += yawVariance * 0.1F;
         float change = tunnelRandom.nextGaussianFloat();

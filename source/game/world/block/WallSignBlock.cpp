@@ -18,10 +18,10 @@
 
 DirectionProperty* WallSignBlock::FACING = NULL;
 
-static const AABB* WALL_SIGN_SHAPE_EAST = AABB::newPermanent(0.0, 0.25, 0.0, 0.125, 0.75, 1.0);
-static const AABB* WALL_SIGN_SHAPE_WEST = AABB::newPermanent(0.875, 0.25, 0.0, 1.0, 0.75, 1.0);
-static const AABB* WALL_SIGN_SHAPE_SOUTH = AABB::newPermanent(0.0, 0.25, 0.0, 1.0, 0.75, 0.125);
-static const AABB* WALL_SIGN_SHAPE_NORTH = AABB::newPermanent(0.0, 0.25, 0.875, 1.0, 0.75, 1.0);
+static const AABB* WALL_SIGN_SHAPE_EAST = AABB::newPermanent(0.0, 0.28125, 0.0, 0.125, 0.78125, 1.0);
+static const AABB* WALL_SIGN_SHAPE_WEST = AABB::newPermanent(0.875, 0.28125, 0.0, 1.0, 0.78125, 1.0);
+static const AABB* WALL_SIGN_SHAPE_SOUTH = AABB::newPermanent(0.0, 0.28125, 0.0, 1.0, 0.78125, 0.125);
+static const AABB* WALL_SIGN_SHAPE_NORTH = AABB::newPermanent(0.0, 0.28125, 0.875, 1.0, 0.78125, 1.0);
 
 WallSignBlock::WallSignBlock() : SignBlock()
 {

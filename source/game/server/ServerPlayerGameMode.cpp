@@ -204,96 +204,88 @@ InteractionResult::EInteractionResult ServerPlayerGameMode::useItemOn(boost::sha
                                                                       float hitX, float hitY, float hitZ, bool simulate,
                                                                       bool* result)
 {
-    const BlockState* state = level->getBlockState(pos);
-    Block* block = state->getBlock();
-
     if (GetGameType() == GameType::SPECTATOR)
     {
         boost::shared_ptr<BlockEntity> blockEntity = level->getBlockEntity(pos);
-        if (blockEntity)
+        if (blockEntity && eTYPE_DERIVED_FROM(BlockEntityType::LOCKABLE_CONTAINER, blockEntity->GetType()))
         {
-            if (eTYPE_DERIVED_FROM(BlockEntityType::LOCKABLE_CONTAINER, blockEntity->GetType()))
+            Block* block = level->getBlockState(pos)->getBlock();
+            boost::shared_ptr<LockableContainer> container = boost::dynamic_pointer_cast<LockableContainer>(
+                blockEntity);
+            if (eTYPE_DERIVED_FROM(BlockEntityType::CHEST, blockEntity->GetType())
+                && dynamic_cast<ChestBlock*>(block) != NULL)
+                container = dynamic_cast<ChestBlock*>(block)->getContainer(level, pos);
+            if (container)
             {
-                boost::shared_ptr<LockableContainer> container = boost::dynamic_pointer_cast<LockableContainer>(
-                    blockEntity);
-                if (eTYPE_DERIVED_FROM(BlockEntityType::CHEST, blockEntity->GetType())
-                    && dynamic_cast<ChestBlock*>(block) != NULL)
-                    container = static_cast<ChestBlock*>(block)->getContainer(level, pos);
-                if (container)
-                    player->openContainer(container);
+                player->openContainer(container);
                 return InteractionResult::eInteractionResult_Success;
             }
-            if (eTYPE_DERIVED_FROM(BlockEntityType::CONTAINER, blockEntity->GetType()))
-            {
-                player->openContainer(boost::dynamic_pointer_cast<Container>(blockEntity));
-                return InteractionResult::eInteractionResult_Success;
-            }
+        }
+        else if (blockEntity && eTYPE_DERIVED_FROM(BlockEntityType::CONTAINER, blockEntity->GetType()))
+        {
+            player->openContainer(boost::dynamic_pointer_cast<Container>(blockEntity));
+            return InteractionResult::eInteractionResult_Success;
         }
         return InteractionResult::eInteractionResult_Pass;
     }
 
-    bool skipBlockUse = false;
-    if (player->isSneaking())
+    if (!player->isSneaking()
+        || (player->getMainHandItem()->isEmpty() && player->getOffhandItem()->isEmpty()))
     {
-        not_null_ptr<ItemInstance> mainHandItem = player->getMainHandItem();
-        if (!mainHandItem->isEmpty())
+        const BlockState* state = level->getBlockState(pos);
+        if (player->isAllowedToUse(state->getBlock()))
         {
-            skipBlockUse = true;
-        }
-        else
-        {
-            not_null_ptr<ItemInstance> offhandItem = player->getOffhandItem();
-            if (!offhandItem->isEmpty())
-                skipBlockUse = true;
-        }
-    }
-
-    if (!skipBlockUse && player->isAllowedToUse(block))
-    {
-        if (!simulate)
-        {
-            if (block->use(level, pos, state, player, hand, direction, hitX, hitY, hitZ, false))
+            if (!simulate)
             {
-                if (mGameRules != NULL)
-                    mGameRules->onUseBlock(Block::getId(block), pos.x, pos.y, pos.z);
+                if (state->getBlock()->use(level, pos, state, player, hand, direction, hitX, hitY, hitZ, false))
+                {
+                    if (mGameRules != NULL)
+                        mGameRules->onUseBlock(Block::getId(state->getBlock()), pos.x, pos.y, pos.z);
+                    return InteractionResult::eInteractionResult_Success;
+                }
+            }
+            else if (state->getBlock()->TestUse())
+            {
                 return InteractionResult::eInteractionResult_Success;
             }
-        }
-        else if (block->TestUse())
-        {
-            return InteractionResult::eInteractionResult_Success;
         }
     }
 
     if (item->isEmpty() || !player->isAllowedToUse(item))
         return InteractionResult::eInteractionResult_Pass;
 
-    BlockItem* blockItem = dynamic_cast<BlockItem*>(item->getItem());
-    if (blockItem != NULL && dynamic_cast<CommandBlock*>(blockItem->getBlock()) != NULL
-        && !player->canUseCommandBlocks())
+    if (dynamic_cast<BlockItem*>(item->getItem()) != NULL && !player->canUseCommandBlocks()
+        && dynamic_cast<CommandBlock*>(static_cast<BlockItem*>(item->getItem())->getBlock()) != NULL)
         return InteractionResult::eInteractionResult_Fail;
 
-    const bool restoreCreativeItem = isCreative() && !isLobby();
-    const int savedAuxValue = restoreCreativeItem ? item->getAuxValue() : 0;
-    const int savedCount = restoreCreativeItem ? item->getCount() : 0;
+    if (isCreative() && !isLobby())
+    {
+        const int savedAuxValue = item->getAuxValue();
+        const int savedCount = item->getCount();
+        const InteractionResult::EInteractionResult itemResult = item->useOn(player, level, pos, hand, direction,
+                                                                             hitX, hitY, hitZ, simulate);
+        if (itemResult == InteractionResult::eInteractionResult_Success)
+        {
+            BlockItem* placedItem = dynamic_cast<BlockItem*>(item->getItem());
+            if (placedItem != NULL)
+                RecordBlockPlaced(pos, Block::getId(placedItem->getBlock()));
+        }
+
+        const int dimensionId = level->mDimension->getType()->getId();
+        gMinecraftServer->getPlayers()->prioritiseBlockChanges(pos, dimensionId);
+        item->setAuxValue(savedAuxValue);
+        item->setCount(savedCount);
+        return itemResult;
+    }
+
     const InteractionResult::EInteractionResult itemResult = item->useOn(player, level, pos, hand, direction, hitX,
                                                                          hitY, hitZ, simulate);
-
     if (itemResult == InteractionResult::eInteractionResult_Success)
     {
         BlockItem* placedItem = dynamic_cast<BlockItem*>(item->getItem());
         if (placedItem != NULL)
             RecordBlockPlaced(pos, Block::getId(placedItem->getBlock()));
     }
-
-    if (restoreCreativeItem)
-    {
-        const int dimensionId = level->mDimension->getType()->getId();
-        gMinecraftServer->getPlayers()->prioritiseBlockChanges(pos, dimensionId);
-        item->setAuxValue(savedAuxValue);
-        item->setCount(savedCount);
-    }
-
     return itemResult;
 }
 bool ServerPlayerGameMode::startDestroyBlock(const BlockPos& pos, const Direction* direction)
@@ -420,11 +412,12 @@ InteractionResult::EInteractionResult ServerPlayerGameMode::useItem(boost::share
     if (result == InteractionResult::eInteractionResult_Success)
         RecordUseItem(resultItem);
 
-    if (resultItem == item && item->getCount() == savedCount && item->getUseDuration() < 1
-        && item->getAuxValue() == savedAux)
+    if (resultItem == item && resultItem->getCount() == savedCount && resultItem->getUseDuration() < 1
+        && resultItem->getAuxValue() == savedAux)
         return result;
 
-    if (result == InteractionResult::eInteractionResult_Fail && item->getUseDuration() > 0 && !player->isUsingItem())
+    if (result == InteractionResult::eInteractionResult_Fail && resultItem->getUseDuration() > 0
+        && !player->isUsingItem())
         return result;
 
     player->setItemInHand(hand, resultItem);
@@ -445,7 +438,7 @@ InteractionResult::EInteractionResult ServerPlayerGameMode::useItem(boost::share
     if (!player->isUsingItem())
     {
         boost::shared_ptr<ServerPlayer> serverPlayer = boost::static_pointer_cast<ServerPlayer>(player);
-        serverPlayer->refreshContainer(serverPlayer->mInventoryMenu);
+        serverPlayer->refreshContainer(player->mInventoryMenu);
     }
 
     return result;

@@ -1329,7 +1329,7 @@ int CMinecraftApp::ExitAndJoinFromInviteAndSaveReturned(void* context, int pad, 
             DLCPack* pack = Minecraft::GetInstance()->mTexturePackRepository->getSelected()->getDLCPack();
             if (!pack->hasPurchasedPack())
             {
-                int parameters[2] = {static_cast<int>(IDS_CONFIRM_CANCEL), static_cast<int>(IDS_CONFIRM_OK)};
+                int parameters[2] = {static_cast<int>(IDS_CONFIRM_OK), static_cast<int>(IDS_CONFIRM_CANCEL)};
                 gConsoleUIController.RequestAlertMessage(static_cast<int>(0x3bb3096e), static_cast<int>(0xd52c2e3),
                                                          parameters, 2, static_cast<unsigned int>(pad),
                                                          UIScene_PauseMenu::WarningTrialTexturePackReturned, NULL, NULL,
@@ -1364,7 +1364,7 @@ int CMinecraftApp::ExitAndJoinFromInviteSaveDialogReturned(void* context, int pa
             DLCPack* pack = Minecraft::GetInstance()->mTexturePackRepository->getSelected()->getDLCPack();
             if (!pack->hasPurchasedPack())
             {
-                int parameters[2] = {static_cast<int>(IDS_CONFIRM_CANCEL), static_cast<int>(IDS_CONFIRM_OK)};
+                int parameters[2] = {static_cast<int>(IDS_CONFIRM_OK), static_cast<int>(IDS_CONFIRM_CANCEL)};
                 gConsoleUIController.RequestAlertMessage(static_cast<int>(0x3bb3096e), static_cast<int>(0xd52c2e3),
                                                          parameters, 2, static_cast<unsigned int>(pad),
                                                          UIScene_PauseMenu::WarningTrialTexturePackReturned, context,

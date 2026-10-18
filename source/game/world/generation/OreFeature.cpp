@@ -165,25 +165,25 @@ bool OreFeature::place(Level* level, Random& random, const BlockPos& origin)
                     if (dxSquared + dySquared + dz * dz < radiusSquared)
                     {
                         const unsigned char bit = (unsigned char)(1 << (index & 7));
-                        if ((mask[index >> 3] & bit) == 0)
+                        if ((mask[index >> 3] & bit) != 0)
                         {
-                            mask[index >> 3] |= bit;
-
-                            PIXBeginNamedEvent(0.0f, "Applying");
-                            const int element = level->getElement(blockX, blockY, blockZ);
-                            if ((element >> 4) != 0)
-                            {
-                                Biome::BlockPair pair(element >> 4, element & 15);
-                                if (mPredicate->apply(pair))
-                                {
-                                    level->setBlockAndData(blockX, blockY, blockZ, mBlockId, mBlockData,
-                                                           Block::UPDATE_INVISIBLE | Block::UPDATE_NO_OBSERVERS
-                                                               | Block::UPDATE_LIGHT_IF_CHANGED
-                                                               | Block::UPDATE_CHUNK_ONLY);
-                                }
-                            }
-                            PIXEndNamedEvent();
+                            continue;
                         }
+                        mask[index >> 3] |= bit;
+
+                        PIXBeginNamedEvent(0.0f, "Applying");
+                        const int element = level->getElement(blockX, blockY, blockZ);
+                        if ((element >> 4) != 0)
+                        {
+                            Biome::BlockPair pair(element >> 4, element & 15);
+                            if (mPredicate->apply(pair))
+                            {
+                                level->setBlockAndData(blockX, blockY, blockZ, mBlockId, mBlockData,
+                                                       Block::UPDATE_INVISIBLE | Block::UPDATE_NO_OBSERVERS
+                                                           | Block::UPDATE_LIGHT_IF_CHANGED | Block::UPDATE_CHUNK_ONLY);
+                            }
+                        }
+                        PIXEndNamedEvent();
                     }
                     ++index;
                 }

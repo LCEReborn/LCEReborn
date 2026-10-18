@@ -2499,9 +2499,8 @@ void IUIScene_CraftingMenu::CraftCurrentItem()
             GameMode::RemoveCustomRecipeItemsFromInventory(ingredient, m_maintainedInventory);
         }
     }
-    not_null_ptr<ItemInstance> crafted = minecraft->mGameModes[getPad()]->handleCustomCraftItem(customIngredients,
-                                                                                                m_player);
-    not_null_ptr<ItemInstance> selected = crafted->copy();
+    not_null_ptr<ItemInstance> selected =
+        minecraft->mGameModes[getPad()]->handleCustomCraftItem(customIngredients, m_player)->copy();
     selected->setCount(1);
     gConsoleUIController.PlayUISFX(SoundEvents::UI_CRAFT);
     refreshBaseItemSlots(selected);
@@ -2764,8 +2763,8 @@ bool IUIScene_CraftingMenu::handleKeyDown(int pad, int key, bool repeat)
             {
                 std::pair<int, bool>& duplicate = m_duplicateItemSlots[m_verticalSlots[m_verticalColumn]];
                 bool enabled = duplicate.second;
-                not_null_ptr<ItemInstance> banner = m_player->mInventory->getItem(duplicate.first);
-                if (!enabled || BannerBlockEntity::getPatternCount(banner) > 5)
+                int patternCount = BannerBlockEntity::getPatternCount(m_player->mInventory->getItem(duplicate.first));
+                if (!enabled || patternCount > 5)
                     return true;
             }
             AddStackedCraftRecipe(true);

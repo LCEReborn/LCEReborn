@@ -63,10 +63,10 @@ void VillagerInteractGoal::tick()
                 item->shrink(amount);
                 itemToThrow = not_null_ptr<ItemInstance>(new ItemInstance(Items::bread, loaves, 0));
             }
-        }
 
-        if (item->isEmpty())
-            inventory->setItem(slot, ItemInstance::EMPTY);
+            if (item->isEmpty())
+                inventory->setItem(slot, ItemInstance::EMPTY);
+        }
 
         if (!itemToThrow->isEmpty())
         {

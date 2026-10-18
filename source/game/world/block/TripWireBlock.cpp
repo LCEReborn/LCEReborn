@@ -40,7 +40,7 @@ AbstractProperty<bool>* TripWireBlock::SOUTH = static_cast<AbstractProperty<bool
 AbstractProperty<bool>* TripWireBlock::WEST = static_cast<AbstractProperty<bool>*>(BooleanProperty::create(L"west"));
 
 static const AABB* TRIPWIRE_ATTACHED = AABB::newPermanent(0.0, 0.0625, 0.0, 1.0, 0.15625, 1.0);
-static const AABB* TRIPWIRE_DETACHED = AABB::newPermanent(0.0, 0.0625, 0.0, 1.0, 0.09375, 1.0);
+static const AABB* TRIPWIRE_DETACHED = AABB::newPermanent(0.0, 0.0, 0.0, 1.0, 0.5, 1.0);
 
 TripWireBlock::TripWireBlock() : Block(Material::DECORATION)
 {

@@ -156,9 +156,7 @@ bool ClientboundMapItemDataPacket::tryReplaceDuplicatePacket(
     {
         if ((*it)->getPacketId() == getPacketId())
         {
-            boost::shared_ptr<ClientboundMapItemDataPacket> packet =
-                boost::static_pointer_cast<ClientboundMapItemDataPacket>(*it);
-            if (isDuplicatePacket(packet))
+            if (isDuplicatePacket(boost::static_pointer_cast<ClientboundMapItemDataPacket>(*it)))
             {
                 it = queuedPackets->erase(it, it + 1);
                 queuedPackets->insert(it, shared_from_this());

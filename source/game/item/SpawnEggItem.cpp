@@ -423,7 +423,7 @@ InteractionResultHolder SpawnEggItem::use(Level* level, boost::shared_ptr<Player
         return InteractionResultHolder(InteractionResult::eInteractionResult_Fail, itemInstance);
     }
 
-    int error;
+    int error = 0;
     boost::shared_ptr<Entity> entity = spawnMobAt(level, getNamedIdFrom(itemInstance), pos.x, pos.y, pos.z, &error,
                                                   L"");
     if (entity)

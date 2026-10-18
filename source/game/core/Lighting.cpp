@@ -1,10 +1,9 @@
 #include "game/core/Lighting.hpp"
 
 #include "game/core/GlStateManager.hpp"
-#include "game/core/MemoryTracker.hpp"
 #include "game/util/Vec3.hpp"
 
-static FloatBuffer* BUFFER = MemoryTracker::createFloatBuffer(16);
+static FloatBuffer* BUFFER = new FloatBuffer(16);
 
 FloatBuffer* Lighting::getBuffer(float x, float y, float z, float w)
 {

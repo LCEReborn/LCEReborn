@@ -26,8 +26,6 @@ AbstractProperty<bool>* TripWireHookBlock::ATTACHED = static_cast<AbstractProper
     BooleanProperty::create(L"attached"));
 AbstractProperty<bool>* TripWireHookBlock::SUSPENDED = static_cast<AbstractProperty<bool>*>(
     BooleanProperty::create(L"suspended"));
-const AABB* TripWireHookBlock::AABB_DOWN = AABB::newPermanent(0.0, 0.0, 0.375, 1.0, 0.125, 0.625);
-const AABB* TripWireHookBlock::AABB_UP = AABB::newPermanent(0.0, 0.875, 0.375, 1.0, 1.0, 0.625);
 const AABB* TripWireHookBlock::AABB_NORTH = AABB::newPermanent(0.3125, 0.0, 0.625, 0.6875, 0.625, 1.0);
 const AABB* TripWireHookBlock::AABB_SOUTH = AABB::newPermanent(0.3125, 0.0, 0.0, 0.6875, 0.625, 0.375);
 const AABB* TripWireHookBlock::AABB_WEST = AABB::newPermanent(0.625, 0.0, 0.3125, 1.0, 0.625, 0.6875);
@@ -180,7 +178,7 @@ void TripWireHookBlock::calculateState(Level* level, const BlockPos& pos, const 
         {
             if (i == wireSource && wireSourceState != NULL)
                 testState = wireSourceState;
-            bool armed = !testState->getValue(TripWireBlock::SUSPENDED);
+            bool armed = !testState->getValue(TripWireBlock::DISARMED);
             bool wirePowered = testState->getValue(TripWireBlock::POWERED);
             bool active = false;
             if (armed && wirePowered)

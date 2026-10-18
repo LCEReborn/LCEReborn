@@ -487,21 +487,34 @@ unsigned int UIScene::convertGameActionToFuiKeycode(int action)
     static const unsigned char secondActions[] = {5, 1, 2};
     static const unsigned char thirdActions[] = {12, 17, 18};
 
-    if (action >= EControllerActions_MenuA && action <= EControllerActions_MenuDown)
+    switch (action)
+    {
+    case EControllerActions_MenuA:
+    case EControllerActions_MenuB:
+    case EControllerActions_MenuX:
+    case EControllerActions_MenuY:
+    case EControllerActions_MenuUp:
+    case EControllerActions_MenuDown:
         return firstActions[action];
-    if (action >= EControllerActions_MenuLeft && action <= EControllerActions_MenuPageDown)
-        return secondActions[action - 7];
-    if (action == EControllerActions_MenuStickPress)
-        return 100;
-    if (action >= EControllerActions_MenuOtherStickPress && action <= EControllerActions_MenuOtherStickDown)
-        return thirdActions[action - 13];
-    if (action == EControllerActions_MenuOk)
+    case EControllerActions_MenuLeft:
+    case EControllerActions_MenuPageUp:
+    case EControllerActions_MenuPageDown:
+        return secondActions[action - EControllerActions_MenuLeft];
+    case EControllerActions_MenuOtherStickPress:
+    case EControllerActions_MenuOtherStickUp:
+    case EControllerActions_MenuOtherStickDown:
+        return thirdActions[action - EControllerActions_MenuOtherStickPress];
+    case EControllerActions_MenuOk:
         return 0;
-    if (action == EControllerActions_MenuCancel)
+    case EControllerActions_MenuCancel:
         return 7;
-    if (action >= EControllerActions_MenuStickPress)
+    case EControllerActions_MenuRight:
+    case EControllerActions_MenuRightScroll:
+    case EControllerActions_MenuLeftScroll:
+        return action;
+    default:
         return 100;
-    return action;
+    }
 }
 
 void UIScene::sendInputToMovie(int action, bool, bool pressed, bool)
@@ -542,11 +555,12 @@ void UIScene::customDrawSlotControlFui(fuiRect* rect, int, not_null_ptr<ItemInst
     Lighting::turnOn();
     GlStateManager::popMatrix();
 
-    if (item->getPopTime() > 0)
+    const int popTime = item->getPopTime();
+    if (popTime > 0)
     {
         const float translateX = 8.0f * scaleX + x;
         const float translateY = 12.0f * scaleY + y;
-        const float popScale = item->getPopTime() / 5.0f + 1.0f;
+        const float popScale = popTime / 5.0f + 1.0f;
         GlStateManager::pushMatrix();
         GlStateManager::translatef(translateX, translateY, 0.0f);
         GlStateManager::scalef(1.0f / popScale, (popScale + 1.0f) * 0.5f, 1.0f);
@@ -581,7 +595,7 @@ void UIScene::customDrawSlotControlFui(fuiRect* rect, int, not_null_ptr<ItemInst
     m_itemRenderer->renderAndDecorateItem(item, x, y, scaleX, scaleY, partialTick, flat, true, !drawOverlay, countIcon);
     PIXEndNamedEvent();
 
-    if (item->getPopTime() > 0)
+    if (popTime > 0)
         GlStateManager::popMatrix();
 
     if (drawDecorations)

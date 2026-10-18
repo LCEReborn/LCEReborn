@@ -528,25 +528,22 @@ void UIScene_BiomePreviewMenu::handleZoom(bool zoomOut)
 
 void UIScene_BiomePreviewMenu::handleNavigate(ENavDir direction)
 {
-    arrayWithLength<unsigned char> pixels;
-    pixels.data = mNavigatorMap.mPixels.data;
-    pixels.length = mNavigatorMap.mPixels.length;
     if (!mOverrideSettings.isZoomed())
     {
         EnterCriticalSection(&mCriticalSection);
         switch (direction)
         {
         case NAV_LEFT:
-            mOverrideSettings.RegenerateLeft(pixels);
+            mOverrideSettings.RegenerateLeft(mNavigatorMap.mPixels);
             break;
         case NAV_RIGHT:
-            mOverrideSettings.RegenerateRight(pixels);
+            mOverrideSettings.RegenerateRight(mNavigatorMap.mPixels);
             break;
         case NAV_UP:
-            mOverrideSettings.RegenerateUp(pixels);
+            mOverrideSettings.RegenerateUp(mNavigatorMap.mPixels);
             break;
         case NAV_DOWN:
-            mOverrideSettings.RegenerateDown(pixels);
+            mOverrideSettings.RegenerateDown(mNavigatorMap.mPixels);
             break;
         }
         LeaveCriticalSection(&mCriticalSection);
@@ -559,16 +556,16 @@ void UIScene_BiomePreviewMenu::handleNavigate(ENavDir direction)
         switch (direction)
         {
         case NAV_LEFT:
-            changed = mOverrideSettings.ScrollLeft(pixels);
+            changed = mOverrideSettings.ScrollLeft(mNavigatorMap.mPixels);
             break;
         case NAV_RIGHT:
-            changed = mOverrideSettings.ScrollRight(pixels);
+            changed = mOverrideSettings.ScrollRight(mNavigatorMap.mPixels);
             break;
         case NAV_UP:
-            changed = mOverrideSettings.ScrollUp(pixels);
+            changed = mOverrideSettings.ScrollUp(mNavigatorMap.mPixels);
             break;
         case NAV_DOWN:
-            changed = mOverrideSettings.ScrollDown(pixels);
+            changed = mOverrideSettings.ScrollDown(mNavigatorMap.mPixels);
             break;
         }
         LeaveCriticalSection(&mCriticalSection);

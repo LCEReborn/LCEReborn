@@ -148,7 +148,12 @@ bool SkullBlock::playerWillDestroy(Level* level, const BlockPos& pos, const Bloc
 
 void SkullBlock::onRemove(Level* level, const BlockPos& pos, const BlockState* state)
 {
-    if (!level->mIsClientSide && !state->getValue(NODROP))
+    if (level->mIsClientSide)
+    {
+        return;
+    }
+
+    if (!state->getValue(NODROP))
     {
         boost::shared_ptr<BlockEntity> entity = level->getBlockEntity(pos);
         if (entity != NULL)

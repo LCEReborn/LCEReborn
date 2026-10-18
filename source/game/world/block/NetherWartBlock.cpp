@@ -22,8 +22,8 @@
 
 static AbstractProperty<int>* AGE = static_cast<AbstractProperty<int>*>(IntegerProperty::create(L"age", 0, 3));
 static const AABB* SHAPE_BY_AGE[4] = {
-    AABB::newPermanent(0.0, 0.0, 0.0, 1.0, 0.375, 1.0), AABB::newPermanent(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
-    AABB::newPermanent(0.0, 0.0, 0.0, 1.0, 0.625, 1.0), AABB::newPermanent(0.0, 0.0, 0.0, 1.0, 0.875, 1.0)};
+    AABB::newPermanent(0.0, 0.0, 0.0, 1.0, 0.3125, 1.0), AABB::newPermanent(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+    AABB::newPermanent(0.0, 0.0, 0.0, 1.0, 0.6875, 1.0), AABB::newPermanent(0.0, 0.0, 0.0, 1.0, 0.875, 1.0)};
 
 NetherWartBlock::NetherWartBlock() : Bush(Material::PLANT, MaterialColor::COLOR_RED)
 {

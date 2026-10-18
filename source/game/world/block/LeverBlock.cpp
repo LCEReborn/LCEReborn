@@ -35,12 +35,24 @@ LeverBlock::LeverDirection* LeverBlock::LeverDirection::BY_DATA[8] = {NULL, NULL
 
 AbstractProperty<LeverBlock::LeverDirection*>* LeverBlock::FACING = NULL;
 AbstractProperty<bool>* LeverBlock::POWERED = static_cast<AbstractProperty<bool>*>(BooleanProperty::create(L"powered"));
-const AABB* LeverBlock::AABB_NORTH = AABB::newPermanent(0.25, 0.2, 0.4, 0.75, 0.8, 1.0);
-const AABB* LeverBlock::AABB_SOUTH = AABB::newPermanent(0.25, 0.2, 0.0, 0.75, 0.8, 0.6);
-const AABB* LeverBlock::AABB_WEST = AABB::newPermanent(0.4, 0.2, 0.25, 1.0, 0.8, 0.75);
-const AABB* LeverBlock::AABB_EAST = AABB::newPermanent(0.0, 0.2, 0.25, 0.6, 0.8, 0.75);
-const AABB* LeverBlock::AABB_UP = AABB::newPermanent(0.25, 0.4, 0.25, 0.75, 1.0, 0.75);
-const AABB* LeverBlock::AABB_DOWN = AABB::newPermanent(0.25, 0.0, 0.25, 0.75, 0.6, 0.75);
+static float LEVER_WALL_SHAPE_RADIUS = 0.1875f;
+static float LEVER_FLOOR_SHAPE_RADIUS = 0.25f;
+const AABB* LeverBlock::AABB_NORTH = AABB::newPermanent(0.5f - LEVER_WALL_SHAPE_RADIUS, 0.2f,
+                                                        1.0f - LEVER_WALL_SHAPE_RADIUS * 2.0f,
+                                                        0.5f + LEVER_WALL_SHAPE_RADIUS, 0.8f, 1.0);
+const AABB* LeverBlock::AABB_SOUTH = AABB::newPermanent(
+    0.5f - LEVER_WALL_SHAPE_RADIUS, 0.2f, 0.0, 0.5f + LEVER_WALL_SHAPE_RADIUS, 0.8f, LEVER_WALL_SHAPE_RADIUS * 2.0f);
+const AABB* LeverBlock::AABB_WEST = AABB::newPermanent(1.0f - LEVER_WALL_SHAPE_RADIUS * 2.0f, 0.2f,
+                                                       0.5f - LEVER_WALL_SHAPE_RADIUS, 1.0, 0.8f,
+                                                       0.5f + LEVER_WALL_SHAPE_RADIUS);
+const AABB* LeverBlock::AABB_EAST = AABB::newPermanent(
+    0.0, 0.2f, 0.5f - LEVER_WALL_SHAPE_RADIUS, LEVER_WALL_SHAPE_RADIUS * 2.0f, 0.8f, 0.5f + LEVER_WALL_SHAPE_RADIUS);
+const AABB* LeverBlock::AABB_UP = AABB::newPermanent(0.5f - LEVER_FLOOR_SHAPE_RADIUS, 0.0,
+                                                     0.5f - LEVER_FLOOR_SHAPE_RADIUS, 0.5f + LEVER_FLOOR_SHAPE_RADIUS,
+                                                     0.6f, 0.5f + LEVER_FLOOR_SHAPE_RADIUS);
+const AABB* LeverBlock::AABB_DOWN = AABB::newPermanent(0.5f - LEVER_FLOOR_SHAPE_RADIUS, 0.4f,
+                                                       0.5f - LEVER_FLOOR_SHAPE_RADIUS, 0.5f + LEVER_FLOOR_SHAPE_RADIUS,
+                                                       1.0, 0.5f + LEVER_FLOOR_SHAPE_RADIUS);
 
 LeverBlock::LeverDirection::LeverDirection(int data, const std::wstring& name, const Direction* direction)
     : mData(data),
@@ -144,7 +156,7 @@ void LeverBlock::blockStaticCtor()
         {
             directions.insert(LeverDirection::BY_DATA[data]);
         }
-        property = EnumProperty<LeverDirection*>::create(name, typeid(LeverDirection*), directions,
+        property = EnumProperty<LeverDirection*>::create(name, typeid(LeverDirection), directions,
                                                          Predicates<LeverDirection*>::alwaysTrue);
     }
     FACING = property;

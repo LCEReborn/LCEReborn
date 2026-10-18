@@ -750,13 +750,14 @@ void UIScene_LeaderboardsMenu::handleInput(int playerId, int action, bool repeat
         handled = true;
         break;
     case EControllerActions_MenuUp:
-        if (m_selectedEntry > 0)
+        if (m_selectedEntry - 1 >= 0)
         {
             --m_selectedEntry;
-            sendInputToMovie(action, repeat, pressed, released);
-            return;
         }
-        m_selectedEntry = 0;
+        else
+        {
+            m_selectedEntry = 0;
+        }
         sendInputToMovie(action, repeat, pressed, released);
         return;
     case EControllerActions_MenuDown:

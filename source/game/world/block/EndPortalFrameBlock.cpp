@@ -32,7 +32,7 @@ DirectionProperty* EndPortalFrameBlock::FACING = NULL;
 BooleanProperty* EndPortalFrameBlock::EYE = static_cast<BooleanProperty*>(BooleanProperty::create(L"eye"));
 
 static const AABB* END_PORTAL_FRAME_SHAPE = AABB::newPermanent(0.0, 0.0, 0.0, 1.0, 0.8125, 1.0);
-static const AABB* END_PORTAL_FRAME_EYE_SHAPE = AABB::newPermanent(0.25, 0.8125, 0.25, 0.75, 1.0, 0.75);
+static const AABB* END_PORTAL_FRAME_EYE_SHAPE = AABB::newPermanent(0.3125, 0.8125, 0.3125, 0.6875, 1.0, 0.6875);
 static BlockPattern* END_PORTAL_SHAPE = NULL;
 
 EndPortalFrameBlock::EndPortalFrameBlock() : Block(Material::STONE, MaterialColor::COLOR_GREEN)

@@ -101,7 +101,7 @@ public:
     bool IsNetworkThreadRunning();
     static int RunNetworkGameThreadProc(void* data);
     static int ExitAndJoinFromInviteThreadProc(void* data);
-    int TryToConnectOnline(int (*callback)(void*, bool, int), void* data, bool showProgress);
+    void TryToConnectOnline(int (*callback)(void*, bool, int), void* data, bool showProgress);
     static bool _LeaveGame();
     static int ChangeSessionTypeThreadProc(void* data);
     void SystemFlagSet(INetworkPlayer* player, int flag);

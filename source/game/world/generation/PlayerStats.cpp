@@ -1,5 +1,6 @@
 #include "game/world/generation/PlayerStats.hpp"
 
+#include <algorithm>
 #include <climits>
 #include <cmath>
 #include <cstring>
@@ -531,8 +532,7 @@ double PlayerStats::getTopSpeed()
          ++round)
     {
         const double speed = round->second->mTopSpeed;
-        if (topSpeed < speed)
-            topSpeed = speed;
+        topSpeed = std::max(topSpeed, speed);
     }
     return topSpeed;
 }
@@ -643,5 +643,5 @@ void writeBlockInteractionData(PlayerStats::RoundStats& roundStats, PlayerStats:
     ++info.mByBlock[blockId];
     ++info.mByHeight[pos.y - roundStats.mBuildAreaFromY];
     const double elapsed = std::floor(static_cast<double>(System::processTimeInMilliSecs() - roundStartTime));
-    ++info.mByTime[static_cast<int>(elapsed / BLOCK_INTERACTION_TIME_BUCKET_MS)];
+    ++info.mByTime[static_cast<unsigned int>(elapsed / BLOCK_INTERACTION_TIME_BUCKET_MS)];
 }

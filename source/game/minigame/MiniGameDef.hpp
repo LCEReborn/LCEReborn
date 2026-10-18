@@ -91,6 +91,11 @@ public:
         int mPlayersForMin;
         int mWeight;
         int mKpScore;
+
+        bool operator()(const ChestItemsInfo& left, const ChestItemsInfo& right) const
+        {
+            return (unsigned int)left.mKpScore > (unsigned int)right.mKpScore;
+        }
     };
     struct ChestKitInfo
     {

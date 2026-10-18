@@ -1,8 +1,11 @@
 #include "game/core/MineShaftPieces.hpp"
 #include "game/core/EntityType.hpp"
 
+#include <cstdlib>
+
 #include "game/core/BuiltInLootTables.hpp"
 #include "game/core/Direction.hpp"
+#include "game/core/MemSect.hpp"
 #include "game/core/MinecartChest.hpp"
 #include "game/entity/mob/EntityIO.hpp"
 #include "game/util/ResourceLocation.hpp"
@@ -647,79 +650,73 @@ void MineShaftPieces::MineShaftRoom::addChildren(StructurePiece* startPiece, std
                                                  Random& random)
 {
     int genDepth = getGenDepth();
-    BoundingBox* box = getBoundingBox();
-    int yRange = box->getYSpan() - 4;
-    if (yRange < 1)
+    int yRange = mBoundingBox->getYSpan() - 4;
+    if (yRange <= 0)
         yRange = 1;
 
-    int xAccum = 0;
-    while (box->getXSpan() > 0)
+    int pos;
+    for (pos = 0; pos < mBoundingBox->getXSpan(); pos += 4)
     {
-        int xRand = random.nextInt(box->getXSpan());
-        xAccum += xRand;
-        if (box->getXSpan() < xAccum + 3)
+        pos += random.nextInt(mBoundingBox->getXSpan());
+        if (pos + 3 > mBoundingBox->getXSpan())
             break;
-        int yRand = random.nextInt(yRange);
-        StructurePiece* piece = generateAndAddPiece(startPiece, pieces, random, box->x0 + xAccum, box->y0 + yRand + 1,
-                                                    box->z0 - 1, Direction::NORTH, genDepth);
+        StructurePiece* piece = generateAndAddPiece(startPiece, pieces, random, mBoundingBox->x0 + pos,
+                                                    mBoundingBox->y0 + random.nextInt(yRange) + 1, mBoundingBox->z0 - 1,
+                                                    Direction::NORTH, genDepth);
         if (piece != NULL)
         {
             BoundingBox* childBox = piece->getBoundingBox();
-            mChildPieces.push_back(
-                new BoundingBox(childBox->x0, childBox->y0, box->z0, childBox->x1, childBox->y1, box->z0 - 1));
+            mChildPieces.push_back(new BoundingBox(childBox->x0, childBox->y0, mBoundingBox->z0, childBox->x1,
+                                                   childBox->y1, mBoundingBox->z0 + 1));
         }
-        xAccum += 4;
     }
 
-    xAccum = 0;
-    while (box->getXSpan() > 0)
+    for (pos = 0; pos < mBoundingBox->getXSpan(); pos += 4)
     {
-        int xRand = random.nextInt(box->getXSpan());
-        xAccum += xRand;
-        if (box->getXSpan() < xAccum + 3)
+        pos += random.nextInt(mBoundingBox->getXSpan());
+        if (pos + 3 > mBoundingBox->getXSpan())
             break;
-        int yRand = random.nextInt(yRange);
-        generateAndAddPiece(startPiece, pieces, random, box->x0 + xAccum, box->y0 + yRand + 1, box->z1 + 1,
-                            Direction::SOUTH, genDepth);
-        xAccum += 4;
-    }
-
-    int zAccum = 0;
-    while (box->getZSpan() > 0)
-    {
-        int zRand = random.nextInt(box->getZSpan());
-        zAccum += zRand;
-        if (box->getZSpan() < zAccum + 3)
-            break;
-        int yRand = random.nextInt(yRange);
-        StructurePiece* piece = generateAndAddPiece(startPiece, pieces, random, box->x0 - 1, box->y0 + yRand + 1,
-                                                    box->z0 + zAccum, Direction::WEST, genDepth);
+        StructurePiece* piece = generateAndAddPiece(startPiece, pieces, random, mBoundingBox->x0 + pos,
+                                                    mBoundingBox->y0 + random.nextInt(yRange) + 1, mBoundingBox->z1 + 1,
+                                                    Direction::SOUTH, genDepth);
         if (piece != NULL)
         {
             BoundingBox* childBox = piece->getBoundingBox();
-            mChildPieces.push_back(
-                new BoundingBox(box->x0, childBox->y0, childBox->z0, box->x0 + 1, childBox->y1, childBox->z1));
+            mChildPieces.push_back(new BoundingBox(childBox->x0, childBox->y0, mBoundingBox->z1 - 1, childBox->x1,
+                                                   childBox->y1, mBoundingBox->z1));
         }
-        zAccum += 4;
     }
 
-    zAccum = 0;
-    while (box->getZSpan() > 0)
+    for (pos = 0; pos < mBoundingBox->getZSpan(); pos += 4)
     {
-        int zRand = random.nextInt(box->getZSpan());
-        zAccum += zRand;
-        if (box->getZSpan() < zAccum + 3)
-            return;
-        int yRand = random.nextInt(yRange);
-        StructurePiece* piece = generateAndAddPiece(startPiece, pieces, random, box->x1 + 1, box->y0 + yRand + 1,
-                                                    box->z0 + zAccum, Direction::EAST, genDepth);
+        pos += random.nextInt(mBoundingBox->getZSpan());
+        if (pos + 3 > mBoundingBox->getZSpan())
+            break;
+        StructurePiece* piece = generateAndAddPiece(startPiece, pieces, random, mBoundingBox->x0 - 1,
+                                                    mBoundingBox->y0 + random.nextInt(yRange) + 1,
+                                                    mBoundingBox->z0 + pos, Direction::WEST, genDepth);
         if (piece != NULL)
         {
             BoundingBox* childBox = piece->getBoundingBox();
-            mChildPieces.push_back(
-                new BoundingBox(box->x1 - 1, childBox->y0, childBox->z0, box->x1, childBox->y1, childBox->z1));
+            mChildPieces.push_back(new BoundingBox(mBoundingBox->x0, childBox->y0, childBox->z0, mBoundingBox->x0 + 1,
+                                                   childBox->y1, childBox->z1));
         }
-        zAccum += 4;
+    }
+
+    for (pos = 0; pos < mBoundingBox->getZSpan(); pos += 4)
+    {
+        pos += random.nextInt(mBoundingBox->getZSpan());
+        if (pos + 3 > mBoundingBox->getZSpan())
+            break;
+        StructurePiece* piece = generateAndAddPiece(startPiece, pieces, random, mBoundingBox->x1 + 1,
+                                                    mBoundingBox->y0 + random.nextInt(yRange) + 1,
+                                                    mBoundingBox->z0 + pos, Direction::EAST, genDepth);
+        if (piece != NULL)
+        {
+            BoundingBox* childBox = piece->getBoundingBox();
+            mChildPieces.push_back(new BoundingBox(mBoundingBox->x1 - 1, childBox->y0, childBox->z0, mBoundingBox->x1,
+                                                   childBox->y1, childBox->z1));
+        }
     }
 }
 
@@ -919,18 +916,19 @@ StructurePiece* MineShaftPieces::generateAndAddPiece(StructurePiece* startPiece,
                                                      Random& random, int x, int y, int z, const Direction* direction,
                                                      int genDepth)
 {
-    if (startPiece == NULL || pieces == NULL || genDepth >= 9)
+    if (genDepth > 8)
         return NULL;
-    BoundingBox* parent = startPiece->getBoundingBox();
-    if (parent == NULL || x - parent->x0 >= 81 || z - parent->z0 >= 81)
+    if (std::abs(x - startPiece->getBoundingBox()->x0) > 80 || std::abs(z - startPiece->getBoundingBox()->z0) > 80)
         return NULL;
-    MineShaftPiece* shaft = dynamic_cast<MineShaftPiece*>(startPiece);
-    if (shaft == NULL)
-        return NULL;
-    StructurePiece* piece = createRandomShaftPiece(pieces, random, x, y, z, direction, genDepth + 1, shaft->mType);
-    if (piece == NULL)
-        return NULL;
-    pieces->push_back(piece);
-    piece->addChildren(startPiece, pieces, random);
+
+    StructurePiece* piece = createRandomShaftPiece(pieces, random, x, y, z, direction, genDepth + 1,
+                                                   dynamic_cast<MineShaftPiece*>(startPiece)->mType);
+    if (piece != NULL)
+    {
+        MemSect(50);
+        pieces->push_back(piece);
+        MemSect(0);
+        piece->addChildren(startPiece, pieces, random);
+    }
     return piece;
 }

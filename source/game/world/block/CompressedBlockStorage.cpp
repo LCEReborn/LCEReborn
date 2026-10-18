@@ -186,7 +186,7 @@ void CompressedBlockStorage::compress(int upgradeBlock)
                     int indexByte = (j >> shift) & indexMask;
                     int bit = (j & slotMask) * bitsPerBlock;
 
-                    tempData[j] = palette[(indices[indexByte] >> bit) & valueMask];
+                    tempData[j] = (indices[indexByte] >> bit) & valueMask;
                 }
 
                 unpacked = tempData;

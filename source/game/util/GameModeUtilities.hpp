@@ -50,18 +50,18 @@ public:
 
     static bool DistributeItemsSpread(const std::vector<boost::shared_ptr<Container> >* containers,
                                       const std::vector<not_null_ptr<ItemInstance> >* items);
-    static int SelectRandomKit(const std::vector<MiniGameDef::ChestKitInfo>* kits, unsigned int* weights,
-                               Random* random);
+    static const MiniGameDef::ChestKitInfo* SelectRandomKit(const std::vector<MiniGameDef::ChestKitInfo>* kits,
+                                                            unsigned int* weights, Random* random);
     static void GenerateContainerContentsGreedy(std::vector<not_null_ptr<ItemInstance> >* output,
                                                 const std::vector<MiniGameDef::ChestItemsInfo>* items, Random* random,
-                                                unsigned int playerCount, unsigned int score);
+                                                unsigned int targetScore, unsigned int score);
     static void GenerateContainerContentsRandom(std::vector<not_null_ptr<ItemInstance> >* output,
                                                 const std::vector<MiniGameDef::ChestItemsInfo>* items, Random* random,
-                                                unsigned int playerCount, unsigned int score);
+                                                unsigned int targetScore, unsigned int score);
     static bool DistributeItemsKitsAndKP(const std::vector<boost::shared_ptr<Container> >* containers,
                                          const std::vector<MiniGameDef::ChestItemsInfo>* items,
-                                         const std::vector<MiniGameDef::ChestKitInfo>* kits, unsigned int playerCount,
-                                         bool useKits);
+                                         const std::vector<MiniGameDef::ChestKitInfo>* kits, unsigned int chestKpScore,
+                                         bool greedy);
     static bool DistributeItemsKitsFixed(const std::vector<boost::shared_ptr<Container> >* containers,
                                          const std::vector<MiniGameDef::ChestKitInfo>* kits);
     static bool DistributeItemsWeightedRandom(const std::vector<boost::shared_ptr<Container> >* containers,

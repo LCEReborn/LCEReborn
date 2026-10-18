@@ -104,7 +104,7 @@ const FlowerPotBlock::Contents* FlowerPotBlock::Contents::VALUES[FlowerPotBlock:
 EnumProperty<const FlowerPotBlock::Contents*>* FlowerPotBlock::CONTENTS = NULL;
 AbstractProperty<int>* FlowerPotBlock::LEGACY_DATA = static_cast<AbstractProperty<int>*>(
     IntegerProperty::create(L"legacy_data", 0, 15));
-AABB* FlowerPotBlock::SHAPE = AABB::newPermanent(0.3125, 0.0, 0.3125, 0.6875, 0.375, 0.6875);
+AABB* FlowerPotBlock::SHAPE = AABB::newPermanent(0.3125, 0.0, 0.3125, 0.6875, 0.371875, 0.6875);
 const double FlowerPotBlock::POT_WIDTH = 0.375;
 
 FlowerPotBlock::Contents::Contents(EContents contents, const std::wstring& name) : mName(name), mContents(contents)

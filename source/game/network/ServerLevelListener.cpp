@@ -104,7 +104,11 @@ void ServerLevelListener::playSoundToAllPlayers(const SoundEvent* sound, SoundSo
         if (!sentPlayers.empty())
         {
             INetworkPlayer* networkPlayer = player->mConnection->getNetworkPlayer();
-            if (networkPlayer != NULL)
+            if (networkPlayer == NULL)
+            {
+                alreadySent = true;
+            }
+            else
             {
                 for (unsigned int j = 0; j < sentPlayers.size(); ++j)
                 {

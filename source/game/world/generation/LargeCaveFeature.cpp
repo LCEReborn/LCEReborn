@@ -142,7 +142,7 @@ void LargeCaveFeature::addTunnel(Level* level, long long seed, int chunkX, int c
         second = tunnelRandom.nextFloat();
         strength = tunnelRandom.nextFloat();
         yawVariance += (first - second) * strength * 4.0f;
-        if (!room && step == branchPoint && width > 1.0f)
+        if (!room && step == branchPoint && width > 1.0f && length > 0)
         {
             long long branchSeed = tunnelRandom.nextLong();
             float branchWidth = tunnelRandom.nextFloat() * 0.5f + 0.5f;

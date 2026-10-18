@@ -2995,7 +2995,7 @@ void Block::staticCtor()
 
     registerBlock(
         128, L"sandstone_stairs",
-        (new StairBlock(sandstone->defaultBlockState()->setValue(SandStoneBlock::TYPE, SandStoneBlock::SMOOTH)))
+        (new StairBlock(sandstone->defaultBlockState()->setValue(SandStoneBlock::TYPE, SandStoneBlock::SANDSTONE)))
             ->setIconName(L"stairsSandstone")
             ->sendBlockData(15)
             ->setNameAndDescriptionId(IDS_TILE_STAIRS_SANDSTONE, IDS_DESC_STAIRS)
@@ -3118,7 +3118,7 @@ void Block::staticCtor()
 
     registerBlock(144, L"skull",
                   (new SkullBlock())
-                      ->setIconName(L"skull")
+                      ->setIconName(L"")
                       ->setDestroyTime(1.0f)
                       ->setSoundType(SoundType::STONE)
                       ->setNameAndDescriptionId(IDS_TILE_SKULL, IDS_DESC_SKULL));
@@ -3255,7 +3255,7 @@ void Block::staticCtor()
 
     registerBlock(161, L"leaves2",
                   (new NewLeafBlock())
-                      ->setIconName(L"leaves2")
+                      ->setIconName(L"leaves")
                       ->sendBlockData(3)
                       ->setNameAndDescriptionId(IDS_TILE_LEAVES, IDS_DESC_LEAVES));
 
@@ -3398,7 +3398,7 @@ void Block::staticCtor()
 
     registerBlock(180, L"red_sandstone_stairs",
                   (new StairBlock(redSandstone->defaultBlockState()->setValue(RedSandStoneBlock::TYPE,
-                                                                              RedSandStoneBlock::Type::SMOOTH)))
+                                                                              RedSandStoneBlock::Type::DEFAULT)))
                       ->setIconName(L"red_sandstone")
                       ->setNameAndDescriptionId(IDS_TILE_STAIRS_REDSANDSTONE, IDS_DESC_STAIRS_REDSANDSTONE)
                       ->setBaseItemTypeAndMaterial(16, 48));
@@ -4041,7 +4041,7 @@ void Block::staticCtor()
 
     registerBlock(272, L"bubble_column_segment",
                   (new BubbleColumnSegment(Material::BUBBLE_COLUMN))
-                      ->setIconName(L"bubble_column_segment")
+                      ->setIconName(L"water")
                       ->setTicking(1)
                       ->setNameAndDescriptionId(IDS_TILE_BUBBLE_COLUMN_SEGMENT, IDS_DESC_TILE_BUBBLE_COLUMN_SEGMENT));
 
@@ -4114,7 +4114,7 @@ void Block::staticCtor()
     registerBlock(291, L"prismarine_stairs",
                   (new StairBlock(prismarine->defaultBlockState()->setValue(PrismarineBlock::VARIANT,
                                                                             PrismarineBlock::Variant::ROUGH)))
-                      ->setIconName(L"prismarine_stairs")
+                      ->setIconName(L"prismarine")
                       ->setNameAndDescriptionId(IDS_TILE_STAIRS_PRISMARINE, IDS_DESC_STAIRS_PRISMARINE)
                       ->setBaseItemTypeAndMaterial(16, 54));
 

@@ -43,6 +43,7 @@ left out of the percentages.
 import argparse
 import collections
 import csv
+import heapq
 import math
 import re
 import struct
@@ -83,7 +84,6 @@ THIN_SIZE = 128
 THIN_BRANCHES = 8
 INLINE_DEPTH = 3
 ROLE_WINDOW = 16
-LOADS = (32, 33, 34, 35, 40, 41, 42, 43, 46)
 STORES = (36, 37, 38, 39, 44, 45, 47, 52, 53, 54, 55)
 OPTIONS = {
     'inline': True,           # inlining-aware call comparison
@@ -246,10 +246,14 @@ def string_at(data, offset):
 
 
 X_WRITES_RA = {28, 60, 124, 284, 316, 412, 444, 476, 24, 536, 792, 824, 26, 922, 954}
-X_NO_WRITE = {0, 32, 151, 183, 215, 247, 407, 439, 663, 695, 727, 759, 918, 662, 150, 4, 86, 54, 278, 246, 1014,
-              598, 854, 467, 144, 146, 210, 242}
-X_LOAD_UPDATE = {55, 119, 311, 375, 343, 567, 631}
+X_NO_WRITE = {0, 32, 151, 215, 407, 535, 599, 661, 663, 725, 727, 983, 918, 662, 438, 150, 4, 86, 54, 278, 246, 1014,
+              470, 758, 982, 306, 370, 566, 598, 854, 512, 467, 144, 146, 210, 242}
+X_STORE_UPDATE = {183, 247, 439, 695, 759}
+X_LOAD_UPDATE = {55, 119, 311, 375}
+X_FLOAT_LOAD_UPDATE = {567, 631}
 VOLATILE = (0,) + tuple(range(3, 13))
+MERGED_CANDIDATES = 4
+BLOCK_VISITS = 32
 
 
 def written_gprs(w):
@@ -262,13 +266,15 @@ def written_gprs(w):
         return (rd, ra)
     if op in (20, 21, 23, 24, 25, 26, 27, 28, 29):
         return (ra,)
-    if op in (37, 39, 45, 47, 49, 51, 53, 55):
+    if op in (37, 39, 45, 49, 51, 53, 55, 57, 61):
         return (ra,)
     if op == 46:
         return tuple(range(rd, 32))
+    if op == 4:
+        return (ra,) if (w >> 1) & 0x3f in (38, 39) else ()
     if op == 31:
         xo = (w >> 1) & 0x3ff
-        if xo in X_WRITES_RA:
+        if xo in X_WRITES_RA or xo in X_STORE_UPDATE or xo in X_FLOAT_LOAD_UPDATE:
             return (ra,)
         if xo in X_NO_WRITE:
             return ()
@@ -276,6 +282,61 @@ def written_gprs(w):
             return (rd, ra)
         return (rd,)
     return ()
+
+
+def is_call(w):
+    """Whether an instruction is a call: a branch that sets the link register."""
+    op = w >> 26
+    return bool(w & 1) and (op in (16, 18) or op == 19 and (w >> 1) & 0x3ff in (16, 528))
+
+
+def falls_through(w):
+    """Whether the next instruction can run after this one without a branch to it."""
+    op = w >> 26
+    if w & 1:
+        return True
+    if op == 18:
+        return False
+    if op == 16 or op == 19 and (w >> 1) & 0x3ff in (16, 528):
+        return (w >> 21) & 0x14 != 0x14
+    return True
+
+
+def local_branch(w, i, count, relocated):
+    """The index of the instruction a direct branch at index i goes to within its function, or None
+    for a call, a branch through a relocation or to an absolute address, and one that leaves."""
+    op = w >> 26
+    if relocated or w & 3 or op not in (16, 18):
+        return None
+    if op == 18:
+        disp = w & 0x03fffffc
+        if disp & 0x02000000:
+            disp -= 0x04000000
+    else:
+        disp = w & 0xfffc
+        if disp & 0x8000:
+            disp -= 0x10000
+    target = i + disp // 4
+    return target if 0 <= target < count else None
+
+
+def merged(states):
+    """The register facts of several (addresses, code, high) states meeting at one instruction: a data
+    register every state defines holds any of their addresses (up to MERGED_CANDIDATES of them), a
+    code register only the function all of them agree on, and a register the high half of an address
+    only when all of them agree on it."""
+    addresses, code, high = states[0]
+    rest = states[1:]
+    joined = {}
+    for reg, candidates in addresses.items():
+        if all(reg in s[0] for s in rest):
+            union = list(candidates)
+            for s in rest:
+                union.extend(c for c in s[0][reg] if c not in union)
+            if len(union) <= MERGED_CANDIDATES:
+                joined[reg] = tuple(sorted(union, key=lambda c: (c[0].index, c[1])))
+    return (joined, {reg: v for reg, v in code.items() if all(s[1].get(reg) == v for s in rest)},
+            {reg: v for reg, v in high.items() if all(s[2].get(reg) == v for s in rest)})
 
 
 class Reader(object):
@@ -351,8 +412,10 @@ class Reader(object):
         words = struct.unpack('>%dI' % count, data[:count * 4])
         relocs = self.elf.relocs(section.index)
         constructor = symbol.name.startswith('__ct__') or ITANIUM_CTOR.match(symbol.name) is not None
+        entries = self.block_entries(words, offset, relocs)
         addresses = {}
         code = {}
+        high = {}
         ctr = None
         conditional = []
         new_calls = []
@@ -362,6 +425,8 @@ class Reader(object):
         known = {}
         for i, w in enumerate(words):
             here = offset + 4 * i
+            if i in entries:
+                addresses, code, high = (dict(part) for part in entries[i])
             op = w >> 26
             rd, ra = (w >> 21) & 31, (w >> 16) & 31
             reloc = relocs.get(here + 2) if op != 18 else relocs.get(here)
@@ -371,11 +436,6 @@ class Reader(object):
                 first_compare_r3 = i
             if op == 31 and (w >> 1) & 0x3ff == 467 and (w >> 11) & 0x3ff == 0x120:
                 ctr = code.get(rd)
-            elif reloc is None and op in (12, 13, 15, 24, 25, 31) + LOADS or reloc is None and op == 14 \
-                    and ra not in addresses:
-                written = ra if op in (24, 25) else rd
-                addresses.pop(written, None)
-                code.pop(written, None)
             if op == 31 and (w >> 1) & 0x3ff == 444 and rd == ((w >> 11) & 31) and rd in known:
                 known[ra] = known[rd]
             elif op == 14 and ra == 0 and reloc is None:
@@ -387,11 +447,11 @@ class Reader(object):
             else:
                 for reg in written_gprs(w):
                     known.pop(reg, None)
-            if op == 18 and w & 1 or op == 19 and (w >> 1) & 0x3ff == 528 and w & 1 and (rd & 0x14) == 0x14:
+            if is_call(w):
                 target = None
                 if op == 18:
                     target = self.call_target(w, here, section, relocs)
-                elif ctr is not None:
+                elif op == 19 and (w >> 1) & 0x3ff == 528 and (rd & 0x14) == 0x14 and ctr is not None:
                     target = self.function_at(*ctr)
                 if target:
                     for reg in range(3, 11):
@@ -399,6 +459,8 @@ class Reader(object):
                             out.arguments.add((target, reg - 3, known[reg]))
                 for reg in VOLATILE:
                     known.pop(reg, None)
+                if op != 19 or (w >> 1) & 0x3ff != 528:
+                    ctr = None
             if op == 18:
                 name = self.branch(out, w, here, offset, symbol.size, section, relocs)
                 if name in NEW_OPERATORS and w & 1:
@@ -426,7 +488,7 @@ class Reader(object):
                             if not STRING_SINK.search(name):
                                 out.strings.update(pending)
                             pending = []
-                    elif not w & 1 and self.switch(words, i):
+                    elif not w & 1 and self.switch(words, i, section, offset, symbol.size, relocs):
                         switches.append(i)
                     else:
                         out.indirect += 1
@@ -435,41 +497,169 @@ class Reader(object):
                 width = 4 if op < 50 else 8
                 if reloc is not None and reloc[0] == ppcelf.R_PPC_ADDR16_LO:
                     section_, at = self.data_address(reloc[1], reloc[2])
-                    if section_ is not None:
+                    if section_ is not None and self.based(op, ra, reloc, high):
                         self.add_constant(out, section_, at, width, words, i, rd)
                 elif reloc is None and ra in addresses:
-                    section_, at = addresses[ra]
-                    self.add_constant(out, section_, at + s16(w & 0xffff), width, words, i, rd)
-            elif op in (12, 13, 14) and reloc is not None and reloc[0] == ppcelf.R_PPC_ADDR16_LO:
-                section_, at = self.data_address(reloc[1], reloc[2])
-                target = self.elf.target(reloc[1], reloc[2])
-                addresses.pop(rd, None)
-                code.pop(rd, None)
-                if section_ is not None:
-                    addresses[rd] = (section_, at)
-                    text = string_at(section_.data, at)
-                    if text is not None:
-                        pending.append(text)
-                elif target is not None and target[0].executable:
-                    code[rd] = target
-            elif op == 14 and reloc is None and ra in addresses and ra != 0:
-                section_, at = addresses[ra]
-                at += s16(w & 0xffff)
-                addresses[rd] = (section_, at)
-                text = string_at(section_.data, at)
-                if text is not None:
-                    pending.append(text)
+                    for section_, at in addresses[ra]:
+                        self.add_constant(out, section_, at + s16(w & 0xffff), width, words, i, rd)
             elif op == 36 and rd in addresses:
-                slots = self.vtable_slots(*addresses[rd])
-                if slots is not None:
-                    out.vtables.append(slots)
+                for section_, at in addresses[rd]:
+                    slots = self.vtable_slots(section_, at)
+                    if slots is not None:
+                        out.vtables.append(slots)
             elif op == 15 and ra == 0 and reloc is None:
                 value = self.built(words, i, relocs, offset)
                 if value >= 0x10000:
                     out.immediates.add(value)
+            formed = self.transfer(w, here, relocs, addresses, code, high)
+            for section_, at in addresses.get(formed, ()):
+                text = string_at(section_.data, at)
+                if text is not None:
+                    pending.append(text)
         out.strings.update(pending)
         out.generated = self.generated(conditional, new_calls, switches, constructor, first_compare_r3)
         return out
+
+    def high_half(self, reloc):
+        """The high half (as addis adds it) of the address a relocation names, or None."""
+        target = self.elf.target(reloc[1], reloc[2])
+        if target is None:
+            return None
+        address = target[0].address + target[1]
+        return ((address + 0x8000) >> 16) & 0xffff
+
+    def based(self, op, ra, reloc, high):
+        """Whether an instruction with a low-half relocation forms that address itself: its base is
+        zero (li, a load from an absolute address) or a register holding the address's high half
+        from a lis. An addis that adds a high half to an index makes a table address instead."""
+        if ra == 0 and op not in (12, 13):
+            return True
+        return ra in high and high[ra] == self.high_half(reloc)
+
+    def transfer(self, w, here, relocs, addresses, code, high):
+        """Applies one instruction to the registers known to hold the address of data (addresses: each
+        register's candidate (section, offset) pairs), of a function (code) or the high half of an
+        address from a lis (high). Returns the register an instruction that forms a data address
+        (li, addi or addic with a relocation, addi to a known address) set, or None."""
+        op = w >> 26
+        rd, ra = (w >> 21) & 31, (w >> 16) & 31
+        reloc = relocs.get(here + 2) if op != 18 else relocs.get(here)
+        defined = formed = raised = None
+        if op == 15 and ra == 0 and reloc is not None and reloc[0] == ppcelf.R_PPC_ADDR16_HA:
+            half = self.high_half(reloc)
+            if half is not None:
+                high[rd] = half
+                raised = rd
+        elif op in (12, 13, 14) and reloc is not None and reloc[0] == ppcelf.R_PPC_ADDR16_LO \
+                and self.based(op, ra, reloc, high):
+            section_, at = self.data_address(reloc[1], reloc[2])
+            target = self.elf.target(reloc[1], reloc[2])
+            addresses.pop(rd, None)
+            code.pop(rd, None)
+            defined = rd
+            if section_ is not None:
+                addresses[rd] = ((section_, at),)
+                formed = rd
+            elif target is not None and target[0].executable:
+                code[rd] = target
+        elif op == 15 and ra != 0 and reloc is not None and reloc[0] == ppcelf.R_PPC_ADDR16_HA:
+            section_, at = self.data_address(reloc[1], reloc[2])
+            target = self.elf.target(reloc[1], reloc[2])
+            if section_ is not None and (section_, at) in addresses.get(ra, ()):
+                code.pop(rd, None)
+                addresses[rd] = ((section_, at),)
+                defined = rd
+            elif target is not None and code.get(ra) == target:
+                addresses.pop(rd, None)
+                code[rd] = target
+                defined = rd
+        elif op == 14 and reloc is None and ra != 0 and ra in addresses:
+            code.pop(rd, None)
+            addresses[rd] = tuple((section_, at + s16(w & 0xffff)) for section_, at in addresses[ra])
+            defined = formed = rd
+        elif op == 31 and (w >> 1) & 0x3ff == 444 and rd == (w >> 11) & 31:
+            if rd in addresses:
+                code.pop(ra, None)
+                addresses[ra] = addresses[rd]
+                defined = ra
+            elif rd in code:
+                addresses.pop(ra, None)
+                code[ra] = code[rd]
+                defined = ra
+            if rd in high:
+                high[ra] = high[rd]
+                raised = ra
+        if is_call(w):
+            for reg in VOLATILE:
+                addresses.pop(reg, None)
+                code.pop(reg, None)
+                high.pop(reg, None)
+        for reg in written_gprs(w):
+            if reg != defined:
+                addresses.pop(reg, None)
+                code.pop(reg, None)
+            if reg != raised:
+                high.pop(reg, None)
+        return formed
+
+    def block_entries(self, words, offset, relocs):
+        """The (addresses, code, high) state at the start of each basic block of a function, found by
+        applying transfer along its direct branches and fall-throughs until nothing changes. Where
+        several paths meet, a register keeps what every one of them agrees it may hold. A block that no
+        direct branch or fall-through reaches (the target of a jump through a table) starts with the
+        state of the block before it."""
+        count = len(words)
+        jumps = {}
+        leaders = {0}
+        for i, w in enumerate(words):
+            target = local_branch(w, i, count, relocs.get(offset + 4 * i) is not None)
+            if target is not None:
+                jumps[i] = target
+                leaders.add(target)
+            if w >> 26 in (16, 18, 19) and not is_call(w) and i + 1 < count:
+                leaders.add(i + 1)
+        starts = sorted(leaders)
+        ends = dict(zip(starts, starts[1:] + [count]))
+        preds = collections.defaultdict(list)
+        for start in starts:
+            last = ends[start] - 1
+            if last in jumps:
+                preds[jumps[last]].append(start)
+            if ends[start] < count and falls_through(words[last]):
+                preds[ends[start]].append(start)
+        for before, start in zip(starts, starts[1:]):
+            if not preds[start]:
+                preds[start].append(before)
+        succs = collections.defaultdict(list)
+        for start, sources in preds.items():
+            for source in sources:
+                succs[source].append(start)
+        entries = {}
+        exits = {}
+        work = [0]
+        queued = {0}
+        visits = BLOCK_VISITS * len(starts)
+        while work and visits > 0:
+            visits -= 1
+            start = heapq.heappop(work)
+            queued.discard(start)
+            states = [exits[p] for p in preds[start] if p in exits]
+            if start == 0:
+                states.append(({}, {}, {}))
+            entry = merged(states)
+            if start in exits and entries.get(start) == entry:
+                continue
+            entries[start] = entry
+            addresses, code, high = (dict(part) for part in entry)
+            for k in range(start, ends[start]):
+                self.transfer(words[k], offset + 4 * k, relocs, addresses, code, high)
+            if exits.get(start) != (addresses, code, high):
+                exits[start] = (addresses, code, high)
+                for succ in succs[start]:
+                    if succ not in queued:
+                        queued.add(succ)
+                        heapq.heappush(work, succ)
+        return entries
 
     @staticmethod
     def generated(conditional, new_calls, switches, constructor, first_compare_r3):
@@ -504,14 +694,14 @@ class Reader(object):
                 return (value + s16(n & 0xffff)) & 0xffffffff
             if op in (16, 18, 19):
                 break
-            writes = ra if op in (20, 21, 24, 25, 26, 27, 28, 29) else rd
-            if writes == reg and op not in STORES + (10, 11):
+            if reg in written_gprs(n):
                 break
         return value
 
-    @staticmethod
-    def switch(words, i):
-        """Whether a bctr dispatches a jump table: the count register comes from a table load."""
+    def switch(self, words, i, section, offset, size, relocs):
+        """Whether a bctr dispatches a jump table: the count register comes from a table load, or
+        is an address inside the function itself (a table of branches an indexed addis and its addi
+        select)."""
         for k in range(i - 1, max(-1, i - 9), -1):
             w = words[k]
             if w >> 26 == 31 and (w >> 1) & 0x3ff == 467 and ((w >> 11) & 0x3ff) == 0x120:
@@ -520,6 +710,13 @@ class Reader(object):
                     v = words[j]
                     if v >> 26 == 31 and (v >> 1) & 0x3ff in (23, 266) and (v >> 21) & 31 == reg:
                         return True
+                    if v >> 26 == 14 and (v >> 21) & 31 == reg:
+                        reloc = relocs.get(offset + 4 * j + 2)
+                        if reloc is None or reloc[0] != ppcelf.R_PPC_ADDR16_LO:
+                            return False
+                        target = self.elf.target(reloc[1], reloc[2])
+                        return target is not None and target[0].index == section.index \
+                            and offset <= target[1] < offset + size
                 return False
         return False
 

@@ -2,11 +2,13 @@
 
 This repository holds a reconstructed C++ source tree for Minecraft: Wii U
 Edition, the 4J Studios Legacy Console Edition codebase as it shipped on
-Wii U. It is written from the structural evidence the unstripped Wii U
-build leaves behind (class names, method signatures, class layouts, string
-tables and control flow), cross-checked against the behaviour of the Xbox 360
-TU75 build. Every file was authored as source; nothing is emitted by a
-decompiler or copied from a game binary. See `provenance.md`.
+Wii U. It is a matching decompilation: the source is written by reading the
+original Wii U executable's compiled code, together with the symbols, type
+information and string tables the unstripped build carries, and each
+function is compiled and compared with the original until it matches. The
+Xbox 360 TU75 build serves as a behavioural cross-check. Every file is
+hand-authored text; no decompiler output, disassembly or game data is
+committed. See `provenance.md`.
 
 ## Who is writing it
 

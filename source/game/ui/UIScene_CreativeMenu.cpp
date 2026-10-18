@@ -138,8 +138,7 @@ UIScene_CreativeMenu::TabSpec::TabSpec(const wchar_t* title, int titleStringId, 
     }
 
     m_itemsPerPage = ITEM_SLOT_COUNT - specialItemCount;
-    m_pageCount = static_cast<unsigned int>(
-        std::ceil(static_cast<float>(m_itemCount) / static_cast<float>(m_itemsPerPage)));
+    m_pageCount = static_cast<int>(std::ceil(static_cast<float>(m_itemCount) / static_cast<float>(m_itemsPerPage)));
 }
 
 UIScene_CreativeMenu::TabSpec::~TabSpec()
@@ -539,7 +538,7 @@ void UIScene_CreativeMenu::handleOutsideClicked(int playerId, int, int button)
 void UIScene_CreativeMenu::updateTabHighlightAndText(ECreativeInventoryTabs tab)
 {
     fuiRenderNode* root = m_movie->getRootNode();
-    static_cast<FJ_CreativeMenu*>(root->getFuiNode()->asFJ_Document())->SetActiveTab(static_cast<int>(tab));
+    static_cast<FJ_CreativeMenu*>(root->getFuiNode())->SetActiveTab(static_cast<int>(tab));
     m_inventoryLabel.setLabel(UIString(L10N::GetString(s_tabSpecs[tab]->m_titleStringId)), false, false);
 }
 

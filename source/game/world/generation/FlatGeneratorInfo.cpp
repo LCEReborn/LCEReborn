@@ -213,6 +213,7 @@ void FlatGeneratorInfo::getLayers(const BlockState* (&states)[256]) const
 
 void FlatGeneratorInfo::getLayers(std::vector<FlatLayerInfo>& layers) const
 {
+    layers.clear();
     layers = core()->layers;
 }
 void FlatGeneratorInfo::setDisplayname(int displayname)

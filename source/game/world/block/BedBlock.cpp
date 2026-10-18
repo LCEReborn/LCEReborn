@@ -86,7 +86,7 @@ void BedBlock::blockStaticCtor()
         {
             parts.insert(gBedParts[i]);
         }
-        part = EnumProperty<const Part*>::create(name, typeid(const Part*), parts, filter);
+        part = EnumProperty<const Part*>::create(name, typeid(Part), parts, filter);
     }
     PART = part;
 }
@@ -343,8 +343,8 @@ void BedBlock::spawnResources(Level* level, const BlockPos& pos, const BlockStat
                 color = bedEntity->getColor();
             }
         }
-        not_null_ptr<ItemInstance> item(new ItemInstance(Items::bed, 1, color->getBlockData()));
-        Block::popResource(level, pos, item);
+        Block::popResource(level, pos,
+                           not_null_ptr<ItemInstance>(new ItemInstance(Items::bed, 1, color->getBlockData())));
     }
 }
 

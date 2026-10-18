@@ -1039,6 +1039,11 @@ void CInput::SetFakePadValue(int pad, unsigned char map)
 }
 bool CInput::ButtonPressed(int pad, unsigned char map, unsigned int mask)
 {
+    unsigned char menuShown = 0;
+    if (pad < 4)
+    {
+        menuShown = menuDisplayed[pad];
+    }
     int mappedPad = pad;
     if (!RemapIpad(mappedPad))
     {
@@ -1048,21 +1053,20 @@ bool CInput::ButtonPressed(int pad, unsigned char map, unsigned int mask)
     {
         return joypads[mappedPad].pressedValue != 0;
     }
-    unsigned int mapping = GetGameJoypadMaps(pad, map);
     if (map <= controllerConfiguration[2])
     {
-        return (joypads[mappedPad].pressedValue & mapping) != 0;
+        return (joypads[mappedPad].pressedValue & GetGameJoypadMaps(pad, map)) != 0;
     }
-    if (pad < 4 && menuDisplayed[pad])
+    if (menuShown)
     {
         return false;
     }
-    unsigned int value = joypads[mappedPad].pressedValue & mapping;
-    if (!only_one_bit_set(mapping) && (joypads[mappedPad].rawValue & mask) != 0)
+    unsigned int value = joypads[mappedPad].pressedValue & GetGameJoypadMaps(pad, map);
+    if (value != 0 && !only_one_bit_set(GetGameJoypadMaps(pad, map)) && (joypads[mappedPad].rawValue & mask) != 0)
     {
         value |= mask;
     }
-    return value == mapping && allowInput(pad, map, value);
+    return value == GetGameJoypadMaps(pad, map) && allowInput(pad, map, value);
 }
 bool CInput::ButtonReleased(int pad, unsigned char map)
 {
@@ -1231,11 +1235,12 @@ float CInput::GetJoypadStick_RY(int pad, bool checkMenu)
 }
 unsigned char CInput::GetJoypadLTrigger(int pad, bool raw)
 {
-    if (pad < 4 && raw && menuDisplayed[pad])
+    unsigned char menuShown = 0;
+    if (pad < 4)
     {
-        return 0;
+        menuShown = menuDisplayed[pad];
     }
-    if (RemapIpad(pad) && joypads[pad].leftTriggerSource != 0)
+    if (RemapIpad(pad) && (!raw || !menuShown))
     {
         return *joypads[pad].leftTriggerSource;
     }
@@ -1243,11 +1248,12 @@ unsigned char CInput::GetJoypadLTrigger(int pad, bool raw)
 }
 unsigned char CInput::GetJoypadRTrigger(int pad, bool raw)
 {
-    if (pad < 4 && raw && menuDisplayed[pad])
+    unsigned char menuShown = 0;
+    if (pad < 4)
     {
-        return 0;
+        menuShown = menuDisplayed[pad];
     }
-    if (RemapIpad(pad) && joypads[pad].rightTriggerSource != 0)
+    if (RemapIpad(pad) && (!raw || !menuShown))
     {
         return *joypads[pad].rightTriggerSource;
     }
@@ -1524,12 +1530,19 @@ void CInput::KeyboardOnCreate()
 }
 unsigned int CInput::GetKeyboardControllerType()
 {
-    static const unsigned char controllerTypes[5] = {4, 0, 1, 2, 3};
-    if (keyboardPad < 5)
+    switch (keyboardPad)
     {
-        return controllerTypes[keyboardPad];
+    case 0:
+        return 4;
+    case 1:
+        return 0;
+    case 2:
+        return 1;
+    case 3:
+        return 2;
+    case 4:
+        return 3;
     }
-    return keyboardPad;
 }
 unsigned int CInput::GetKeyboardMode()
 {
@@ -1808,8 +1821,19 @@ void CInput::InitialiseErrorViewer()
 }
 unsigned int CInput::GetErrorViewerControllerType()
 {
-    static const unsigned char controllerTypes[5] = {0, 0, 1, 2, 3};
-    return errorViewerController < 5 ? controllerTypes[errorViewerController] : errorViewerController;
+    switch (errorViewerController)
+    {
+    case 0:
+        return 0;
+    case 1:
+        return 0;
+    case 2:
+        return 1;
+    case 3:
+        return 2;
+    case 4:
+        return 3;
+    }
 }
 void CInput::TickErrorViewer()
 {

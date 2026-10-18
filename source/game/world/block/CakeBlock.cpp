@@ -21,10 +21,13 @@
 
 static AbstractProperty<int>* BITES = static_cast<AbstractProperty<int>*>(IntegerProperty::create(L"bites", 0, 6));
 static const AABB* SHAPES[7] = {
-    AABB::newPermanent(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),  AABB::newPermanent(0.125, 0.0, 0.0, 1.0, 0.5, 1.0),
-    AABB::newPermanent(0.25, 0.0, 0.0, 1.0, 0.5, 1.0), AABB::newPermanent(0.375, 0.0, 0.0, 1.0, 0.5, 1.0),
-    AABB::newPermanent(0.5, 0.0, 0.0, 1.0, 0.5, 1.0),  AABB::newPermanent(0.625, 0.0, 0.0, 1.0, 0.5, 1.0),
-    AABB::newPermanent(0.75, 0.0, 0.0, 1.0, 0.5, 1.0)};
+    AABB::newPermanent(1.0 / 16.0, 0.0, 1.0 / 16.0, 15.0 / 16.0, 0.5, 15.0 / 16.0),
+    AABB::newPermanent(3.0 / 16.0, 0.0, 1.0 / 16.0, 15.0 / 16.0, 0.5, 15.0 / 16.0),
+    AABB::newPermanent(5.0 / 16.0, 0.0, 1.0 / 16.0, 15.0 / 16.0, 0.5, 15.0 / 16.0),
+    AABB::newPermanent(7.0 / 16.0, 0.0, 1.0 / 16.0, 15.0 / 16.0, 0.5, 15.0 / 16.0),
+    AABB::newPermanent(9.0 / 16.0, 0.0, 1.0 / 16.0, 15.0 / 16.0, 0.5, 15.0 / 16.0),
+    AABB::newPermanent(11.0 / 16.0, 0.0, 1.0 / 16.0, 15.0 / 16.0, 0.5, 15.0 / 16.0),
+    AABB::newPermanent(13.0 / 16.0, 0.0, 1.0 / 16.0, 15.0 / 16.0, 0.5, 15.0 / 16.0)};
 
 CakeBlock::CakeBlock() : Block(Material::CAKE)
 {

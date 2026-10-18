@@ -531,15 +531,13 @@ const MiniGameDef::PlayerEquipmentInfo& MiniGameDef::ModeVariationLootGroup::Get
 }
 
 MiniGameDef::MiniGameDef(const XmlObject& object)
-    : mHostOptionVersion(0),
-      mOptionDefaults(),
+    : mOptionDefaults(),
       mOptionLists(),
       mMatchmakingFilters(),
       mMatchmakingFilterDefaults(),
       mPlayerSettings(),
       mTimers(),
       mSounds(),
-      mId(eMiniGameId_Lobby),
       mStartConditions(0),
       mEndConditions(0),
       mPostGameConditions(0),
@@ -552,30 +550,14 @@ MiniGameDef::MiniGameDef(const XmlObject& object)
       mEditActionsDisabled(false),
       mDifficulty(),
       mPlayerGameType(),
-      mSpectateMode(0),
-      mSpectateEntity(0),
-      mAllowCrafting(false),
-      mShowInvulnerableEffect(false),
-      mLockedInventory(false),
-      mShowdownAnnouncements(false),
-      mAllowPvP(false),
-      mTutorialsEnabled(false),
-      mDamageIndicatorDelay(0.0f),
       mCanLavaConvertWater(),
-      mPlaceMode(EBuildMode_NoRestrictions),
-      mDestroyMode(EBuildMode_NoRestrictions),
-      mUseMode(EBuildMode_NoRestrictions),
-      mUseBlockMode(EBuildMode_NoRestrictions),
       mPlacePermissions(),
       mDestroyPermissions(),
       mUsePermissions(),
       mBlockUsePermissions(),
-      mAllowsUGC(false),
-      mMaxPlayersForSmallMaps(0),
       mFoodBalances(),
       mChestRefill(),
       mBlockData(),
-      mItemBalance(),
       mLootSets()
 {
     getVersionNumber(object, &mVersionMajor, &mVersionMinor);
@@ -728,8 +710,7 @@ MiniGameDef::MiniGameDef(const XmlObject& object)
 }
 
 MiniGameDef::MiniGameDef(EMiniGameId id)
-    : mHostOptionVersion(0),
-      mOptionDefaults(),
+    : mOptionDefaults(),
       mOptionLists(),
       mMatchmakingFilters(),
       mMatchmakingFilterDefaults(),
@@ -772,7 +753,6 @@ MiniGameDef::MiniGameDef(EMiniGameId id)
       mFoodBalances(),
       mChestRefill(),
       mBlockData(),
-      mItemBalance(),
       mLootSets()
 {
 }
@@ -1221,7 +1201,7 @@ void MiniGameDef::parseHostOptionSettings(const XmlObject& object)
         }
         else if (type < 3)
         {
-            std::vector<std::wstring> splitValues = stringSplit(childObject->asString(), L' ');
+            std::vector<std::wstring> splitValues = stringSplit(childObject->asString().c_str(), L' ');
             for (unsigned int index = 0; index < splitValues.size(); ++index)
             {
                 int value = _fromString<int>(splitValues[index]);
@@ -1440,7 +1420,8 @@ const MiniGameDef::LootSetDef& MiniGameDef::getCurrentLootSet() const
 
 bool MiniGameDef::HasLootGroup(const std::wstring& group) const
 {
-    return getCurrentLootSet().getLootGroup(group) != NULL;
+    const LootSetDef& lootSet = getCurrentLootSet();
+    return lootSet.mGroups.find(group) != lootSet.mGroups.end();
 }
 
 bool MiniGameDef::PopulateContainers(const std::vector<boost::shared_ptr<Container> >* containers,
@@ -1645,10 +1626,17 @@ bool MiniGameDef::IsCRCValid() const
 
 bool MiniGameDef::HasPermission(EBuildMode mode, const std::vector<int>& permissions, int value) const
 {
-    if (mode == EBuildMode_NoRestrictions || mode > EBuildMode_BlackList)
+    switch (mode)
+    {
+    case EBuildMode_WhiteList:
+    case EBuildMode_BlackList:
+    {
+        bool listed = std::find(permissions.begin(), permissions.end(), value) != permissions.end();
+        return (mode == EBuildMode_WhiteList) == listed;
+    }
+    default:
         return true;
-    bool listed = std::find(permissions.begin(), permissions.end(), value) != permissions.end();
-    return (mode == EBuildMode_WhiteList) == listed;
+    }
 }
 
 bool MiniGameDef::MayPlace(int id) const
@@ -2242,9 +2230,10 @@ std::wstring MiniGameDef::GetVariantIconPath(EMiniGameId id, unsigned int varian
 {
     if (id == eMiniGameId_Tumble)
     {
-        if (variant > 2)
-            variant = 2;
-        return formatwstr(L"Graphics\\GameModeGraphics\\MG02_Mode_%02i.png", variant);
+        int iconIndex = variant;
+        if (iconIndex > 2)
+            iconIndex = 2;
+        return formatwstr(L"Graphics\\GameModeGraphics\\MG02_Mode_%02i.png", iconIndex);
     }
     return std::wstring(L"default");
 }
@@ -2408,7 +2397,7 @@ bool MiniGameDef::CanCraft() const
 }
 bool MiniGameDef::HasMultipleRounds() const
 {
-    return GetRoundCount() > 1;
+    return static_cast<int>(GetRoundCount()) > 1;
 }
 
 void MiniGameDef::addWeightedChestItem(std::vector<ChestItemsInfo>* items, not_null_ptr<ItemInstance> item,
@@ -2512,8 +2501,16 @@ void MiniGameDef::GetGameSettingsDescription(std::vector<HtmlString>& labels, un
 
 void MiniGameDef::SetDefaultMatchmakingSearchData(bool joining, LaunchMoreOptionsMenuInitData* data) const
 {
-    if (data->mMiniGameId == eMiniGameId_Lobby || data->mMiniGameId > eMiniGameId_Build)
+    switch (data->mMiniGameId)
+    {
+    case eMiniGameId_Battle:
+    case eMiniGameId_Tumble:
+    case eMiniGameId_Glide:
+    case eMiniGameId_Build:
+        break;
+    default:
         return;
+    }
     if (joining)
     {
         data->mMatchmakingFilters[1] = 0;
@@ -2682,8 +2679,9 @@ bool MiniGameDef::HasMultipleVariants() const
     EMiniGameId id = mId;
     if (id == eMiniGameId_Lobby)
     {
-        if (CommonMasterGameMode::GetMasterOrClient() != NULL)
-            id = CommonMasterGameMode::GetMasterOrClient()->GetNextGameMode();
+        CommonMasterGameMode* mode = CommonMasterGameMode::GetMasterOrClient();
+        if (mode != NULL)
+            id = mode->GetNextGameMode();
         if (id == eMiniGameId_Lobby)
             return false;
     }
@@ -2765,16 +2763,17 @@ std::wstring MiniGameDef::GetMapSizeOverrideText(int value) const
 
 std::wstring MiniGameDef::getTextureName() const
 {
-    if (mId != eMiniGameId_Lobby)
+    switch (mId)
     {
-        if (mId == eMiniGameId_Battle)
-            return L"BattleModeIcon";
-        if (mId < eMiniGameId_Glide)
-            return L"MG02icon";
-        if (mId == eMiniGameId_Glide)
-            return L"MG03icon";
+    case eMiniGameId_Battle:
+        return L"BattleModeIcon";
+    case eMiniGameId_Tumble:
+        return L"MG02icon";
+    case eMiniGameId_Glide:
+        return L"MG03icon";
+    default:
+        return L"MinecraftBroken";
     }
-    return L"MinecraftBroken";
 }
 std::wstring MiniGameDef::getIcon() const
 {

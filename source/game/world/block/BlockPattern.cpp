@@ -62,11 +62,11 @@ BlockPos BlockPattern::translateAndRotate(const BlockPos& pos, const Direction* 
 BlockPattern::BlockPatternMatch* BlockPattern::matches(const BlockPos& pos, const Direction* forwards,
                                                        const Direction* up, boost::shared_ptr<BlockLoadingCache> cache)
 {
-    for (unsigned int x = 0; x < mWidth; x++)
+    for (int x = 0; x < mWidth; x++)
     {
-        for (unsigned int y = 0; y < mHeight; y++)
+        for (int y = 0; y < mHeight; y++)
         {
-            for (unsigned int z = 0; z < mDepth; z++)
+            for (int z = 0; z < mDepth; z++)
             {
                 Predicate<BlockInWorld*>* predicate = mPattern.data[z]->data[y]->data[x];
                 BlockInWorld* block = cache->getUnchecked(translateAndRotate(pos, forwards, up, x, y, z));

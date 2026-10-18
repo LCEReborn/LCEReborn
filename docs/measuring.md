@@ -70,30 +70,30 @@ boost, rapidxml and the C runtime, is not compared.
 
 ## Current result
 
-Measured on 15 October 2026 with the public build of the commit that last
+Measured on 18 October 2026 with the public build of the commit that last
 updated these numbers, against update 688's `Minecraft.Client.rpx`.
 
 Of the original's 40,032 functions outside the standard library and the
-runtimes, 23,848 were compared; 6,381 were inlined by RedHills and 9,803
+runtimes, 23,851 were compared; 6,378 were inlined by RedHills and 9,803
 had nothing to compare.
 
 | Result | Functions | Share of compared |
 | --- | ---: | ---: |
-| Clean | 18,312 | 76.8% |
-| Differs | 4,980 | 20.9% |
+| Clean | 18,463 | 77.4% |
+| Differs | 4,832 | 20.3% |
 | Missing | 556 | 2.3% |
 
 | Area | Clean | Differs | Clean share |
 | --- | ---: | ---: | ---: |
-| Game | 14,589 | 3,591 | 80.2% |
+| Game | 14,713 | 3,470 | 80.9% |
 | Wii U platform layer | 551 | 287 | 65.8% |
 | Mii faces (FFL) | 228 | 81 | 73.8% |
-| NEX online library | 968 | 409 | 70.3% |
-| Pia online library | 1,580 | 472 | 77.0% |
+| NEX online library | 970 | 407 | 70.4% |
+| Pia online library | 1,598 | 454 | 77.9% |
 | Other Nintendo SDK | 43 | 5 | 89.6% |
-| Sound and middleware | 333 | 122 | 73.2% |
+| Sound and middleware | 340 | 115 | 74.7% |
 | Cafe SDK runtime | 19 | 10 | 65.5% |
-| Constructors, destructors and thunks | 4,130 | 717 | 84.5% |
+| Constructors, destructors and thunks | 4,138 | 709 | 84.6% |
 
 The 556 missing functions are ones the tool could not find a definition of
 in `source/`; its search reads source text, so some of them are defined in a

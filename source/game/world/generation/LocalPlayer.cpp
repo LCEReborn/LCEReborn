@@ -707,7 +707,7 @@ void LocalPlayer::aiStep()
             mMinecraft->setScreen(NULL);
         if (mPortalEffectIntensity == 0.0f)
             mMinecraft->mSoundEngine->playUI(SoundEvents::PORTAL_TRIGGER, 1.0f, mRandom->nextFloat() * 0.4f + 0.8f);
-        mPortalEffectIntensity = std::min(mPortalEffectIntensity + 0.0125f, 1.0f);
+        mPortalEffectIntensity = std::min(1.0f, mPortalEffectIntensity + 0.0125f);
         mIsInsidePortal = false;
     }
 
@@ -1060,10 +1060,9 @@ void LocalPlayer::aiStep()
         const double horizontalLook = look->x * look->x + look->z * look->z;
         if (horizontalMotion > 0.01f && horizontalLook > 0.01f)
         {
-            const double motionLength = Mth::sqrt(horizontalMotion);
-            const double lookLength = Mth::sqrt(horizontalLook);
-            const double lengthProduct = static_cast<double>(static_cast<float>(motionLength * lookLength));
-            const double dot = (mXd * look->x + mZd * look->z) / lengthProduct;
+            const float motionLength = static_cast<float>(Mth::sqrt(horizontalMotion));
+            const float lookLength = static_cast<float>(Mth::sqrt(horizontalLook));
+            const double dot = (mXd * look->x + mZd * look->z) / (motionLength * lookLength);
             const double aligned = Mth::clamp(dot, 0.0, 1.0);
             const double cosine = Mth::clamp(dot, -1.0, 1.0);
             const double cross = mXd * look->z - mZd * look->x;
@@ -1120,9 +1119,9 @@ void LocalPlayer::awardStat(Stat* stat, arrayWithLength<unsigned char> params)
     if (mUserIndex < 0)
         return;
 
-    bool canRecord = true;
+    unsigned char canRecord = 1;
     if (!stat->isAwardedFromServer())
-        canRecord = CanRecordStats(stat, params) != 0;
+        canRecord = CanRecordStats(stat, params);
     bool hasProfile = true;
     if (gProfile->GetPrimaryPad() != mUserIndex && !gProfile->IsHasAchievementsFile(mUserIndex))
         hasProfile = false;
@@ -1175,7 +1174,7 @@ void LocalPlayer::awardStat(Stat* stat, arrayWithLength<unsigned char> params)
 
     if (stat == gStats->get_tamedEntity(EntityType::WOLF))
     {
-        if (stats->getTotalValue(gStats->get_tamedEntity(EntityType::WOLF)) > 4)
+        if (stats->getTotalValue(gStats->get_tamedEntity(EntityType::WOLF)) >= 5u)
             awardStat(GenericStats::leaderOfThePack(), GenericStats::param_noArgs());
     }
 
@@ -1213,9 +1212,12 @@ void LocalPlayer::awardStat(Stat* stat, arrayWithLength<unsigned char> params)
         bool craftedEveryTool = true;
         for (int tool = 0; tool < 4; ++tool)
         {
-            if (stats->getTotalValue(toolStats[tool][0]) == 0 && stats->getTotalValue(toolStats[tool][1]) == 0
-                && stats->getTotalValue(toolStats[tool][2]) == 0 && stats->getTotalValue(toolStats[tool][3]) == 0
-                && stats->getTotalValue(toolStats[tool][4]) == 0)
+            int woodenCount = stats->getTotalValue(toolStats[tool][0]);
+            int stoneCount = stats->getTotalValue(toolStats[tool][1]);
+            int ironCount = stats->getTotalValue(toolStats[tool][2]);
+            int diamondCount = stats->getTotalValue(toolStats[tool][3]);
+            int goldenCount = stats->getTotalValue(toolStats[tool][4]);
+            if (woodenCount == 0 && stoneCount == 0 && ironCount == 0 && diamondCount == 0 && goldenCount == 0)
             {
                 craftedEveryTool = false;
                 break;
@@ -1229,7 +1231,9 @@ void LocalPlayer::awardStat(Stat* stat, arrayWithLength<unsigned char> params)
     static Stat* cookedPorkchopUsed = gStats->get_itemsUsed(Item::VALIDgetId(Items::cookedPorkchop));
     if (stat == cookedPorkchopCrafted || stat == cookedPorkchopUsed)
     {
-        if (stats->getTotalValue(cookedPorkchopCrafted) > 0 && stats->getTotalValue(cookedPorkchopUsed) > 0)
+        int crafted = stats->getTotalValue(cookedPorkchopCrafted);
+        int eaten = stats->getTotalValue(cookedPorkchopUsed);
+        if (crafted > 0 && eaten > 0)
             awardStat(GenericStats::porkChop(), GenericStats::param_porkChop());
     }
 
@@ -1254,8 +1258,10 @@ void LocalPlayer::awardStat(Stat* stat, arrayWithLength<unsigned char> params)
     static Stat* standingSignPlaced = gStats->get_blocksPlaced(Block::getId(Blocks::standing_sign));
     if (stat == signCrafted || stat == wallSignPlaced || stat == standingSignPlaced)
     {
-        if (stats->getTotalValue(signCrafted) > 0
-            && stats->getTotalValue(wallSignPlaced) + stats->getTotalValue(standingSignPlaced) > 0)
+        int signsCrafted = stats->getTotalValue(signCrafted);
+        int wallSigns = stats->getTotalValue(wallSignPlaced);
+        int standingSigns = stats->getTotalValue(standingSignPlaced);
+        if (signsCrafted > 0 && wallSigns + standingSigns > 0)
             awardStat(GenericStats::itsASign(), GenericStats::param_itsASign());
     }
 
@@ -1713,7 +1719,7 @@ unsigned char LocalPlayer::handleMouseClick(int button)
                                 if (!heldItem->isEmpty())
                                 {
                                     if (heldItem->getCount() == 0)
-                                        mMinecraft->mPlayer->setItemInHand(useHand, ItemInstance::EMPTY);
+                                        player->setItemInHand(useHand, ItemInstance::EMPTY);
                                     else if (heldItem->getCount() != oldCount || gameMode->hasInfiniteItems())
                                         mMinecraft->mGameRenderer->mItemInHandRenderer->itemUsed(useHand);
                                 }

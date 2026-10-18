@@ -11,7 +11,7 @@ std::wstring _toString(T value);
 template <typename T>
 T _fromString(const std::wstring& value);
 
-static const std::wstring sFunctionNames[5] = {L"grass", L"hellfire", L"snowlayer", L"tnt", L"carpet"};
+static const std::wstring sFunctionNames[5] = {L"GrassPatches", L"Hellfire", L"Snowlayer", L"TntTraps", L"CarpetTrap"};
 
 static const FunctionPatchesLayerTheme::BlockFunction sFunctions[] = {
     FunctionPatchesLayerTheme::GRASS_PATCHES, FunctionPatchesLayerTheme::HELLFIRE_PATCHES,

@@ -414,17 +414,19 @@ void FurnaceBlockEntity::burn()
 {
     if (!canBurn())
         return;
-    ItemInstance* result = FurnaceRecipes::getInstance()->getResult(mItems[0]);
-    if (!mItems[2]->isEmpty())
+    not_null_ptr<ItemInstance> input = mItems[0];
+    ItemInstance* result = FurnaceRecipes::getInstance()->getResult(input);
+    not_null_ptr<ItemInstance> output = mItems[2];
+    if (!output->isEmpty())
     {
-        if (mItems[2]->getItem() == result->getItem())
-            mItems[2]->grow(1);
+        if (output->getItem() == result->getItem())
+            output->grow(1);
     }
     else
     {
         mItems[2] = result->copy();
     }
-    if (mItems[0]->getItem() == Item::byBlock(Blocks::sponge) && mItems[0]->getAuxValue() == 1 && !mItems[1]->isEmpty()
+    if (input->getItem() == Item::byBlock(Blocks::sponge) && input->getAuxValue() == 1 && !mItems[1]->isEmpty()
         && mItems[1]->getItem() == Items::bucket)
     {
         mItems[1] = not_null_ptr<ItemInstance>(new ItemInstance(Items::waterBucket));

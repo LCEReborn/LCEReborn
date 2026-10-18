@@ -99,7 +99,7 @@ void LogBlock::blockStaticCtor()
         boost::unordered_set<LogAxis*> values;
         for (unsigned int i = 0; i < 4; ++i)
             values.insert(LogAxis::values[i]);
-        axis = EnumProperty<LogAxis*>::create(name, typeid(LogAxis*), values, filter);
+        axis = EnumProperty<LogAxis*>::create(name, typeid(LogAxis), values, filter);
     }
     AXIS = axis;
 }

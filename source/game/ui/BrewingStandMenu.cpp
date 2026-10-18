@@ -172,12 +172,12 @@ not_null_ptr<ItemInstance> BrewingStandMenu::quickMoveStack(boost::shared_ptr<Pl
                 if (!moveItemStackTo(item, 3, 4, false, true, true))
                     return ItemInstance::EMPTY;
             }
-            else if (PotionSlot::mayPlaceItem(item))
+            else if (PotionSlot::mayPlaceItem(clicked))
             {
                 if (!moveItemStackTo(item, 0, 3, false, true, true))
                     return ItemInstance::EMPTY;
             }
-            else if (FuelSlot::mayPlaceItem(item))
+            else if (FuelSlot::mayPlaceItem(clicked))
             {
                 if (!moveItemStackTo(item, 4, 5, false, true, true))
                     return ItemInstance::EMPTY;

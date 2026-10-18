@@ -6,7 +6,6 @@
 class TeamInvite
 {
 public:
-    TeamInvite();
     ~TeamInvite() {}
 
     unsigned int m_uTeamID;

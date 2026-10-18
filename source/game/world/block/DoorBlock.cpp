@@ -104,15 +104,15 @@ void DoorBlock::blockStaticCtor()
         boost::unordered_set<HingeSide*> hinges;
         hinges.insert(LEFT);
         hinges.insert(RIGHT);
-        HINGE = EnumProperty<HingeSide*>::create(name, typeid(HingeSide*), hinges, Predicates<HingeSide*>::alwaysTrue);
+        HINGE = EnumProperty<HingeSide*>::create(name, typeid(HingeSide), hinges, Predicates<HingeSide*>::alwaysTrue);
     }
     {
         std::wstring name;
         name = L"half";
         boost::unordered_set<DoorHalf*> halves;
-        halves.insert(LOWER);
         halves.insert(UPPER);
-        HALF = EnumProperty<DoorHalf*>::create(name, typeid(DoorHalf*), halves, Predicates<DoorHalf*>::alwaysTrue);
+        halves.insert(LOWER);
+        HALF = EnumProperty<DoorHalf*>::create(name, typeid(DoorHalf), halves, Predicates<DoorHalf*>::alwaysTrue);
     }
 }
 

@@ -12,7 +12,6 @@
 #include "game/item/ItemInstance.hpp"
 #include "game/item/ItemListDataWalker.hpp"
 #include "game/item/WorldlyContainer.hpp"
-#include "game/entity/ai/ContainerEntitySelector.hpp"
 #include "game/entity/ai/EntitySelector.hpp"
 #include "game/entity/mob/ItemEntity.hpp"
 #include "game/item/Inventory.hpp"
@@ -207,7 +206,8 @@ boost::shared_ptr<Container> HopperBlockEntity::getContainerAt(Level* level, dou
     int blockY = Mth::floor(y);
     int blockZ = Mth::floor(z);
     BlockPos pos(blockX, blockY, blockZ);
-    container = boost::dynamic_pointer_cast<Container>(level->getBlockEntity(pos));
+    boost::shared_ptr<BlockEntity> blockEntity = level->getBlockEntity(pos);
+    container = boost::dynamic_pointer_cast<Container>(blockEntity);
     if (container)
     {
         if (boost::dynamic_pointer_cast<ChestBlockEntity>(container))
@@ -219,10 +219,9 @@ boost::shared_ptr<Container> HopperBlockEntity::getContainerAt(Level* level, dou
     }
     if (!container)
     {
-        ContainerEntitySelector selector;
         AABB* box = AABB::newTemp(x - 0.5, y - 0.5, z - 0.5, x + 0.5, y + 0.5, z + 0.5);
-        std::vector<boost::shared_ptr<Entity> >* entities = level->getEntities(boost::shared_ptr<Entity>(), box,
-                                                                               &selector, NULL);
+        std::vector<boost::shared_ptr<Entity> >* entities = level->getEntities(
+            boost::shared_ptr<Entity>(), box, EntitySelector::CONTAINER_ENTITY_SELECTOR, NULL);
         if (entities != NULL && !entities->empty())
             container = boost::dynamic_pointer_cast<Container>(
                 entities->at(level->mRandom->nextInt(static_cast<int>(entities->size()))));

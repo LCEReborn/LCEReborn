@@ -477,26 +477,19 @@ GameRuleDefinition* LevelRuleset::getRuleByType(ConsoleGameRules::EGameRuleType 
 void LevelRuleset::getChildren(std::vector<GameRuleDefinition*>* children, ConsoleGameRules::EGameRuleType type)
 {
     CompoundGameRuleDefinition::getChildren(children, type);
-    GameRuleDefinition* rule = getRuleByType(type);
-    if (rule != NULL)
+    boost::unordered_map<ConsoleGameRules::EGameRuleType, GameRuleDefinition*>::iterator rule = mRules.find(type);
+    if (rule != mRules.end())
     {
-        children->push_back(rule);
+        children->push_back(rule->second);
     }
     if ((type > ConsoleGameRules::eGameRuleType_LevelRules && type < ConsoleGameRules::eGameRuleType_BlockLayer)
         || type == ConsoleGameRules::eGameRuleType_Powerup || type == ConsoleGameRules::eGameRuleType_ActiveViewArea)
     {
-        for (std::vector<NamedAreaRuleDefinition*>::iterator it = mNamedAreas.begin(); it != mNamedAreas.end(); ++it)
-        {
-            children->push_back(*it);
-        }
+        children->insert(children->end(), mNamedAreas.begin(), mNamedAreas.end());
     }
-    if (type == ConsoleGameRules::eGameRuleType_RandomItemSet)
+    else if (type == ConsoleGameRules::eGameRuleType_RandomItemSet)
     {
-        for (std::vector<RandomItemSetRuleDefinition*>::iterator it = mRandomItemSets.begin();
-             it != mRandomItemSets.end(); ++it)
-        {
-            children->push_back(*it);
-        }
+        children->insert(children->end(), mRandomItemSets.begin(), mRandomItemSets.end());
     }
 }
 

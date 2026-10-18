@@ -595,12 +595,15 @@ void ItemInstance::onCraftedBy(Level* level, boost::shared_ptr<Player> player, i
         for (unsigned int index = 0; index < remainingItems.size(); ++index)
         {
             not_null_ptr<ItemInstance> remaining = craftSlots->getItem(index);
-            if (dynamic_cast<PickaxeItem*>(remaining->getItem()) != NULL)
-                pickaxeRemains = true;
-            if (dynamic_cast<HoeItem*>(remaining->getItem()) != NULL)
-                hoeRemains = true;
-            if (dynamic_cast<SwordItem*>(remaining->getItem()) != NULL)
-                swordRemains = true;
+            if (remaining != NULL)
+            {
+                if (dynamic_cast<PickaxeItem*>(remaining->getItem()) != NULL)
+                    pickaxeRemains = true;
+                if (dynamic_cast<HoeItem*>(remaining->getItem()) != NULL)
+                    hoeRemains = true;
+                if (dynamic_cast<SwordItem*>(remaining->getItem()) != NULL)
+                    swordRemains = true;
+            }
         }
 
         Item* item = getItem();
@@ -785,21 +788,19 @@ void ItemInstance::setCensorshipInfo(const std::wstring& name, bool censored)
         mTag = new CompoundTag();
     mTag->putString(TAG_OWNER_ID, name);
     mTag->putBoolean(TAG_CREATED_BY_RESTRICTED, censored);
-    bool createdOnHost = false;
     if (CGameNetworkManager::sInstance.IsHost())
     {
-        Minecraft* minecraft = Minecraft::GetInstance();
-        for (int i = 0; minecraft != 0 && i < 4; ++i)
+        for (unsigned int i = 0; i < 4; ++i)
         {
-            boost::shared_ptr<MultiplayerLocalPlayer> local = minecraft->mLocalPlayers[i];
+            boost::shared_ptr<MultiplayerLocalPlayer> local = Minecraft::GetInstance()->mLocalPlayers[i];
             if (local != 0 && local->getUUID() == name)
             {
-                createdOnHost = true;
-                break;
+                mTag->putByte(TAG_CREATED_ON_HOST, 1);
+                return;
             }
         }
     }
-    mTag->putByte(TAG_CREATED_ON_HOST, createdOnHost ? 1 : 0);
+    mTag->putByte(TAG_CREATED_ON_HOST, 0);
 }
 
 std::wstring ItemInstance::getOwnerUUID()
@@ -1071,7 +1072,7 @@ bool ItemInstance::mayBePlacedInAdventureMode()
 
 bool ItemInstance::isFramed()
 {
-    return mFrame.use_count() > 0;
+    return !mFrame.expired();
 }
 
 void ItemInstance::setFramed(boost::shared_ptr<ItemFrame> frame)

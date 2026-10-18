@@ -216,7 +216,7 @@ void UIComponent_Chat::handleTimerComplete(int timerId)
             visible = true;
         m_chatLabel.setOpacity(gui->getJukeboxOpacity(m_playerId));
         {
-            std::wstring nowPlaying = gui->mNowPlaying[m_playerId];
+            std::wstring nowPlaying = gui->mSingleMessages[m_playerId];
             m_chatLabel.setLabel(UIString(nowPlaying), false, false);
         }
         setVisible(visible);

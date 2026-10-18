@@ -21,8 +21,8 @@ private:
     enum ECurve
     {
         eCurve_Unknown = -1,
-        eCurve_Dome,
-        eCurve_Bowl
+        eCurve_Bowl,
+        eCurve_Dome
     };
 
     ECurve mCurve;

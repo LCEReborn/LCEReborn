@@ -106,7 +106,7 @@ static inline AbstractProperty<RedStoneWireBlock::ConnectingSide*>* createConnec
     boost::unordered_set<RedStoneWireBlock::ConnectingSide*> values;
     for (int i = 0; i < 3; ++i)
         values.insert(gRedStoneWireConnectingSides[i]);
-    return EnumProperty<RedStoneWireBlock::ConnectingSide*>::create(name, typeid(RedStoneWireBlock::ConnectingSide*),
+    return EnumProperty<RedStoneWireBlock::ConnectingSide*>::create(name, typeid(RedStoneWireBlock::ConnectingSide),
                                                                     values, filter);
 }
 
@@ -566,7 +566,7 @@ void RedStoneWireBlock::animateTick(const BlockState* state, Level* level, const
     {
         double x = (double)pos.x + 0.5 + ((double)random->nextFloat() - 0.5) * 0.2;
         double y = (double)((float)pos.y + 0.0625f);
-        double z = (double)pos.z + ((double)random->nextFloat() - 0.5) * 0.2 + 0.5;
+        double z = (double)pos.z + 0.5 + ((double)random->nextFloat() - 0.5) * 0.2;
 
         float value = (float)power / 15.0f;
         float green = value * value * 0.7f - 0.5f;

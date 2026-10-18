@@ -42,20 +42,7 @@ static int updates = 0;
 Chunk::Chunk(Level* level, ChunkBlockEntityMap& blockEntities, C4JCriticalSection& mutex, int x, int z, int dimension,
              ClipChunk* clipChunk)
     : mLevel(level),
-      mX(0),
-      mZ(0),
-      mDimension(0),
-      mDirty(0),
-      mEmpty(0),
-      mRenderable(0),
-      mMinX(0),
-      mMinZ(0),
-      mMinDimension(0),
-      mMaxX(0),
-      mMaxZ(0),
-      mMaxDimension(0),
       mBoundingBox(NULL),
-      mOwnsBoundingBox(false),
       mClipChunk(clipChunk),
       mUnknown(0),
       mBlockEntities(&blockEntities),
@@ -65,7 +52,7 @@ Chunk::Chunk(Level* level, ChunkBlockEntityMap& blockEntities, C4JCriticalSectio
     mClipChunk->mVisible = false;
     mClipChunk->mChunk = this;
     setPos(x, z, dimension);
-    mNonStack = true;
+    mOwnsBoundingBox = true;
 }
 
 Chunk::Chunk() : mOwnsBoundingBox(false)

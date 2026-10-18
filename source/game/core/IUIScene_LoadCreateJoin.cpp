@@ -36,8 +36,10 @@
 #include "game/world/biome/arrayWithLength.hpp"
 #include "game/world/generation/LevelGenerators.hpp"
 #include "game/world/generation/Player.hpp"
+#include "net/ServerList.hpp"
 #include "platform/CProfile.hpp"
 #include "platform/CStorage.hpp"
+#include "game/ui/UIScene_EditServerMenu.hpp"
 #include "game/ui/UIScene_FullscreenProgress.hpp"
 #include "vendor/_LoadingInputParams.hpp"
 #include "vendor/_SaveListDetails.hpp"
@@ -100,6 +102,8 @@ IUIScene_LoadCreateJoin::IUIScene_LoadCreateJoin()
     m_saveListRefreshState = 0;
     m_nextThumbnail = 0;
     m_matchmakingButtonCount = 0;
+    m_removeServerIndex = -1;
+    m_removeServerText[0] = L'\0';
     InitializeCriticalSection(&m_lock);
 }
 
@@ -137,19 +141,25 @@ void IUIScene_LoadCreateJoin::UpdateGamesList()
         return;
 
     bool hadSelection = false;
-    unsigned int selectedSessionId;
-    memset(&selectedSessionId, 0, sizeof(selectedSessionId));
+    unsigned int selectedSessionId = 0;
+    int selectedRow = -1;
     if (DoesGamesListHaveFocus() && GetJoinListSize() > 0)
     {
-        FriendSessionInfo* selected = m_friendSessions->at(GetJoinListSelection());
+        int selectedId = static_cast<int>(GetJoinListSelection());
+        FriendSessionInfo* selected = GetJoinListSession(selectedId);
         if (selected != NULL)
         {
             selectedSessionId = selected->m_sessionId;
             hadSelection = true;
         }
+        else
+        {
+            selectedRow = selectedId;
+        }
     }
 
     ShowJoinListTimer(false);
+    ShowNoGamesLabel(false);
     if (m_friendSessions != NULL)
     {
         for (std::vector<FriendSessionInfo*>::iterator it = m_friendSessions->begin(); it < m_friendSessions->end();
@@ -168,114 +178,132 @@ void IUIScene_LoadCreateJoin::UpdateGamesList()
 
     m_friendSessions = CGameNetworkManager::sInstance.GetSessionList(GetPad(), m_sessionListMode,
                                                                      m_partyGamesOnly != 0);
-    GetJoinListSize();
-    unsigned int sessionCount = static_cast<unsigned int>(m_friendSessions->size());
-    bool gamesListHadFocus = DoesGamesListHaveFocus();
-    if (sessionCount != 0)
-    {
-        if (!IsJoinListEnabled())
-        {
-            SetJoinListEnabled(true);
-            SetGamesListSelection(0);
-        }
-        ShowNoGamesLabel(false);
-        ShowJoinListTimer(false);
-    }
-    else
-    {
-        SetJoinListEnabled(false);
-        ShowNoGamesLabel(true);
-        ShowJoinListTimer(false);
-        if (gamesListHadFocus)
-            InitFocusJoinList(GetPad());
-    }
+    SetJoinListEnabled(true);
     ClearJoinList();
 
-    if (sessionCount != 0)
+    unsigned int position = 0;
+    unsigned int selection = 0;
+    if (!m_miniGames)
     {
-        unsigned int index = 0;
-        SetGamesListSelection(0);
-        for (std::vector<FriendSessionInfo*>::iterator it = m_friendSessions->begin(); it < m_friendSessions->end();
-             ++it, ++index)
-        {
-            FriendSessionInfo* session = *it;
-            if (!((m_miniGames != 0 && session->m_gameSessionData.m_gameModeId == GameType::LOBBY->getId())
-                  || (m_miniGames == 0 && session->m_gameSessionData.m_gameModeId != GameType::LOBBY->getId())))
-                continue;
+        AddJoinListAction(L"Add Server", cJoinRowAddServer, L"Graphics\\CreateWorldIcon.png", L"CreateWorldIcon");
+        if (selectedRow == cJoinRowAddServer)
+            selection = position;
+        ++position;
 
-            wchar_t gameIconName[64] = L"";
-            unsigned int gameIconSize = 0;
-            unsigned char* gameIconData = NULL;
-            std::wstring gameIcon(L"");
-            bool hasGameIcon;
-            if (session->m_gameSessionData.m_gameModeId == GameType::SURVIVAL->getId())
+        for (unsigned int index = 0; index < m_friendSessions->size(); ++index)
+        {
+            FriendSessionInfo* session = m_friendSessions->at(index);
+            if (session->m_savedServer < 0)
+                continue;
+            AddJoinListAction(session->m_displayName, static_cast<int>(index), L"Graphics\\MinecraftIcon.png",
+                              L"SavedServerIcon");
+            if (hadSelection && session->m_sessionId == selectedSessionId)
+                selection = position;
+            ++position;
+        }
+    }
+
+    for (unsigned int index = 0; index < m_friendSessions->size(); ++index)
+    {
+        FriendSessionInfo* session = m_friendSessions->at(index);
+        if (session->m_savedServer >= 0)
+            continue;
+        if (!((m_miniGames != 0 && session->m_gameSessionData.m_gameModeId == GameType::LOBBY->getId())
+              || (m_miniGames == 0 && session->m_gameSessionData.m_gameModeId != GameType::LOBBY->getId())))
+            continue;
+
+        wchar_t gameIconName[64] = L"";
+        unsigned int gameIconSize = 0;
+        unsigned char* gameIconData = NULL;
+        std::wstring gameIcon(L"");
+        bool hasGameIcon;
+        if (session->m_gameSessionData.m_gameModeId == GameType::SURVIVAL->getId())
+        {
+            gameIcon = L"Graphics\\SurvivalIcon.png";
+            hasGameIcon = gApp.hasArchiveFile(gameIcon, false);
+        }
+        else if (session->m_gameSessionData.m_gameModeId == GameType::CREATIVE->getId())
+        {
+            gameIcon = L"Graphics\\CreativeIcon.png";
+            hasGameIcon = gApp.hasArchiveFile(gameIcon, false);
+        }
+        else if (session->m_gameSessionData.m_gameModeId == GameType::ADVENTURE->getId())
+        {
+            gameIcon = L"Graphics\\AdventureIcon.png";
+            hasGameIcon = gApp.hasArchiveFile(gameIcon, false);
+        }
+        else
+        {
+            if (session->m_gameSessionData.m_gameModeId == GameType::LOBBY->getId())
+                gameIcon = MiniGameDef::GetCustomGameModeById(
+                               static_cast<EMiniGameId>(session->m_gameSessionData.m_miniGameId), true)
+                               ->getIcon();
+            hasGameIcon = gApp.hasArchiveFile(gameIcon, false);
+        }
+
+        if (hasGameIcon)
+        {
+            arrayWithLength<unsigned char> gameIconFile = gApp.getArchiveFile(gameIcon, false);
+            gameIconData = gameIconFile.data;
+            gameIconSize = gameIconFile.length;
+            if (gameIconSize != 0 && gameIconData != NULL)
+                std::swprintf(gameIconName, 64, L"gm%ls", session->m_displayName);
+        }
+
+        wchar_t packIconName[64] = L"";
+        unsigned int packIconSize = 0;
+        unsigned char* packIcon = NULL;
+        if (session->m_gameSessionData.m_texturePackParentId != 0)
+        {
+            TexturePack* pack = Minecraft::GetInstance()->mTexturePackRepository->getTexturePackById(
+                session->m_gameSessionData.m_texturePackParentId);
+            if (pack == NULL)
             {
-                gameIcon = L"Graphics\\SurvivalIcon.png";
-                hasGameIcon = gApp.hasArchiveFile(gameIcon, false);
-            }
-            else if (session->m_gameSessionData.m_gameModeId == GameType::CREATIVE->getId())
-            {
-                gameIcon = L"Graphics\\CreativeIcon.png";
-                hasGameIcon = gApp.hasArchiveFile(gameIcon, false);
-            }
-            else if (session->m_gameSessionData.m_gameModeId == GameType::ADVENTURE->getId())
-            {
-                gameIcon = L"Graphics\\AdventureIcon.png";
-                hasGameIcon = gApp.hasArchiveFile(gameIcon, false);
+                unsigned char* tpdData = NULL;
+                unsigned int tpdSize = 0;
+                gApp.GetTPD(session->m_gameSessionData.m_texturePackParentId, &tpdData, &tpdSize);
+                gApp.GetFileFromTPD(eTPDFileType_Icon, tpdData, tpdSize, &packIcon, &packIconSize);
             }
             else
             {
-                if (session->m_gameSessionData.m_gameModeId == GameType::LOBBY->getId())
-                    gameIcon = MiniGameDef::GetCustomGameModeById(
-                                   static_cast<EMiniGameId>(session->m_gameSessionData.m_miniGameId), true)
-                                   ->getIcon();
-                hasGameIcon = gApp.hasArchiveFile(gameIcon, false);
+                packIcon = static_cast<unsigned char*>(const_cast<void*>(pack->getPackIcon(packIconSize)));
             }
-
-            if (hasGameIcon)
-            {
-                arrayWithLength<unsigned char> gameIconFile = gApp.getArchiveFile(gameIcon, false);
-                gameIconData = gameIconFile.data;
-                gameIconSize = gameIconFile.length;
-                if (gameIconSize != 0 && gameIconData != NULL)
-                    std::swprintf(gameIconName, 64, L"gm%ls", session->m_displayName);
-            }
-
-            wchar_t packIconName[64] = L"";
-            unsigned int packIconSize = 0;
-            unsigned char* packIcon = NULL;
-            if (session->m_gameSessionData.m_texturePackParentId != 0)
-            {
-                TexturePack* pack = Minecraft::GetInstance()->mTexturePackRepository->getTexturePackById(
-                    session->m_gameSessionData.m_texturePackParentId);
-                if (pack == NULL)
-                {
-                    unsigned char* tpdData = NULL;
-                    unsigned int tpdSize = 0;
-                    gApp.GetTPD(session->m_gameSessionData.m_texturePackParentId, &tpdData, &tpdSize);
-                    gApp.GetFileFromTPD(eTPDFileType_Icon, tpdData, tpdSize, &packIcon, &packIconSize);
-                }
-                else
-                {
-                    packIcon = static_cast<unsigned char*>(const_cast<void*>(pack->getPackIcon(packIconSize)));
-                }
-            }
-            if (session->m_gameSessionData.m_texturePackParentId == 0 || packIcon == NULL)
-            {
-                TexturePack* defaultPack = Minecraft::GetInstance()->mTexturePackRepository->getTexturePackByIndex(0);
-                packIcon = static_cast<unsigned char*>(const_cast<void*>(defaultPack->getPackIcon(packIconSize)));
-            }
-            if (packIconSize != 0 && packIcon != NULL)
-                std::swprintf(packIconName, 64, L"tp%ls", session->m_displayName);
-
-            AddJoinListButton(session->m_displayName, static_cast<int>(index), packIcon, packIconSize, packIconName,
-                              gameIconData, gameIconSize, gameIconName);
-            bool sessionMatch = memcmp(&selectedSessionId, &session->m_sessionId, sizeof(selectedSessionId)) == 0;
-            if (hadSelection && sessionMatch)
-                SetGamesListSelection(index);
         }
+        if (session->m_gameSessionData.m_texturePackParentId == 0 || packIcon == NULL)
+        {
+            TexturePack* defaultPack = Minecraft::GetInstance()->mTexturePackRepository->getTexturePackByIndex(0);
+            packIcon = static_cast<unsigned char*>(const_cast<void*>(defaultPack->getPackIcon(packIconSize)));
+        }
+        if (packIconSize != 0 && packIcon != NULL)
+            std::swprintf(packIconName, 64, L"tp%ls", session->m_displayName);
+
+        AddJoinListButton(session->m_displayName, static_cast<int>(index), packIcon, packIconSize, packIconName,
+                          gameIconData, gameIconSize, gameIconName);
+        if (hadSelection && session->m_sessionId == selectedSessionId)
+            selection = position;
+        ++position;
     }
+
+    AddJoinListScanningRow(L"Scanning for games on your local network", cJoinRowScanning);
+    if (selectedRow == cJoinRowScanning)
+        selection = position;
+    SetGamesListSelection(selection);
     updateTooltips();
+}
+
+FriendSessionInfo* IUIScene_LoadCreateJoin::GetJoinListSession(int id)
+{
+    if (m_friendSessions == NULL || id < 0 || static_cast<unsigned int>(id) >= m_friendSessions->size())
+        return NULL;
+    return m_friendSessions->at(id);
+}
+
+int IUIScene_LoadCreateJoin::GetSelectedSavedServer()
+{
+    if (!DoesGamesListHaveFocus() || GetJoinListSize() == 0)
+        return -1;
+    FriendSessionInfo* session = GetJoinListSession(static_cast<int>(GetJoinListSelection()));
+    return session != NULL ? session->m_savedServer : -1;
 }
 
 void IUIScene_LoadCreateJoin::UpdateGamesListCallback(void* context)
@@ -528,11 +556,20 @@ void IUIScene_LoadCreateJoin::_tick()
 
 void IUIScene_LoadCreateJoin::_updateTooltips()
 {
+    int selectTooltip = IDS_TOOLTIPS_SELECT;
     int listTooltip = -1;
     int partyTooltip = -1;
     if (DoesGamesListHaveFocus() && GetJoinListSize() > 0)
     {
-        listTooltip = IDS_TOOLTIPS_VIEW_GAMERCARD;
+        if (GetSelectedSavedServer() >= 0)
+        {
+            partyTooltip = IDS_TOOLTIPS_REMOVE;
+            listTooltip = IDS_TOOLTIPS_OPTIONS;
+        }
+        else if (static_cast<int>(GetJoinListSelection()) == cJoinRowScanning)
+        {
+            selectTooltip = -1;
+        }
     }
     else if (!m_miniGames && DoesLoadListHaveFocus() && GetLoadListSize() > 0)
     {
@@ -550,13 +587,13 @@ void IUIScene_LoadCreateJoin::_updateTooltips()
         DoesCreateListHaveFocus();
     }
 
-    if (m_partyGamesAvailable && DoesGamesListHaveFocus())
+    if (m_partyGamesAvailable && DoesGamesListHaveFocus() && partyTooltip == -1)
         partyTooltip = m_partyGamesOnly ? IDS_TOOLTIPS_ALL_GAMES : IDS_TOOLTIPS_PARTY_GAMES;
 
     if (gProfile->IsFullVersion() && gStorage->GetSaveDisabled())
         DoesLoadListHaveFocus();
 
-    gConsoleUIController.SetTooltips(0, IDS_TOOLTIPS_SELECT, IDS_TOOLTIPS_BACK, partyTooltip, listTooltip, -1, -1, -1,
+    gConsoleUIController.SetTooltips(0, selectTooltip, IDS_TOOLTIPS_BACK, partyTooltip, listTooltip, -1, -1, -1,
                                      -1, -1, -1, -1, -1, -1, -1, -1, -1, false, false);
 }
 
@@ -613,7 +650,41 @@ bool IUIScene_LoadCreateJoin::handleKeyDown(int pad, int action, bool)
         gConsoleUIController.NavigateBack(GetPad(), false, EUIScene_None, EUILayer_Count);
         handled = true;
         break;
+    case EControllerActions_MenuX:
+    {
+        int serverIndex = GetSelectedSavedServer();
+        if (serverIndex < 0)
+            break;
+        const std::vector<lcenet::SavedServer>& servers = lcenet::SavedServers().Servers();
+        if (static_cast<unsigned int>(serverIndex) >= servers.size())
+            break;
+        std::wstring name;
+        for (size_t index = 0; index < servers[serverIndex].name.size(); ++index)
+        {
+            if (servers[serverIndex].name[index] == L'%')
+                name.push_back(L'%');
+            name.push_back(servers[serverIndex].name[index]);
+        }
+        std::swprintf(m_removeServerText, sizeof(m_removeServerText) / sizeof(m_removeServerText[0]),
+                      L"Remove %ls from your servers?", name.c_str());
+        m_removeServerIndex = serverIndex;
+        m_ignoreInput = true;
+        int options[] = {IDS_CONFIRM_CANCEL, IDS_CONFIRM_OK};
+        gConsoleUIController.RequestAlertMessage(IDS_TOOLTIPS_REMOVE, -1, options, 2, pad,
+                                                 &IUIScene_LoadCreateJoin::RemoveServerDialogReturned, this,
+                                                 m_removeServerText, true);
+        gConsoleUIController.PlayUISFX(SoundEvents::UI_PRESS);
+        handled = true;
+        break;
+    }
     case EControllerActions_MenuY:
+        if (GetSelectedSavedServer() >= 0)
+        {
+            gConsoleUIController.PlayUISFX(SoundEvents::UI_PRESS);
+            EditSavedServer(GetSelectedSavedServer());
+            handled = true;
+            break;
+        }
         if (!m_miniGames && DoesLoadListHaveFocus() && GetLoadListSize() > 0)
         {
             m_ignoreInput = true;
@@ -983,6 +1054,14 @@ void IUIScene_LoadCreateJoin::CheckAndJoinGame(int index)
 
 void IUIScene_LoadCreateJoin::HandleGamesListPressed(int index)
 {
+    if (index == cJoinRowScanning)
+        return;
+    if (index == cJoinRowAddServer)
+    {
+        gConsoleUIController.PlayUISFX(SoundEvents::UI_PRESS);
+        EditSavedServer(-1);
+        return;
+    }
     m_ignoreInput = true;
     m_pressedList = 2;
     gConsoleUIController.PlayUISFX(SoundEvents::UI_PRESS);
@@ -993,4 +1072,25 @@ void IUIScene_LoadCreateJoin::HandleGamesListPressed(int index)
 void IUIScene_LoadCreateJoin::SetIgnoreInput(bool ignore)
 {
     m_ignoreInput = ignore;
+}
+
+void IUIScene_LoadCreateJoin::EditSavedServer(int serverIndex)
+{
+    m_ignoreInput = true;
+    gConsoleUIController.NavigateToScene(GetPad(), EUIScene_EditServerMenu, new EditServerSceneData(serverIndex),
+                                         EUILayer_Scene, EUIGroup_PlayerDefault);
+}
+
+int IUIScene_LoadCreateJoin::RemoveServerDialogReturned(void* context, int, C4JStorage::EMessageResult result)
+{
+    IUIScene_LoadCreateJoin* scene = static_cast<IUIScene_LoadCreateJoin*>(context);
+    if (result == C4JStorage::EMessageResult_Decline && scene->m_removeServerIndex >= 0)
+    {
+        lcenet::SavedServers().Remove(static_cast<size_t>(scene->m_removeServerIndex));
+        lcenet::SavedServers().Save();
+    }
+    scene->m_removeServerIndex = -1;
+    scene->m_ignoreInput = false;
+    scene->UpdateGamesList();
+    return 0;
 }

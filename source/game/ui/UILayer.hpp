@@ -91,7 +91,8 @@ enum EUIScene
     EUIScene_AvatarSelectMenu = 0x50,
     EUIScene_AchievementsMenu = 0x51,
     EUIScene_CustomMenu = 0x52,
-    EUIScene_None = 0x53,
+    EUIScene_EditServerMenu = 0x53,
+    EUIScene_None = 0x54,
     EUIScene_Count
 };
 

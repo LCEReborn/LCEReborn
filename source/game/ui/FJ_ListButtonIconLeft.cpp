@@ -2,6 +2,7 @@
 
 #include <cstdio>
 
+#include "game/ui/FJ_Factory.hpp"
 #include "game/ui/FJ_FuiNode.hpp"
 #include "game/ui/FJ_FuiNodeStage.hpp"
 #include "game/ui/fui.hpp"
@@ -11,7 +12,8 @@
 FJ_ListButtonIconLeft::FJ_ListButtonIconLeft(fuiRenderNode* renderNode)
     : FJ_Button(renderNode),
       m_pIconPlaceholder(NULL),
-      m_pIconPlaceholder1(NULL)
+      m_pIconPlaceholder1(NULL),
+      m_pTimer(NULL)
 {
 }
 
@@ -124,4 +126,30 @@ void FJ_ListButtonIconLeft::SetTextureName(const std::wstring& textureName, cons
                 ->setTexture(width, height, texture, hasAlpha);
         }
     }
+}
+
+void FJ_ListButtonIconLeft::ShowTimer()
+{
+    FJ_FuiNode* iconControl = FJ_FuiNode::asMovieClip(getChildByName("IconPlaceholder"));
+    if (iconControl == NULL || m_pIconPlaceholder != NULL || m_pTimer != NULL)
+        return;
+    iconControl->setScaleX(iconControl->getScaleX() / getScaleX());
+    iconControl->setScaleY(iconControl->getScaleY() / getScaleY());
+    float width = iconControl->getWidth() / iconControl->getScaleX();
+    float height = iconControl->getHeight() / iconControl->getScaleY();
+
+    FJ_FuiNode* timer = FJ_Factory::createObject("fourj.FJ_Timer", iconControl->m_pRenderNode, true, NULL);
+    if (timer == NULL)
+        return;
+    iconControl->addChild(timer);
+    m_pTimer = timer;
+    float timerWidth = timer->getWidth();
+    float timerHeight = timer->getHeight();
+    if (timerWidth <= 0.0f || timerHeight <= 0.0f)
+        return;
+    float scale = width / timerWidth < height / timerHeight ? width / timerWidth : height / timerHeight;
+    timer->setScaleX(scale);
+    timer->setScaleY(scale);
+    timer->setX((width - timerWidth * scale) * 0.5f);
+    timer->setY((height - timerHeight * scale) * 0.5f);
 }

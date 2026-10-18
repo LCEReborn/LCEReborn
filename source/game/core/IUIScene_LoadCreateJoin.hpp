@@ -23,6 +23,9 @@ struct JoinSceneData
 class IUIScene_LoadCreateJoin : public IUIScene_DLCUpsell, public IUIPartial_OnlineRestricted
 {
 public:
+    static const int cJoinRowAddServer = 0x10000;
+    static const int cJoinRowScanning = 0x10001;
+
     enum EPendingAction
     {
         ePendingAction_None,
@@ -56,6 +59,10 @@ public:
     static int TexturePackDialogReturned(void*, int, C4JStorage::EMessageResult);
     void CheckAndJoinGame(int);
     void HandleGamesListPressed(int);
+    FriendSessionInfo* GetJoinListSession(int id);
+    int GetSelectedSavedServer();
+    void EditSavedServer(int serverIndex);
+    static int RemoveServerDialogReturned(void*, int, C4JStorage::EMessageResult);
     virtual void SetIgnoreInput(bool);
     virtual void Initialise() = 0;
     virtual void updateTooltips() = 0;
@@ -82,6 +89,9 @@ public:
     virtual void AddJoinListButton(const std::wstring& label, int id, unsigned char* data, unsigned int size,
                                    const std::wstring& textureName, unsigned char* data1, unsigned int size1,
                                    const std::wstring& textureName1) = 0;
+    virtual void AddJoinListAction(const std::wstring& label, int id, const std::wstring& iconPath,
+                                   const std::wstring& iconName) = 0;
+    virtual void AddJoinListScanningRow(const std::wstring& label, int id) = 0;
     virtual bool DoesGamesListHaveFocus() = 0;
     virtual void InitFocusJoinList(int focus) = 0;
     virtual void ClearJoinList() = 0;
@@ -130,5 +140,7 @@ protected:
     EMiniGameId m_selectedMiniGame;
     bool m_returnToHomeMenu;
     C4JCriticalSection m_lock;
+    int m_removeServerIndex;
+    wchar_t m_removeServerText[256];
 };
 #endif

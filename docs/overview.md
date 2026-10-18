@@ -27,12 +27,12 @@ families to Luna and Opus 5 workers.
 - `source/game/` - the platform-independent game: world, blocks, entities,
   items, networking, UI, rendering and audio.
 - `source/platform/wiiu/` - the Nintendo backend of 4J's platform layer
-  (threads, storage, profiles, input, online sessions, the Mii icon module).
+  (threads, storage, profiles, input, the Mii icon module).
+- `source/net/` - multiplayer shared by the Wii U and PC builds, so the two
+  can play together.
 - `source/vendor/` - reconstructed internals of third-party libraries the
-  title links against (Miles audio, Bink audio, the voice-chat codec,
-  dlmalloc, stb_truetype).
-- `source/nn/` - reconstructed internals of Nintendo's NEX and Pia online
-  libraries and the small SDK libraries the title links (crypto, software
+  title links against (Miles audio, Bink audio, dlmalloc, stb_truetype).
+- `source/nn/` - the small SDK libraries the title links (crypto, software
   keyboard, error viewer), plus the Mii face library in the `source/nn/ffl`
   submodule.
 - `source/cafe/` - reconstructed Cafe SDK pieces: GX2 and GFD declarations,

@@ -295,12 +295,29 @@ PlayerUID DataInputStream::readPlayerUID()
 {
     PlayerUID playerUID(0);
 
+#if LCE_PLATFORM_PC
+    unsigned char body[16];
+    for (unsigned int index = 0; index < sizeof(body); index++)
+        body[index] = readByte();
+    playerUID.flags = (unsigned int)readInt();
+    if ((playerUID.flags & PlayerUID::FlagUuid) != 0)
+    {
+        memcpy(playerUID.uuid.data, body, sizeof(playerUID.uuid.data));
+    }
+    else
+    {
+        memcpy(playerUID.mii.createId, body, sizeof(playerUID.mii.createId));
+        playerUID.mii.principalId = ((unsigned int)body[12] << 24) | ((unsigned int)body[13] << 16)
+                                    | ((unsigned int)body[14] << 8) | body[15];
+    }
+#else
     unsigned char* bytes = (unsigned char*)&playerUID;
 
     for (unsigned int index = 0; index < sizeof(PlayerUID); index++)
     {
         bytes[index] = readByte();
     }
+#endif
 
     return playerUID;
 }

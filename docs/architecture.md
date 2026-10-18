@@ -39,34 +39,35 @@ uses.
 
 4J's platform layer is a set of `C4J*` and `C*` interfaces implemented once
 per console. This directory holds the Wii U implementations: `C4JThread`,
-`C4JEvent`, `C4JStorage`, `CStorage`, `CProfile`, `CInput`,
-`CPlatformNetworkManagerNintendo` and the allocator glue for the Mii face
-library. These files call Cafe OS and Nintendo SDK functions directly; no
-file under `game/` does.
+`C4JEvent`, `C4JStorage`, `CStorage`, `CProfile`, `CInput` and the
+allocator glue for the Mii face library. These files call Cafe OS and
+Nintendo SDK functions directly; no file under `game/` does.
+
+## `source/net/` - multiplayer
+
+The network manager both platforms use, so a Wii U and a PC can play
+together: TCP sessions and UDP discovery on port 25570, in one wire format.
+It replaces the title's Nintendo Network sessions. `ServerList` keeps the
+servers added on the Join tab.
 
 ## `source/vendor/` - third-party internals
 
 Internals of libraries the title links against and that the build exposes
 with full names: the Miles sound system (`Miles*`), the Bink audio decoder
-(`BinkA*`), the voice-chat codec (`VCT*`, `TmcHandsFree`), the game's
-dlmalloc heap, stb_truetype, the file-local helpers of the online libraries
-(the `__N_*` files, named after the unit they belonged to) and small
-SDK-facing structures. They are kept apart so that game code is never
+(`BinkA*`), the game's dlmalloc heap, stb_truetype, the file-local helpers
+of the SDK libraries (the `__N_*` files, named after the unit they belonged
+to) and small SDK-facing structures. They are kept apart so that game code is never
 mistaken for library code.
 
 ## `source/nn/` - Nintendo library internals
 
-`nn/nex/` and `nn/pia/` (with `chat`, `common`, `inet`, `lan`, `nat`,
-`session` and `transport` beneath it) hold the reconstructed internals of
-Nintendo's NEX and Pia online libraries, which the title links statically
-and calls from the platform backend. Beside them are the smaller SDK
-libraries the title links: `crypto`, `dbg`, `erreula` (the error viewer),
-`save`, `swkbd` (the software keyboard) and `util`. They are the same
-category as `source/vendor/`: reconstructed from the symbols and structure
+`source/nn/` holds the smaller SDK libraries the title links: `crypto`,
+`dbg`, `erreula` (the error viewer), `save`, `swkbd` (the software keyboard)
+and `util`. They are the same category as `source/vendor/`: reconstructed from the symbols and structure
 the build exposes, kept apart from the game so the boundary stays explicit,
 and to be replaced by a maintained upstream if one ever becomes available.
 Includes are spelled from the `source/` root, for example
-`#include "nn/nex/Buffer.hpp"`.
+`#include "nn/dbg/Break.hpp"`.
 
 ## `source/nn/ffl/` - the Mii face library (submodule)
 
@@ -90,15 +91,6 @@ signals and thread hooks on top of the Cafe OS) and the C++ runtime support
 (`libsedg`: `operator new` and `delete`, array construction, run-time type
 information and pure-virtual handling). Includes use the SDK spelling, for
 example `#include <cafe/gx2.h>`.
-
-## `source/nex.h` and `source/nn/pia.h` - SDK umbrella headers
-
-The platform backend calls into Nintendo's NEX and Pia online libraries
-through `#include <nex.h>` and `#include <nn/pia.h>`, the SDK's own
-include spellings. Those headers live at the `source/` root so the
-original includes resolve unchanged; they gather the reconstructed
-headers under `source/nn/` that the title uses and declare the few
-remaining classes the SDK headers provided.
 
 ## The seam rule
 

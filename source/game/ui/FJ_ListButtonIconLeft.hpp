@@ -17,10 +17,12 @@ public:
     void Init(const std::wstring& name, int id);
     void SetSlotID(int slotId, bool hasSlot);
     void SetTextureName(const std::wstring& textureName, const std::wstring& textureName1);
+    void ShowTimer();
 
 private:
     FJ_FuiNode* m_pIconPlaceholder;
     FJ_FuiNode* m_pIconPlaceholder1;
+    FJ_FuiNode* m_pTimer;
 };
 
 #endif

@@ -319,9 +319,38 @@ int LevelChunk::getRawDataMaxBytes()
 {
     return ElementStorage::getRawDataMaxBytes() + (int)SparseLightStorage::getRawDataMaxBytes() * 4 + 0x10c;
 }
+#if LCE_PLATFORM_PC
+static void WriteRawHeaderBigEndian(unsigned char* header)
+{
+    unsigned int elementBytes = *(unsigned int*)header;
+    header[0] = (unsigned char)(elementBytes >> 24);
+    header[1] = (unsigned char)(elementBytes >> 16);
+    header[2] = (unsigned char)(elementBytes >> 8);
+    header[3] = (unsigned char)elementBytes;
+    for (int offset = 4; offset < 12; offset += 2)
+    {
+        unsigned short bytes = *(unsigned short*)(header + offset);
+        header[offset] = (unsigned char)(bytes >> 8);
+        header[offset + 1] = (unsigned char)bytes;
+    }
+}
+
+static unsigned int ReadRawHeader32(const unsigned char* bytes)
+{
+    return ((unsigned int)bytes[0] << 24) | ((unsigned int)bytes[1] << 16) | ((unsigned int)bytes[2] << 8) | bytes[3];
+}
+
+static unsigned short ReadRawHeader16(const unsigned char* bytes)
+{
+    return (unsigned short)((bytes[0] << 8) | bytes[1]);
+}
+#endif
 arrayWithLength<unsigned char> LevelChunk::getRawData()
 {
     unsigned char* buffer = (unsigned char*)malloc(getRawDataMaxBytes());
+#if LCE_PLATFORM_PC
+    memset(buffer, 0, 12);
+#endif
     unsigned char* cursor = buffer + 12;
     unsigned int elementBytes = mElements->getRawData(cursor);
     *(unsigned int*)buffer = elementBytes;
@@ -352,6 +381,9 @@ arrayWithLength<unsigned char> LevelChunk::getRawData()
     }
     memcpy(cursor, mBiomes.data, 256);
     cursor += 256;
+#if LCE_PLATFORM_PC
+    WriteRawHeaderBigEndian(buffer);
+#endif
     unsigned int totalBytes = (unsigned int)(cursor - buffer);
     arrayWithLength<unsigned char> result(totalBytes, false);
     memcpy(result.data, buffer, totalBytes);
@@ -360,25 +392,45 @@ arrayWithLength<unsigned char> LevelChunk::getRawData()
 }
 void LevelChunk::setFromRawData(arrayWithLength<unsigned char> data)
 {
+#if LCE_PLATFORM_PC
+    unsigned int elementBytes = ReadRawHeader32(data.data);
+#else
     unsigned int elementBytes = *(unsigned int*)data.data;
+#endif
     mElements->setFromRawData(data.data + 12, elementBytes);
     unsigned char* cursor = data.data + 12 + elementBytes;
+#if LCE_PLATFORM_PC
+    unsigned short blockLightBytes = ReadRawHeader16(data.data + 4);
+#else
     unsigned short blockLightBytes = *(unsigned short*)(data.data + 4);
+#endif
     if (mBlockLight == NULL)
         mBlockLight = new SparseLightStorage(false);
     mBlockLight->setFromRawData(cursor, blockLightBytes);
     cursor += blockLightBytes;
+#if LCE_PLATFORM_PC
+    unsigned short blockLightUpperBytes = ReadRawHeader16(data.data + 6);
+#else
     unsigned short blockLightUpperBytes = *(unsigned short*)(data.data + 6);
+#endif
     if (mBlockLightUpper == NULL)
         mBlockLightUpper = new SparseLightStorage(false, true);
     mBlockLightUpper->setFromRawData(cursor, blockLightUpperBytes);
     cursor += blockLightUpperBytes;
+#if LCE_PLATFORM_PC
+    unsigned short skyLightBytes = ReadRawHeader16(data.data + 8);
+#else
     unsigned short skyLightBytes = *(unsigned short*)(data.data + 8);
+#endif
     if (mSkyLight == NULL)
         mSkyLight = new SparseLightStorage(true);
     mSkyLight->setFromRawData(cursor, skyLightBytes);
     cursor += skyLightBytes;
+#if LCE_PLATFORM_PC
+    unsigned short skyLightUpperBytes = ReadRawHeader16(data.data + 10);
+#else
     unsigned short skyLightUpperBytes = *(unsigned short*)(data.data + 10);
+#endif
     if (mSkyLightUpper == NULL)
         mSkyLightUpper = new SparseLightStorage(true, true);
     mSkyLightUpper->setFromRawData(cursor, skyLightUpperBytes);

@@ -101,6 +101,9 @@ set_target_properties(lce_game PROPERTIES CXX_STANDARD 14)
 # The PC platform layer.
 file(GLOB_RECURSE LCE_PLATFORM_SOURCES CONFIGURE_DEPENDS "${LCE_SOURCE}/platform/pc/*.cpp")
 list(FILTER LCE_PLATFORM_SOURCES EXCLUDE REGEX "/platform/pc/audio/")
+# The LAN and internet play shared with the Wii U build.
+file(GLOB LCE_NET_SOURCES CONFIGURE_DEPENDS "${LCE_SOURCE}/net/*.cpp")
+list(APPEND LCE_PLATFORM_SOURCES ${LCE_NET_SOURCES})
 # Units under platform/wiiu shared with PC: the index of the DLC packs in the game content, 4J's memory helpers,
 # System (whose clock is switched per platform) and the leaderboard manager (the edition has no leaderboards).
 list(APPEND LCE_PLATFORM_SOURCES
@@ -148,7 +151,7 @@ endif()
 add_executable(LCEReborn $<TARGET_OBJECTS:lce_game> $<TARGET_OBJECTS:lce_platform> $<TARGET_OBJECTS:lce_audio>)
 target_link_libraries(LCEReborn PRIVATE lce_png lce_zlib SDL3::SDL3-static)
 if(WIN32)
-  target_link_libraries(LCEReborn PRIVATE shell32)
+  target_link_libraries(LCEReborn PRIVATE shell32 ws2_32)
   # The executable's icon (tools/pcart/make_icon.py).
   set(LCE_ICON "${CMAKE_SOURCE_DIR}/resources/pc/icon.ico")
   file(WRITE "${CMAKE_BINARY_DIR}/LCEReborn.rc" "1 ICON \"${LCE_ICON}\"\n")

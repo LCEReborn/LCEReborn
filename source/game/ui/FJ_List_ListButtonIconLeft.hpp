@@ -18,6 +18,7 @@ public:
     void UseIggyIcons();
     void addNewItem(const std::wstring& label, int id, const std::wstring& textureName,
                     const std::wstring& textureName1);
+    void addNewTimerItem(const std::wstring& label, int id);
     void SetTextureName(int index, const std::wstring& textureName);
     static FJ_List* Create(fuiRenderNode* renderNode);
     virtual uint32_t getType();

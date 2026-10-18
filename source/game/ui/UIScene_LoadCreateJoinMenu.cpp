@@ -28,9 +28,6 @@
 #include "platform/CProfile.hpp"
 #include "platform/CStorage.hpp"
 #include "platform/Platform.hpp"
-#if LCE_PLATFORM_WIIU
-#include "platform/wiiu/NQRNetworkManager_Lan_WiiU.hpp"
-#endif
 #include "platform/Commerce.hpp"
 #include "vendor/_LoadingInputParams.hpp"
 #include "vendor/_SaveListDetails.hpp"
@@ -449,6 +446,10 @@ void UIScene_LoadCreateJoinMenu::handleGainFocus(bool navigatedBack)
         ShowJoinListTimer(true);
         ShowNoGamesLabel(false);
     }
+    else
+    {
+        UpdateGamesList();
+    }
     if (gApp.GetCorruptSaveDeleted())
     {
         m_pendingAction = ePendingAction_ReloadSaveInfo;
@@ -720,7 +721,27 @@ void UIScene_LoadCreateJoinMenu::AddJoinListButton(const std::wstring& label, in
     if (packIconSize != 0 && packIcon != NULL)
         registerSubstitutionTexture(packIconName, packIcon, packIconSize, false);
     m_gamesList.AddNewItem(label, id, packIconName, gameIconName);
+    m_joinRowIds.push_back(id);
     SetMatchesAvailable(true);
+}
+
+void UIScene_LoadCreateJoinMenu::AddJoinListAction(const std::wstring& label, int id, const std::wstring& iconPath,
+                                                   const std::wstring& iconName)
+{
+    if (!hasRegisteredSubstitutionTexture(iconName) && gApp.hasArchiveFile(iconPath, false))
+    {
+        arrayWithLength<unsigned char> icon = gApp.getArchiveFile(iconPath, false);
+        if (icon.length != 0 && icon.data != NULL)
+            registerSubstitutionTexture(iconName, icon.data, icon.length, false);
+    }
+    m_gamesList.AddNewItem(label, id, iconName);
+    m_joinRowIds.push_back(id);
+}
+
+void UIScene_LoadCreateJoinMenu::AddJoinListScanningRow(const std::wstring& label, int id)
+{
+    m_gamesList.AddTimerItem(label, id);
+    m_joinRowIds.push_back(id);
 }
 
 void UIScene_LoadCreateJoinMenu::InitFocusJoinList(int)
@@ -730,6 +751,7 @@ void UIScene_LoadCreateJoinMenu::InitFocusJoinList(int)
 void UIScene_LoadCreateJoinMenu::ClearJoinList()
 {
     m_gamesList.clearList();
+    m_joinRowIds.clear();
     SetMatchesAvailable(false);
 }
 
@@ -755,6 +777,8 @@ void UIScene_LoadCreateJoinMenu::SetJoinListEnabled(bool)
 void UIScene_LoadCreateJoinMenu::SetGamesListSelection(unsigned int selection)
 {
     m_gamesList.setCurrentSelection(selection, false, true);
+    if (selection < m_joinRowIds.size())
+        m_gamesList.updateChildFocus(m_joinRowIds[selection]);
 }
 
 void UIScene_LoadCreateJoinMenu::ShowSaveListTimer(bool show)
@@ -1022,169 +1046,6 @@ int UIScene_LoadCreateJoinMenu::CrossSaveUploadFinishedCallback(void* context, i
     return 0;
 }
 
-#if LCE_PLATFORM_WIIU
-int UIScene_LoadCreateJoinMenu::UploadNintendoLanSaveThreadProc(void* context)
-{
-    UIScene_LoadCreateJoinMenu* menu = static_cast<UIScene_LoadCreateJoinMenu*>(context);
-    menu->m_uploadCancelled = false;
-    Minecraft* minecraft = Minecraft::GetInstance();
-    minecraft->mProgressRenderer->progressStagePercentage(0);
-    minecraft->mProgressRenderer->progressStart(IDS_TITLE_SAVETRANSFER);
-    minecraft->mProgressRenderer->progressStage(IDS_SAVETRANSFER_INITIALISING_NETWORK);
-
-    SAVE_DETAILS* details = gStorage->ReturnSavesInfo();
-    int saveIndex = menu->m_selectedSaveIndex;
-    menu->m_uploadState = eUploadState_LoadingSave;
-    if (gStorage->LoadSaveData(&details->saves[saveIndex], &LoadSaveDataForUploadReturned, menu)
-        == C4JStorage::ESaveGame_Load)
-    {
-        menu->m_uploadState = eUploadState_LoadingSave;
-        minecraft->mProgressRenderer->progressStagePercentage(0);
-    }
-    else
-    {
-        menu->m_uploadState = eUploadState_Failed;
-    }
-
-    NQRNetworkManager_Lan_WiiU* lan = gLanNetworkManager;
-    arrayWithLength<unsigned char> saveData;
-    EUploadState startState = menu->m_uploadState;
-    while (menu->m_uploadState != eUploadState_Finished)
-    {
-        switch (menu->m_uploadState)
-        {
-        case eUploadState_SaveLoaded:
-            CGameNetworkManager::sInstance.setLanMode(true);
-            menu->m_uploadState = eUploadState_StartingLanSession;
-            break;
-        case eUploadState_StartingLanSession:
-            if (menu->m_uploadState != startState)
-                minecraft->mProgressRenderer->progressStage(IDS_SAVETRANSFER_INITIALISING_NETWORK);
-            if (!CGameNetworkManager::sInstance.isLanModeChangeInProgress())
-            {
-                const int transferState = lan->m_saveTransferState;
-                if (transferState == NQRNetworkManager_Lan_WiiU::eSaveTransfer_CreatingSession)
-                {
-                }
-                else if (transferState == NQRNetworkManager_Lan_WiiU::eSaveTransfer_CreateSessionFailed)
-                {
-                    menu->m_uploadState = eUploadState_Failed;
-                }
-                else if (transferState == NQRNetworkManager_Lan_WiiU::eSaveTransfer_WaitingForReceiver)
-                {
-                    menu->m_uploadState = eUploadState_WaitingForReceiver;
-                }
-                else if (CGameNetworkManager::sInstance.isLanConnected())
-                {
-                    unsigned int saveSize = gStorage->GetSaveSize();
-                    saveData.resize(saveSize);
-                    gStorage->GetSaveData(saveData.data, &saveSize);
-                    SAVE_INFO& save = details->saves[saveIndex];
-                    unsigned char* thumbnail = save.thumbnail;
-                    if (thumbnail != NULL)
-                    {
-                        unsigned int thumbnailSize = save.thumbnailSize;
-                        CMinecraftApp::PngTagData tagData;
-                        gApp.GetImageTextData(thumbnail, thumbnailSize, &tagData);
-                        lan->CreateSessionForSaveTransfer(saveData.length, saveData.data, thumbnailSize, thumbnail,
-                                                          tagData.seed, tagData.hostOptions, tagData.texturePack,
-                                                          save.title);
-                    }
-                }
-                else
-                {
-                    menu->m_uploadState = eUploadState_Failed;
-                }
-            }
-            else if (menu->m_uploadCancelled)
-            {
-                menu->m_uploadState = eUploadState_Finished;
-            }
-            break;
-        case eUploadState_Cancelled:
-            menu->m_uploadState = eUploadState_Finished;
-            break;
-        case eUploadState_WaitingForReceiver:
-            if (menu->m_uploadCancelled)
-            {
-                menu->m_uploadState = eUploadState_Finished;
-                break;
-            }
-            minecraft->mProgressRenderer->progressStage(0xB9F3A58A);
-            if (lan->m_saveTransferState == NQRNetworkManager_Lan_WiiU::eSaveTransfer_Transferring)
-                menu->m_uploadState = eUploadState_Transferring;
-            break;
-        case eUploadState_Transferring:
-        {
-            if (menu->m_uploadCancelled)
-            {
-                menu->m_uploadState = eUploadState_Finished;
-                break;
-            }
-            wchar_t text[256];
-            switch (lan->m_saveTransferState)
-            {
-            case NQRNetworkManager_Lan_WiiU::eSaveTransfer_Idle:
-            case NQRNetworkManager_Lan_WiiU::eSaveTransfer_ConnectionLost:
-                menu->m_uploadState = eUploadState_Failed;
-                break;
-            case NQRNetworkManager_Lan_WiiU::eSaveTransfer_Transferring:
-            {
-                int percent = static_cast<int>(lan->m_saveTransferOffset * 100)
-                              / static_cast<int>(lan->m_saveTransferSize);
-                std::swprintf(text, 256, L10N::GetString(0x0CE6C914), percent);
-                minecraft->mProgressRenderer->progressStage(std::wstring(text));
-                minecraft->mProgressRenderer->progressStagePercentage(percent);
-                break;
-            }
-            case NQRNetworkManager_Lan_WiiU::eSaveTransfer_SendComplete:
-                std::swprintf(text, 256, L10N::GetString(0xB7147763), 100);
-                minecraft->mProgressRenderer->progressStage(std::wstring(text));
-                minecraft->mProgressRenderer->progressStagePercentage(100);
-                menu->m_uploadState = eUploadState_Complete;
-                break;
-            default:
-                break;
-            }
-            break;
-        }
-        case eUploadState_Complete:
-        {
-            int okOption[1] = {IDS_CONFIRM_OK};
-            gConsoleUIController.RequestErrorMessage(IDS_TITLE_SAVETRANSFER, 0x4925B633, okOption, 1,
-                                                     gProfile->GetPrimaryPad(), &CrossSaveUploadFinishedCallback, menu,
-                                                     NULL, true);
-            menu->m_uploadState = eUploadState_CompleteShown;
-            break;
-        }
-        case eUploadState_Failed:
-        {
-            if (menu->m_uploadCancelled)
-            {
-                menu->m_uploadState = eUploadState_Finished;
-                break;
-            }
-            int okOption[1] = {IDS_CONFIRM_OK};
-            gConsoleUIController.RequestErrorMessage(IDS_TITLE_SAVETRANSFER, IDS_SAVE_TRANSFER_FAILED, okOption, 1,
-                                                     gProfile->GetPrimaryPad(), &CrossSaveUploadFinishedCallback, menu,
-                                                     NULL, true);
-            menu->m_uploadState = eUploadState_FailedShown;
-            break;
-        }
-        default:
-            break;
-        }
-        Sleep(UPLOAD_POLL_INTERVAL);
-    }
-
-    CGameNetworkManager::sInstance.setLanMode(false);
-    EnterCriticalSection(&menu->m_lock);
-    menu->m_returnToHomeMenu = true;
-    LeaveCriticalSection(&menu->m_lock);
-    return 0;
-}
-#endif
-
 void UIScene_LoadCreateJoinMenu::CancelSaveUploadCallback(void* context)
 {
     UIScene_LoadCreateJoinMenu* menu = static_cast<UIScene_LoadCreateJoinMenu*>(context);
@@ -1193,40 +1054,16 @@ void UIScene_LoadCreateJoinMenu::CancelSaveUploadCallback(void* context)
     menu->m_ignoreInput = true;
 }
 
-#if LCE_PLATFORM_WIIU
-void UIScene_LoadCreateJoinMenu::LaunchSaveUpload()
-{
-    _LoadingInputParams* params = new _LoadingInputParams();
-    params->m_threadProc = &UploadNintendoLanSaveThreadProc;
-    params->m_threadParam = this;
-    FullscreenProgressState* progressState = new FullscreenProgressState();
-    progressState->reservedFlag1 = true;
-    progressState->reservedFlag2 = true;
-    progressState->closeMode = 6;
-    progressState->playerId = 0;
-    params->m_completionData = progressState;
-    params->m_cancelText = IDS_TOOLTIPS_CANCEL;
-    params->m_cancelFunc = &CancelSaveUploadCallback;
-    params->m_cancelFuncParam = this;
-    gConsoleUIController.NavigateToScene(m_playerId, EUIScene_FullscreenProgress, params, EUILayer_Scene,
-                                         EUIGroup_PlayerDefault);
-}
-#endif
-
 int UIScene_LoadCreateJoinMenu::SaveTransferDialogReturned(void* context, int, C4JStorage::EMessageResult result)
 {
     UIScene_LoadCreateJoinMenu* menu = static_cast<UIScene_LoadCreateJoinMenu*>(context);
     if (result == C4JStorage::EMessageResult_Accept)
-#if LCE_PLATFORM_WIIU
-        menu->LaunchSaveUpload();
-#elif LCE_PLATFORM_PC
     {
         int okOption[1] = {IDS_CONFIRM_OK};
         gConsoleUIController.RequestErrorMessage(IDS_TITLE_SAVETRANSFER, IDS_SAVE_TRANSFER_FAILED, okOption, 1,
                                                  gProfile->GetPrimaryPad(), &CrossSaveUploadFinishedCallback, menu,
                                                  NULL, true);
     }
-#endif
     menu->m_ignoreInput = false;
     return 0;
 }

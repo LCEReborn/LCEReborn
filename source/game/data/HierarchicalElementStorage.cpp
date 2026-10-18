@@ -2,6 +2,9 @@
 
 #include <cstdlib>
 #include <cstring>
+#if LCE_PLATFORM_PC
+#include <vector>
+#endif
 
 #include "game/core/DataInputStream.hpp"
 #include "game/core/DataOutputStream.hpp"
@@ -2150,7 +2153,15 @@ int HierarchicalElementStorage::setDataRegion(arrayWithLength<unsigned char> dat
                                               void (*changedCallback)(int, int, int, void*, int), void* callbackData,
                                               int callbackValue)
 {
+#if LCE_PLATFORM_PC
+    std::vector<unsigned short> decoded(2 * (x1 - x0) * (y1 - y0) * (z1 - z0) + 1);
+    const unsigned char* encoded = data.data + offset;
+    for (unsigned int index = 0; index + 1 < decoded.size(); ++index)
+        decoded[index] = (unsigned short)((encoded[index * 2] << 8) | encoded[index * 2 + 1]);
+    unsigned short* elements = &decoded[0];
+#else
     unsigned short* elements = (unsigned short*)(data.data + offset);
+#endif
     unsigned short* source = elements + (x1 - x0) * (y1 - y0) * (z1 - z0);
 
     for (int x = x0; x < x1; ++x)
@@ -2233,6 +2244,16 @@ int HierarchicalElementStorage::getDataRegion(arrayWithLength<unsigned char> dat
             }
         }
     }
+
+#if LCE_PLATFORM_PC
+    for (unsigned short* element = elements; element != destination; ++element)
+    {
+        unsigned short value = *element;
+        unsigned char* bytes = (unsigned char*)element;
+        bytes[0] = (unsigned char)(value >> 8);
+        bytes[1] = (unsigned char)value;
+    }
+#endif
 
     return (int)((unsigned char*)destination - (unsigned char*)elements);
 }

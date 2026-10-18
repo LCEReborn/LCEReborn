@@ -18,7 +18,7 @@
 #include "game/ui/IUIScene_DlcSelectMenu.hpp"
 #include "platform/wiiu/C4JThreadImpl.hpp"
 #include "platform/wiiu/CInput.hpp"
-#include "platform/wiiu/NQRNetworkManager_WiiU.hpp"
+#include <nn/ac/ac_cpp.h>
 
 extern cProductInfo* g_pDLCProductInfo;
 
@@ -284,9 +284,44 @@ void cCommerceNintendoWiiU::ClearShoppingCatalogRetrieved()
     SetItemCount(0);
 }
 
+namespace nn
+{
+namespace ec
+{
+namespace applet
+{
+bool IsExecuting() asm("IsExecuting__Q3_2nn2ec6appletFv");
+void Finish() asm("Finish__Q3_2nn2ec6appletFv");
+int GetReturnCode() asm("GetReturnCode__Q3_2nn2ec6appletFv");
+}
+}
+}
+
+bool CommerceAppletIsExecuting()
+{
+    return nn::ec::applet::IsExecuting();
+}
+
+void CommerceAppletFinish()
+{
+    nn::ec::applet::Finish();
+}
+
+int CommerceAppletGetReturnCode()
+{
+    return nn::ec::applet::GetReturnCode();
+}
+
+static bool ApplicationConnected()
+{
+    bool connected = false;
+    nn::ac::IsApplicationConnected(&connected);
+    return connected;
+}
+
 void cCommerceNintendoWiiU::tick()
 {
-    if (NQRNetworkManager_WiiU::s_applicationConnected && !CGameNetworkManager::sInstance.usingLanMode())
+    if (ApplicationConnected() && !CGameNetworkManager::sInstance.usingLanMode())
     {
         if (!GetNetworkConnected())
             SetFirstLogIn(true);
@@ -294,7 +329,7 @@ void cCommerceNintendoWiiU::tick()
         switch (GetProcessState())
         {
         case eCommerce_Process_State_Unknown:
-            if (NQRNetworkManager_WiiU::s_applicationConnected && GetCommerceInitialised())
+            if (ApplicationConnected() && GetCommerceInitialised())
                 SetProcessState(eCommerce_Process_State_GetCatalog);
             break;
         case eCommerce_Process_State_GetCatalog:

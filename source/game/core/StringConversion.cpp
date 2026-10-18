@@ -8,9 +8,6 @@
 
 #include "platform/Platform.hpp"
 
-#if LCE_PLATFORM_WIIU
-#include "nn/nex/StringConversion.hpp"
-#elif LCE_PLATFORM_PC
 static void Utf8ToWideChar(const char* source, wchar_t* destination, unsigned int capacity)
 {
     unsigned int left = capacity - 1;
@@ -49,7 +46,6 @@ static void Utf8ToWideChar(const char* source, wchar_t* destination, unsigned in
         ++source;
     }
 }
-#endif
 
 std::wstring char16towstring(wchar_t* text)
 {
@@ -99,11 +95,7 @@ std::wstring convStringToWstring(const std::string& text)
 {
     const unsigned int length = static_cast<unsigned int>(text.size());
     wchar_t* buffer = new wchar_t[length + 1];
-#if LCE_PLATFORM_WIIU
-    nn::nex::StringConversion::Utf8ToWideChar(text.c_str(), buffer, length + 1);
-#elif LCE_PLATFORM_PC
     Utf8ToWideChar(text.c_str(), buffer, length + 1);
-#endif
     std::wstring result;
     result.assign(buffer, std::wcslen(buffer));
     delete[] buffer;

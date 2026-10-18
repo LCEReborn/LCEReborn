@@ -11,7 +11,6 @@
 #if LCE_PLATFORM_WIIU
 #include <nn/ffl/miidata.h>
 #include <nn/fp/fp_cpp.h>
-#include <nn/pia.h>
 
 #include "platform/wiiu/MiiData.hpp"
 #endif
@@ -157,9 +156,6 @@ public:
     virtual MiiDataEntry* GetGuestMiiData(int) = 0;
 #endif
     virtual bool IsHasAchievementsFile(int) = 0;
-#if LCE_PLATFORM_WIIU
-    virtual void GetLocalPlayerInfo(nn::pia::transport::Station::PlayerInfo*, int) = 0;
-#endif
 };
 
 #endif

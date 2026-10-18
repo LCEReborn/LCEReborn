@@ -214,12 +214,29 @@ void DataOutputStream::writeUTF(const std::wstring& text)
 
 void DataOutputStream::writePlayerUID(PlayerUID uid)
 {
+#if LCE_PLATFORM_PC
+    if ((uid.flags & PlayerUID::FlagUuid) != 0)
+    {
+        for (unsigned int i = 0; i < sizeof(uid.uuid.data); i++)
+            writeByte(uid.uuid.data[i]);
+    }
+    else
+    {
+        for (unsigned int i = 0; i < sizeof(uid.mii.createId); i++)
+            writeByte(uid.mii.createId[i]);
+        writeByte(0);
+        writeByte(0);
+        writeInt(uid.mii.principalId);
+    }
+    writeInt(uid.flags);
+#else
     const unsigned char* bytes = (const unsigned char*)&uid;
 
     for (unsigned int i = 0; i < sizeof(PlayerUID); i++)
     {
         writeByte(bytes[i]);
     }
+#endif
 }
 
 int DataOutputStream::GetCompressedNbtSize(CompoundTag* tag)

@@ -9,7 +9,7 @@
 #include "game/minigame/EMiniGameId.hpp"
 #include "game/network/Packet.hpp"
 
-class CPlatformNetworkManagerNintendo;
+class CPlatformNetworkManagerLan;
 class DataInputStream;
 class DataOutputStream;
 class FakeClientPacketListener;
@@ -32,10 +32,7 @@ public:
     static boost::shared_ptr<Packet> create();
 
 private:
-    friend class CPlatformNetworkManagerNintendo;
-#if LCE_PLATFORM_PC
-    friend class CPlatformNetworkManagerPC;
-#endif
+    friend class CPlatformNetworkManagerLan;
     friend class FakeClientPacketListener;
     friend class ClientPacketListener;
 

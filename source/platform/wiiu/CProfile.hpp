@@ -8,7 +8,6 @@
 #include <boost/unordered_map.hpp>
 #include <nn/ffl/miidata.h>
 #include <coreinit/filesystem.h>
-#include <nn/pia.h>
 #include <nn/fp/fp_cpp.h>
 
 #include "game/core/CriticalSection.hpp"
@@ -175,7 +174,6 @@ public:
     virtual MiiDataEntry* GetFavouriteMiiData(int);
     virtual MiiDataEntry* GetGuestMiiData(int);
     virtual bool IsHasAchievementsFile(int);
-    virtual void GetLocalPlayerInfo(nn::pia::transport::Station::PlayerInfo*, int);
 
     void SetSignInChange(bool);
     void checkParentalControl(int);

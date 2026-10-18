@@ -46,7 +46,7 @@ Headers named after a platform class (`platform/CProfile.hpp`,
 includes those and never `platform/wiiu/...` or `platform/pc/...` directly.
 
 Members of a shared interface whose types exist only on one platform (Mii
-data, Nintendo friend presence, Pia) are declared under that platform's
+data, Nintendo friend presence) are declared under that platform's
 `#if`, and so are the game's calls to them.
 
 ## Files and folders on PC
@@ -75,6 +75,15 @@ The PC has no store, so the game reads what is unlocked from `license.cfg`
 Nothing is unlocked until you edit it, and you should only unlock what you
 own. `full_game = true` unlocks the full game, otherwise it runs as the trial.
 `dlc` is `none`, `all`, or pack names separated by commas.
+
+## Multiplayer
+
+The PC and Wii U builds share one network manager (`source/net/`), so they
+can play together. An online game is hosted on port 25570 (TCP for players,
+UDP for finding games on the local network). The Join tab lists games found
+on the local network, and Add Server saves a name and an address
+(`host` or `host:port`) for anything else. The PC keeps the saved servers in
+`servers.dat` in the save folder; the Wii U keeps them in its save data.
 
 ## Logging
 

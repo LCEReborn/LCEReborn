@@ -15,9 +15,6 @@
 #include "platform/CInput.hpp"
 #include "platform/CProfile.hpp"
 #include "platform/Platform.hpp"
-#if LCE_PLATFORM_WIIU
-#include "platform/wiiu/NQRNetworkManager.hpp"
-#endif
 #include "game/core/GameSettings.hpp"
 
 UIScene_SaveMessage::UIScene_SaveMessage(int playerId, void* sceneData, UILayer* layer) : UIScene(playerId, layer)
@@ -92,9 +89,6 @@ void UIScene_SaveMessage::handleInput(int playerId, int action, bool repeat, boo
         gConsoleUIController.AnimateKeyPress(m_playerId, action, repeat, pressed, released);
         if (action == EControllerActions_MenuOk)
         {
-#if LCE_PLATFORM_WIIU
-            NQRNetworkManager::SafeToRespondToGameBootInvite(playerId);
-#endif
             sendInputToMovie(action, repeat, pressed, released);
         }
     }

@@ -69,4 +69,8 @@ private:
     bool m_firstLogIn;
 };
 
+bool CommerceAppletIsExecuting();
+void CommerceAppletFinish();
+int CommerceAppletGetReturnCode();
+
 #endif

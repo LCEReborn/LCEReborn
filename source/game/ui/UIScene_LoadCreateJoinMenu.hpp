@@ -84,6 +84,9 @@ public:
     virtual void AddJoinListButton(const std::wstring& label, int id, unsigned char* gameIcon,
                                    unsigned int gameIconSize, const std::wstring& gameIconName, unsigned char* packIcon,
                                    unsigned int packIconSize, const std::wstring& packIconName);
+    virtual void AddJoinListAction(const std::wstring& label, int id, const std::wstring& iconPath,
+                                   const std::wstring& iconName);
+    virtual void AddJoinListScanningRow(const std::wstring& label, int id);
     virtual void InitFocusJoinList(int focus);
     virtual void ClearJoinList();
     virtual unsigned int GetJoinListSize();
@@ -109,9 +112,7 @@ public:
     static int CopySaveDialogReturned(void* context, int pad, C4JStorage::EMessageResult result);
     static int LoadSaveDataForUploadReturned(void* context, bool failed, bool complete);
     static int CrossSaveUploadFinishedCallback(void* context, int pad, C4JStorage::EMessageResult result);
-    static int UploadNintendoLanSaveThreadProc(void* context);
     static void CancelSaveUploadCallback(void* context);
-    void LaunchSaveUpload();
     static int SaveTransferDialogReturned(void* context, int pad, C4JStorage::EMessageResult result);
     virtual int handleSaveOptionsDialogReturned(int pad, C4JStorage::EMessageResult result);
     virtual int handleTexturePackDialogReturned(int pad, C4JStorage::EMessageResult result);
@@ -132,6 +133,7 @@ private:
     UIControl_SaveList m_loadList;
     UIControl_SaveList m_createList;
     UIControl_LeftIconButtonList m_gamesList;
+    std::vector<int> m_joinRowIds;
     UIControl_Label m_loadTitle;
     UIControl_Label m_createTitle;
     UIControl_Label m_joinTitle;

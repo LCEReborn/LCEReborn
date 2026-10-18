@@ -20,6 +20,7 @@ public:
                     const std::wstring& textureName1);
     void AddNewItem(const std::wstring& label, const std::wstring& textureName);
     void AddNewItem(const std::wstring& label, const std::wstring& textureName, const std::wstring& textureName1);
+    void AddTimerItem(const std::wstring& label, int id);
     void SetTextureName(int index, const std::wstring& textureName);
     void SetItem(int index, const std::wstring& label, const std::wstring& textureName);
 };

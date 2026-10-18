@@ -543,8 +543,11 @@ void UIScene_PauseMenu::_ExitWorld(void* context)
                 }
             }
             if (gProfile->IsSignedIn(gProfile->GetPrimaryPad()))
-                gConsoleUIController.RequestErrorMessage(errorTitle, errorMessage, parameters, 1,
-                                                         gProfile->GetPrimaryPad(), NULL, NULL, NULL, true);
+            {
+                gApp.setIgnoreMainMenuInputDuringInvite(false);
+                gConsoleUIController.RequestMessageBox(errorTitle, errorMessage, parameters, 1,
+                                                       gProfile->GetPrimaryPad(), NULL, NULL, NULL, 0, true, true);
+            }
             for (int i = 0; i < 3; ++i)
             {
                 if (minecraft->mLevels[i] != NULL)
@@ -605,10 +608,11 @@ void UIScene_PauseMenu::_ExitWorld(void* context)
             errorMessage = IDS_DISCONNECTED;
             break;
         }
-        gConsoleUIController.RequestErrorMessage(
+        gApp.setIgnoreMainMenuInputDuringInvite(false);
+        gConsoleUIController.RequestMessageBox(
             errorTitle, errorMessage, parameters, 1, 0xff,
             CGameNetworkManager::sInstance.IsHandlingBootInvite() ? NetworkErrorHandledDuringInvite : NULL, NULL, NULL,
-            true);
+            0, true, true);
         exitTitle = -1;
     }
 

@@ -533,7 +533,7 @@ wchar_t* CProfile::GetMiiName(int quadrant)
 
 wchar_t* CProfile::GetGamertag(int quadrant)
 {
-    if (!IsSignedInLive(quadrant))
+    if (!IsSignedInLive(quadrant) || mProfiles[quadrant].gamertag[0] == 0)
         return GetMiiName(quadrant);
     return (wchar_t*)mProfiles[quadrant].gamertag;
 }
@@ -833,10 +833,6 @@ bool CProfile::ProcessSignIn()
 bool CProfile::IsValidPlayer(int quadrant)
 {
     return (mSignedInUsersMask & (1 << quadrant)) != 0;
-}
-
-void CProfile::GetLocalPlayerInfo(nn::pia::transport::Station::PlayerInfo*, int)
-{
 }
 
 void CProfile::Terminate()

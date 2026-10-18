@@ -43,6 +43,14 @@ void ClientboundAwardStatPacket::read(DataInputStream* input)
     {
         paramData = arrayWithLength<unsigned char>(length, true);
         input->readBytes(paramData);
+#if LCE_PLATFORM_PC
+        if (length == 4)
+        {
+            unsigned char* bytes = paramData.data;
+            *(int*)paramData.data = (int)(((unsigned int)bytes[0] << 24) | ((unsigned int)bytes[1] << 16)
+                                          | ((unsigned int)bytes[2] << 8) | bytes[3]);
+        }
+#endif
     }
 }
 
@@ -50,6 +58,13 @@ void ClientboundAwardStatPacket::write(DataOutputStream* output)
 {
     output->writeInt(statId);
     output->writeInt(paramData.length);
+#if LCE_PLATFORM_PC
+    if (paramData.length == 4)
+    {
+        output->writeInt(*(int*)paramData.data);
+        return;
+    }
+#endif
     if (paramData.length != 0)
     {
         output->writeBytes(paramData);

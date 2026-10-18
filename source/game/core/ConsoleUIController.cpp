@@ -59,9 +59,6 @@
 #include "platform/C4JThreadImpl.hpp"
 #include "platform/CInput.hpp"
 #include "platform/CProfile.hpp"
-#if LCE_PLATFORM_WIIU
-#include "platform/wiiu/NQRNetworkManager.hpp"
-#endif
 #include "platform/wiiu/WiiU_FileSystem.hpp"
 #include "platform/wiiu/UIComponent_WiiUDRC.hpp"
 #include "vendor/_TutorialPopupInfo.hpp"

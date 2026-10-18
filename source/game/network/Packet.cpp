@@ -426,6 +426,10 @@ boost::shared_ptr<Packet> Packet::readPacket(DataInputStream* input, bool isServ
                  : sClientboundPacketIds.find(packetId) == sClientboundPacketIds.end())
     {
         protocolError = true;
+#if LCE_PLATFORM_PC
+        if (isServer)
+            return boost::shared_ptr<Packet>();
+#endif
         gApp.SetAction(gProfile->GetPrimaryPad(), eXuiAction_ConnectionLost, NULL);
         return boost::shared_ptr<Packet>();
     }

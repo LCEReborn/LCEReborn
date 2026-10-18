@@ -21,8 +21,6 @@
 #include "vendor/_ConnectionProgressParams.hpp"
 #include "platform/Platform.hpp"
 #if LCE_PLATFORM_WIIU
-#include "platform/wiiu/NQRNetworkManager_WiiU.hpp"
-#include "platform/wiiu/NintendoVoiceChat_WiiU.hpp"
 #include "platform/wiiu/cCommerceNintendo.hpp"
 #endif
 #include "platform/C4JThread.hpp"
@@ -61,19 +59,11 @@
 #include "platform/C4JThreadImpl.hpp"
 #include "platform/CProfile.hpp"
 #include "platform/CStorage.hpp"
-#if LCE_PLATFORM_WIIU
-#include "platform/wiiu/NQRNetworkManager.hpp"
-#endif
 #include "vendor/_NetworkGameInitData.hpp"
 #include "game/ui/UIScene_FullscreenProgress.hpp"
 #include "game/ui/UIScene_QuadrantSignin.hpp"
 #include "game/core/User.hpp"
 #include "vendor/_LoadingInputParams.hpp"
-#if LCE_PLATFORM_WIIU
-#include "platform/wiiu/CPlatformNetworkManagerNintendo.hpp"
-
-#include <sysapp/args.h>
-#endif
 
 extern "C" int shutdown(int socket, int how);
 extern ConsoleUIController gConsoleUIController;
@@ -1494,47 +1484,6 @@ bool CGameNetworkManager::IsHandlingBootInvite()
 {
     return g_pPlatformNetworkManager->IsHandlingBootInvite();
 }
-#if LCE_PLATFORM_WIIU
-void CGameNetworkManager::WiiU_ClearIsHandlingBootInvite()
-{
-    NQRNetworkManager_WiiU::ClearIsHandlingBootInvite();
-}
-void CGameNetworkManager::WiiU_ShowErrorViewer()
-{
-    NQRNetworkManager_WiiU::ShowErrorViewer();
-}
-void CGameNetworkManager::ShowConnectOnlineNintendoProgress(int i, int (*cb)(void*, bool, int, int), void* d)
-{
-    NQRNetworkManager_WiiU::ShowConnectOnlineNintendoProgress(i, cb, d);
-}
-void CGameNetworkManager::WiiU_ReleaseForeground()
-{
-    NintendoVoiceChat_WiiU::ReleaseForeground();
-    NQRNetworkManager_WiiU::SetAppSuspended(true);
-}
-void CGameNetworkManager::WiiU_AcquiredForeground()
-{
-    NintendoVoiceChat_WiiU::AcquiredForeground();
-    NQRNetworkManager_WiiU::SetAppSuspended(false);
-    MasterGameMode::ResetLobbyTimerAfterSuspend();
-}
-void CGameNetworkManager::WiiU_ReleaseCallback()
-{
-    NintendoVoiceChat_WiiU::ReleaseCallback();
-}
-void CGameNetworkManager::WiiU_SetBootFromFriendList()
-{
-    SYSArgDataBlock args[2] = {{SYS_ARG_ID_JOIN_PID}, {SYS_ARG_ID_END}};
-    SYSCallerInfo callerInfo;
-    if (SYSGetArguments(args, &callerInfo) == 0 && args[0].type == SYS_ARG_TYPE_UINT32)
-    {
-        g_bGameBootInvitePending = true;
-        g_uiGameBootInvitePrincipalId = args[0].uint32;
-        g_bHandlingGameBootInvite = true;
-        gApp.setIgnoreMainMenuInputDuringInvite(true);
-    }
-}
-#elif LCE_PLATFORM_PC
 namespace
 {
 int (*s_connectProgressCallback)(void*, bool, int, int);
@@ -1588,7 +1537,6 @@ void CGameNetworkManager::WiiU_ReleaseCallback()
 void CGameNetworkManager::WiiU_SetBootFromFriendList()
 {
 }
-#endif
 bool CGameNetworkManager::IsUGCRestricted(int userIndex)
 {
     bool explicitUser = userIndex != 0xff;

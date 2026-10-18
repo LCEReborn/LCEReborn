@@ -52,6 +52,17 @@ void UpdateGameRuleProgressPacket::read(DataInputStream* input)
     {
         mPayload = arrayWithLength<unsigned char>(static_cast<unsigned int>(payloadLength), true);
         input->readBytes(mPayload);
+#if LCE_PLATFORM_PC
+        if (payloadLength % 4 == 0)
+        {
+            for (int offset = 0; offset < payloadLength; offset += 4)
+            {
+                unsigned char* bytes = mPayload.data + offset;
+                *(int*)bytes = (int)(((unsigned int)bytes[0] << 24) | ((unsigned int)bytes[1] << 16)
+                                     | ((unsigned int)bytes[2] << 8) | bytes[3]);
+            }
+        }
+#endif
     }
     else
     {
@@ -67,6 +78,14 @@ void UpdateGameRuleProgressPacket::write(DataOutputStream* output)
     output->writeByte(mAuxValue);
     output->writeInt(mDataTag);
     output->writeInt(static_cast<int>(mPayload.length));
+#if LCE_PLATFORM_PC
+    if (mPayload.length % 4 == 0)
+    {
+        for (unsigned int offset = 0; offset < mPayload.length; offset += 4)
+            output->writeInt(*(int*)(mPayload.data + offset));
+        return;
+    }
+#endif
     output->writeBytes(mPayload);
 }
 

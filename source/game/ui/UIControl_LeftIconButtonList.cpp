@@ -37,3 +37,9 @@ void UIControl_LeftIconButtonList::AddNewItem(const std::wstring& label, int id,
         ->addNewItem(label, id, textureName, textureName1);
     addElement(UIControl::eUIControlType_Button, -1);
 }
+
+void UIControl_LeftIconButtonList::AddTimerItem(const std::wstring& label, int id)
+{
+    static_cast<FJ_List_ListButtonIconLeft*>(m_fuiRenderNode->getFuiNode())->addNewTimerItem(label, id);
+    addElement(UIControl::eUIControlType_Button, -1);
+}

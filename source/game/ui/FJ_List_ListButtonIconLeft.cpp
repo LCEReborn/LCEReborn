@@ -37,6 +37,18 @@ void FJ_List_ListButtonIconLeft::addNewItem(const std::wstring& label, int id, c
         item->SetTextureName(textureName, textureName1);
 }
 
+void FJ_List_ListButtonIconLeft::addNewTimerItem(const std::wstring& label, int id)
+{
+    const char* objectName = m_checkboxTick ? "fourj.Buttons.FJ_ListButtonIconLeft_Small"
+                                            : "fourj.Buttons.FJ_ListButtonIconLeft_Normal";
+    FJ_ListButtonIconLeft* item = static_cast<FJ_ListButtonIconLeft*>(
+        FJ_Factory::createObject(objectName, m_pRenderNode, true, NULL));
+    addNewListItem(item, label, id);
+    item->Init(label, id);
+    item->SetSlotID(m_id, false);
+    item->ShowTimer();
+}
+
 void FJ_List_ListButtonIconLeft::SetTextureName(int index, const std::wstring& textureName)
 {
     FJ_ListButtonIconLeft* item = static_cast<FJ_ListButtonIconLeft*>(ReturnItem(index));

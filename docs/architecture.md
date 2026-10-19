@@ -1,10 +1,11 @@
 # Architecture
 
 The title is one C++ codebase with a platform abstraction in the middle.
-The game core above the seam is platform-pure. The platform backend below
-it is the only code that talks to the Cafe OS, the GX2 graphics API, the
-VPAD/WPAD controllers and Nintendo's online services. The reconstruction
-keeps that shape, and the directory layout is the seam made visible.
+The game core above the seam is platform-pure. The platform backends below
+it are the only code that talks to the operating system: on Wii U the Cafe
+OS, the GX2 graphics API and the VPAD/WPAD controllers; on PC SDL 3 and
+OpenGL. The reconstruction keeps that shape, and the directory layout is
+the seam made visible.
 
 ## Include root
 
@@ -42,6 +43,14 @@ per console. This directory holds the Wii U implementations: `C4JThread`,
 `C4JEvent`, `C4JStorage`, `CStorage`, `CProfile`, `CInput` and the
 allocator glue for the Mii face library. These files call Cafe OS and
 Nintendo SDK functions directly; no file under `game/` does.
+
+## `source/platform/pc/` - the PC backend
+
+The same interfaces implemented for PC: threads, storage, profiles and
+input over SDL 3, an OpenGL 3.3 renderer, the window, a sound engine for the
+game's own sound bank, logging and crash reports. Shared headers under
+`source/platform/` pick the backend, so game code never includes either
+directory directly. See `pc-platform.md` and `pc-input.md`.
 
 ## `source/net/` - multiplayer
 

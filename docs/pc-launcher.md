@@ -2,7 +2,8 @@
 
 `launcher/` builds `LCERebornLauncher`, a Qt 6 program that imports the game
 files, keeps profiles, starts the PC game and shows its log. It replaces
-`tools/prepare.py` for PC players and runs no Python.
+`tools/prepare.py` for PC players and runs no Python. Players get it with
+the game in the zip of each GitHub release.
 
 ## Building it
 

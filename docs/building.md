@@ -1,8 +1,9 @@
 # Building
 
 The build turns this source into `Minecraft.Client.rpx`, the game's Wii U
-executable, and packages it as a title folder that Cemu runs. Three
-commands do the whole job:
+executable, and packages it as a title folder that Cemu runs. The PC
+version builds with CMake instead; see Building on PC in `pc-platform.md`.
+Three commands do the whole job:
 
 ```
 python tools/prepare.py --base <base game dump> --update <update v688 dump>
@@ -14,7 +15,7 @@ python tools/package.py --update <update v688 dump>
 
 - This repository with its submodule. `source/nn/ffl` is a git submodule,
   so clone with
-  `git clone --recurse-submodules https://github.com/Jacobwasbeast/mcwiiu-reconstructed.git`,
+  `git clone --recurse-submodules https://github.com/LCEReborn/LCEReborn.git`,
   or run `git submodule update --init` in an existing clone.
 - Your own extracted, decrypted dumps of the base game (title
   `00050000101D9D00`) and of update version 688 (title `0005000E101D9D00`),

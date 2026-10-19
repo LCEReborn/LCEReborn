@@ -10,6 +10,9 @@ Xbox 360 TU75 build serves as a behavioural cross-check. Every file is
 hand-authored text; no decompiler output, disassembly or game data is
 committed. See `provenance.md`.
 
+The same source also builds a native PC version, LCEReborn, which runs the
+game on Windows from your own copy of it (`pc-platform.md`).
+
 ## Who is writing it
 
 All of the code in this repository is AI-constructed. No human writes
@@ -30,10 +33,14 @@ families to Luna and Opus 5 workers.
   items, networking, UI, rendering and audio.
 - `source/platform/wiiu/` - the Nintendo backend of 4J's platform layer
   (threads, storage, profiles, input, the Mii icon module).
+- `source/platform/pc/` - the PC backend: the same interfaces over SDL 3,
+  an OpenGL 3.3 renderer, keyboard, mouse and controllers, and a sound
+  engine for the game's own sound bank.
 - `source/net/` - multiplayer shared by the Wii U and PC builds, so the two
   can play together.
 - `source/vendor/` - reconstructed internals of third-party libraries the
-  title links against (Miles audio, Bink audio, dlmalloc, stb_truetype).
+  title links against (Miles audio and Bink audio, used by the Wii U build
+  only, dlmalloc, stb_truetype).
 - `source/nn/` - the small SDK libraries the title links (crypto, software
   keyboard, error viewer), plus the Mii face library in the `source/nn/ffl`
   submodule.
@@ -47,8 +54,11 @@ families to Luna and Opus 5 workers.
   the way the original was linked; `tools/build/` holds the pinned library
   list, the toolchain image and the few altered library files;
   `tools/measure/` compares a build with the original executable.
+  `package_pc.py` packages the PC build as a zip for players and
+  `release_pc.py` publishes it as a GitHub release.
 - `launcher/` - the PC port's Qt launcher, which imports the game files
-  without Python, keeps profiles and shows the game's log (`pc-launcher.md`).
+  without Python, keeps profiles, shows the game's log and the releases
+  (`pc-launcher.md`).
 
 ## What is not here
 
@@ -62,8 +72,12 @@ committed to this repository, and none should ever be.
 without any code from the original executable. It runs in a stock Cemu 2.6:
 it boots to the menus, creates and loads worlds, and its server has run at
 the full 20 ticks per second in testing. It has not been tried on a Wii U
-console. Nintendo ended the Wii U's online services in April 2024, and the
-online features have not been tested.
+console. Nintendo ended the Wii U's online services in April 2024; this
+build's multiplayer uses LCEReborn's own network manager instead.
+
+The PC version builds with CMake and plays on Windows: worlds, mini games,
+split screen and multiplayer with other PCs and the Wii U build. Its
+releases are on GitHub, and `pc-platform.md` describes it.
 
 The reconstruction is still being refined toward the original function by
 function, and a behaviour difference you find is a bug worth reporting.

@@ -1,38 +1,73 @@
-# Minecraft: Wii U Edition - source reconstruction
+# LCEReborn
 
 Reconstructed C++ source for Minecraft: Wii U Edition, the 4J Studios
-Legacy Console Edition codebase. It is a matching decompilation: the source
-is written by reading the original executable's compiled code and is
-checked, function by function, against that executable. Every file is
-hand-authored text rather than raw tool output, and the repository contains
-no binaries, assets, symbol tables, disassembly or decompiler output. See
-`docs/provenance.md` for how the source is made.
+Legacy Console Edition codebase, and a native PC version built from it.
+
+The source is a matching decompilation: it is written by reading the
+original executable's compiled code and is checked, function by function,
+against that executable. Every file is hand-authored text rather than raw
+tool output, and the repository contains no binaries, assets, symbol
+tables, disassembly or decompiler output. See `docs/provenance.md` for how
+the source is made.
 
 All of the code is written by AI agents. Today Claude coordinates Claude
 Opus 5.5 worker agents; earlier phases had the dispatchers Sol and Fable
 hand class families to Luna and Opus 5 workers. See `docs/overview.md`.
 
+## Playing on PC
+
+1. Download the zip from the latest
+   [release](https://github.com/LCEReborn/LCEReborn/releases/latest) and
+   extract it anywhere. It needs 64-bit Windows and the Microsoft Visual C++
+   Redistributable, which most PCs already have.
+2. Run `LCERebornLauncher.exe` and point its setup at your own dumps of the
+   base game and update 688. It imports the game's content beside itself;
+   nothing is downloaded.
+3. The game starts as the trial with no DLC. Setup's Licenses step opens
+   `license.cfg`, where you unlock the full game and your packs. Only
+   unlock what you own.
+4. Pick a profile and press Play.
+
+The PC version runs in a window of any shape or borderless fullscreen, with
+keyboard and mouse or controllers, split screen, render distance up to 32
+chunks, and multiplayer with other PCs and with LCEReborn's Wii U build.
+See `docs/pc-launcher.md` and `docs/pc-platform.md`.
+
+## Building
+
 ```
-git clone --recurse-submodules https://github.com/Jacobwasbeast/mcwiiu-reconstructed.git
+git clone --recurse-submodules https://github.com/LCEReborn/LCEReborn.git
+```
+
+The Wii U build makes `Minecraft.Client.rpx` with RedHills, an open-source
+clang that keeps the class layout of the compiler the game was built with,
+and runs in Docker:
+
+```
 python tools/prepare.py --base <base game dump> --update <update v688 dump>
 python tools/build.py
 python tools/package.py --update <update v688 dump>
 Cemu -g build/title/code/Minecraft.Client.rpx
 ```
 
+See `docs/building.md`. The PC build uses CMake with clang-cl from a Visual
+Studio x64 developer prompt; see Building on PC in `docs/pc-platform.md`.
+
 The game files come from your own dumps of the base game and update 688.
-The build compiles the game with RedHills, an open-source clang that keeps
-the class layout of the compiler the game was built with, and runs in
-Docker. See `docs/building.md`.
 
 ## Status
 
-The game builds and runs in a stock Cemu 2.6: it boots to the menus, creates
-and loads worlds, and its server has run at the full 20 ticks per second in
-testing. It is still being refined toward the original function by function.
+The Wii U build runs in a stock Cemu 2.6: it boots to the menus, creates and
+loads worlds, and its server has run at the full 20 ticks per second in
+testing. The PC version plays on Windows, and the two builds can play
+together. Both are still being refined toward the original function by
+function.
 
 - [docs/overview.md](docs/overview.md) - what is here, what is not, and status
 - [docs/building.md](docs/building.md) - preparing game files, building the RPX and running it in Cemu
+- [docs/pc-platform.md](docs/pc-platform.md) - the PC version: building, files, multiplayer, display, sound and releases
+- [docs/pc-launcher.md](docs/pc-launcher.md) - the PC launcher: setup, licenses and profiles
+- [docs/pc-input.md](docs/pc-input.md) - keyboard, mouse and controllers on PC
 - [docs/measuring.md](docs/measuring.md) - comparing your build with your copy of the original, function by function
 - [docs/architecture.md](docs/architecture.md) - directory layout and the platform seam
 - [docs/conventions.md](docs/conventions.md) - language level, naming and file rules
@@ -48,12 +83,13 @@ testing. It is still being refined toward the original function by function.
 - The code is written by AI agents and is still being refined. It does not
   match the original everywhere and may contain bugs the original does not
   have.
-- It has been tested in Cemu only. Running it on a Wii U console has not been
-  tried; if you do, it is at your own risk.
+- The Wii U build has been tested in Cemu only. Running it on a Wii U
+  console has not been tried; if you do, it is at your own risk.
 - Back up your saves before using it. It uses the game's own save code, but a
   bug can still corrupt a world.
-- Nintendo ended the Wii U's online services in April 2024, and the online
-  features of this build have not been tested.
+- Nintendo ended the Wii U's online services in April 2024. LCEReborn does
+  not use them: its multiplayer is its own, over your local network or to a
+  server's address.
 - The software is provided as is, without warranty of any kind; see the
   license.
 
@@ -75,6 +111,9 @@ licenses), the Bink Audio decoder in
 `source/platform/pc/audio/BinkAudioDecoder.cpp`, ported from FFmpeg (GNU
 Lesser General Public License 2.1 or later, used here under GPL 3), and the
 libraries `tools/build/deps.py` downloads, listed in `docs/building.md`.
+The PC build also uses SDL 3 (zlib license) and the launcher Qt 6 (GNU
+Lesser General Public License 3); the PC release zip lists everything it
+contains, with the licenses, in `third_party/NOTICES.txt`.
 `source/nn/ffl` is a submodule holding aboood40091's FFL decompilation, which
 its author publishes without a license, together with this project's changes
 to it; it is not covered by this repository's license.

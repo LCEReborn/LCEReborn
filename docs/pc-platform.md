@@ -20,8 +20,8 @@ from the compiler when neither is (`__WIIU__` for the Wii U; Windows, Linux or
 macOS for PC).
 
 Code that differs between platforms uses `#if LCE_PLATFORM_WIIU` /
-`#elif LCE_PLATFORM_PC`. The Wii U build must keep producing the same RPX:
-every change is checked by building it and comparing the bytes.
+`#elif LCE_PLATFORM_PC`. Shared code reaches both builds, so a change to it
+is built for both.
 
 ## How the game reaches its platform
 

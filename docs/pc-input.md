@@ -176,4 +176,4 @@ is using, and every row shows that device's buttons or keys.
 The game core stays platform-pure. Where PC input needs the game to do
 something new (turning by the mouse, selecting a hotbar slot, hovering a
 control), the change sits behind `#if LCE_PLATFORM_PC` and the Wii U code is
-untouched, so the Wii U build still produces the same RPX.
+untouched.

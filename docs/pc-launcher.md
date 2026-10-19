@@ -42,5 +42,7 @@ game and `dlc` to `all` or the names of your packs (see Licenses in
 
 ## Playing
 
-Each profile has its own player name, game folder and language. The Game Log
-tab shows the game's output, and News shows the project's releases.
+Each profile has its own player name, game folder and language, and whether
+split screen is on and other controllers are asked to join when a world loads
+(`--split-screen`, `--join-prompt`). The Game Log tab shows the game's output,
+and News shows the project's releases.

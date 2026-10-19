@@ -13,6 +13,8 @@ struct PcLaunchOptions
     std::string logDir;
     std::string uuid;
     std::string licenseFile;
+    bool splitScreen = true;
+    bool joinPrompt = false;
 };
 
 bool PcParseLaunchOptions(int argc, char** argv, int& exitCode);

@@ -83,7 +83,11 @@ Each player plays on one device, as on a console. On the title screen and in
 the main menu any keyboard or controller drives the menus, and the device that
 picks a main-menu option becomes player 1. In game, double-tapping Start on
 another controller, or Escape on a keyboard nobody is playing on, joins it as
-the next split-screen player.
+the next split-screen player. `--split-screen off` turns split screen off:
+no one else can join, the player-select screen before a world is skipped, and
+player 1 moves to whichever connected keyboard or controller was used last.
+The prompt that asks other connected devices to join as a world loads is off
+unless `--join-prompt on` is given, since the keyboard always counts as one.
 
 A gamepad's face buttons follow the controller's own edition of the game: the
 button labelled A or Cross (the button in the confirm position on a Nintendo

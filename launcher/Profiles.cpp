@@ -85,6 +85,8 @@ bool ProfileStore::Load(QString* error)
             profile.gameDir = object.value("gameDir").toString();
             profile.language = object.value("language").toString();
             profile.afterLaunch = AfterLaunchFromName(object.value("afterLaunch").toString());
+            profile.splitScreen = object.value("splitScreen").toBool(true);
+            profile.joinPrompt = object.value("joinPrompt").toBool(false);
             if (profile.id.isEmpty() || profile.name.isEmpty() || NameInUse(profile.name, QString()))
                 continue;
             if (!CheckUsername(profile.username, nullptr))
@@ -121,6 +123,8 @@ bool ProfileStore::Save(QString* error) const
         object.insert("gameDir", profile.gameDir);
         object.insert("language", profile.language);
         object.insert("afterLaunch", AfterLaunchName(profile.afterLaunch));
+        object.insert("splitScreen", profile.splitScreen);
+        object.insert("joinPrompt", profile.joinPrompt);
         profiles.append(object);
     }
     QJsonObject root;

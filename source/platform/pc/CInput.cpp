@@ -1,5 +1,6 @@
 #include "platform/pc/CInput.hpp"
 #include "platform/pc/InputBindings.hpp"
+#include "platform/pc/PcLaunchOptions.hpp"
 #include "platform/pc/PcPaths.hpp"
 #include "platform/pc/PcPromptArt.hpp"
 #include "platform/pc/Renderer.hpp"
@@ -865,6 +866,25 @@ void CInput::Tick()
     TickVerifyStrings();
     UpdateMouseCapture();
     UpdateJoypads();
+    if (!PcGetLaunchOptions().splitScreen)
+        FollowDeviceInUse();
+}
+
+void CInput::FollowDeviceInUse()
+{
+    const int current = padRemap[0];
+    const int next = lastInputJoypad;
+    if (current < 0 || next == current || static_cast<unsigned int>(next) >= JOYPAD_COUNT
+        || !joypads[next].connected || joypads[next].lockedController >= 0)
+    {
+        return;
+    }
+    const unsigned int heldButtons = joypads[current].rawValue;
+    ClearJoypadValues(&joypads[current]);
+    joypads[current].rawValue = heldButtons;
+    joypads[current].lockedController = -1;
+    padRemap[0] = next;
+    joypads[next].lockedController = 0;
 }
 
 void CInput::SetDeadzoneAndMovementRange(unsigned int value, unsigned int maximum, unsigned int range)
@@ -2063,7 +2083,12 @@ void CInput::SetLocalMultiplayer(bool enabled)
 
 unsigned int CInput::IsLocalMultiplayerAvailable()
 {
-    return 1;
+    return PcGetLaunchOptions().splitScreen ? 1 : 0;
+}
+
+bool CInput::ShowsJoinPromptOnLoad()
+{
+    return PcGetLaunchOptions().splitScreen && PcGetLaunchOptions().joinPrompt;
 }
 
 unsigned int CInput::UsingRemoteVita()

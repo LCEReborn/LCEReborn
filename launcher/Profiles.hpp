@@ -21,6 +21,8 @@ struct Profile
     QString gameDir;
     QString language;
     AfterLaunch afterLaunch = AfterLaunch::KeepOpen;
+    bool splitScreen = true;
+    bool joinPrompt = false;
 };
 
 class ProfileStore : public QObject

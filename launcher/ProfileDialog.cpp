@@ -1,5 +1,6 @@
 #include "ProfileDialog.hpp"
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QDir>
@@ -34,7 +35,9 @@ ProfileDialog::ProfileDialog(const ProfileStore& store, const Profile& profile, 
     : QDialog(parent), mStore(store), mProfile(profile), mName(new QLineEdit(profile.name, this)),
       mUsername(new QLineEdit(profile.username, this)), mUuid(new QLabel(this)),
       mGameDir(new QLineEdit(QDir::toNativeSeparators(profile.gameDir), this)), mLanguage(new QComboBox(this)),
-      mAfterLaunch(new QComboBox(this))
+      mAfterLaunch(new QComboBox(this)),
+      mSplitScreen(new QCheckBox("Other controllers and a free keyboard can join as more players", this)),
+      mJoinPrompt(new QCheckBox("Ask other connected controllers to join when a world loads", this))
 {
     setWindowTitle(isNew ? "New Profile" : "Edit Profile");
     setMinimumWidth(520);
@@ -53,6 +56,10 @@ ProfileDialog::ProfileDialog(const ProfileStore& store, const Profile& profile, 
     mAfterLaunch->addItem("Hide the launcher until the game closes", static_cast<int>(AfterLaunch::Hide));
     mAfterLaunch->addItem("Close the launcher", static_cast<int>(AfterLaunch::Close));
     mAfterLaunch->setCurrentIndex(mAfterLaunch->findData(static_cast<int>(profile.afterLaunch)));
+    mSplitScreen->setChecked(profile.splitScreen);
+    mJoinPrompt->setChecked(profile.joinPrompt);
+    mJoinPrompt->setEnabled(profile.splitScreen);
+    connect(mSplitScreen, &QCheckBox::toggled, mJoinPrompt, &QCheckBox::setEnabled);
 
     auto* browse = new QPushButton("Browse…", this);
     auto* gameDirRow = new QHBoxLayout;
@@ -75,6 +82,8 @@ ProfileDialog::ProfileDialog(const ProfileStore& store, const Profile& profile, 
     form->addRow("Game folder", gameDirRow);
     form->addRow("Language", mLanguage);
     form->addRow("When the game starts", mAfterLaunch);
+    form->addRow("Split screen", mSplitScreen);
+    form->addRow("Join prompt", mJoinPrompt);
 
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Cancel, this);
@@ -122,6 +131,8 @@ void ProfileDialog::accept()
     mProfile.gameDir = gameDir;
     mProfile.language = mLanguage->currentData().toString();
     mProfile.afterLaunch = static_cast<AfterLaunch>(mAfterLaunch->currentData().toInt());
+    mProfile.splitScreen = mSplitScreen->isChecked();
+    mProfile.joinPrompt = mJoinPrompt->isChecked();
     QDialog::accept();
 }
 

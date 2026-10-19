@@ -99,6 +99,7 @@ public:
     virtual void SetKeyBinding(int action, int input);
     virtual void ResetKeyBindings();
     virtual unsigned int GetPadButtons(int pad, bool pressedOnly);
+    virtual bool ShowsJoinPromptOnLoad();
 
 private:
     friend void PcInputHandleEvent(const SDL_Event& event);
@@ -208,6 +209,7 @@ private:
     bool IsMenuShown(int pad) const;
     void UpdateMouseCapture();
     void UpdateJoypads();
+    void FollowDeviceInUse();
     void UpdateKeyboardMouse(Joypad& joypad);
     EPcInputContext KeyboardContext() const;
     unsigned int KeyboardActionValue(int pad, unsigned char map);

@@ -1056,6 +1056,10 @@ void CMinecraftApp::InitialiseTips()
         sGeneralTips[0].tipId = IDS_TIPS_GAMETIP_0;
     std::memset(mTipData, 0, sizeof(mTipData));
     mTipData[0] = _TipData(sGeneralTips, sizeof(sGeneralTips) / sizeof(sGeneralTips[0]));
+#if LCE_PLATFORM_PC
+    if (!g_pInput->IsLocalMultiplayerAvailable())
+        mTipData[0] = _TipData(sGeneralTips + 1, sizeof(sGeneralTips) / sizeof(sGeneralTips[0]) - 1);
+#endif
     mTipData[1] = _TipData(sAlternateTips, sizeof(sAlternateTips) / sizeof(sAlternateTips[0]));
     mTipData[2] = _TipData(sMiniGameTips1, sizeof(sMiniGameTips1) / sizeof(sMiniGameTips1[0]));
     mTipData[3] = _TipData(sMiniGameTips2, sizeof(sMiniGameTips2) / sizeof(sMiniGameTips2[0]));
@@ -2767,6 +2771,10 @@ void CMinecraftApp::TickOpacityTimer(int32_t player)
 }
 bool CMinecraftApp::IsLocalMultiplayerAvailable()
 {
+#if LCE_PLATFORM_PC
+    if (!g_pInput->IsLocalMultiplayerAvailable())
+        return false;
+#endif
     unsigned int availablePlayers = 0;
     for (int pad = 0; pad < 4; ++pad)
     {

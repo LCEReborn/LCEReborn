@@ -5,6 +5,7 @@
 
 #include "Profiles.hpp"
 
+class QCheckBox;
 class QComboBox;
 class QLabel;
 class QLineEdit;
@@ -31,6 +32,8 @@ private:
     QLineEdit* mGameDir;
     QComboBox* mLanguage;
     QComboBox* mAfterLaunch;
+    QCheckBox* mSplitScreen;
+    QCheckBox* mJoinPrompt;
 };
 
 #endif

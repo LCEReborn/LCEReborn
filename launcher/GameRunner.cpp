@@ -46,7 +46,8 @@ QStringList GameRunner::Arguments(const Profile& profile)
     arguments << "--username" << profile.username << "--uuid" << profile.uuid << "--content-dir"
               << LauncherPaths::AssetsDir() << "--resource-dir" << LauncherPaths::ResourcesDir() << "--save-dir"
               << gameDir + "/saves" << "--log-dir" << gameDir + "/logs" << "--license-file"
-              << LauncherPaths::LicenseFile();
+              << LauncherPaths::LicenseFile() << "--split-screen" << (profile.splitScreen ? "on" : "off")
+              << "--join-prompt" << (profile.joinPrompt ? "on" : "off");
     if (!profile.language.isEmpty())
         arguments << "--language" << profile.language;
     return arguments;

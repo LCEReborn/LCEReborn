@@ -48,6 +48,8 @@ static void PrintUsage(std::FILE* stream)
                "  --language <code>           language, such as en-GB or ja (default: the system language)\n"
                "  --log-dir <dir>             logs (default: logs in the working folder)\n"
                "  --license-file <file>       what is unlocked (default: license.cfg in the working folder)\n"
+               "  --split-screen <on|off>     other controllers can join as more players (default: on)\n"
+               "  --join-prompt <on|off>      prompt other controllers to join when a world loads (default: off)\n"
                "  --help                      show this message\n",
                stream);
 }
@@ -79,7 +81,12 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
         }
 
         std::string* target = NULL;
-        if (name == "--username")
+        bool* flag = NULL;
+        if (name == "--split-screen")
+            flag = &sOptions.splitScreen;
+        else if (name == "--join-prompt")
+            flag = &sOptions.joinPrompt;
+        else if (name == "--username")
             target = &sOptions.username;
         else if (name == "--content-dir")
             target = &sOptions.contentDir;
@@ -117,6 +124,20 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
         {
             std::fprintf(stderr, "Empty value for %s\n", name.c_str());
             return false;
+        }
+
+        if (flag != NULL)
+        {
+            if (value == "on")
+                *flag = true;
+            else if (value == "off")
+                *flag = false;
+            else
+            {
+                std::fprintf(stderr, "%s must be on or off, not %s\n", name.c_str(), value.c_str());
+                return false;
+            }
+            continue;
         }
 
         *target = value;

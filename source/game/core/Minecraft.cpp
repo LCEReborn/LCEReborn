@@ -2271,7 +2271,11 @@ void Minecraft::run_middle()
             else
             {
                 sCheckForNewLocalPlayers = false;
+#if LCE_PLATFORM_PC
+                if (gApp.IsLocalMultiplayerAvailable() && g_pInput->ShowsJoinPromptOnLoad())
+#else
                 if (gApp.IsLocalMultiplayerAvailable())
+#endif
                 {
                     for (int i = 0; i < 4; ++i)
                     {
@@ -2294,6 +2298,10 @@ void Minecraft::run_middle()
                                && !gConsoleUIController.IsIgnorePlayerJoinMenuDisplayed(gProfile->GetPrimaryPad())
                                && CGameNetworkManager::sInstance.SessionHasSpace(1) && gRenderer->IsHiDef()
                                && g_pInput->ButtonPressed(i, 0xff, 0);
+#if LCE_PLATFORM_PC
+            if (!g_pInput->IsLocalMultiplayerAvailable())
+                joinPressed = false;
+#endif
             if (gRenderer->IsWidescreen() && joinPressed)
             {
                 if (!gConsoleUIController.PressStartPlaying(i))
@@ -2454,7 +2462,11 @@ void Minecraft::run_middle()
     }
 
     if (!mAppPaused && !gConsoleUIController.IsIgnorePlayerJoinMenuDisplayed(gProfile->GetPrimaryPad())
-        && CGameNetworkManager::sInstance.SessionHasSpace(1) && gRenderer->IsHiDef())
+        && CGameNetworkManager::sInstance.SessionHasSpace(1) && gRenderer->IsHiDef()
+#if LCE_PLATFORM_PC
+        && g_pInput->IsLocalMultiplayerAvailable()
+#endif
+    )
     {
         int freeSlot = 0;
         if (mLocalPlayers[0])

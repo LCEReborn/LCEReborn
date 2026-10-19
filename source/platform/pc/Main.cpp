@@ -38,6 +38,7 @@
 #include "platform/CStorage.hpp"
 #include "platform/FileApi.hpp"
 #include "platform/pc/PcApplication.hpp"
+#include "platform/pc/PcCrashReport.hpp"
 #include "platform/pc/Log.hpp"
 #include "platform/pc/PcLaunchOptions.hpp"
 #include "platform/pc/PcLicenses.hpp"
@@ -61,6 +62,7 @@ int main(int argc, char** argv)
     C4JThreadImpl::SetMainThreadID();
     const std::string& logDir = PcGetLaunchOptions().logDir;
     Log::Start(logDir.empty() ? std::string("logs") : logDir);
+    PcCrashReport::Install(logDir.empty() ? std::string("logs") : logDir);
 
     std::string folderError;
     if (!PcCheckGameFolders(folderError))

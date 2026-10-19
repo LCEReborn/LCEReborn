@@ -41,7 +41,8 @@ if(MSVC)
     _CRT_SECURE_NO_WARNINGS
     NOMINMAX
     WIN32_LEAN_AND_MEAN)
-  target_compile_options(lce_common INTERFACE /EHs-c- /GR /utf-8 /bigobj)
+  # Debug information for the crash reports' stacks, without changing the optimised code.
+  target_compile_options(lce_common INTERFACE /EHs-c- /GR /utf-8 /bigobj /Z7)
 else()
   target_compile_options(lce_common INTERFACE -fno-exceptions -frtti -fsigned-char)
 endif()
@@ -151,7 +152,7 @@ endif()
 add_executable(LCEReborn $<TARGET_OBJECTS:lce_game> $<TARGET_OBJECTS:lce_platform> $<TARGET_OBJECTS:lce_audio>)
 target_link_libraries(LCEReborn PRIVATE lce_png lce_zlib SDL3::SDL3-static)
 if(WIN32)
-  target_link_libraries(LCEReborn PRIVATE shell32 ws2_32)
+  target_link_libraries(LCEReborn PRIVATE shell32 ws2_32 dbghelp)
   # The executable's icon (tools/pcart/make_icon.py).
   set(LCE_ICON "${CMAKE_SOURCE_DIR}/resources/pc/icon.ico")
   file(WRITE "${CMAKE_BINARY_DIR}/LCEReborn.rc" "1 ICON \"${LCE_ICON}\"\n")
@@ -163,7 +164,7 @@ add_custom_command(TARGET LCEReborn POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/resources/pc"
           "$<TARGET_FILE_DIR:LCEReborn>/resources")
 if(MSVC)
-  target_link_options(LCEReborn PRIVATE /errorlimit:0)
+  target_link_options(LCEReborn PRIVATE /errorlimit:0 /DEBUG /OPT:REF /OPT:ICF)
 endif()
 
 option(LCE_BUILD_LAUNCHER "Build the Qt launcher (needs python tools/build/qt.py first)" ON)

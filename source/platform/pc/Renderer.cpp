@@ -6,13 +6,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <map>
 #include <string>
 #include <thread>
 #include <vector>
 
+#include "game/core/VideoSettings.hpp"
 #include "platform/FileApi.hpp"
 #include "platform/pc/GlApi.hpp"
 #include "platform/pc/Log.hpp"
+#include "platform/pc/PcCrashReport.hpp"
 #include "platform/pc/PcKeyboardOverlay.hpp"
 #include "platform/pc/PcWindow.hpp"
 #include "platform/pc/RenderShaders.hpp"
@@ -42,7 +45,8 @@ namespace
 const Logger sLog("Renderer");
 const int TEXTURE_COUNT = 512;
 const int TEXTURE_STAGE_COUNT = 4;
-const int COMMAND_BUFFER_COUNT = 16000;
+const int MAX_CHUNK_GRID_WIDTH = 2 * VideoSettings::RENDER_DISTANCE_MAX;
+const int COMMAND_BUFFER_COUNT = MAX_CHUNK_GRID_WIDTH * MAX_CHUNK_GRID_WIDTH * 16 * 3 + 16000;
 const int COMMAND_BUFFER_ID_COUNT = 0x800000;
 const unsigned int COMMAND_BUFFER_INITIAL_CAPACITY = 0x1000;
 const unsigned int DYNAMIC_VERTEX_BUDGET = 0x200000;
@@ -204,6 +208,7 @@ GLenum PrimitiveMode(int primitiveType)
 void FatalRendererError(const char* message)
 {
     LOG_FATAL(sLog, "%s", message);
+    PcCrashReport::Write(message);
     Log::Stop();
     abort();
 }
@@ -1790,6 +1795,9 @@ Renderer::Renderer()
     mCommandBufferPrimitiveTypes = NULL;
     mNumCommandBuffers = 0;
     mNumRetiredCommandBuffers = 0;
+    mPeakCommandBuffers = 0;
+    mPeakCommandBufferFrame = 0;
+    mCommandBufferWarned = false;
     mCommandBufferVertsDrawn = 0;
     mCommandBufferVertsDrawnLastFrame = 0;
     mReservedMEM1 = NULL;
@@ -2006,7 +2014,7 @@ void Renderer::Initialise(bool bFirstTime)
     {
         InitialiseContext(true);
 
-        mCommandBufferSlots = new short[COMMAND_BUFFER_ID_COUNT];
+        mCommandBufferSlots = new int[COMMAND_BUFFER_ID_COUNT];
         mCommandBuffers = new CommandBuffer*[COMMAND_BUFFER_COUNT];
         mCommandBufferMatrices = new float[COMMAND_BUFFER_COUNT * 16];
         mCommandBufferIds = new int[COMMAND_BUFFER_COUNT];
@@ -2014,7 +2022,7 @@ void Renderer::Initialise(bool bFirstTime)
         mCommandBufferPixelShaderTypes = new int[COMMAND_BUFFER_COUNT];
         mCommandBufferPrimitiveTypes = new unsigned char[COMMAND_BUFFER_COUNT];
 
-        memset(mCommandBufferSlots, 0xFF, sizeof(short) * COMMAND_BUFFER_ID_COUNT);
+        memset(mCommandBufferSlots, 0xFF, sizeof(int) * COMMAND_BUFFER_ID_COUNT);
         memset(mCommandBuffers, 0, sizeof(CommandBuffer*) * COMMAND_BUFFER_COUNT);
         memset(mCommandBufferMatrices, 0, sizeof(float) * COMMAND_BUFFER_COUNT * 16);
         memset(mCommandBufferIds, 0, sizeof(int) * COMMAND_BUFFER_COUNT);
@@ -2026,6 +2034,7 @@ void Renderer::Initialise(bool bFirstTime)
         mScreenGrabRequested = false;
         mDRCFrameStarted = false;
         mNumRetiredCommandBuffers = 0;
+        PcCrashReport::AddSection("Command buffers", &Renderer::WriteCommandBufferReport);
 
         if (!PcWindowCreate(UI_WIDTH, UI_HEIGHT))
         {
@@ -4367,10 +4376,71 @@ void Renderer::DeleteInternalBuffer(int slot)
         mCommandBufferPrimitiveTypes[slot] = mCommandBufferPrimitiveTypes[mNumCommandBuffers];
         int id = mCommandBufferIds[mNumCommandBuffers];
         mCommandBufferIds[slot] = id;
-        mCommandBufferSlots[id] = (short)slot;
+        mCommandBufferSlots[id] = slot;
     }
 
     LeaveCriticalSection(&mCommandBufferMutex);
+}
+
+void Renderer::NoteCommandBufferUse()
+{
+    const int used = mNumCommandBuffers + mNumRetiredCommandBuffers;
+    if (used > mPeakCommandBuffers)
+    {
+        mPeakCommandBuffers = used;
+        mPeakCommandBufferFrame = mFrameCount;
+    }
+    if (!mCommandBufferWarned && used * 4 > COMMAND_BUFFER_COUNT * 3)
+    {
+        mCommandBufferWarned = true;
+        LOG_WARN(sLog, "Command buffers are over 75%% full: %d of %d (%d in use, %d retired) at render distance %d",
+                 used, COMMAND_BUFFER_COUNT, mNumCommandBuffers, mNumRetiredCommandBuffers,
+                 VideoSettings::GetRenderDistance());
+    }
+}
+
+void Renderer::WriteCommandBufferReport(std::string& out)
+{
+    Renderer* renderer = gRendererInstance;
+    if (renderer == NULL || renderer->mCommandBuffers == NULL)
+    {
+        out += "The renderer was not initialised.\n";
+        return;
+    }
+
+    const int live = renderer->mNumCommandBuffers;
+    const int retired = renderer->mNumRetiredCommandBuffers;
+    int busy = 0;
+    for (int index = 0; index < retired && index < COMMAND_BUFFER_COUNT; ++index)
+    {
+        CommandBuffer* buffer = renderer->mCommandBuffers[COMMAND_BUFFER_COUNT - 1 - index];
+        if (buffer != NULL && buffer->IsBusy())
+            ++busy;
+    }
+
+    char line[256];
+    snprintf(line, sizeof(line), "Capacity: %d (sized for render distance %d)\n", COMMAND_BUFFER_COUNT,
+             (int)VideoSettings::RENDER_DISTANCE_MAX);
+    out += line;
+    snprintf(line, sizeof(line), "Render distance: %d\n", VideoSettings::GetRenderDistance());
+    out += line;
+    snprintf(line, sizeof(line), "In use: %d, retired: %d (%d still busy), total %d\n", live, retired, busy,
+             live + retired);
+    out += line;
+    snprintf(line, sizeof(line), "Peak: %d at frame %d; this is frame %d\n", renderer->mPeakCommandBuffers,
+             renderer->mPeakCommandBufferFrame, renderer->mFrameCount);
+    out += line;
+
+    std::map<int, int> ranges;
+    for (int index = 0; index < live && index < COMMAND_BUFFER_COUNT; ++index)
+        ++ranges[renderer->mCommandBufferIds[index] >> 14];
+    out += "In use by id range:";
+    for (std::map<int, int>::iterator it = ranges.begin(); it != ranges.end(); ++it)
+    {
+        snprintf(line, sizeof(line), " %d:%d", it->first << 14, it->second);
+        out += line;
+    }
+    out += "\n";
 }
 
 void Renderer::CBuffDelete(int firstId, int count)
@@ -4467,8 +4537,9 @@ void Renderer::CBuffEnd()
 
     int slot = mNumCommandBuffers;
     mNumCommandBuffers = slot + 1;
+    NoteCommandBufferUse();
     mCommandBufferIds[slot] = context.mRecordingId;
-    mCommandBufferSlots[context.mRecordingId] = (short)slot;
+    mCommandBufferSlots[context.mRecordingId] = slot;
     mCommandBufferVertexTypes[slot] = (unsigned char)context.mRecordingVertexType;
     mCommandBufferPixelShaderTypes[slot] = context.mRecordingPixelShaderType;
     mCommandBufferPrimitiveTypes[slot] = (unsigned char)context.mRecordingPrimitiveType;
@@ -4670,8 +4741,9 @@ void Renderer::CBuffDeferredModeEnd()
 
         int slot = mNumCommandBuffers;
         mNumCommandBuffers = slot + 1;
+        NoteCommandBufferUse();
         mCommandBufferIds[slot] = deferred.mId;
-        mCommandBufferSlots[deferred.mId] = (short)slot;
+        mCommandBufferSlots[deferred.mId] = slot;
         mCommandBufferVertexTypes[slot] = (unsigned char)deferred.mVertexType;
         mCommandBufferPixelShaderTypes[slot] = deferred.mPixelShaderType;
         mCommandBufferPrimitiveTypes[slot] = (unsigned char)deferred.mPrimitiveType;

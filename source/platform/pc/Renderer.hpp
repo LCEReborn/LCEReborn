@@ -4,6 +4,8 @@
 #include "game/client/render/C4JRender.hpp"
 #include "game/core/CriticalSection.hpp"
 
+#include <string>
+
 class Renderer : public C4JRender
 {
 public:
@@ -179,6 +181,8 @@ private:
     bool GetDynamicVertexMemory(eVertexType vertexType, int numVertices);
     void DrawVertexSetup(eVertexType vertexType, ePixelShaderType pixelShaderType, ePrimitiveType primitiveType);
     void DeleteInternalBuffer(int slot);
+    void NoteCommandBufferUse();
+    static void WriteCommandBufferReport(std::string& out);
     void SetVertexUniformReg(unsigned int offset, unsigned int count, const float* values);
     void SetPixelUniformReg(unsigned int offset, unsigned int count, const float* values);
     void SetGpuShaders(int vertexShader, int pixelShader);
@@ -218,7 +222,7 @@ private:
     bool mHiDef;
     bool mAllowStaticCommandBufferIds;
     int mNextCommandBufferId;
-    short* mCommandBufferSlots;
+    int* mCommandBufferSlots;
     CommandBuffer** mCommandBuffers;
     float* mCommandBufferMatrices;
     int* mCommandBufferIds;
@@ -227,6 +231,9 @@ private:
     unsigned char* mCommandBufferPrimitiveTypes;
     int mNumCommandBuffers;
     int mNumRetiredCommandBuffers;
+    int mPeakCommandBuffers;
+    int mPeakCommandBufferFrame;
+    bool mCommandBufferWarned;
     int mCommandBufferVertsDrawn;
     int mCommandBufferVertsDrawnLastFrame;
     void* mReservedMEM1;

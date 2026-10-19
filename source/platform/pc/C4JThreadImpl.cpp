@@ -5,6 +5,7 @@
 #include <thread>
 
 #include "platform/Runtime.hpp"
+#include "platform/pc/PcCrashReport.hpp"
 
 static std::atomic<uint32_t> s_nextThreadId(1);
 static thread_local C4JThreadImpl* s_currentThread = nullptr;
@@ -53,6 +54,7 @@ const char* C4JThreadImpl::getCurrentThreadName()
 void C4JThreadImpl::entryPoint(C4JThreadImpl* thread)
 {
     s_currentThread = thread;
+    PcCrashReport::NameCurrentThread(thread->m_name);
     int result = thread->m_entry(thread->m_argument);
     thread->m_exitCode = static_cast<uint32_t>(result);
     if (thread->m_deleteOnExit)
@@ -141,6 +143,7 @@ void C4JThreadImpl::SetDeleteOnExit(bool deleteOnExit)
 void C4JThreadImpl::SetMainThreadID()
 {
     s_currentThread = &s_mainThread;
+    PcCrashReport::NameCurrentThread(s_mainThread.getName());
 }
 
 void SetSpecialThreadIDForFS_MilesStreamThread()

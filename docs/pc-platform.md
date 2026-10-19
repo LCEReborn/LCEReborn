@@ -113,6 +113,17 @@ disk. ERROR and FATAL wait until their line is on disk, so it survives a crash
 right after. `CProfile::DebugPrintf` and fatal load errors go through the
 same logger.
 
+## Crash reports
+
+A fatal renderer error or an unhandled crash writes a folder to
+`crash-reports/` beside the logs folder (`platform/pc/PcCrashReport`). Its
+`report.txt` has the reason, the failing thread's stack, every thread by name
+and a section from each subsystem that registers one; `minidump.dmp` holds
+every thread's stack, for Visual Studio or WinDbg with `LCEReborn.pdb`. The
+renderer's section gives the command buffers' capacity, use and peak, and the
+log warns once when they pass 75% of capacity. The capacity fits the largest
+render distance.
+
 ## Window and display
 
 The game draws into a resizable window at the window's own resolution and

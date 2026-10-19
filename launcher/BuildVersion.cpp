@@ -7,7 +7,17 @@
 
 QString BuildVersion()
 {
-    const QDate date = QDate::fromString(LCE_BUILD_DATE, Qt::ISODate);
+    const QDate date = BuildDate();
     const QString built = date.isValid() ? QLocale().toString(date, "d MMM yyyy") : QString(LCE_BUILD_DATE);
-    return QString("%1%2  ·  %3").arg(LCE_BUILD_COMMIT, LCE_BUILD_DIRTY ? " (modified)" : "", built);
+    return QString("%1%2, %3").arg(LCE_BUILD_COMMIT, LCE_BUILD_DIRTY ? " (modified)" : "", built);
+}
+
+QString BuildCommit()
+{
+    return LCE_BUILD_COMMIT;
+}
+
+QDate BuildDate()
+{
+    return QDate::fromString(LCE_BUILD_DATE, Qt::ISODate);
 }

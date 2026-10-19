@@ -2,48 +2,165 @@
 #define LAUNCHER_WIDGETS_HPP
 
 #include <QAbstractButton>
-#include <QPushButton>
+#include <QElapsedTimer>
+#include <QImage>
 #include <QPixmap>
+#include <QStyledItemDelegate>
+#include <QVector>
 #include <QWidget>
 
-QString DisplayFamily();
-QFont DisplayFont(int pointSize, int weight);
+class QTimer;
 
-class IconButton : public QPushButton
+namespace GameColours
+{
+extern const QColor kText;
+extern const QColor kHighlight;
+extern const QColor kDark;
+extern const QColor kMuted;
+extern const QColor kReady;
+extern const QColor kWarning;
+}
+
+constexpr int kSlotIconSize = 36;
+
+QFont GameFont(int pixelSize);
+void DrawGameText(QPainter& painter, const QRect& rect, int flags, const QString& text, const QColor& colour,
+                  bool shadow = true);
+
+enum class FaceState
+{
+    Normal,
+    Highlighted,
+    Pressed,
+    Disabled
+};
+void PaintButtonFace(QPainter& painter, const QRect& rect, FaceState state);
+void PaintSlot(QPainter& painter, const QRect& rect);
+
+class Panorama : public QWidget
 {
     Q_OBJECT
 
 public:
-    IconButton(const QIcon& icon, const QString& text, QWidget* parent = nullptr);
+    explicit Panorama(QWidget* parent = nullptr);
+
+    void Reload();
+
+protected:
+    void paintEvent(QPaintEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
+    void showEvent(QShowEvent* event) override;
+    void hideEvent(QHideEvent* event) override;
+
+private:
+    void Rescale();
+    int Offset() const;
+    void Tick();
+
+    QImage mSource;
+    QPixmap mScaled;
+    QPixmap mFallback;
+    QTimer* mTimer;
+    QElapsedTimer mClock;
+    int mPaintedOffset = -1;
+};
+
+class GamePanel : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit GamePanel(QWidget* parent = nullptr);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
 };
 
-class Backdrop : public QWidget
+class GameWell : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit Backdrop(QWidget* parent = nullptr);
+    explicit GameWell(QWidget* parent = nullptr);
+
+protected:
+    void paintEvent(QPaintEvent* event) override;
+};
+
+class TabbedPanel : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit TabbedPanel(QWidget* parent = nullptr);
+
+    void AddTab(const QString& text);
+    void SetCurrent(int index);
+    int Current() const { return mCurrent; }
+    void SetMarked(int index, bool marked);
+    void SetContent(QWidget* content);
+    void SetCorner(QWidget* corner);
+    QRect PanelRect() const;
+
+signals:
+    void CurrentChanged(int index);
+
+protected:
+    void paintEvent(QPaintEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void leaveEvent(QEvent* event) override;
+
+private:
+    QRect TabRect(int index) const;
+    int TabAt(const QPoint& point) const;
+
+    struct Tab
+    {
+        QString text;
+        bool marked;
+    };
+    QVector<Tab> mTabs;
+    int mCurrent = 0;
+    int mHover = -1;
+    QWidget* mContent = nullptr;
+    QWidget* mCorner = nullptr;
+};
+
+class ShadowLabel : public QWidget
+{
+    Q_OBJECT
+
+public:
+    ShadowLabel(const QString& text, int pixelSize, QWidget* parent = nullptr);
+
+    void SetText(const QString& text);
+    void SetColour(const QColor& colour);
+    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
 
 protected:
     void paintEvent(QPaintEvent* event) override;
 
 private:
-    QPixmap mGrain;
-    QPixmap mMark;
+    QString mText;
+    int mPixelSize;
+    QColor mColour;
 };
 
-class NavItem : public QAbstractButton
+class GameButton : public QAbstractButton
 {
     Q_OBJECT
 
 public:
-    explicit NavItem(const QString& text, QWidget* parent = nullptr);
-    QSize sizeHint() const override;
+    explicit GameButton(const QString& text, QWidget* parent = nullptr);
 
-    void SetBadge(const QString& badge);
+    void SetPrimary(bool primary);
+    void SetPixelSize(int pixelSize);
+    void SetIcon(const QImage& icon, bool inSlot);
+    void SetSubtitle(const QString& subtitle);
+    QSize sizeHint() const override;
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -51,51 +168,36 @@ protected:
     void leaveEvent(QEvent* event) override;
 
 private:
-    QString mBadge;
+    bool mPrimary = false;
     bool mHover = false;
+    bool mInSlot = false;
+    int mPixelSize = 18;
+    QImage mIcon;
+    QString mSubtitle;
 };
 
-class ProfileChip : public QAbstractButton
-{
-    Q_OBJECT
-
-public:
-    explicit ProfileChip(QWidget* parent = nullptr);
-    QSize sizeHint() const override;
-
-    void SetProfile(const QPixmap& face, const QString& username, const QString& profileName);
-
-protected:
-    void paintEvent(QPaintEvent* event) override;
-    void enterEvent(QEnterEvent* event) override;
-    void leaveEvent(QEvent* event) override;
-
-private:
-    QPixmap mFace;
-    QString mUsername;
-    QString mProfileName;
-    bool mHover = false;
-};
-
-class PlayButton : public QAbstractButton
+class PlayButton : public GameButton
 {
     Q_OBJECT
 
 public:
     explicit PlayButton(QWidget* parent = nullptr);
-    QSize sizeHint() const override;
 
-    void SetLabels(const QString& title, const QString& detail, bool attention);
+    void SetLabels(const QString& title, const QString& detail);
+};
 
-protected:
-    void paintEvent(QPaintEvent* event) override;
-    void enterEvent(QEnterEvent* event) override;
-    void leaveEvent(QEvent* event) override;
+class GameRowDelegate : public QStyledItemDelegate
+{
+    Q_OBJECT
 
-private:
-    QString mDetail;
-    bool mAttention = false;
-    bool mHover = false;
+public:
+    static const int kSubtitleRole = Qt::UserRole + 40;
+    static const int kSlotRole = Qt::UserRole + 41;
+
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
+    QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override;
 };
 
 #endif

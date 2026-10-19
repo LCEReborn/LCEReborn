@@ -42,106 +42,91 @@ SetupPage::SetupPage(QWidget* parent)
       mBack(new QPushButton("Back to the launcher", this)), mProgress(new QProgressBar(this)),
       mProgressText(new QLabel(this)), mValidateTimer(new QTimer(this))
 {
-    auto* intro = new QVBoxLayout;
-    intro->setSpacing(0);
-    auto* mark = new QLabel(this);
-    mark->setPixmap(QPixmap(":/launcher/mark.png").scaled(112, 112, Qt::KeepAspectRatio, Qt::FastTransformation));
-    auto* wordmark = new QLabel("LCE<br>REBORN", this);
-    wordmark->setObjectName("SetupWordmark");
-    wordmark->setTextFormat(Qt::RichText);
-    auto* statement = new QLabel("Bring your<br>own game.", this);
+    auto* panel = new GamePanel(this);
+
+    auto* brand = new QHBoxLayout;
+    brand->setSpacing(14);
+    auto* mark = new QLabel(panel);
+    mark->setPixmap(QPixmap(":/launcher/mark.png").scaled(56, 56, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    mark->setFixedSize(56, 56);
+    auto* wordmark = new QLabel("LCE Reborn", panel);
+    wordmark->setObjectName("Heading");
+    brand->addWidget(mark);
+    brand->addWidget(wordmark, 1);
+
+    auto* statement = new QLabel("Bring your own game.", panel);
     statement->setObjectName("SetupStatement");
-    statement->setTextFormat(Qt::RichText);
+    statement->setWordWrap(true);
     auto* explanation = new QLabel(
         "LCEReborn runs Minecraft: Wii U Edition on PC from your own copy of the game. Point it at the title "
         "folders you dumped from your Wii U and it imports the game's content. Nothing is downloaded, and nothing "
         "leaves this computer.",
-        this);
-    explanation->setObjectName("SetupExplanation");
+        panel);
     explanation->setWordWrap(true);
-    intro->addWidget(mark);
-    intro->addSpacing(18);
-    intro->addWidget(wordmark);
-    intro->addSpacing(40);
-    intro->addWidget(statement);
-    intro->addSpacing(16);
-    intro->addWidget(explanation);
-    intro->addStretch(1);
-    intro->addWidget(mBack, 0, Qt::AlignLeft);
 
-    auto* steps = new QVBoxLayout;
-    steps->setSpacing(26);
-    steps->addStretch(1);
-    steps->addWidget(MakeStep(1, "Base game", "The extracted title folder of Minecraft: Wii U Edition, with code, "
-                                              "content and meta inside.",
-                              &mBase, false));
-    steps->addWidget(MakeStep(2, "Update 688", "The extracted folder of the game's update, version 688.", &mUpdate,
-                              true));
-
-    auto* licenseWidget = new QWidget(this);
-    auto* licenseRow = new QHBoxLayout(licenseWidget);
-    licenseRow->setContentsMargins(0, 0, 0, 0);
-    auto* licenseNumber = new QLabel("03", this);
-    licenseNumber->setObjectName("StepNumber");
-    licenseNumber->setFixedWidth(64);
-    licenseNumber->setAlignment(Qt::AlignTop | Qt::AlignLeft);
-    auto* licenseColumn = new QVBoxLayout;
-    licenseColumn->setSpacing(8);
-    auto* licenseTitle = new QLabel("Licenses", this);
+    auto* licenseTitle = new QLabel("Licenses", panel);
     licenseTitle->setObjectName("StepTitle");
     auto* licenseHint = new QLabel(
         QString("The game starts as the trial with no DLC. Nothing is unlocked until you edit %1; only unlock what "
                 "you own.")
             .arg(QDir::toNativeSeparators(LauncherPaths::LicenseFile())),
-        this);
+        panel);
     licenseHint->setObjectName("StepHint");
     licenseHint->setWordWrap(true);
     licenseHint->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    auto* editLicense = new QPushButton("Edit license.cfg", this);
-    licenseColumn->addWidget(licenseTitle);
-    licenseColumn->addWidget(licenseHint);
-    licenseColumn->addWidget(editLicense, 0, Qt::AlignLeft);
-    licenseRow->addWidget(licenseNumber);
-    licenseRow->addLayout(licenseColumn, 1);
-    steps->addWidget(licenseWidget);
+    auto* editLicense = new QPushButton("Edit license.cfg", panel);
 
-    auto* importWidget = new QWidget(this);
-    auto* importRow = new QHBoxLayout(importWidget);
-    importRow->setContentsMargins(0, 0, 0, 0);
-    auto* number = new QLabel("04", this);
-    number->setObjectName("StepNumber");
-    number->setFixedWidth(64);
-    number->setAlignment(Qt::AlignTop | Qt::AlignLeft);
-    auto* importColumn = new QVBoxLayout;
-    importColumn->setSpacing(10);
-    auto* importTitle = new QLabel("Import", this);
-    importTitle->setObjectName("StepTitle");
-    mImport->SetLabels("Import game files", "Copies the content into the launcher", false);
-    mImport->setFixedWidth(340);
+    auto* intro = new QVBoxLayout;
+    intro->setSpacing(10);
+    intro->addLayout(brand);
+    intro->addSpacing(14);
+    intro->addWidget(statement);
+    intro->addWidget(explanation);
+    intro->addSpacing(18);
+    intro->addWidget(licenseTitle);
+    intro->addWidget(licenseHint);
+    intro->addWidget(editLicense, 0, Qt::AlignLeft);
+    intro->addStretch(1);
+    intro->addWidget(mBack, 0, Qt::AlignLeft);
+    auto* introWidget = new QWidget(panel);
+    introWidget->setLayout(intro);
+    introWidget->setFixedWidth(360);
+
+    mImport->SetLabels("Import game files", "Copies the content into the launcher");
+    mImport->setFixedSize(340, 62);
     mProgress->setRange(0, 1000);
     mProgress->setTextVisible(false);
     mProgress->hide();
     mProgressText->setObjectName("StepHint");
     mProgressText->setWordWrap(true);
     mCancel->hide();
-    importColumn->addWidget(importTitle);
-    importColumn->addWidget(mImport, 0, Qt::AlignLeft);
-    importColumn->addWidget(mProgress);
-    importColumn->addWidget(mProgressText);
-    importColumn->addWidget(mCancel, 0, Qt::AlignLeft);
-    importRow->addWidget(number);
-    importRow->addLayout(importColumn, 1);
-    steps->addWidget(importWidget);
-    steps->addStretch(1);
 
-    auto* layout = new QHBoxLayout(this);
-    layout->setContentsMargins(56, 48, 64, 40);
-    layout->setSpacing(64);
-    auto* introWidget = new QWidget(this);
-    introWidget->setLayout(intro);
-    introWidget->setFixedWidth(320);
-    layout->addWidget(introWidget);
-    layout->addLayout(steps, 1);
+    auto* well = new GameWell(panel);
+    auto* steps = new QVBoxLayout(well);
+    steps->setContentsMargins(24, 22, 24, 22);
+    steps->setSpacing(22);
+    steps->addWidget(MakeStep(1, "Base game", "The extracted title folder of Minecraft: Wii U Edition, with code, "
+                                              "content and meta inside.",
+                              &mBase, false));
+    steps->addWidget(MakeStep(2, "Update 688", "The extracted folder of the game's update, version 688.", &mUpdate,
+                              true));
+    steps->addStretch(1);
+    steps->addWidget(mProgress);
+    steps->addWidget(mProgressText);
+    auto* importRow = new QHBoxLayout;
+    importRow->addWidget(mCancel, 0, Qt::AlignVCenter);
+    importRow->addStretch(1);
+    importRow->addWidget(mImport);
+    steps->addLayout(importRow);
+
+    auto* columns = new QHBoxLayout(panel);
+    columns->setSpacing(24);
+    columns->addWidget(introWidget);
+    columns->addWidget(well, 1);
+
+    auto* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(60, 40, 60, 40);
+    layout->addWidget(panel);
 
     QSettings settings(LauncherPaths::SettingsFile(), QSettings::IniFormat);
     mBase.field->setText(settings.value("gameFiles/baseDump").toString());
@@ -200,36 +185,28 @@ void SetupPage::OpenLicenseFile()
 QWidget* SetupPage::MakeStep(int number, const QString& title, const QString& hint, Step* step, bool isUpdate)
 {
     auto* widget = new QWidget(this);
-    auto* row = new QHBoxLayout(widget);
-    row->setContentsMargins(0, 0, 0, 0);
-    auto* numberLabel = new QLabel(QString("%1").arg(number, 2, 10, QChar('0')), widget);
-    numberLabel->setObjectName("StepNumber");
-    numberLabel->setFixedWidth(64);
-    numberLabel->setAlignment(Qt::AlignTop | Qt::AlignLeft);
-
-    auto* column = new QVBoxLayout;
+    auto* column = new QVBoxLayout(widget);
+    column->setContentsMargins(0, 0, 0, 0);
     column->setSpacing(8);
-    auto* titleLabel = new QLabel(title, widget);
+    auto* titleLabel = new QLabel(QString("%1. %2").arg(number).arg(title), widget);
     titleLabel->setObjectName("StepTitle");
     auto* hintLabel = new QLabel(hint, widget);
     hintLabel->setObjectName("StepHint");
     hintLabel->setWordWrap(true);
     step->field = new QLineEdit(widget);
-    step->field->setPlaceholderText(isUpdate ? "…\\Minecraft Wii U Edition [Update]" : "…\\Minecraft Wii U Edition [Game]");
+    step->field->setPlaceholderText(isUpdate ? "...\\Minecraft Wii U Edition [Update]" : "...\\Minecraft Wii U Edition [Game]");
     step->check = new QLabel(widget);
     step->check->setWordWrap(true);
     step->valid = false;
-    auto* browse = new QPushButton("Browse…", widget);
+    auto* browse = new QPushButton("Browse...", widget);
     auto* fieldRow = new QHBoxLayout;
+    fieldRow->setSpacing(8);
     fieldRow->addWidget(step->field, 1);
     fieldRow->addWidget(browse);
     column->addWidget(titleLabel);
     column->addWidget(hintLabel);
     column->addLayout(fieldRow);
     column->addWidget(step->check);
-
-    row->addWidget(numberLabel);
-    row->addLayout(column, 1);
 
     connect(step->field, &QLineEdit::textChanged, mValidateTimer, qOverload<>(&QTimer::start));
     connect(browse, &QPushButton::clicked, this, [this, step, title] {
@@ -258,9 +235,9 @@ void SetupPage::Validate()
         QString error;
         step->valid = AssetPreparer::CheckDump(path, isUpdate, &version, &error);
         if (step->valid)
-            SetCheck(step->check, QString("✓  Minecraft: Wii U Edition, version %1").arg(version), "StepGood");
+            SetCheck(step->check, QString("Found Minecraft: Wii U Edition, version %1").arg(version), "StepGood");
         else
-            SetCheck(step->check, "✕  " + error, "StepBad");
+            SetCheck(step->check, error, "StepBad");
     }
     mImport->setEnabled(!IsBusy() && mBase.valid && mUpdate.valid);
 }
@@ -293,7 +270,7 @@ void SetupPage::Start()
 
     SetBusy(true);
     mProgress->setValue(0);
-    mProgressText->setText("Reading your dumps…");
+    SetCheck(mProgressText, "Reading your dumps...", "StepHint");
     emit Message(LogLevel::Info, "Importing the game files.");
     mThread->start();
 }
@@ -312,7 +289,7 @@ void SetupPage::SetBusy(bool busy)
 void SetupPage::OnProgress(qint64 filesDone, qint64 filesTotal, qint64 bytesDone, qint64 bytesTotal)
 {
     mProgress->setValue(bytesTotal > 0 ? static_cast<int>(bytesDone * 1000 / bytesTotal) : 0);
-    mProgressText->setText(QString("Copied %1 of %2 files  ·  %3 of %4 MB")
+    mProgressText->setText(QString("Copied %1 of %2 files, %3 of %4 MB")
                                .arg(filesDone)
                                .arg(filesTotal)
                                .arg(bytesDone >> 20)
@@ -334,6 +311,9 @@ void SetupPage::OnFinished(bool succeeded, const QString& error)
         emit Imported();
         return;
     }
-    mProgressText->setText(error == kCancelled ? QString("Import cancelled.") : "✕  " + error);
+    if (error == kCancelled)
+        SetCheck(mProgressText, "Import cancelled.", "StepHint");
+    else
+        SetCheck(mProgressText, error, "StepBad");
     emit Message(error == kCancelled ? LogLevel::Warn : LogLevel::Error, "Importing the game files failed: " + error);
 }

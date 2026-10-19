@@ -3,60 +3,59 @@
 #include <QDesktopServices>
 #include <QDir>
 #include <QHBoxLayout>
-#include <QHeaderView>
+#include <QListWidget>
 #include <QMessageBox>
 #include <QPushButton>
-#include <QTableWidget>
 #include <QUrl>
 #include <QVBoxLayout>
 
-#include "Icons.hpp"
 #include "ProfileDialog.hpp"
 #include "Profiles.hpp"
 #include "Skins.hpp"
 #include "Widgets.hpp"
 
 ProfilesTab::ProfilesTab(ProfileStore& store, QWidget* parent)
-    : QWidget(parent), mStore(store), mTable(new QTableWidget(this)), mDelete(new IconButton(Icons::Bin(), "Delete", this))
+    : QWidget(parent), mStore(store), mList(new QListWidget(this)), mDelete(new QPushButton("Delete", this))
 {
-    mTable->setColumnCount(3);
-    mTable->setHorizontalHeaderLabels({"Profile", "Username", "Game folder"});
-    mTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    mTable->setSelectionMode(QAbstractItemView::SingleSelection);
-    mTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    mTable->setShowGrid(false);
-    mTable->verticalHeader()->hide();
-    mTable->verticalHeader()->setDefaultSectionSize(52);
-    mTable->setObjectName("ProfileList");
-    mTable->setFocusPolicy(Qt::NoFocus);
-    mTable->setIconSize(QSize(32, 32));
-    mTable->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-    mTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    mTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
+    mList->setObjectName("GameRows");
+    mList->setItemDelegate(new GameRowDelegate(mList));
+    mList->setFrameShape(QFrame::NoFrame);
+    mList->setSelectionMode(QAbstractItemView::SingleSelection);
+    mList->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+    mList->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    mList->setMouseTracking(true);
 
-    auto* newButton = new IconButton(Icons::Plus(), "New profile", this);
-    auto* editButton = new IconButton(Icons::Pencil(), "Edit", this);
-    auto* openButton = new IconButton(Icons::Folder(), "Open game folder", this);
-    openButton->setObjectName("RailLink");
+    auto* newButton = new QPushButton("New profile", this);
+    auto* editButton = new QPushButton("Edit", this);
+    auto* openButton = new QPushButton("Open game folder", this);
+    auto* reimportButton = new QPushButton("Re-import game files", this);
     auto* buttons = new QHBoxLayout;
+    buttons->setSpacing(8);
     buttons->addWidget(newButton);
     buttons->addWidget(editButton);
     buttons->addWidget(mDelete);
     buttons->addStretch(1);
     buttons->addWidget(openButton);
+    buttons->addWidget(reimportButton);
+
+    auto* well = new GameWell(this);
+    auto* wellLayout = new QVBoxLayout(well);
+    wellLayout->setContentsMargins(10, 10, 10, 10);
+    wellLayout->addWidget(mList);
 
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(12);
     layout->addLayout(buttons);
-    layout->addWidget(mTable, 1);
+    layout->addWidget(well, 1);
 
     connect(newButton, &QPushButton::clicked, this, &ProfilesTab::NewProfile);
     connect(editButton, &QPushButton::clicked, this, &ProfilesTab::EditProfile);
     connect(mDelete, &QPushButton::clicked, this, &ProfilesTab::DeleteProfile);
     connect(openButton, &QPushButton::clicked, this, &ProfilesTab::OpenGameFolder);
-    connect(mTable, &QTableWidget::cellDoubleClicked, this, &ProfilesTab::EditProfile);
-    connect(mTable, &QTableWidget::itemSelectionChanged, this, [this] {
+    connect(reimportButton, &QPushButton::clicked, this, &ProfilesTab::ReimportRequested);
+    connect(mList, &QListWidget::itemDoubleClicked, this, &ProfilesTab::EditProfile);
+    connect(mList, &QListWidget::itemSelectionChanged, this, [this] {
         if (!mReloading && !CurrentId().isEmpty())
             mStore.Select(CurrentId());
     });
@@ -67,33 +66,27 @@ ProfilesTab::ProfilesTab(ProfileStore& store, QWidget* parent)
 void ProfilesTab::Reload()
 {
     mReloading = true;
-    const QVector<Profile>& profiles = mStore.Profiles();
-    mTable->setRowCount(profiles.size());
-    for (int row = 0; row < profiles.size(); ++row)
+    mList->clear();
+    for (const Profile& profile : mStore.Profiles())
     {
-        const Profile& profile = profiles[row];
-        auto* name = new QTableWidgetItem(profile.name);
-        name->setData(Qt::UserRole, profile.id);
-        const QImage face = Skins::FaceFor(profile);
-        if (!face.isNull())
-            name->setIcon(QIcon(QPixmap::fromImage(face.scaled(64, 64, Qt::IgnoreAspectRatio, Qt::SmoothTransformation))));
-        mTable->setItem(row, 0, name);
-        mTable->setItem(row, 1, new QTableWidgetItem(profile.username));
-        mTable->setItem(row, 2, new QTableWidgetItem(QDir::toNativeSeparators(ProfileStore::GameDirFor(profile))));
+        auto* item = new QListWidgetItem(profile.name, mList);
+        item->setData(Qt::UserRole, profile.id);
+        item->setData(Qt::DecorationRole, Skins::FaceFor(profile, kSlotIconSize));
+        item->setData(GameRowDelegate::kSlotRole, true);
+        const QString folder = QDir::toNativeSeparators(ProfileStore::GameDirFor(profile));
+        item->setData(GameRowDelegate::kSubtitleRole, QString("%1 - %2").arg(profile.username, folder));
+        item->setToolTip(folder);
         if (profile.id == mStore.SelectedId())
-            mTable->selectRow(row);
+            mList->setCurrentItem(item);
     }
-    mDelete->setEnabled(profiles.size() > 1);
+    mDelete->setEnabled(mStore.Profiles().size() > 1);
     mReloading = false;
 }
 
 QString ProfilesTab::CurrentId() const
 {
-    const QList<QTableWidgetItem*> selected = mTable->selectedItems();
-    if (selected.isEmpty())
-        return QString();
-    QTableWidgetItem* name = mTable->item(selected.first()->row(), 0);
-    return name != nullptr ? name->data(Qt::UserRole).toString() : QString();
+    const QList<QListWidgetItem*> selected = mList->selectedItems();
+    return selected.isEmpty() ? QString() : selected.first()->data(Qt::UserRole).toString();
 }
 
 void ProfilesTab::NewProfile()

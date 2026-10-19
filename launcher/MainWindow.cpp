@@ -1,22 +1,20 @@
 #include "MainWindow.hpp"
 
 #include <QApplication>
-#include <QButtonGroup>
 #include <QCloseEvent>
+#include <QDesktopServices>
 #include <QFileInfo>
-#include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMessageBox>
-#include <QPushButton>
 #include <QSettings>
 #include <QStackedWidget>
-#include <QStyle>
+#include <QUrl>
 #include <QVBoxLayout>
 
 #include "BuildVersion.hpp"
+#include "GameArt.hpp"
 #include "GameRunner.hpp"
-#include "Icons.hpp"
 #include "LauncherPaths.hpp"
 #include "NewsTab.hpp"
 #include "ProfileDialog.hpp"
@@ -38,113 +36,93 @@ enum Page
 };
 
 const char* const kPageNames[PageCount] = {"News", "Game Log", "Profiles"};
+const int kBottomRowHeight = 62;
 }
 
 MainWindow::MainWindow(ProfileStore& store, QWidget* parent)
-    : QMainWindow(parent), mStore(store), mRunner(new GameRunner(this)), mPages(new QStackedWidget(this)),
-      mRoot(new QStackedWidget(this)), mSetup(new SetupPage(this)), mNews(new NewsTab(this)), mLog(new GameLogTab(this)),
-      mProfileChip(new ProfileChip(this)), mPlay(new PlayButton(this)), mStatus(new QLabel(this))
+    : QMainWindow(parent), mStore(store), mRunner(new GameRunner(this)), mPanorama(new Panorama(this)),
+      mRoot(new QStackedWidget(mPanorama)), mShellLayout(nullptr), mTabs(new TabbedPanel(this)),
+      mPages(new QStackedWidget(this)), mSetup(new SetupPage(this)), mNews(new NewsTab(this)),
+      mLog(new GameLogTab(this)), mProfileButton(new GameButton(QString(), this)), mPlay(new PlayButton(this)),
+      mStatus(new ShadowLabel(QString(), 16, this))
 {
-    setWindowTitle(QString("LCEReborn Launcher  ·  %1").arg(BuildVersion()));
-    resize(1080, 680);
-    setMinimumSize(880, 560);
+    setWindowTitle(QString("LCEReborn Launcher - %1").arg(BuildVersion()));
+    resize(1280, 720);
+    setMinimumSize(960, 600);
 
     mPages->addWidget(mNews);
     mPages->addWidget(mLog);
-    mPages->addWidget(new ProfilesTab(mStore, this));
+    auto* profiles = new ProfilesTab(mStore, this);
+    mPages->addWidget(profiles);
+    for (const char* name : kPageNames)
+        mTabs->AddTab(name);
+    mTabs->SetContent(mPages);
+    connect(mTabs, &TabbedPanel::CurrentChanged, mPages, &QStackedWidget::setCurrentIndex);
 
-    auto* topBar = new QFrame(this);
-    topBar->setObjectName("TopBar");
-    auto* topLayout = new QHBoxLayout(topBar);
-    topLayout->setContentsMargins(22, 0, 22, 0);
-    topLayout->setSpacing(0);
-    auto* mark = new QLabel(topBar);
-    mark->setPixmap(QPixmap(":/launcher/mark.png").scaled(38, 38, Qt::KeepAspectRatio, Qt::FastTransformation));
-    mark->setFixedSize(38, 38);
-    auto* wordmark = new QLabel("LCE REBORN", topBar);
-    wordmark->setObjectName("Wordmark");
-    topLayout->addWidget(mark);
-    topLayout->addSpacing(12);
-    topLayout->addWidget(wordmark);
-    topLayout->addSpacing(44);
+    auto* corner = new QWidget(this);
+    auto* cornerLayout = new QHBoxLayout(corner);
+    cornerLayout->setContentsMargins(0, 0, 0, 0);
+    cornerLayout->setSpacing(12);
+    auto* mark = new QLabel(corner);
+    mark->setPixmap(QPixmap(":/launcher/mark.png").scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    mark->setFixedSize(32, 32);
+    cornerLayout->addStretch(1);
+    cornerLayout->addWidget(mark);
+    cornerLayout->addWidget(new ShadowLabel("LCE Reborn", 24, corner));
+    mTabs->SetCorner(corner);
 
-    auto* navGroup = new QButtonGroup(this);
-    navGroup->setExclusive(true);
-    for (int index = 0; index < PageCount; ++index)
-    {
-        if (index > 0)
-        {
-            auto* separator = new QFrame(topBar);
-            separator->setObjectName("NavSeparator");
-            separator->setFixedSize(1, 22);
-            topLayout->addWidget(separator);
-        }
-        auto* item = new NavItem(kPageNames[index], topBar);
-        navGroup->addButton(item, index);
-        topLayout->addWidget(item);
-        mNav.append(item);
-    }
-    connect(navGroup, &QButtonGroup::idClicked, this, &MainWindow::ShowPage);
-    topLayout->addStretch(1);
-    auto* reimport = new QPushButton("Re-import game files", topBar);
-    reimport->setObjectName("RailLink");
-    reimport->setCursor(Qt::PointingHandCursor);
-    topLayout->addWidget(reimport);
-
-    auto* bottomBar = new QFrame(this);
-    bottomBar->setObjectName("BottomBar");
-    auto* bottomLayout = new QHBoxLayout(bottomBar);
-    bottomLayout->setContentsMargins(22, 14, 22, 16);
-    bottomLayout->setSpacing(18);
-    mProfileChip->setFixedWidth(280);
-    mStatus->setObjectName("Status");
-    mStatus->setWordWrap(true);
-    mPlay->setFixedWidth(300);
-    auto* build = new QLabel(BuildVersion().toUpper(), bottomBar);
-    build->setObjectName("Tagline");
+    mProfileButton->SetPixelSize(20);
+    mProfileButton->setFixedSize(360, kBottomRowHeight);
+    mPlay->setFixedSize(280, kBottomRowHeight);
+    auto* update = new GameButton("Update", this);
+    update->SetPixelSize(20);
+    update->setFixedSize(150, kBottomRowHeight);
+    update->hide();
+    auto* build = new ShadowLabel(QString("Build %1").arg(BuildVersion()), 16, this);
     auto* statusColumn = new QVBoxLayout;
-    statusColumn->setSpacing(4);
+    statusColumn->setSpacing(6);
     statusColumn->addStretch(1);
     statusColumn->addWidget(mStatus);
     statusColumn->addWidget(build);
     statusColumn->addStretch(1);
-    bottomLayout->addWidget(mProfileChip);
-    bottomLayout->addLayout(statusColumn, 1);
-    bottomLayout->addWidget(mPlay);
 
-    auto* content = new QVBoxLayout;
-    content->setContentsMargins(28, 22, 28, 18);
-    content->addWidget(mPages, 1);
+    auto* bottomRow = new QHBoxLayout;
+    bottomRow->setSpacing(20);
+    bottomRow->addWidget(mProfileButton);
+    bottomRow->addLayout(statusColumn, 1);
+    bottomRow->addWidget(update);
+    bottomRow->addWidget(mPlay);
 
     auto* shell = new QWidget(this);
-    auto* layout = new QVBoxLayout(shell);
-    layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(0);
-    layout->addWidget(topBar);
-    layout->addLayout(content, 1);
-    layout->addWidget(bottomBar);
+    mShellLayout = new QVBoxLayout(shell);
+    mShellLayout->setSpacing(12);
+    mShellLayout->addWidget(mTabs, 1);
+    mShellLayout->addLayout(bottomRow);
 
     mRoot->addWidget(mSetup);
     mRoot->addWidget(shell);
-    auto* backdrop = new Backdrop(this);
-    auto* backdropLayout = new QVBoxLayout(backdrop);
-    backdropLayout->setContentsMargins(0, 0, 0, 0);
-    backdropLayout->addWidget(mRoot);
-    setCentralWidget(backdrop);
+    auto* rootLayout = new QVBoxLayout(mPanorama);
+    rootLayout->setContentsMargins(0, 0, 0, 0);
+    rootLayout->addWidget(mRoot);
+    setCentralWidget(mPanorama);
 
     connect(&mStore, &ProfileStore::Changed, this, &MainWindow::RefreshProfiles);
-    connect(mProfileChip, &ProfileChip::clicked, this, &MainWindow::ShowProfileMenu);
+    connect(mProfileButton, &GameButton::clicked, this, &MainWindow::ShowProfileMenu);
     connect(mPlay, &PlayButton::clicked, this, &MainWindow::Play);
     connect(mRunner, &GameRunner::Output, mLog, &GameLogTab::Add);
     connect(mRunner, &GameRunner::Started, this, &MainWindow::OnGameStarted);
     connect(mRunner, &GameRunner::Finished, this, &MainWindow::OnGameFinished);
     connect(mSetup, &SetupPage::Message, mLog, &GameLogTab::AddLauncherMessage);
-    connect(mSetup, &SetupPage::Imported, this, [this] {
-        mStore.NotifySkinsChanged();
-        mRoot->setCurrentIndex(1);
-    });
+    connect(mSetup, &SetupPage::Imported, this, &MainWindow::OnImported);
     connect(mSetup, &SetupPage::BackRequested, this, [this] { mRoot->setCurrentIndex(1); });
-    connect(reimport, &QPushButton::clicked, this, [this] {
+    connect(mNews, &NewsTab::UpdateChecked, this, [update](const QString& newerName, const QString& newerUrl) {
+        update->setVisible(!newerName.isEmpty());
+        update->setToolTip(QString("%1 is out. Open its download page.").arg(newerName));
+        update->setProperty("url", newerUrl);
+    });
+    connect(update, &GameButton::clicked, this,
+            [update] { QDesktopServices::openUrl(QUrl(update->property("url").toString())); });
+    connect(profiles, &ProfilesTab::ReimportRequested, this, [this] {
         if (mRunner->IsRunning())
         {
             QMessageBox::information(this, "Re-import Game Files", "Close the game before importing its files again.");
@@ -165,8 +143,17 @@ MainWindow::MainWindow(ProfileStore& store, QWidget* parent)
 
 void MainWindow::ShowPage(int index)
 {
+    mTabs->SetCurrent(index);
     mPages->setCurrentIndex(index);
-    mNav[index]->setChecked(true);
+}
+
+void MainWindow::resizeEvent(QResizeEvent* event)
+{
+    QMainWindow::resizeEvent(event);
+    if (mShellLayout == nullptr)
+        return;
+    const int sides = qMax(16, width() * 60 / 1280);
+    mShellLayout->setContentsMargins(sides, qMax(12, height() * 22 / 720), sides, qMax(12, height() * 16 / 720));
 }
 
 void MainWindow::ShowProfileMenu()
@@ -183,52 +170,52 @@ void MainWindow::ShowProfileMenu()
             ProfileDialog::Run(this, mStore, *profile, false);
     });
     connect(popup, &ProfilePopup::ManageRequested, this, [this] { ShowPage(ProfilesPage); });
-    popup->ShowAbove(mProfileChip);
+    popup->ShowAbove(mProfileButton);
 }
 
 void MainWindow::RefreshProfiles()
 {
     if (const Profile* profile = mStore.Selected())
     {
-        const QImage face = Skins::FaceFor(*profile);
-        mProfileChip->SetProfile(face.isNull() ? QPixmap() : QPixmap::fromImage(face), profile->username,
-                                 profile->name);
+        mProfileButton->setText(profile->username);
+        mProfileButton->SetSubtitle(profile->name);
+        mProfileButton->SetIcon(Skins::FaceFor(*profile, kSlotIconSize), true);
+        mProfileButton->setToolTip(QString("Playing as %1 with the profile %2").arg(profile->username, profile->name));
         mLog->SetLogsFolder(ProfileStore::GameDirFor(*profile) + "/logs");
     }
     RefreshStatus();
 }
 
-void MainWindow::SetStatus(const QString& text, const char* style)
+void MainWindow::SetStatus(const QString& text, const QColor& colour)
 {
-    mStatus->setText(text);
-    mStatus->setObjectName(style);
-    mStatus->style()->unpolish(mStatus);
-    mStatus->style()->polish(mStatus);
+    mStatus->SetText(text);
+    mStatus->SetColour(colour);
+    mStatus->setToolTip(text);
 }
 
 void MainWindow::RefreshStatus()
 {
     const Profile* profile = mStore.Selected();
-    const QString who = profile != nullptr ? QString("as %1").arg(profile->username) : QString();
-    mNav[LogPage]->SetBadge(mRunner->IsRunning() ? "LIVE" : QString());
+    const QString who = profile != nullptr ? QString("Play as %1").arg(profile->username) : QString();
+    mTabs->SetMarked(LogPage, mRunner->IsRunning());
     if (mRunner->IsRunning())
     {
         mPlay->setEnabled(false);
-        mPlay->SetLabels("Playing", who, false);
-        SetStatus("The game is running. Its output is in the Game Log.", "Status");
+        mPlay->SetLabels("Playing", "The game is running");
+        SetStatus("The game is running. Its output is in the Game Log.", GameColours::kText);
         return;
     }
     const QString problem = GameRunner::CheckGameReady();
     if (!problem.isEmpty())
     {
         mPlay->setEnabled(false);
-        mPlay->SetLabels("Play", "Not ready", false);
-        SetStatus(problem, "StatusWarning");
+        mPlay->SetLabels("Play", problem);
+        SetStatus(problem, GameColours::kWarning);
         return;
     }
     mPlay->setEnabled(true);
-    mPlay->SetLabels("Play", who, false);
-    SetStatus("Ready to play", "StatusReady");
+    mPlay->SetLabels("Play", who);
+    SetStatus("Ready to play", GameColours::kReady);
 }
 
 void MainWindow::Play()
@@ -295,6 +282,17 @@ void MainWindow::OnGameFinished(int exitCode, bool crashed)
     if (crashed || exitCode != 0)
         ShowPage(LogPage);
     mStore.NotifySkinsChanged();
+}
+
+void MainWindow::OnImported()
+{
+    GameArt::Reload();
+    QApplication::setFont(GameFont(16));
+    mPanorama->Reload();
+    mNews->Refresh();
+    mStore.NotifySkinsChanged();
+    mRoot->setCurrentIndex(1);
+    update();
 }
 
 void MainWindow::SaveProfiles()

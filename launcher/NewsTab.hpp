@@ -5,6 +5,7 @@
 #include <QWidget>
 
 class QLabel;
+class QListWidget;
 class QNetworkAccessManager;
 class QNetworkReply;
 class QTextBrowser;
@@ -18,13 +19,20 @@ public:
 
     void Refresh();
 
+signals:
+    void UpdateChecked(const QString& newerName, const QString& newerUrl);
+
 private:
     void OnReply(QNetworkReply* reply);
     bool ShowReleases(const QByteArray& json, const QString& note);
     void ShowOffline(const QString& note);
+    void ShowSelected();
 
     QNetworkAccessManager* mNetwork;
-    QTextBrowser* mBrowser;
+    QListWidget* mReleases;
+    QLabel* mTitle;
+    QLabel* mDate;
+    QTextBrowser* mBody;
     QLabel* mNote;
 };
 

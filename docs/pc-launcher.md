@@ -30,13 +30,12 @@ When there is no imported game, the launcher opens on setup:
    creating it first if needed.
 4. **Import**: copies the game into `assets/`.
 
-"Re-import game files" opens setup again.
+"Re-import game files", in the Profiles tab, opens setup again.
 
 ## Licenses
 
 The game starts as the trial with no DLC until you edit `license.cfg`, beside
-the launcher; only unlock what you own. Setup's Licenses step opens it, and
-"Re-import game files" brings setup back. Set `full_game = true` for the full
+the launcher; only unlock what you own. Setup's Licenses step opens it. Set `full_game = true` for the full
 game and `dlc` to `all` or the names of your packs (see Licenses in
 `pc-platform.md`).
 
@@ -45,4 +44,21 @@ game and `dlc` to `all` or the names of your packs (see Licenses in
 Each profile has its own player name, game folder and language, and whether
 split screen is on and other controllers are asked to join when a world loads
 (`--split-screen`, `--join-prompt`). The Game Log tab shows the game's output,
-and News shows the project's releases.
+and News shows the project's releases. An Update button appears beside Play
+when a newer release is out.
+
+## Its look
+
+The launcher draws itself like the game's menus, using the imported game's
+font, title panorama and block textures, so it looks plain until the game is
+imported.
+
+Each release in News has a block picked from its commit, the same in every
+launcher. The blocks are listed in `launcher/BlockIcons.cpp`; add new ones only
+at the end of the list, then run
+
+```
+python tools/check_launcher_blocks.py
+```
+
+to check them against the game's texture atlas.

@@ -10,7 +10,7 @@
 
 #include <deque>
 
-class QPushButton;
+class QCheckBox;
 class QLineEdit;
 class QTableView;
 class QTimer;
@@ -119,7 +119,7 @@ private:
     LogFilter* mFilter;
     QTableView* mView;
     QLineEdit* mSearch;
-    QVector<QPushButton*> mLevelBoxes;
+    QVector<QCheckBox*> mLevelBoxes;
     QVector<LogEntry> mPending;
     QTimer* mFlushTimer;
     QString mLogsFolder;

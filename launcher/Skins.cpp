@@ -430,10 +430,9 @@ struct Texel
     QRgb colour;
 };
 
-QImage HeadRender(const QVector<Box>& boxes, const QImage& texture, int scale, bool aboveNeckOnly)
+QImage HeadRender(const QVector<Box>& boxes, const QImage& texture, int scale, bool aboveNeckOnly, int size)
 {
-    const int size = 128;
-    const View view(45.0f, 25.0f);
+    const View view(45.0f, 30.0f);
 
     const bool anySolid = std::any_of(boxes.begin(), boxes.end(), IsSolid);
     float minX = std::numeric_limits<float>::max();
@@ -554,7 +553,7 @@ QImage HeadRender(const QVector<Box>& boxes, const QImage& texture, int scale, b
     return image;
 }
 
-QImage FrontView(const Skin& skin)
+QImage FrontView(const Skin& skin, int size)
 {
     const QImage texture = skin.texture.convertToFormat(QImage::Format_ARGB32);
     const int scale = texture.width() / 64;
@@ -574,23 +573,23 @@ QImage FrontView(const Skin& skin)
         aboveNeckOnly = true;
     }
     if (!boxes.isEmpty() && Covers(FlatRender(boxes, texture, scale, aboveNeckOnly), 0.125))
-        return HeadRender(boxes, texture, scale, aboveNeckOnly);
+        return HeadRender(boxes, texture, scale, aboveNeckOnly, size);
 
     const QVector<Box> classic = ClassicBoxes(texture, scale, (skin.animFlags & kHatHiddenBit) == 0);
     if (Covers(FlatRender(classic, texture, scale, false), 0.4))
-        return HeadRender(classic, texture, scale, false);
+        return HeadRender(classic, texture, scale, false, size);
     const QImage steve = QImage(DefaultSkinPath(1)).convertToFormat(QImage::Format_ARGB32);
     if (steve.isNull())
         return QImage();
     const int steveScale = std::max(1, steve.width() / 64);
-    return HeadRender(ClassicBoxes(steve, steveScale, true), steve, steveScale, false);
+    return HeadRender(ClassicBoxes(steve, steveScale, true), steve, steveScale, false, size);
 }
 }
 
 namespace Skins
 {
-QImage FaceFor(const Profile& profile)
+QImage FaceFor(const Profile& profile, int size)
 {
-    return FrontView(SkinFor(profile));
+    return FrontView(SkinFor(profile), size);
 }
 }

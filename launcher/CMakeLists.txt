@@ -23,11 +23,12 @@ endif()
 qt_standard_project_setup()
 
 qt_add_executable(LCERebornLauncher WIN32 MACOSX_BUNDLE
+  BlockIcons.cpp
+  BuildVersion.cpp
+  GameArt.cpp
   GameFiles.cpp
   GameLog.cpp
   GameRunner.cpp
-  Icons.cpp
-  BuildVersion.cpp
   LauncherPaths.cpp
   MainWindow.cpp
   NewsTab.cpp
@@ -38,6 +39,7 @@ qt_add_executable(LCERebornLauncher WIN32 MACOSX_BUNDLE
   SetupPage.cpp
   Skins.cpp
   Theme.cpp
+  UpdateCheck.cpp
   Widgets.cpp
   main.cpp)
 
@@ -69,5 +71,5 @@ if(WIN32)
   get_filename_component(LCE_QT_BIN "${LCE_QMAKE}" DIRECTORY)
   add_custom_command(TARGET LCERebornLauncher POST_BUILD
     COMMAND "${LCE_QT_BIN}/windeployqt.exe" --no-translations --no-compiler-runtime --no-system-d3d-compiler
-            --no-opengl-sw --no-quick-import --verbose 0 "$<TARGET_FILE:LCERebornLauncher>")
+            --no-system-dxc-compiler --no-opengl-sw --no-quick-import --verbose 0 "$<TARGET_FILE:LCERebornLauncher>")
 endif()

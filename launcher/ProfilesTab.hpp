@@ -5,7 +5,7 @@
 
 class ProfileStore;
 class QPushButton;
-class QTableWidget;
+class QListWidget;
 
 class ProfilesTab : public QWidget
 {
@@ -13,6 +13,9 @@ class ProfilesTab : public QWidget
 
 public:
     ProfilesTab(ProfileStore& store, QWidget* parent = nullptr);
+
+signals:
+    void ReimportRequested();
 
 private:
     void Reload();
@@ -23,7 +26,7 @@ private:
     void OpenGameFolder();
 
     ProfileStore& mStore;
-    QTableWidget* mTable;
+    QListWidget* mList;
     QPushButton* mDelete;
     bool mReloading = false;
 };

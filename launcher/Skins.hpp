@@ -7,7 +7,7 @@ struct Profile;
 
 namespace Skins
 {
-QImage FaceFor(const Profile& profile);
+QImage FaceFor(const Profile& profile, int size);
 }
 
 #endif

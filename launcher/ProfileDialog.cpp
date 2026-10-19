@@ -14,6 +14,7 @@
 #include <QVBoxLayout>
 
 #include "LauncherPaths.hpp"
+#include "Widgets.hpp"
 
 namespace
 {
@@ -40,7 +41,7 @@ ProfileDialog::ProfileDialog(const ProfileStore& store, const Profile& profile, 
       mJoinPrompt(new QCheckBox("Ask other connected controllers to join when a world loads", this))
 {
     setWindowTitle(isNew ? "New Profile" : "Edit Profile");
-    setMinimumWidth(520);
+    setMinimumWidth(640);
 
     mUsername->setMaxLength(16);
     mUuid->setObjectName("Muted");
@@ -85,14 +86,19 @@ ProfileDialog::ProfileDialog(const ProfileStore& store, const Profile& profile, 
     form->addRow("Split screen", mSplitScreen);
     form->addRow("Join prompt", mJoinPrompt);
 
-
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Cancel, this);
     connect(buttons, &QDialogButtonBox::accepted, this, &ProfileDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, this, &ProfileDialog::reject);
 
-    auto* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(20, 18, 20, 16);
+    auto* panel = new GamePanel(this);
+    auto* outer = new QVBoxLayout(this);
+    outer->setContentsMargins(0, 0, 0, 0);
+    outer->addWidget(panel);
+    auto* heading = new QLabel(windowTitle(), panel);
+    heading->setObjectName("Heading");
+    auto* layout = new QVBoxLayout(panel);
     layout->setSpacing(14);
+    layout->addWidget(heading);
     layout->addLayout(form);
     layout->addWidget(buttons);
 

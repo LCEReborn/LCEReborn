@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QClipboard>
+#include <QCheckBox>
 #include <QColor>
 #include <QDateTime>
 #include <QDesktopServices>
@@ -23,6 +24,7 @@
 #include <algorithm>
 
 #include "LauncherPaths.hpp"
+#include "Widgets.hpp"
 
 namespace
 {
@@ -229,41 +231,33 @@ GameLogTab::GameLogTab(QWidget* parent)
     mFilter->setDynamicSortFilter(true);
 
     QSettings settings(LauncherPaths::SettingsFile(), QSettings::IniFormat);
-    auto* toolbar = new QHBoxLayout;
+    auto* levels = new QHBoxLayout;
+    levels->setSpacing(18);
     for (int index = 0; index < 6; ++index)
     {
         const LogLevel level = static_cast<LogLevel>(index);
-        auto* box = new QPushButton(LogLevelName(level), this);
-        box->setCheckable(true);
+        auto* box = new QCheckBox(LogLevelName(level), this);
         box->setCursor(Qt::PointingHandCursor);
         const bool shown = settings.value(QString("log/show%1").arg(LogLevelName(level)), mFilter->LevelShown(level)).toBool();
         box->setChecked(shown);
         mFilter->SetLevelShown(level, shown);
-        const QColor colour = LevelColour(level);
-        box->setStyleSheet(QString("QPushButton { background: transparent; border: 1px solid rgba(255,255,255,30); "
-                                   "border-radius: 11px; padding: 3px 11px; color: #6f675f; font-weight: 700; "
-                                   "font-size: 8.5pt; } "
-                                   "QPushButton:checked { background: rgba(%1,%2,%3,40); border-color: %4; color: %4; }")
-                               .arg(colour.red())
-                               .arg(colour.green())
-                               .arg(colour.blue())
-                               .arg(colour.name()));
-        connect(box, &QPushButton::toggled, this, [this, level](bool checked) { mFilter->SetLevelShown(level, checked); });
-        toolbar->addWidget(box);
+        connect(box, &QCheckBox::toggled, this, [this, level](bool checked) { mFilter->SetLevelShown(level, checked); });
+        levels->addWidget(box);
         mLevelBoxes.append(box);
     }
-    toolbar->addSpacing(16);
+    levels->addStretch(1);
+
+    auto* toolbar = new QHBoxLayout;
+    toolbar->setSpacing(8);
     mSearch->setPlaceholderText("Search the log");
     mSearch->setClearButtonEnabled(true);
     connect(mSearch, &QLineEdit::textChanged, mFilter, &LogFilter::SetText);
     toolbar->addWidget(mSearch, 1);
 
     auto* clear = new QPushButton("Clear", this);
-    clear->setObjectName("RailLink");
     connect(clear, &QPushButton::clicked, mModel, &LogModel::Clear);
     toolbar->addWidget(clear);
     auto* openFolder = new QPushButton("Open logs folder", this);
-    openFolder->setObjectName("RailLink");
     connect(openFolder, &QPushButton::clicked, this, [this] {
         QDir().mkpath(mLogsFolder);
         QDesktopServices::openUrl(QUrl::fromLocalFile(mLogsFolder));
@@ -276,6 +270,7 @@ GameLogTab::GameLogTab(QWidget* parent)
     mView->setSelectionMode(QAbstractItemView::ExtendedSelection);
     mView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     mView->setWordWrap(false);
+    mView->setFrameShape(QFrame::NoFrame);
     mView->setShowGrid(false);
     mView->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
     mView->verticalHeader()->hide();
@@ -300,7 +295,12 @@ GameLogTab::GameLogTab(QWidget* parent)
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(12);
     layout->addLayout(toolbar);
-    layout->addWidget(mView, 1);
+    layout->addLayout(levels);
+    auto* well = new GameWell(this);
+    auto* wellLayout = new QVBoxLayout(well);
+    wellLayout->setContentsMargins(4, 4, 4, 4);
+    wellLayout->addWidget(mView);
+    layout->addWidget(well, 1);
 
     mFlushTimer->setInterval(100);
     connect(mFlushTimer, &QTimer::timeout, this, &GameLogTab::Flush);

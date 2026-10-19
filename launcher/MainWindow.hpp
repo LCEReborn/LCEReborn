@@ -2,20 +2,21 @@
 #define LAUNCHER_MAINWINDOW_HPP
 
 #include <QMainWindow>
-#include <QVector>
 
 #include "GameLog.hpp"
 
+class GameButton;
 class GameLogTab;
 class GameRunner;
-class NavItem;
 class NewsTab;
+class Panorama;
 class PlayButton;
-class ProfileChip;
 class ProfileStore;
-class QLabel;
+class QBoxLayout;
 class QStackedWidget;
 class SetupPage;
+class ShadowLabel;
+class TabbedPanel;
 
 class MainWindow : public QMainWindow
 {
@@ -26,6 +27,7 @@ public:
 
 protected:
     void closeEvent(QCloseEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
 
 private:
     void ShowPage(int index);
@@ -35,20 +37,23 @@ private:
     void Play();
     void OnGameStarted();
     void OnGameFinished(int exitCode, bool crashed);
+    void OnImported();
     void SaveProfiles();
-    void SetStatus(const QString& text, const char* style);
+    void SetStatus(const QString& text, const QColor& colour);
 
     ProfileStore& mStore;
     GameRunner* mRunner;
-    QStackedWidget* mPages;
+    Panorama* mPanorama;
     QStackedWidget* mRoot;
+    QBoxLayout* mShellLayout;
+    TabbedPanel* mTabs;
+    QStackedWidget* mPages;
     SetupPage* mSetup;
     NewsTab* mNews;
     GameLogTab* mLog;
-    QVector<NavItem*> mNav;
-    ProfileChip* mProfileChip;
+    GameButton* mProfileButton;
     PlayButton* mPlay;
-    QLabel* mStatus;
+    ShadowLabel* mStatus;
     bool mHiddenForGame = false;
 };
 

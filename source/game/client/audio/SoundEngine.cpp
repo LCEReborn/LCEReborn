@@ -1,7 +1,11 @@
 #include "game/client/audio/SoundEngine.hpp"
 #include "game/client/audio/DLCAudioFile.hpp"
 #include "game/client/audio/PlatformSoundEngine.hpp"
+#if LCE_PLATFORM_PC
+#include "platform/pc/audio/PcSoundEngine.hpp"
+#else
 #include "game/client/audio/PlatformSoundEngineImpl.hpp"
+#endif
 #include "game/client/audio/SoundEvent.hpp"
 #include "game/client/audio/SoundInstance.hpp"
 #include "game/client/render/DLCTexturePack.hpp"
@@ -166,7 +170,11 @@ SoundEngine::SoundEngine()
     m_streamingAudioInfo.x = 0.0f;
     m_streamingAudioInfo.z = 0.0f;
     std::memset(m_listeners, 0, sizeof(m_listeners));
+#if LCE_PLATFORM_PC
+    m_platformSoundEngine = new PcSoundEngine();
+#else
     m_platformSoundEngine = new PlatformSoundEngineImpl();
+#endif
 }
 
 int SoundEngine::TracksSortFunction(const void* left, const void* right)

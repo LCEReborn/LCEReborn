@@ -71,7 +71,10 @@ executable, see `docs/provenance.md` for what that means.
 Files from other projects keep their own licenses:
 `tools/build/third_party/rapidxml/` (Boost Software License 1.0), the altered
 libpng and curl files in `tools/build/overrides/` (the libpng and curl
-licenses), and the libraries `tools/build/deps.py` downloads, listed in
-`docs/building.md`. `source/nn/ffl` is a submodule holding aboood40091's FFL
-decompilation, which its author publishes without a license, together with
-this project's changes to it; it is not covered by this repository's license.
+licenses), the Bink Audio decoder in
+`source/platform/pc/audio/BinkAudioDecoder.cpp`, ported from FFmpeg (GNU
+Lesser General Public License 2.1 or later, used here under GPL 3), and the
+libraries `tools/build/deps.py` downloads, listed in `docs/building.md`.
+`source/nn/ffl` is a submodule holding aboood40091's FFL decompilation, which
+its author publishes without a license, together with this project's changes
+to it; it is not covered by this repository's license.

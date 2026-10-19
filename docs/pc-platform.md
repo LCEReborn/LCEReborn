@@ -144,6 +144,23 @@ menus and their animations advance one step per frame, so the main loop holds
 the frame rate at 60 (`PcWindowPaceFrame`) whatever the monitor's refresh rate
 or the V-Sync setting.
 
+## Sound
+
+The PC build plays the game's own sound bank (`WiiU/Sound/Minecraft.msscmp`)
+and music (`.binka` files) with its own engine in `platform/pc/audio`, in
+place of the Miles Sound System the Wii U build uses:
+
+- `PcSoundBank` reads the bank's events and the Bink Audio files inside it.
+- `BinkAudioDecoder` decodes Bink Audio. It is ported from FFmpeg.
+- `PcMixer` mixes the voices to stereo through SDL.
+- `PcSoundEngine` is the game's `PlatformSoundEngine`.
+  - Events pick their sounds the way the bank says: weighted, never the same
+    twice in a row, or in turn.
+  - Each sound keeps its instance limit.
+  - A sound in the world is placed and faded with the distance as on the
+    Wii U.
+  - The copy of each sound the game sends to the GamePad is kept silent.
+
 ## Building on PC
 
 ```

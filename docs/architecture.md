@@ -53,9 +53,9 @@ servers added on the Join tab.
 ## `source/vendor/` - third-party internals
 
 Internals of libraries the title links against and that the build exposes
-with full names: the Miles sound system (`Miles*`), the Bink audio decoder
-(`BinkA*`), the game's dlmalloc heap, stb_truetype, the file-local helpers
-of the SDK libraries (the `__N_*` files, named after the unit they belonged
+with full names: the Miles sound system (`Miles*`) and the Bink audio decoder
+(`BinkA*`), which only the Wii U build uses, the game's dlmalloc heap,
+stb_truetype, the file-local helpers of the SDK libraries (the `__N_*` files, named after the unit they belonged
 to) and small SDK-facing structures. They are kept apart so that game code is never
 mistaken for library code.
 

@@ -65,10 +65,14 @@ FetchContent_MakeAvailable(SDL3)
 
 # The game core, in the C++ dialect it was written in.
 file(GLOB_RECURSE LCE_GAME_SOURCES CONFIGURE_DEPENDS "${LCE_SOURCE}/game/*.cpp")
-# Units under game/ that the PC build does not compile here: the platform sound engine (built with the audio
-# target below), the Wii U NEX and NQR online stack and the Mii picker.
+# Units under game/ that the PC build does not compile: the Miles sound engine and the game's glue to it (PC audio
+# is platform/pc/audio), the Wii U NEX and NQR online stack and the Mii picker.
 set(LCE_WIIU_ONLY_GAME_SOURCES
+  game/client/audio/EventSystem.cpp
+  game/client/audio/FalloffGraph.cpp
   game/client/audio/PlatformSoundEngineImpl.cpp
+  game/core/PODHandleArray.cpp
+  game/util/LegacyUtilityFunctions.cpp
   game/core/NS_JobConnectEndPoint_CPP.cpp
   game/core/NS_Job_CPP.cpp
   game/core/NS_SystemChecker_CPP__SystemCheckFunctor.cpp
@@ -120,15 +124,11 @@ if(MSVC)
   target_compile_definitions(lce_platform PRIVATE _HAS_AUTO_PTR_ETC=1)
 endif()
 
-# Audio: the Miles Sound System and Bink audio the game was built with, the platform sound engine, and the PC
-# output driver Miles mixes into (in place of the Wii U AX driver, MilesRadSS.cpp).
-file(GLOB LCE_MILES_SOURCES CONFIGURE_DEPENDS "${LCE_SOURCE}/vendor/Miles*.cpp" "${LCE_SOURCE}/vendor/BinkA*.cpp")
-list(REMOVE_ITEM LCE_MILES_SOURCES "${LCE_SOURCE}/vendor/MilesRadSS.cpp")
+# Audio: the game's sound bank and Bink Audio, played through SDL.
 file(GLOB_RECURSE LCE_PC_AUDIO_SOURCES CONFIGURE_DEPENDS "${LCE_SOURCE}/platform/pc/audio/*.cpp")
-add_library(lce_audio OBJECT ${LCE_MILES_SOURCES} ${LCE_PC_AUDIO_SOURCES}
-  "${LCE_SOURCE}/game/client/audio/PlatformSoundEngineImpl.cpp")
+add_library(lce_audio OBJECT ${LCE_PC_AUDIO_SOURCES})
 target_link_libraries(lce_audio PRIVATE lce_common SDL3::SDL3-static)
-set_target_properties(lce_audio PROPERTIES CXX_STANDARD 14)
+set_target_properties(lce_audio PROPERTIES CXX_STANDARD 17)
 
 # zlib and libpng, the releases the game was built against (libpng with the game's own png.h and pngwrite.c).
 set(LCE_ZLIB_SOURCES adler32.c compress.c crc32.c deflate.c infback.c inffast.c inflate.c inftrees.c trees.c

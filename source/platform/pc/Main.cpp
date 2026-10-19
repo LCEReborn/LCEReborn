@@ -79,7 +79,7 @@ int main(int argc, char** argv)
         gProfile = new CProfile();
     Compression::CreateNewThreadStorage();
     gRenderer->Initialise();
-    g_pInput->Initialise(1, 0x3d, 0x17);
+    g_pInput->Initialise(1, EControllerActions_Count, 0x17);
     VideoSettings::Load(PcSaveRoot() + "/video.txt");
 
     DefineActions();

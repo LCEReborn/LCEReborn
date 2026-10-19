@@ -117,7 +117,8 @@ enum EControllerActions
     EControllerActions_AltFlyUp,
     EControllerActions_AltFlyDown,
     EControllerActions_QuickMoveModifier,
-    EControllerActions_ToggleHud
+    EControllerActions_ToggleHud,
+    EControllerActions_Count
 };
 enum EJoypadButton
 {

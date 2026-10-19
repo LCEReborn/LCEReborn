@@ -200,6 +200,7 @@ void DefineActions()
         }
         g_pInput->SetGameControllerTypeJoypadMaps(controller, EControllerActions_MenuX, EJoypadButton_Face3);
         g_pInput->SetGameControllerTypeJoypadMaps(controller, EControllerActions_MenuY, EJoypadButton_Face4);
+        g_pInput->SetGameControllerTypeJoypadMaps(controller, EControllerActions_QuickMoveModifier, EJoypadButton_Face4);
         g_pInput->SetGameControllerTypeJoypadMaps(controller, EControllerActions_MenuUp,
                                                   EJoypadButton_LeftStickUp | EJoypadButton_DPadUp);
         g_pInput->SetGameControllerTypeJoypadMaps(controller, EControllerActions_MenuDown,
@@ -438,6 +439,9 @@ void GameSettings::SetInventoryMapping(int profile, int control, unsigned char b
     gGameSettings[profile]->mInventoryMappings[control] = stored;
     g_pInput->SetGameJoypadMaps(profile, static_cast<unsigned char>(kInventoryActions[control]),
                                 GetInputButton(static_cast<unsigned int>(button)));
+    if (control == eInventoryControl_QuickMove)
+        g_pInput->SetGameJoypadMaps(profile, EControllerActions_QuickMoveModifier,
+                                    GetInputButton(static_cast<unsigned int>(button)));
 }
 
 int GameSettings::InventoryMenuAction(int control)
@@ -630,6 +634,10 @@ void GameSettings::ActionGameSettings(int profile, eGameSetting setting)
         {
             g_pInput->SetGameJoypadMaps(profile, static_cast<unsigned char>(kInventoryActions[control]),
                                         GetInputButton(static_cast<unsigned int>(GetInventoryMapping(profile, control))));
+            if (control == eInventoryControl_QuickMove)
+                g_pInput->SetGameJoypadMaps(
+                    profile, EControllerActions_QuickMoveModifier,
+                    GetInputButton(static_cast<unsigned int>(GetInventoryMapping(profile, control))));
         }
     }
         return;

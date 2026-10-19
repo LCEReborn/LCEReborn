@@ -141,7 +141,7 @@ int main()
     C4JThreadImpl::SetMainThreadID();
     Compression::CreateNewThreadStorage();
     gRenderer->Initialise();
-    g_pInput->Initialise(1, 0x3d, 0x17);
+    g_pInput->Initialise(1, EControllerActions_Count, 0x17);
 
     DefineActions();
     g_pInput->SetJoypadMapArraySetupComplete();

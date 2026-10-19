@@ -57,7 +57,7 @@ struct StartGameSceneData
     int reserved0;
     int saveIndex;
     LevelGenerationOptions* generationOptions;
-    int reserved12;
+    void* reserved12;
     EMiniGameId miniGameId;
 };
 

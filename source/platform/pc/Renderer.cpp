@@ -1532,6 +1532,21 @@ bool Renderer::Device::PrepareDraw(Renderer& renderer, Context& context)
         context.mPixelConstantsDirty = true;
     }
 
+    RenderSamplerState baseSampler = gpu.mPixelSampler[0];
+    bool bSharpUI = (gpu.mPixelShader == RenderPixelShader_UI || gpu.mPixelShader == RenderPixelShader_UIColourAdd)
+                    && baseSampler.mMagLinear == 0;
+    float sharpUI = bSharpUI ? 1.0f : 0.0f;
+    if (context.mPixelConstants[RENDER_PIXEL_CONSTANT_ALPHA_REFERENCE][1] != sharpUI)
+    {
+        context.mPixelConstants[RENDER_PIXEL_CONSTANT_ALPHA_REFERENCE][1] = sharpUI;
+        context.mPixelConstantsDirty = true;
+    }
+    if (bSharpUI)
+    {
+        baseSampler.mMagLinear = 1;
+        baseSampler.mMinLinear = 1;
+    }
+
     int vertexCount = RenderVertexConstantCount(gpu.mVertexShader);
     bool bVertexUpload = vertexCount > 0
                          && (context.mVertexConstantsDirty || vertexCount > mBoundVertexConstantCount
@@ -1573,7 +1588,8 @@ bool Renderer::Device::PrepareDraw(Renderer& renderer, Context& context)
     for (int stage = 0; stage < TEXTURE_STAGE_COUNT; ++stage)
     {
         GLuint name = renderer.mTextures[gpu.mPixelTexture[stage]].mName;
-        BindTextureUnit(stage, name != 0 ? name : defaultName, GetSampler(gpu.mPixelSampler[stage]));
+        BindTextureUnit(stage, name != 0 ? name : defaultName,
+                        GetSampler(stage == 0 ? baseSampler : gpu.mPixelSampler[stage]));
     }
 
     GLuint vertexName = renderer.mTextures[gpu.mVertexTexture].mName;

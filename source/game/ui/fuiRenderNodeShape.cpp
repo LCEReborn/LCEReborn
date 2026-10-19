@@ -15,6 +15,27 @@
 
 extern Renderer* gRenderer;
 
+#if LCE_PLATFORM_PC
+namespace
+{
+bool CoversStage(const fuiRect& rect, float stageWidth, float stageHeight)
+{
+    const float* matrix = gRenderer->MatrixGet(0);
+    if (matrix[1] != 0.0f || matrix[4] != 0.0f)
+        return false;
+    float x0 = matrix[0] * rect.xMin + matrix[12];
+    float x1 = matrix[0] * rect.xMax + matrix[12];
+    float y0 = matrix[5] * rect.yMin + matrix[13];
+    float y1 = matrix[5] * rect.yMax + matrix[13];
+    float left = x0 < x1 ? x0 : x1;
+    float right = x0 < x1 ? x1 : x0;
+    float top = y0 < y1 ? y0 : y1;
+    float bottom = y0 < y1 ? y1 : y0;
+    return left <= 1.0f && top <= 1.0f && right >= stageWidth - 1.0f && bottom >= stageHeight - 1.0f;
+}
+}
+#endif
+
 fuiRenderNodeShape::fuiRenderNodeShape(fuiRenderNode* stage, fuiRenderNode* parent, fuiObject* object,
                                        unsigned int symbolIndex, unsigned char depth, fuiRGBA* color,
                                        unsigned char clipDepth, bool visible, fuiFile* file)
@@ -129,6 +150,18 @@ void fuiRenderNodeShape::render(fuiRect* bounds, fuiMatrix* matrix)
                                           blue * colour.blueMultiply, alpha * colour.alphaMultiply);
                 gRenderer->StateSetColourAdd(redAdd, greenAdd, blueAdd, alphaAdd);
 
+#if LCE_PLATFORM_PC
+                bool fillsScreen = component->fillType == (eFuiFillType)1
+                                   && gRenderer->GetLayout() == Renderer::ELayout_Interface
+                                   && CoversStage(bounds != NULL ? *bounds : shape->bounds, gFui->m_screenWidth,
+                                                  gFui->m_screenHeight);
+                unsigned int scissor[4];
+                if (fillsScreen)
+                {
+                    gRenderer->StateGetScissorRect(scissor[0], scissor[1], scissor[2], scissor[3]);
+                    gRenderer->SetLayout(Renderer::ELayout_InterfaceBackground);
+                }
+#endif
                 if (bounds == NULL)
                 {
                     gRenderer->DrawVertices(C4JRender::ePrimitiveType_Triangles, vertexCount, vertices,
@@ -142,6 +175,13 @@ void fuiRenderNodeShape::render(fuiRect* bounds, fuiMatrix* matrix)
                     gRenderer->DrawVertices(C4JRender::ePrimitiveType_Triangles, vertexCount, vertices, vertexType,
                                             pixelShaderType, NULL);
                 }
+#if LCE_PLATFORM_PC
+                if (fillsScreen)
+                {
+                    gRenderer->SetLayout(Renderer::ELayout_Interface);
+                    gRenderer->StateSetScissorRect(scissor[0], scissor[1], scissor[2], scissor[3]);
+                }
+#endif
             }
             ++component;
         }

@@ -151,6 +151,7 @@ public:
         ELayout_InterfaceBackground
     };
     void SetLayout(ELayout layout);
+    ELayout GetLayout() const { return mLayout; }
     float GetScreenAspect();
     void GetInterfaceArea(float* left, float* top, float* width, float* height);
 

@@ -130,8 +130,11 @@ The game draws into a resizable window at the window's own resolution and
 shape. The world fills the window, its field of view following the window's
 proportions. The menus and the HUD are the Wii U's 720p, 16:9 interface: they
 are drawn in the largest 16:9 area centred in the window, scaled to it, and
-full-screen backgrounds such as the title panorama are scaled to cover the
-whole window (`Renderer::SetLayout`). The mouse is mapped into the same area.
+full-screen backgrounds such as the title panorama, the dimming behind menus and
+solid fills that cover a whole menu are scaled to cover the whole window
+(`Renderer::SetLayout`). Pixel art in the interface is sampled so it stays
+even at any scale, not only whole multiples of 720p. The mouse is mapped into
+the same area.
 F11 or Alt+Enter switches between the window and borderless fullscreen.
 Whether the game is fullscreen and whether it waits for the monitor's refresh
 (V-Sync) are kept in `display.txt` in the save folder (`platform/pc/PcWindow`).

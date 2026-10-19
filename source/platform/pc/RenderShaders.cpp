@@ -401,10 +401,22 @@ void main()
 }
 )";
 
+const char* const kUISampling = R"(
+vec2 UICoordinate(vec2 coordinate)
+{
+    vec2 size = vec2(textureSize(uTexture0, 0));
+    vec2 texel = coordinate * size;
+    vec2 seam = floor(texel + 0.5);
+    vec2 footprint = max(fwidth(texel), vec2(1.0e-5));
+    vec2 sharp = (seam + clamp((texel - seam) / footprint, -0.5, 0.5)) / size;
+    return uPC[31].y != 0.0 ? sharp : coordinate;
+}
+)";
+
 const char* const kUIColourAddPixel = R"(
 void main()
 {
-    vec4 base = texture(uTexture0, vTexCoord.xy);
+    vec4 base = texture(uTexture0, UICoordinate(vTexCoord.xy));
     vec3 colour = base.rgb * TEX_LAYER_COLOUR0.rgb * DIFFUSE_COLOUR.rgb + ADD_COLOUR.rgb;
     float alpha = base.a * DIFFUSE_COLOUR.a + ADD_COLOUR.a;
     Emit(vec4(colour * alpha, alpha));
@@ -414,7 +426,7 @@ void main()
 const char* const kUIPixel = R"(
 void main()
 {
-    vec4 base = texture(uTexture0, vTexCoord.xy);
+    vec4 base = texture(uTexture0, UICoordinate(vTexCoord.xy));
     float alpha = vColour.a * base.a * DIFFUSE_COLOUR.a;
     vec3 colour = base.rgb * TEX_LAYER_COLOUR0.rgb * vColour.rgb * DIFFUSE_COLOUR.rgb;
     Emit(vec4(colour * alpha, alpha));
@@ -670,9 +682,9 @@ std::string RenderPixelShaderSource(int pixelShader)
     case RenderPixelShader_LayeredColourMask:
         return std::string(kPixelHeader) + kLayeredColourMaskPixel;
     case RenderPixelShader_UIColourAdd:
-        return std::string(kPixelHeader) + kUIColourAddPixel;
+        return std::string(kPixelHeader) + kUISampling + kUIColourAddPixel;
     case RenderPixelShader_UI:
-        return std::string(kPixelHeader) + kUIPixel;
+        return std::string(kPixelHeader) + kUISampling + kUIPixel;
     case RenderPixelShader_UIRadial:
         return std::string(kPixelHeader) + kUIRadialPixel;
     case RenderPixelShader_EntityChangeColour:

@@ -1,5 +1,8 @@
 #include "game/ui/UIComponent_MenuBackground.hpp"
 
+#if LCE_PLATFORM_PC
+#include "game/client/render/Renderer.hpp"
+#endif
 #include "game/core/ConsoleUIController.hpp"
 #include "game/ui/UILayer.hpp"
 #include "game/ui/fui.hpp"
@@ -85,7 +88,13 @@ void UIComponent_MenuBackground::render(int width, int height, C4JRender::eViewp
     }
     else
     {
+#if LCE_PLATFORM_PC
+        gRenderer->SetLayout(Renderer::ELayout_InterfaceBackground);
         UIScene::render(width, height, viewport);
+        gRenderer->SetLayout(Renderer::ELayout_Interface);
+#else
+        UIScene::render(width, height, viewport);
+#endif
     }
 }
 

@@ -380,6 +380,10 @@ InteractionResultHolder SpawnEggItem::use(Level* level, boost::shared_ptr<Player
 {
     not_null_ptr<ItemInstance> itemInstance = player->getItemInHand(hand);
     HitResult* hitResult = Item::getPlayerPOVHitResult(level, player, true);
+#if LCE_PLATFORM_PC
+    if (hitResult == NULL)
+        return InteractionResultHolder(InteractionResult::eInteractionResult_Pass, itemInstance);
+#endif
     if (hitResult != NULL && !level->mDimension->inPlayerConstraints(BlockPos(hitResult->mLocation)))
     {
         delete hitResult;
@@ -487,6 +491,14 @@ unsigned long long SpawnEggItem::fjGetType(const not_null_ptr<ItemInstance>& ite
 bool SpawnEggItem::TestUse(Level* level, boost::shared_ptr<Player> player, InteractionHand::EInteractionHand hand)
 {
     HitResult* hitResult = Item::getPlayerPOVHitResult(level, player, true);
+#if LCE_PLATFORM_PC
+    if (hitResult == NULL)
+        return false;
+    const BlockState* state = level->getBlockState(hitResult->getBlockPos());
+    bool inWater = state->getBlock()->instanceof(EBLOCK_TYPE_LIQUID) && state->getBlock()->mMaterial == Material::WATER;
+    delete hitResult;
+    return inWater;
+#else
     const BlockPos& pos = hitResult->getBlockPos();
     if (hitResult != NULL && level->getBlockState(pos)->getBlock()->instanceof(EBLOCK_TYPE_LIQUID)
         && level->getBlockState(pos)->getBlock()->mMaterial == Material::WATER)
@@ -494,6 +506,7 @@ bool SpawnEggItem::TestUse(Level* level, boost::shared_ptr<Player> player, Inter
         return true;
     }
     return false;
+#endif
 }
 
 unsigned int SpawnEggItem::GetUseTooltip(const ItemTooltipDataHolder& tooltipData)

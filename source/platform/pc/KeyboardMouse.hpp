@@ -67,6 +67,7 @@ public:
     void ClearPointerMoved();
     float PointerX() const;
     float PointerY() const;
+    void SetPointer(float x, float y);
     unsigned int ConsumeClicks();
     void DiscardRelativeInput();
 

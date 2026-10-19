@@ -238,6 +238,9 @@ CInput::CInput()
     mouseLookEnabled = false;
     std::memset(touchData, 0, sizeof(touchData));
     mouseCaptured = false;
+    pointerPlacementPending = false;
+    pointerPlacementX = 0.0f;
+    pointerPlacementY = 0.0f;
     windowFocused = true;
     lastWindowId = 0;
 
@@ -607,11 +610,64 @@ void CInput::UpdateMouseCapture()
         if (SDL_SetWindowRelativeMouseMode(window, desired))
         {
             mouseCaptured = desired;
+            if (!desired && windowFocused)
+            {
+                if (pointerPlacementPending)
+                {
+                    WarpPointer(window, pointerPlacementX, pointerPlacementY);
+                }
+                else
+                {
+                    int width = 0;
+                    int height = 0;
+                    if (SDL_GetWindowSize(window, &width, &height))
+                        WarpPointer(window, width * 0.5f, height * 0.5f);
+                }
+            }
+            pointerPlacementPending = false;
         }
     }
     else if (!desired)
     {
         mouseCaptured = false;
+    }
+}
+
+void CInput::WarpPointer(SDL_Window* window, float x, float y)
+{
+    SDL_WarpMouseInWindow(window, x, y);
+    keyboardMouse.SetPointer(x, y);
+}
+
+void CInput::PlaceMenuPointer(int pad, float x, float y)
+{
+    if (!IsKeyboardPad(pad))
+    {
+        return;
+    }
+    SDL_Window* window = LocateWindow();
+    int width = 0;
+    int height = 0;
+    if (window == 0 || !SDL_GetWindowSize(window, &width, &height) || width <= 0 || height <= 0)
+    {
+        return;
+    }
+    float areaLeft;
+    float areaTop;
+    float areaWidth;
+    float areaHeight;
+    gRenderer->GetInterfaceArea(&areaLeft, &areaTop, &areaWidth, &areaHeight);
+    const float windowX = (x / kTouchSpaceWidth * areaWidth + areaLeft) * static_cast<float>(width);
+    const float windowY = (y / kTouchSpaceHeight * areaHeight + areaTop) * static_cast<float>(height);
+    if (mouseCaptured)
+    {
+        pointerPlacementPending = true;
+        pointerPlacementX = windowX;
+        pointerPlacementY = windowY;
+    }
+    else if (windowFocused)
+    {
+        WarpPointer(window, windowX, windowY);
     }
 }
 

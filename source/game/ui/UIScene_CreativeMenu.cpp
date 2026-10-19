@@ -675,6 +675,16 @@ void UIScene_CreativeMenu::handleAdditionalKeyPress(int key)
     }
 }
 
+#if LCE_PLATFORM_PC
+void UIScene_CreativeMenu::onMouseWheel(int steps)
+{
+    for (; steps > 0; --steps)
+        handleAdditionalKeyPress(EControllerActions_MenuOtherStickUp);
+    for (; steps < 0; ++steps)
+        handleAdditionalKeyPress(EControllerActions_MenuOtherStickDown);
+}
+#endif
+
 bool UIScene_CreativeMenu::getEmptyInventorySlot(not_null_ptr<ItemInstance> item, int& slot)
 {
     bool found = false;

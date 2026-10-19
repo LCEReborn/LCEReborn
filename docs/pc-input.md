@@ -74,8 +74,12 @@ what a tap on the GamePad would. A cursor that is not moving never takes the
 highlight away from the keys. Containers (inventory, chests, crafting) draw
 their own pointer, which follows the mouse exactly (it does not jump to the
 centre of the slot under it, as the stick's pointer does) and handle their own
-clicks; the system cursor is hidden there so only one pointer shows. The
-system cursor is also hidden while a gamepad is the device in use.
+clicks; the system cursor is hidden there so only one pointer shows. A
+container's pointer opens where the mouse is, and when the game releases the
+mouse it puts the cursor in the middle of the window (of the player's own
+screen for a container), so the pointer never jumps on the first move. In the
+creative menu the wheel turns the page. The system cursor is also hidden while
+a gamepad is the device in use.
 
 ## Players and devices
 

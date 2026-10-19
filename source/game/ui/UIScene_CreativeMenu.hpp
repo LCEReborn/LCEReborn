@@ -115,6 +115,9 @@ public:
     virtual unsigned int handleValidKeyPress(int key, int value, int player);
     virtual void handleOutsideClicked(int x, int y, int button);
     virtual void handleAdditionalKeyPress(int key);
+#if LCE_PLATFORM_PC
+    virtual void onMouseWheel(int steps);
+#endif
     virtual void handleSlotListClicked(IUIScene_AbstractContainerMenu::ESceneSection section, int slot, int button);
     virtual int getSectionStartOffset(IUIScene_AbstractContainerMenu::ESceneSection section);
     virtual bool IsSectionSlotList(IUIScene_AbstractContainerMenu::ESceneSection section);

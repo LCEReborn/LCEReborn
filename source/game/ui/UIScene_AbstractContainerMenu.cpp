@@ -98,6 +98,10 @@ void UIScene_AbstractContainerMenu::PlatformInitialize(bool navigateBack, int pa
     m_pointerPos.x = (itemSize.x * 0.5f + (sectionPos.x + itemPos.x)) - m_pointerImageOffset.x;
     m_pointerPos.y = (itemSize.y * 0.5f + (sectionPos.y + itemPos.y)) - m_pointerImageOffset.y;
     m_movieHeight = m_stageHeight;
+#if LCE_PLATFORM_PC
+    if (g_pInput->UsesKeyboard(m_playerId))
+        PlacePointerAtMouse();
+#endif
 
     int width;
     int height;
@@ -244,32 +248,16 @@ void UIScene_AbstractContainerMenu::tick()
 #if LCE_PLATFORM_PC
     float mouseX;
     float mouseY;
-    if (!m_ignoreInput && g_pInput->ConsumeMenuPointer(m_playerId, &mouseX, &mouseY))
+    if (!m_ignoreInput && g_pInput->ConsumeMenuPointer(m_playerId, &mouseX, &mouseY)
+        && TouchToPanel(mouseX, mouseY, &m_mousePointerX, &m_mousePointerY))
     {
-        int originX = 0;
-        int originY = 0;
-        gConsoleUIController.GetViewportTouchOffset(m_layer->getViewport(), &originX, &originY);
-        int renderWidth;
-        int renderHeight;
-        m_layer->getRenderDimensions(renderWidth, renderHeight);
-        if (renderWidth > 0 && renderHeight > 0)
-        {
-            m_mousePointerX = (mouseX - static_cast<float>(originX)) * static_cast<float>(m_stageWidth)
-                              / static_cast<float>(renderWidth);
-            m_mousePointerY = (mouseY - static_cast<float>(originY)) * static_cast<float>(m_stageHeight)
-                              / static_cast<float>(renderHeight);
-            if (m_mainPanel.getFuiRenderNode() != NULL)
-            {
-                m_mousePointerX -= m_mainPanel.getXPos();
-                m_mousePointerY -= m_mainPanel.getYPos();
-            }
-            m_mousePointerPending = true;
-        }
+        m_mousePointerPending = true;
     }
 #endif
     onMouseTick();
 #if LCE_PLATFORM_PC
     unsigned int clicks = g_pInput->ConsumeMenuClicks(m_playerId);
+    int wheel = g_pInput->ConsumeMenuWheel(m_playerId);
     if (!m_ignoreInput)
     {
         if ((clicks & C_4JInput::EPcMenuClick_Quick) != 0)
@@ -278,6 +266,8 @@ void UIScene_AbstractContainerMenu::tick()
             handleKeyDown(m_playerId, EControllerActions_MenuA, false);
         if ((clicks & C_4JInput::EPcMenuClick_Secondary) != 0)
             handleKeyDown(m_playerId, EControllerActions_MenuX, false);
+        if (wheel != 0)
+            onMouseWheel(wheel);
     }
 #endif
 
@@ -293,6 +283,60 @@ void UIScene_AbstractContainerMenu::tick()
         static_cast<float>(
             static_cast<int>(m_pointerPos.y * (static_cast<float>(height) / static_cast<float>(m_stageHeight)))));
 }
+
+#if LCE_PLATFORM_PC
+bool UIScene_AbstractContainerMenu::TouchToPanel(float touchX, float touchY, float* x, float* y)
+{
+    int originX = 0;
+    int originY = 0;
+    gConsoleUIController.GetViewportTouchOffset(m_layer->getViewport(), &originX, &originY);
+    int renderWidth;
+    int renderHeight;
+    m_layer->getRenderDimensions(renderWidth, renderHeight);
+    if (renderWidth <= 0 || renderHeight <= 0)
+        return false;
+    *x = (touchX - static_cast<float>(originX)) * static_cast<float>(m_stageWidth) / static_cast<float>(renderWidth);
+    *y = (touchY - static_cast<float>(originY)) * static_cast<float>(m_stageHeight) / static_cast<float>(renderHeight);
+    if (m_mainPanel.getFuiRenderNode() != NULL)
+    {
+        *x -= m_mainPanel.getXPos();
+        *y -= m_mainPanel.getYPos();
+    }
+    return true;
+}
+
+void UIScene_AbstractContainerMenu::PlacePointerAtMouse()
+{
+    float touchX;
+    float touchY;
+    const bool mouseFree = g_pInput->GetMenuPointer(m_playerId, &touchX, &touchY);
+    if (!mouseFree)
+    {
+        int originX = 0;
+        int originY = 0;
+        gConsoleUIController.GetViewportTouchOffset(m_layer->getViewport(), &originX, &originY);
+        int renderWidth;
+        int renderHeight;
+        m_layer->getRenderDimensions(renderWidth, renderHeight);
+        touchX = static_cast<float>(originX) + static_cast<float>(renderWidth) * 0.5f;
+        touchY = static_cast<float>(originY) + static_cast<float>(renderHeight) * 0.5f;
+    }
+
+    float x;
+    float y;
+    if (!TouchToPanel(touchX, touchY, &x, &y))
+        return;
+    m_pointerPos.x = x < m_pointerMinX ? m_pointerMinX : (x > m_pointerMaxX ? m_pointerMaxX : x);
+    m_pointerPos.y = y < m_pointerMinY ? m_pointerMinY : (y > m_pointerMaxY ? m_pointerMaxY : y);
+    m_mousePointerActive = true;
+    if (!mouseFree)
+        g_pInput->PlaceMenuPointer(m_playerId, touchX, touchY);
+}
+
+void UIScene_AbstractContainerMenu::onMouseWheel(int)
+{
+}
+#endif
 
 void UIScene_AbstractContainerMenu::render(int width, int height, C4JRender::eViewportType viewport)
 {

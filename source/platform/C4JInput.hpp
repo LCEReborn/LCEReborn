@@ -129,6 +129,7 @@ public:
     virtual void ResetKeyBindings() = 0;
     virtual unsigned int GetPadButtons(int pad, bool pressedOnly) = 0;
     virtual bool ShowsJoinPromptOnLoad() = 0;
+    virtual void PlaceMenuPointer(int pad, float x, float y) = 0;
 #endif
 };
 

@@ -44,8 +44,15 @@ public:
     virtual void customDraw(const char* name, fuiRect* rect);
     virtual void handleInput(int playerId, int action, bool repeat, bool pressed, bool released, bool& handled);
     virtual void updateTooltips();
+#if LCE_PLATFORM_PC
+    virtual void onMouseWheel(int steps);
+#endif
 
 protected:
+#if LCE_PLATFORM_PC
+    bool TouchToPanel(float touchX, float touchY, float* x, float* y);
+    void PlacePointerAtMouse();
+#endif
     IUIScene_AbstractContainerMenu::ESceneSection m_focusSection;
     bool m_ignoreInput;
     int m_movieWidth;

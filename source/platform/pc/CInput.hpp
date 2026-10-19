@@ -100,6 +100,7 @@ public:
     virtual void ResetKeyBindings();
     virtual unsigned int GetPadButtons(int pad, bool pressedOnly);
     virtual bool ShowsJoinPromptOnLoad();
+    virtual void PlaceMenuPointer(int pad, float x, float y);
 
 private:
     friend void PcInputHandleEvent(const SDL_Event& event);
@@ -208,6 +209,7 @@ private:
     void ConsumeAllPads();
     bool IsMenuShown(int pad) const;
     void UpdateMouseCapture();
+    void WarpPointer(SDL_Window* window, float x, float y);
     void UpdateJoypads();
     void FollowDeviceInUse();
     void UpdateKeyboardMouse(Joypad& joypad);
@@ -254,6 +256,9 @@ private:
     unsigned short touchData[4];
     bool mouseLookEnabled;
     bool mouseCaptured;
+    bool pointerPlacementPending;
+    float pointerPlacementX;
+    float pointerPlacementY;
     bool menuDrawsPointer;
     bool cursorShown;
     bool windowFocused;

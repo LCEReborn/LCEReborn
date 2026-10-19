@@ -797,6 +797,12 @@ float PcKeyboardMouse::PointerY() const
     return mPointerY;
 }
 
+void PcKeyboardMouse::SetPointer(float x, float y)
+{
+    mPointerX = x;
+    mPointerY = y;
+}
+
 unsigned int PcKeyboardMouse::ConsumeClicks()
 {
     unsigned int clicks = mClicks;

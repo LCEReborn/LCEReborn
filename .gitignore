@@ -12,3 +12,6 @@ __pycache__/
 /assets/
 /saves
 /logs
+
+# Local release notes for tools/release_pc.py
+/release/

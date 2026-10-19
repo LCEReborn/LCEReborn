@@ -176,6 +176,36 @@ compiled as C++14, the dialect it was written in; the PC layer as C++17.
 `tools/build/qt.py` installs the Qt the launcher needs (`pc-launcher.md`);
 `-DLCE_BUILD_LAUNCHER=OFF` builds the game without it.
 
+```
+python tools/package_pc.py
+```
+
+packages the build for players as `build/LCEReborn-pc-<commit>.zip`: the
+game, the launcher with its Qt libraries, `resources/`, a README and the
+license and notices of everything in it. It copies only those files, never
+the game files, saves or logs in `build/pc`, and refuses a tree with
+uncommitted changes, since the zip names its commit as its source. License
+texts not found in the dependencies themselves are kept in
+`tools/package/licenses/`, taken from qtbase and the SPDX license list.
+
+## Releases
+
+Release notes are written under Unreleased in `release/CHANGELOG.md`, a
+local file that is not committed. To publish a release, run
+
+```
+python tools/release_pc.py
+```
+
+from the same developer prompt, on a clean tree whose commit is pushed. It
+builds, packages, and after asking, publishes a GitHub release named after
+the commit and the date it was built (`9b3a482d - 2026-10-19`, tag
+`build-9b3a482d`), with the Unreleased notes and the zip. It then files those
+notes under the release's name.
+`--dry-run` shows the release without publishing it, and `--prerelease`
+marks it as a pre-release. The launcher's News tab shows the published
+releases.
+
 ## Custom menus
 
 New menus are built from the game's own interface, so they look and behave

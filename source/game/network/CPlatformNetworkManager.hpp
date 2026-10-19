@@ -40,10 +40,12 @@ struct FriendSessionInfo
     GameSessionData m_gameSessionData;
     bool m_statusFlag;
     int m_savedServer;
+    bool m_savedServerAnswered;
 
     FriendSessionInfo() : m_gameSessionData()
     {
         m_savedServer = -1;
+        m_savedServerAnswered = false;
         m_displayNameLength = 0;
         m_statusFlag = false;
         m_displayName = 0;

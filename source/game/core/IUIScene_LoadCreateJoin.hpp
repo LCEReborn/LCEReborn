@@ -40,7 +40,6 @@ public:
     void UpdateGamesList();
     static void UpdateGamesListCallback(void*);
     void _init(bool);
-    void AddMatchmakingButton(std::wstring, int, std::wstring);
     void AddGameModeButton(std::wstring, int, std::wstring);
     void AddDefaultButtons();
     static int HandleTelemetrySavesReturned(void*, SAVE_DETAILS*, bool);
@@ -60,6 +59,7 @@ public:
     void CheckAndJoinGame(int);
     void HandleGamesListPressed(int);
     FriendSessionInfo* GetJoinListSession(int id);
+    void AddSessionButton(FriendSessionInfo* session, int id, const std::wstring& key);
     int GetSelectedSavedServer();
     void EditSavedServer(int serverIndex);
     static int RemoveServerDialogReturned(void*, int, C4JStorage::EMessageResult);
@@ -122,7 +122,6 @@ protected:
     bool m_partyGamesAvailable;
     bool m_partyGamesOnly;
     bool m_miniGames;
-    int m_matchmakingButtonCount;
     EPendingAction m_pendingAction;
     int m_nextThumbnail;
     int m_saveListRefreshState;

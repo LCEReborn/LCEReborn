@@ -80,8 +80,8 @@ UIScene_LoadCreateJoinMenu::UIScene_LoadCreateJoinMenu(int playerId, void* data,
     if (m_miniGames)
     {
         m_loadTitle.init(UIString(IDS_CREATE_TAB));
-        m_createTitle.init(UIString(IDS_JOIN_TAB));
-        m_joinTitle.init(UIString(IDS_FRIENDS_TAB));
+        m_joinTitle.init(UIString(IDS_JOIN_TAB));
+        static_cast<FJ_LoadCreateJoinMenu*>(m_movie->getRootNode()->getFuiNode())->HideCreateTab();
     }
     else
     {
@@ -515,6 +515,8 @@ void UIScene_LoadCreateJoinMenu::handleReload()
     _init(m_miniGames);
     FJ_LoadCreateJoinMenu* menu = static_cast<FJ_LoadCreateJoinMenu*>(m_movie->getRootNode()->getFuiNode());
     menu->ShowSaveSizeBar(!m_miniGamesMenu);
+    if (m_miniGames)
+        menu->HideCreateTab();
     SelectTab(m_activeTab);
     m_selectedSaveIndex = loadSelection;
     m_selectedCreateIndex = createSelection;
@@ -606,6 +608,8 @@ void UIScene_LoadCreateJoinMenu::handleTouchInput(unsigned int, int, int, int to
         unsigned int tab = touchBox - 4;
         if (GetHideLoadTab())
             --tab;
+        if (m_miniGames && tab == 1)
+            break;
         if (m_activeTab != tab)
         {
             m_activeTab = tab;

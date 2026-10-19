@@ -150,16 +150,22 @@ private:
 
     struct KnownSession
     {
+        KnownSession() : id(0), lan(false), answered(false), probing(false), lastProbe(0) {}
+
         unsigned int id;
         bool lan;
         lcenet::Address address;
         std::string addressText;
         lcenet::SessionDescription session;
+        bool answered;
+        bool probing;
+        int64_t lastProbe;
     };
 
     struct SessionQuery
     {
         lcenet::Link* link;
+        unsigned int knownId;
         FriendSessionInfo* info;
         void (*callback)(bool, void*);
         void* callbackData;
@@ -230,6 +236,9 @@ private:
     void UpdateBeacon();
     void UpdateSessionQueries();
     void UpdateLanSessions();
+    void ProbeSavedServers();
+    void StartSessionQuery(KnownSession& known, FriendSessionInfo* info, void (*callback)(bool, void*),
+                           void* callbackData);
     lcenet::SessionDescription DescribeSession();
     KnownSession* FindKnownSession(unsigned int id);
     unsigned int RememberLanSession(const lcenet::LanSession& session);
@@ -311,6 +320,8 @@ private:
     int64_t m_beaconUpdated;
     lcenet::Scanner m_scanner;
     unsigned int m_scannerRevision;
+    unsigned int m_probeRevision;
+    unsigned int m_reportedProbeRevision;
 };
 
 #endif

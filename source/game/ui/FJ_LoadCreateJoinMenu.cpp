@@ -26,7 +26,10 @@ FJ_LoadCreateJoinMenu::FJ_LoadCreateJoinMenu(fuiRenderNode* renderNode)
       m_loadTabTitleY(0),
       m_joinTabTitleY(0),
       m_newTabX(0),
-      m_joinTabX(0)
+      m_joinTabX(0),
+      m_createTabHidden(false),
+      m_loadTitleX(0.0f),
+      m_joinTitleX(0.0f)
 {
     getChildByName("LoadGame.TabLeft")->getChildAt(0)->gotoAndStop(1);
     getChildByName("NewGame.TabMiddle")->getChildAt(0)->gotoAndStop(2);
@@ -44,6 +47,8 @@ FJ_LoadCreateJoinMenu::FJ_LoadCreateJoinMenu(fuiRenderNode* renderNode)
 
     m_loadTabTitleY = static_cast<int>(getChildByName("LoadGameTabTitle")->getY());
     m_joinTabTitleY = static_cast<int>(getChildByName("JoinGameTabTitle")->getY());
+    m_loadTitleX = getChildByName("LoadGameTabTitle")->getX();
+    m_joinTitleX = getChildByName("JoinGameTabTitle")->getX();
 
     m_newTabX = static_cast<int>(getChildByName("LoadGame")->getX()
                                  + getChildByName("LoadGame")->getChildAt(0)->getWidth() * 0.25f
@@ -156,6 +161,12 @@ void FJ_LoadCreateJoinMenu::SetActiveTab(int tab)
         }
     }
 
+    if (m_createTabHidden)
+    {
+        m_pRenderNode->gather(false);
+        PlaceTwoTabTitles();
+    }
+
     m_activeTab = tab;
     m_currentTab = tab;
 }
@@ -260,4 +271,43 @@ void FJ_LoadCreateJoinMenu::HideLoadTab()
                 ->setWidth(getChildByName("LoadGame")->getChildAt(0)->getWidth() * 0.5f);
         }
     }
+}
+
+void FJ_LoadCreateJoinMenu::HideCreateTab()
+{
+    if (m_createTabHidden)
+        return;
+    m_createTabHidden = true;
+
+    const float left = getChildByName("LoadGame")->getX();
+    const float half = getChildByName("LoadGame")->getChildAt(0)->getWidth() * 0.5f;
+
+    getChildByName("NewGame")->setVisible(false);
+    getChildByName("NewGameTabTitle")->setVisible(false);
+    getChildByName("TabOff_Create")->setVisible(false);
+
+    getChildByName("TabOff_Load")->setX(left);
+    getChildByName("TabOff_Load")->getChildAt(0)->setWidth(half);
+    getChildByName("LoadGame.TabLeft")->getChildAt(0)->setWidth(half);
+
+    getChildByName("TabOff_Join")->setX(left + half);
+    getChildByName("TabOff_Join")->getChildAt(0)->setWidth(half);
+    getChildByName("JoinGame.TabRight")->setX(half);
+    getChildByName("JoinGame.TabRight")->getChildAt(0)->setWidth(half);
+
+    if (getChildByName("LoadGame.TouchTabLoad") != NULL)
+    {
+        getChildByName("NewGame.TouchTabCreate")->setVisible(false);
+        getChildByName("LoadGame.TouchTabLoad")->setWidth(half);
+        getChildByName("JoinGame.TouchTabJoin")->setX(half);
+        getChildByName("JoinGame.TouchTabJoin")->setWidth(half);
+    }
+    PlaceTwoTabTitles();
+}
+
+void FJ_LoadCreateJoinMenu::PlaceTwoTabTitles()
+{
+    const float shift = getChildByName("LoadGame")->getChildAt(0)->getWidth() / 12.0f;
+    getChildByName("LoadGameTabTitle")->setX(m_loadTitleX + shift);
+    getChildByName("JoinGameTabTitle")->setX(m_joinTitleX - shift);
 }

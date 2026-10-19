@@ -17,8 +17,11 @@ public:
     void SetMatchesAvailable(bool available);
     void ShowSaveSizeBar(bool show);
     void HideLoadTab();
+    void HideCreateTab();
 
 private:
+    void PlaceTwoTabTitles();
+
     int m_activeTab;
     int m_currentTab;
     int m_loadTabFocus;
@@ -32,6 +35,9 @@ private:
     int m_joinTabTitleY;
     int m_newTabX;
     int m_joinTabX;
+    bool m_createTabHidden;
+    float m_loadTitleX;
+    float m_joinTitleX;
 };
 
 #endif

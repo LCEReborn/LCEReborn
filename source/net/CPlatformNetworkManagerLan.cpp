@@ -30,6 +30,7 @@ const int cAllUsersMask = (1 << cMaxLocalPlayers) - 1;
 const int cRetireGraceMs = 1000;
 const int64_t cUnjoinedTimeoutMs = 10000;
 const int64_t cQueryTimeoutMs = 6000;
+const int64_t cServerProbeIntervalMs = 5000;
 const int64_t cBeaconRefreshMs = 1000;
 
 std::string Narrow(const std::wstring& text)
@@ -82,7 +83,9 @@ CPlatformNetworkManagerLan::CPlatformNetworkManagerLan()
       m_joinMask(0),
       m_beaconRunning(false),
       m_beaconUpdated(0),
-      m_scannerRevision(0)
+      m_scannerRevision(0),
+      m_probeRevision(0),
+      m_reportedProbeRevision(0)
 {
     InitializeCriticalSection(&m_lock);
     InitializeCriticalSection(&m_acceptLock);
@@ -757,6 +760,12 @@ std::vector<FriendSessionInfo*>* CPlatformNetworkManagerLan::GetSessionList(int,
         memset(&info->m_searchResult, 0, sizeof(info->m_searchResult));
         info->m_searchResult.m_sessionId = id;
         info->m_savedServer = (int)index;
+        KnownSession* known = FindKnownSession(id);
+        if (known != 0 && known->answered)
+        {
+            info->m_gameSessionData = known->session.data;
+            info->m_savedServerAnswered = true;
+        }
         sessions->push_back(info);
     }
     for (unsigned int index = 0; index < found.size(); ++index)
@@ -805,6 +814,7 @@ void CPlatformNetworkManagerLan::GetFullFriendSessionInfo(FriendSessionInfo* inf
 {
     SessionQuery query;
     query.link = 0;
+    query.knownId = info != 0 ? info->m_sessionId : 0;
     query.info = info;
     query.callback = callback;
     query.callbackData = callbackData;
@@ -826,14 +836,48 @@ void CPlatformNetworkManagerLan::GetFullFriendSessionInfo(FriendSessionInfo* inf
     }
     else if (known != 0)
     {
-        query.finished = false;
-        query.link = new lcenet::Link(0, this);
-        query.link->Connect(known->addressText);
-        lcenet::ByteWriter writer;
-        writer.U16(lcenet::kProtocolVersion);
-        query.link->SendControl(lcenet::kChannelQuery, writer.Data());
+        StartSessionQuery(*known, info, callback, callbackData);
+        LeaveCriticalSection(&m_lock);
+        return;
     }
     m_sessionQueries.push_back(query);
+    LeaveCriticalSection(&m_lock);
+}
+
+void CPlatformNetworkManagerLan::StartSessionQuery(KnownSession& known, FriendSessionInfo* info,
+                                                   void (*callback)(bool, void*), void* callbackData)
+{
+    SessionQuery query;
+    query.knownId = known.id;
+    query.info = info;
+    query.callback = callback;
+    query.callbackData = callbackData;
+    query.started = lcenet::NowMs();
+    query.finished = false;
+    query.found = false;
+    query.link = new lcenet::Link(0, this);
+    query.link->Connect(known.addressText);
+    lcenet::ByteWriter writer;
+    writer.U16(lcenet::kProtocolVersion);
+    query.link->SendControl(lcenet::kChannelQuery, writer.Data());
+    known.probing = true;
+    m_sessionQueries.push_back(query);
+}
+
+void CPlatformNetworkManagerLan::ProbeSavedServers()
+{
+    const std::vector<lcenet::SavedServer>& servers = lcenet::SavedServers().Servers();
+    int64_t now = lcenet::NowMs();
+    EnterCriticalSection(&m_lock);
+    for (unsigned int index = 0; index < servers.size(); ++index)
+    {
+        KnownSession* known = FindKnownSession(RememberServer(lcenet::NarrowAddress(servers[index].address)));
+        if (known == 0 || known->probing)
+            continue;
+        if (known->lastProbe != 0 && now - known->lastProbe < cServerProbeIntervalMs)
+            continue;
+        StartSessionQuery(*known, 0, 0, 0);
+    }
     LeaveCriticalSection(&m_lock);
 }
 
@@ -2085,10 +2129,20 @@ void CPlatformNetworkManagerLan::UpdateSessionQueries()
                 lcenet::SessionDescription session;
                 if (lcenet::ReadSession(reader, session))
                 {
-                    query.info->m_gameSessionData = session.data;
-                    KnownSession* known = FindKnownSession(query.info->m_sessionId);
+                    if (query.info != 0)
+                        query.info->m_gameSessionData = session.data;
+                    KnownSession* known = FindKnownSession(query.knownId);
                     if (known != 0)
+                    {
+                        lcenet::ByteWriter before;
+                        lcenet::ByteWriter after;
+                        lcenet::WriteSession(before, known->session);
+                        lcenet::WriteSession(after, session);
+                        if (!known->answered || before.Data() != after.Data())
+                            ++m_probeRevision;
                         known->session = session;
+                        known->answered = true;
+                    }
                     query.found = true;
                 }
                 query.finished = true;
@@ -2098,6 +2152,17 @@ void CPlatformNetworkManagerLan::UpdateSessionQueries()
         }
         if (query.finished)
         {
+            KnownSession* known = query.link != 0 ? FindKnownSession(query.knownId) : 0;
+            if (known != 0 && !known->lan)
+            {
+                if (!query.found && known->answered)
+                {
+                    known->answered = false;
+                    ++m_probeRevision;
+                }
+                known->probing = false;
+                known->lastProbe = now;
+            }
             RetireLink(query.link, 0);
             finished.push_back(query);
             m_sessionQueries.erase(m_sessionQueries.begin() + index);
@@ -2117,10 +2182,12 @@ void CPlatformNetworkManagerLan::UpdateLanSessions()
 {
     if (!m_scanner.IsRunning())
         return;
+    ProbeSavedServers();
     unsigned int revision = m_scanner.Revision();
     EnterCriticalSection(&m_lock);
-    bool changed = revision != m_scannerRevision;
+    bool changed = revision != m_scannerRevision || m_probeRevision != m_reportedProbeRevision;
     m_scannerRevision = revision;
+    m_reportedProbeRevision = m_probeRevision;
     void (*callback)(void*) = m_sessionsUpdatedCallback;
     void* callbackData = m_sessionsUpdatedCallbackData;
     LeaveCriticalSection(&m_lock);

@@ -80,10 +80,14 @@ own. `full_game = true` unlocks the full game, otherwise it runs as the trial.
 
 The PC and Wii U builds share one network manager (`source/net/`), so they
 can play together. An online game is hosted on port 25570 (TCP for players,
-UDP for finding games on the local network). The Join tab lists games found
-on the local network, and Add Server saves a name and an address
-(`host` or `host:port`) for anything else. The PC keeps the saved servers in
-`servers.dat` in the save folder; the Wii U keeps them in its save data.
+UDP for finding games on the local network). The Join tab lists worlds and
+mini games found on the local network, and Add Server saves a name and an
+address (`host` or `host:port`) for anything else. While the list is open,
+each saved server is asked every few seconds what it is hosting, and its row
+shows that world or mini game. The PC keeps the saved servers in
+`servers.dat` in the save folder; the Wii U keeps them in its save data. The
+Mini Games menu's Join tab lists the same saved servers but only the mini
+games found on the local network.
 
 ## Logging
 

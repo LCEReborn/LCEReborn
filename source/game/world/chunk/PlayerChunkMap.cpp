@@ -20,6 +20,7 @@
 #include "game/world/Dimension.hpp"
 #include "game/world/DimensionType.hpp"
 #include "game/world/Level.hpp"
+#include "game/world/chunk/LevelChunk.hpp"
 #include "game/world/chunk/PlayerChunkContainer.hpp"
 #include "game/core/VideoSettings.hpp"
 
@@ -170,6 +171,19 @@ void PlayerChunkMap::tick()
             mAllChunks.at(i)->updateInhabitedTime();
         }
     }
+
+#if LCE_PLATFORM_PC
+    ServerChunkCache* cache = static_cast<ServerChunkCache*>(static_cast<ServerLevel*>(mLevel)->getChunkSource());
+    for (unsigned int i = 0; i < mAllChunks.size(); i++)
+    {
+        ChunkPos pos = mAllChunks[i]->getPos();
+        if (!cache->hasChunk(pos.x, pos.z))
+            continue;
+        LevelChunk* chunk = cache->getChunkIfLoaded(pos.x, pos.z);
+        if (!chunk->isEmpty())
+            chunk->tick(true);
+    }
+#endif
 
     if (!mPauseBlockUpdatePackets)
     {

@@ -52,7 +52,7 @@ add_custom_target(lce_launcher_build_info
           -P "${CMAKE_CURRENT_SOURCE_DIR}/BuildInfo.cmake"
   BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/BuildInfo.hpp")
 add_dependencies(LCERebornLauncher lce_launcher_build_info)
-target_include_directories(LCERebornLauncher PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+target_include_directories(LCERebornLauncher PRIVATE "${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_SOURCE_DIR}/source")
 target_link_libraries(LCERebornLauncher PRIVATE Qt6::Widgets Qt6::Network)
 set_target_properties(LCERebornLauncher PROPERTIES
   CXX_STANDARD 17

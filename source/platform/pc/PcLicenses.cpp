@@ -5,6 +5,7 @@
 #include "game/core/cDLCInfo.hpp"
 #include "platform/CProfile.hpp"
 #include "platform/pc/Log.hpp"
+#include "platform/pc/PcLicenseDefaults.hpp"
 #include "platform/pc/PcPaths.hpp"
 #include "platform/wiiu/cNintendoDLCInfo.hpp"
 
@@ -18,19 +19,6 @@
 extern CConsoleMinecraftApp gApp;
 
 static const Logger sLog("Licenses");
-
-static const char kDefaultConfig[] =
-    "# What the PC port unlocks.\n"
-    "#\n"
-    "# The PC has no store and no way to check what you bought, so nothing is\n"
-    "# unlocked until you edit this file. Only unlock what you own.\n"
-    "#\n"
-    "# full_game: true unlocks the full game; false plays the trial.\n"
-    "# dlc: none, all, or pack names separated by commas, such as\n"
-    "#      Festive Skin Pack, City Texture Pack\n"
-    "\n"
-    "full_game = false\n"
-    "dlc = none\n";
 
 struct LicenseConfig
 {
@@ -74,7 +62,7 @@ static void WriteDefaultConfig(const std::string& path)
     if (file.has_parent_path())
         std::filesystem::create_directories(file.parent_path(), error);
     std::ofstream output(file, std::ios::binary);
-    output << kDefaultConfig;
+    output << kPcDefaultLicenseConfig;
     if (!output)
         LOG_WARN(sLog, "%s could not be written", path.c_str());
     else

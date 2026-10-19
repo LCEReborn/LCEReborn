@@ -26,11 +26,19 @@ When there is no imported game, the launcher opens on setup:
 
 1. **Base game**: your dump of the game, checked as you pick it.
 2. **Update 688**: your dump of the update.
-3. **Import**: copies the game into `assets/`.
+3. **Licenses**: "Edit license.cfg" opens the license file in a text editor,
+   creating it first if needed.
+4. **Import**: copies the game into `assets/`.
 
-"Re-import game files" opens setup again. The game starts as the trial with
-no DLC until you edit `license.cfg` (see Licenses in `pc-platform.md`); only
-unlock what you own.
+"Re-import game files" opens setup again.
+
+## Licenses
+
+The game starts as the trial with no DLC until you edit `license.cfg`, beside
+the launcher; only unlock what you own. Setup's Licenses step opens it, and
+"Re-import game files" brings setup back. Set `full_game = true` for the full
+game and `dlc` to `all` or the names of your packs (see Licenses in
+`pc-platform.md`).
 
 ## Playing
 

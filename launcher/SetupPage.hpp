@@ -44,6 +44,7 @@ private:
     void OnProgress(qint64 filesDone, qint64 filesTotal, qint64 bytesDone, qint64 bytesTotal);
     void OnFinished(bool succeeded, const QString& error);
     void SetBusy(bool busy);
+    void OpenLicenseFile();
 
     Step mBase;
     Step mUpdate;

@@ -1,5 +1,5 @@
 #include "game/core/GuiMessage.hpp"
 
-GuiMessage::GuiMessage(const std::wstring& message) : message(message), age(0)
+GuiMessage::GuiMessage(const std::wstring& message, unsigned int colour) : message(message), age(0), colour(colour)
 {
 }

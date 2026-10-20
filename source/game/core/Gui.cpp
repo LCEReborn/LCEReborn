@@ -1,4 +1,6 @@
 #include "game/core/Gui.hpp"
+
+#include "game/core/ChatScreen.hpp"
 #include "game/core/StringIds.hpp"
 
 #include <cmath>
@@ -510,6 +512,20 @@ void Gui::render(float partialTick, bool hideGui, int width, int height)
     {
         GlStateManager::popMatrix();
     }
+    if (joinedLayout)
+    {
+        GlStateManager::pushMatrix();
+        GlStateManager::scalef(xScale, yScale, 1.0f);
+    }
+    ChatScreen::Render(playerIndex, *this, *mMinecraft->mFont, static_cast<int>(static_cast<float>(screenWidth) / xScale),
+                       static_cast<int>(static_cast<float>(screenHeight) / yScale), gGuiScreenScale);
+    if (joinedLayout)
+    {
+        GlStateManager::popMatrix();
+    }
+    GlStateManager::enableBlend();
+    GlStateManager::blendFunc(4, 5);
+    GlStateManager::disableAlphaTest();
     GlStateManager::color4f(1.0f, 1.0f, 1.0f, 1.0f);
     GlStateManager::disableBlend();
     GlStateManager::enableAlphaTest();
@@ -635,7 +651,7 @@ void Gui::addMessage(const std::wstring& message, int playerIndex, bool overlay,
         {
             ++searchEnd;
         }
-        unsigned int split = text.find_last_of(L" ", searchEnd);
+        size_t split;
         switch (XGetLanguage())
         {
         case XC_LANGUAGE_JAPANESE:
@@ -645,13 +661,13 @@ void Gui::addMessage(const std::wstring& message, int playerIndex, bool overlay,
             break;
         default:
             split = text.find_last_of(L" ", searchEnd);
+            if (split == std::wstring::npos || split == 0)
+                split = maxLength;
+            else if (split != searchEnd)
+                ++split;
             break;
         }
-        if (split != searchEnd)
-        {
-            ++split;
-        }
-        addMessage(text.substr(0, split), playerIndex, overlay, filtered, true, false);
+        addMessage(text.substr(0, split), playerIndex, overlay, filtered, true, force);
         text = text.substr(split);
         wrapped = true;
     }
@@ -758,7 +774,26 @@ void Gui::onDisconnected()
     }
 }
 
-float Gui::getOpacity(int playerIndex, unsigned int messageIndex)
+void Gui::addChatLine(const std::wstring& message, int playerIndex, unsigned int colour)
+{
+    if (playerIndex < 0 || playerIndex >= 4)
+        return;
+    mMessages[playerIndex].insert(mMessages[playerIndex].begin(), GuiMessage(message, colour));
+    while (mMessages[playerIndex].size() > 100)
+        mMessages[playerIndex].pop_back();
+}
+
+const std::vector<GuiMessage>& Gui::GetMessages(int playerIndex) const
+{
+    return mMessages[playerIndex];
+}
+
+float Gui::getOpacity(int, unsigned int)
+{
+    return 0.0f;
+}
+
+float Gui::GetMessageOpacity(int playerIndex, unsigned int messageIndex)
 {
     float opacity = 0.0f;
     if (mMessages[playerIndex].size() > messageIndex && mMessages[playerIndex][messageIndex].age < 200)

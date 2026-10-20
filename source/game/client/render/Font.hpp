@@ -43,6 +43,9 @@ private:
     int mCharacterHeight;
     ResourceLocation* mTextureLocation;
     std::map<int, int> mCharacterMap;
+    int mBaseColor;
+
+    int ObfuscatedCharacter(int character);
 
 public:
     Font(Options* options, const std::wstring& name, Textures* textures, bool anaglyph,
@@ -54,6 +57,7 @@ public:
     std::wstring sanitize(const std::wstring& text, bool trim);
     int width(const std::wstring& text);
     void renderCharacter(wchar_t character, BufferBuilder* builder);
+    void renderCharacter(wchar_t character, BufferBuilder* builder, float skew);
     unsigned int draw(const std::wstring& text, bool darken, bool useBuilder);
     unsigned int draw(const std::wstring& text, int x, int y, int color, bool darken, bool useBuilder);
     unsigned int draw(const std::wstring& text, int x, int y, int color);

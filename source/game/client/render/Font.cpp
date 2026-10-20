@@ -12,6 +12,42 @@
 #include "game/core/SharedConstants.hpp"
 #include "game/core/StringUtils.hpp"
 #include "game/util/Random.hpp"
+
+namespace
+{
+const int kFormatObfuscated = 16;
+const int kFormatBold = 17;
+const int kFormatStrikethrough = 18;
+const int kFormatUnderline = 19;
+const int kFormatItalic = 20;
+const int kFormatReset = 21;
+
+int FormatCode(wchar_t code)
+{
+    if (code >= L'0' && code <= L'9')
+        return code - L'0';
+    if (code >= L'a' && code <= L'f')
+        return code - L'a' + 10;
+    if (code >= L'A' && code <= L'F')
+        return code - L'A' + 10;
+    if (code >= L'k' && code <= L'o')
+        return code - L'k' + kFormatObfuscated;
+    if (code >= L'K' && code <= L'O')
+        return code - L'K' + kFormatObfuscated;
+    if (code == L'r' || code == L'R')
+        return kFormatReset;
+    return -1;
+}
+
+struct TextLine
+{
+    float x0;
+    float x1;
+    float y0;
+    float y1;
+    int color;
+};
+}
 #include "game/util/ResourceLocation.hpp"
 #include "game/world/biome/arrayWithLength.hpp"
 
@@ -29,6 +65,7 @@ Font::Font(Options* options, const std::wstring& name, Textures* textures, bool,
     mCharacterHeight = characterHeight;
     mEnforceUnicodeSheet = false;
     mTextureLocation = textureLocation;
+    mBaseColor = -1;
     mX = 0.0f;
     mY = 0.0f;
     mBidirectional = false;
@@ -154,119 +191,166 @@ std::wstring Font::sanitize(const std::wstring& text, bool trim)
 
 int Font::width(const std::wstring& text)
 {
-    const std::wstring value = sanitize(text, false);
-    if (value == L"")
-        return 0;
-
     float result = 0.0f;
-    for (int i = 0; i < value.length(); ++i)
+    bool bold = false;
+    for (size_t i = 0; i < text.length(); ++i)
     {
-        const wchar_t character = value.at(i);
-        if (character == 0xA7)
-            ++i;
-        else
-            result += mCharWidths[character];
+        const wchar_t character = text[i];
+        if (character == 0xA7 && i + 1 < text.length())
+        {
+            const int code = FormatCode(text[++i]);
+            if (code == kFormatBold)
+                bold = true;
+            else if ((code >= 0 && code < 16) || code == kFormatReset)
+                bold = false;
+            continue;
+        }
+        const int mapped = CharacterExists(character) ? MapCharacter(character) : 0;
+        result += mCharWidths[mapped];
+        if (bold)
+            result += 1.0f;
     }
     return static_cast<int>(result + 0.5f);
 }
 
 void Font::renderCharacter(wchar_t character, BufferBuilder* builder)
 {
+    renderCharacter(character, builder, 0.0f);
+}
+
+void Font::renderCharacter(wchar_t character, BufferBuilder* builder, float skew)
+{
     const Character& glyph = mCharacters[character];
     builder->tex(glyph.u0, glyph.v1);
-    builder->vertexNoBounds(mX, mY + glyph.height, 0.0f);
+    builder->vertexNoBounds(mX - skew, mY + glyph.height, 0.0f);
     builder->tex(glyph.u1, glyph.v1);
-    builder->vertexNoBounds(mX + glyph.width, mY + glyph.height, 0.0f);
+    builder->vertexNoBounds(mX + glyph.width - skew, mY + glyph.height, 0.0f);
     builder->tex(glyph.u1, glyph.v0);
-    builder->vertexNoBounds(mX + glyph.width, mY, 0.0f);
+    builder->vertexNoBounds(mX + glyph.width + skew, mY, 0.0f);
     builder->tex(glyph.u0, glyph.v0);
-    builder->vertexNoBounds(mX, mY, 0.0f);
+    builder->vertexNoBounds(mX + skew, mY, 0.0f);
     mX += glyph.advance;
+}
+
+int Font::ObfuscatedCharacter(int character)
+{
+    const std::wstring& allowed = SharedConstants::ALLOWED_CHARACTERS;
+    if (allowed.empty())
+        return character;
+    for (int attempt = 0; attempt < 64; ++attempt)
+    {
+        const wchar_t candidate = allowed[mRandom->nextInt(static_cast<int>(allowed.length()))];
+        if (!CharacterExists(candidate))
+            continue;
+        const int mapped = MapCharacter(candidate);
+        if (mCharWidths[mapped] == mCharWidths[character])
+            return mapped;
+    }
+    return character;
 }
 
 unsigned int Font::draw(const std::wstring& text, bool darken, bool useBuilder)
 {
     mTextures->bindTexture(mTextureLocation);
-    bool noise = false;
-    const std::wstring value = sanitize(text, false);
     BufferBuilder* builder = Tesselator::getInstance()->getBuilder();
     if (useBuilder)
         builder->begin();
 
-    for (int i = 0; i < static_cast<int>(value.length());)
+    const bool formatted = text.find(static_cast<wchar_t>(0xA7)) != std::wstring::npos;
+    int alpha = (mBaseColor >> 24) & 255;
+    if (alpha == 0)
+        alpha = 255;
+    int color = mBaseColor & 0xFFFFFF;
+    if (formatted)
     {
-        wchar_t character = value.at(i);
-        if (character == 0xA7 && i + 1 < value.length())
-        {
-            const wchar_t code = value[i + 1];
-            int colorIndex;
-            if (code >= L'0' && code <= L'9')
-                colorIndex = code - L'0';
-            else if (code >= L'a' && code <= L'f')
-                colorIndex = code - L'a' + 10;
-            else if (code >= L'A' && code <= L'F')
-                colorIndex = code - L'A' + 10;
-            else
-                colorIndex = 16;
+        GlStateManager::color4f(1.0f, 1.0f, 1.0f, 1.0f);
+        builder->color(color, alpha);
+    }
 
-            if (colorIndex == 16)
+    bool obfuscated = false;
+    bool bold = false;
+    bool strikethrough = false;
+    bool underline = false;
+    bool italic = false;
+    std::vector<TextLine> lines;
+    for (size_t i = 0; i < text.length(); ++i)
+    {
+        const wchar_t character = text[i];
+        if (character == 0xA7 && i + 1 < text.length())
+        {
+            const int code = FormatCode(text[++i]);
+            if ((code >= 0 && code < 16) || code == kFormatReset)
             {
-                noise = true;
+                obfuscated = false;
+                bold = false;
+                strikethrough = false;
+                underline = false;
+                italic = false;
+                color = code == kFormatReset ? (mBaseColor & 0xFFFFFF) : mColors[darken ? code + 16 : code];
+                builder->color(color, alpha);
             }
-            else
-            {
-                noise = false;
-                if (colorIndex > 15)
-                    colorIndex = 15;
-                if (darken)
-                    colorIndex += 16;
-                const int color = mColors[colorIndex];
-                GlStateManager::color3f(1.0f, 1.0f, 1.0f);
-                builder->color(color >> 16 & 255, color >> 8 & 255, color & 255);
-            }
-            i += 2;
+            else if (code == kFormatObfuscated)
+                obfuscated = true;
+            else if (code == kFormatBold)
+                bold = true;
+            else if (code == kFormatStrikethrough)
+                strikethrough = true;
+            else if (code == kFormatUnderline)
+                underline = true;
+            else if (code == kFormatItalic)
+                italic = true;
+            continue;
         }
-        else
-        {
-            if (noise)
-            {
-                const int letterCount = static_cast<int>(SharedConstants::ALLOWED_CHARACTERS.length());
-                int found = -1;
-                for (int k = 0; k < letterCount; ++k)
-                {
-                    if (SharedConstants::ALLOWED_CHARACTERS[k] == character)
-                    {
-                        found = k;
-                        break;
-                    }
-                }
-                if (found != -1)
-                {
-                    int attempts = 0;
-                    int replacement;
-                    bool matched = true;
-                    do
-                    {
-                        replacement = mRandom->nextInt(letterCount);
-                        if (++attempts >= letterCount)
-                        {
-                            matched = false;
-                            break;
-                        }
-                    } while (mCharWidths[character] != mCharWidths[SharedConstants::ALLOWED_CHARACTERS[replacement]]);
-                    if (matched)
-                        character = SharedConstants::ALLOWED_CHARACTERS[replacement];
-                }
-            }
 
-            renderCharacter(character, builder);
-            ++i;
+        int mapped = CharacterExists(character) ? MapCharacter(character) : 0;
+        if (obfuscated && character != L' ')
+            mapped = ObfuscatedCharacter(mapped);
+        const float skew = italic ? 1.0f : 0.0f;
+        const float startX = mX;
+        renderCharacter(static_cast<wchar_t>(mapped), builder, skew);
+        if (bold)
+        {
+            const float endX = mX;
+            mX = startX + 1.0f;
+            renderCharacter(static_cast<wchar_t>(mapped), builder, skew);
+            mX = endX + 1.0f;
+        }
+        if (strikethrough)
+        {
+            const TextLine line = {startX, mX, mY + 3.5f, mY + 4.5f, color};
+            lines.push_back(line);
+        }
+        if (underline)
+        {
+            const TextLine line = {startX - 1.0f, mX, mY + 8.0f, mY + 9.0f, color};
+            lines.push_back(line);
         }
     }
 
     if (useBuilder)
+    {
         builder->end();
-    return !noise;
+        if (!lines.empty())
+        {
+            GlStateManager::disableTexture();
+            for (size_t index = 0; index < lines.size(); ++index)
+            {
+                const TextLine& line = lines[index];
+                GlStateManager::color4f(static_cast<float>((line.color >> 16) & 255) / 255.0f,
+                                        static_cast<float>((line.color >> 8) & 255) / 255.0f,
+                                        static_cast<float>(line.color & 255) / 255.0f,
+                                        static_cast<float>(alpha) / 255.0f);
+                builder->begin();
+                builder->vertex(line.x0, line.y1, 0.0f);
+                builder->vertex(line.x1, line.y1, 0.0f);
+                builder->vertex(line.x1, line.y0, 0.0f);
+                builder->vertex(line.x0, line.y0, 0.0f);
+                builder->end();
+            }
+            GlStateManager::enableTexture();
+        }
+    }
+    return !obfuscated;
 }
 
 unsigned int Font::draw(const std::wstring& text, int x, int y, int color, bool darken, bool useBuilder)
@@ -277,6 +361,7 @@ unsigned int Font::draw(const std::wstring& text, int x, int y, int color, bool 
             color = (color & 0xFCFCFC) >> 2 | (color & 0xFF000000);
         GlStateManager::color4f((color >> 16 & 255) / 255.0f, (color >> 8 & 255) / 255.0f, (color & 255) / 255.0f,
                                 (color >> 24 & 255) / 255.0f);
+        mBaseColor = color;
         mX = static_cast<float>(x);
         mY = static_cast<float>(y);
         return draw(text, darken, useBuilder);

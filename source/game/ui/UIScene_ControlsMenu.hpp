@@ -48,6 +48,8 @@ public:
         EControl_TakeHalf,
         EControl_PlayerList,
         EControl_ToggleHud,
+        EControl_Chat,
+        EControl_ChatCommand,
         EControl_Label
     };
 
@@ -82,6 +84,8 @@ public:
     void CommitPadButton(int player, unsigned char button);
     int ControlGroup(EControl control);
     int InventoryControl(EControl control);
+    unsigned char PadMapping(int player, EControl control);
+    void SetPadMapping(int player, EControl control, unsigned char mapping);
     void AddControlRow(int player, EControl control, const std::wstring& label);
     void HandleButtonEdit(int player, int action, bool repeat, bool pressed, bool released);
     unsigned int CheckControlsOnExit(int player);

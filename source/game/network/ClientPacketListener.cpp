@@ -1,4 +1,6 @@
 #include "game/network/ClientPacketListener.hpp"
+
+#include "game/core/ChatScreen.hpp"
 #include "game/core/StringConversion.hpp"
 #include "game/core/StringIds.hpp"
 #include "game/server/MinecraftServer.hpp"
@@ -2414,6 +2416,23 @@ void ClientPacketListener::handleChat(boost::shared_ptr<ClientboundChatPacket> p
         break;
     case 155:
         text = L10N::GetString(IDS_SPECTATE_NO_PLAYER);
+        break;
+    case ClientboundChatPacket::eChatPacketMessage_PlayerChat:
+        showMessage = false;
+        if (packet->strings.size() > 1)
+        {
+            if (packet->strings[0].empty())
+            {
+                m_minecraft->mGui->addChatLine(packet->strings[1], m_playerId, 0xAAAAAA);
+            }
+            else
+            {
+                m_minecraft->mGui->addChatLine(L"<" + playerName + L"> " + packet->strings[1], m_playerId, 0xFFFFFF);
+                if (!m_minecraft->mLocalPlayers[m_playerId]
+                    || m_minecraft->mLocalPlayers[m_playerId]->getName() != packet->strings[0])
+                    ChatScreen::RememberSender(m_playerId, packet->strings[0]);
+            }
+        }
         break;
     default:
         text = playerName;

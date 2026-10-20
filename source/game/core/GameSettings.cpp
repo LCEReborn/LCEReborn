@@ -271,6 +271,7 @@ void DefineActions()
                                                       EJoypadButton_RightStickPress);
         }
         g_pInput->SetGameControllerTypeJoypadMaps(controller, EControllerActions_Crafting, EJoypadButton_Face3);
+        g_pInput->SetGameControllerTypeJoypadMaps(controller, EControllerActions_Chat, EJoypadButton_DPadRight);
         g_pInput->SetGameControllerTypeJoypadMaps(controller, EControllerActions_Scoreboard, EJoypadButton_Back);
         g_pInput->SetGameControllerTypeJoypadMaps(controller, EControllerActions_FlyLeft, EJoypadButton_DPadLeft);
         g_pInput->SetGameControllerTypeJoypadMaps(controller, EControllerActions_FlyRight, EJoypadButton_DPadRight);
@@ -417,6 +418,7 @@ const unsigned char kInventoryNone = 0xff;
 const unsigned char kInventoryDefaults[GameSettings::eInventoryControl_Count] = {4, 3};
 const int kInventoryActions[GameSettings::eInventoryControl_Count] = {
     EControllerActions_MenuY, EControllerActions_MenuX};
+const unsigned char kChatDefault = 6;
 const unsigned int kAutosaveCodes[] = {0, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8};
 const int kAutosaveShortMinutes[] = {1, 2, 5, 10};
 }
@@ -442,6 +444,25 @@ void GameSettings::SetInventoryMapping(int profile, int control, unsigned char b
     if (control == eInventoryControl_QuickMove)
         g_pInput->SetGameJoypadMaps(profile, EControllerActions_QuickMoveModifier,
                                     GetInputButton(static_cast<unsigned int>(button)));
+}
+
+unsigned char GameSettings::GetChatMapping(int profile)
+{
+    unsigned char stored = gGameSettings[profile]->mChatMapping;
+    if (stored == 0)
+        return kChatDefault;
+    return stored == kInventoryNone ? 0 : stored;
+}
+
+void GameSettings::SetChatMapping(int profile, unsigned char button)
+{
+    unsigned char stored = button;
+    if (button == 0)
+        stored = kInventoryNone;
+    else if (button == kChatDefault)
+        stored = 0;
+    gGameSettings[profile]->mChatMapping = stored;
+    g_pInput->SetGameJoypadMaps(profile, EControllerActions_Chat, GetInputButton(static_cast<unsigned int>(button)));
 }
 
 int GameSettings::InventoryMenuAction(int control)
@@ -639,6 +660,8 @@ void GameSettings::ActionGameSettings(int profile, eGameSetting setting)
                     profile, EControllerActions_QuickMoveModifier,
                     GetInputButton(static_cast<unsigned int>(GetInventoryMapping(profile, control))));
         }
+        g_pInput->SetGameJoypadMaps(profile, EControllerActions_Chat,
+                                    GetInputButton(static_cast<unsigned int>(GetChatMapping(profile))));
     }
         return;
     default:
@@ -948,6 +971,7 @@ void GameSettings::SetDefaultControls(C4JStorage::PROFILESETTINGS* values, int p
     }
     for (int control = 0; control < eInventoryControl_Count; ++control)
         SetInventoryMapping(profile, control, kInventoryDefaults[control]);
+    SetChatMapping(profile, kChatDefault);
     gGameSettings[profile]->mChanged = changed;
 }
 void GameSettings::SetDefaultGameOptions(C4JStorage::PROFILESETTINGS* values, int profile, bool changed)
@@ -1089,6 +1113,8 @@ void GameSettings::CheckGameSettingsChanged(bool changed, int profile)
 }
 uint32_t GameSettings::GetInputButton(int profile, bool secondary, EControllerActions action)
 {
+    if (action < EControllerActions_Jump || action - EControllerActions_Jump >= 25)
+        return secondary ? 0 : g_pInput->GetGameJoypadMaps(profile, static_cast<unsigned char>(action));
     const unsigned int mapping = GetActionMapping(profile, action - EControllerActions_Jump);
     return GetInputButton(secondary ? ((mapping >> 4) & 255) : (mapping & 0x0f));
 }

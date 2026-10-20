@@ -105,6 +105,7 @@ public:
     virtual void onDisconnect(DisconnectPacket::eDisconnectReason reason, void* userData);
     virtual void handleSetCarriedItem(boost::shared_ptr<ServerboundSetCarriedItemPacket> packet);
     virtual void handleChat(boost::shared_ptr<ClientboundChatPacket> packet);
+    virtual void handleChat(boost::shared_ptr<ServerboundChatPacket> packet);
     virtual void handleAnimate(boost::shared_ptr<ServerboundSwingPacket> packet);
     virtual void handlePlayerCommand(boost::shared_ptr<ServerboundPlayerCommandPacket> packet);
     virtual void handleInteract(boost::shared_ptr<ServerboundInteractPacket> packet);
@@ -153,6 +154,8 @@ private:
     static const int TELEPORT_RESEND_TICKS = 100;
     static const int DROP_SPAM_LIMIT = 200;
     static const int DROP_SPAM_STEP = 20;
+    static const int CHAT_SPAM_LIMIT = 200;
+    static const int CHAT_SPAM_STEP = 20;
 
 public:
     Connection* mConnection;

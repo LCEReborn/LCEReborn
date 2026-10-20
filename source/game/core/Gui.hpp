@@ -41,6 +41,9 @@ public:
     void setNowPlaying(const std::wstring& message);
     void displayClientMessage(int stringId, int playerIndex);
     void onDisconnected();
+    void addChatLine(const std::wstring& message, int playerIndex, unsigned int colour);
+    const std::vector<GuiMessage>& GetMessages(int playerIndex) const;
+    float GetMessageOpacity(int playerIndex, unsigned int messageIndex);
     float getOpacity(int playerIndex, unsigned int messageIndex);
     float getJukeboxOpacity(int playerIndex);
     void ShowCharacterDisplay(int playerIndex);

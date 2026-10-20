@@ -243,6 +243,8 @@ CInput::CInput()
     pointerPlacementY = 0.0f;
     windowFocused = true;
     lastWindowId = 0;
+    textCapture = false;
+    textCaptureWindowId = 0;
 
     keyboardState = EKeyboardState_Idle;
     keyboardCallback = 0;
@@ -483,6 +485,10 @@ void CInput::HandleEvent(const SDL_Event& event)
         {
             HandleKeyboardKey(static_cast<int>(event.key.scancode), event.key.mod, event.key.repeat);
         }
+        else if (textCapture)
+        {
+            HandleTextCaptureKey(static_cast<int>(event.key.scancode), event.key.mod, event.key.repeat);
+        }
         else
         {
             keyboardMouse.HandleEvent(event, KeyboardContext(), mouseCaptured);
@@ -493,6 +499,10 @@ void CInput::HandleEvent(const SDL_Event& event)
         {
             HandleKeyboardTextInput(event.text.text);
         }
+        else if (textCapture)
+        {
+            AppendCapturedText(event.text.text);
+        }
         break;
     case SDL_EVENT_KEY_UP:
     case SDL_EVENT_MOUSE_MOTION:
@@ -501,7 +511,14 @@ void CInput::HandleEvent(const SDL_Event& event)
         break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
     case SDL_EVENT_MOUSE_WHEEL:
-        if (keyboardState != EKeyboardState_Active)
+        if (textCapture)
+        {
+            if (event.type == SDL_EVENT_MOUSE_WHEEL && event.wheel.y != 0.0f)
+            {
+                capturedKeys.push_back(event.wheel.y > 0.0f ? ETextKey_PageUp : ETextKey_PageDown);
+            }
+        }
+        else if (keyboardState != EKeyboardState_Active)
         {
             keyboardMouse.HandleEvent(event, KeyboardContext(), mouseCaptured);
         }
@@ -516,6 +533,170 @@ void CInput::HandleEvent(const SDL_Event& event)
         break;
     default:
         break;
+    }
+}
+
+void CInput::BeginTextCapture(int pad)
+{
+    (void)pad;
+    if (textCapture)
+    {
+        return;
+    }
+    textCapture = true;
+    capturedText.clear();
+    capturedKeys.clear();
+    keyboardMouse.ReleaseAll();
+    textCaptureWindowId = 0;
+    SDL_Window* window = LocateWindow();
+    if (window != 0 && SDL_StartTextInput(window))
+    {
+        textCaptureWindowId = SDL_GetWindowID(window);
+    }
+}
+
+void CInput::EndTextCapture()
+{
+    if (!textCapture)
+    {
+        return;
+    }
+    if (textCaptureWindowId != 0)
+    {
+        SDL_Window* window = SDL_GetWindowFromID(textCaptureWindowId);
+        if (window != 0)
+        {
+            SDL_StopTextInput(window);
+        }
+        textCaptureWindowId = 0;
+    }
+    textCapture = false;
+    capturedText.clear();
+    capturedKeys.clear();
+}
+
+bool CInput::ConsumeCapturedText(std::wstring* text)
+{
+    if (capturedText.empty())
+    {
+        return false;
+    }
+    text->swap(capturedText);
+    capturedText.clear();
+    return true;
+}
+
+int CInput::ConsumeTextKey()
+{
+    if (capturedKeys.empty())
+    {
+        return ETextKey_None;
+    }
+    int key = capturedKeys.front();
+    capturedKeys.erase(capturedKeys.begin());
+    return key;
+}
+
+void CInput::AppendCapturedText(const char* text)
+{
+    if (text == 0)
+    {
+        return;
+    }
+    size_t length = std::strlen(text);
+    const char* cursor = text;
+    while (length > 0)
+    {
+        unsigned int codepoint = SDL_StepUTF8(&cursor, &length);
+        if (codepoint == 0)
+        {
+            break;
+        }
+        if (codepoint == 0x0a || codepoint == 0x0d || codepoint == 0x09)
+        {
+            codepoint = ' ';
+        }
+        if (codepoint < 0x20 || (codepoint >= 0x7f && codepoint < 0xa0) || codepoint == SDL_INVALID_UNICODE_CODEPOINT
+            || (codepoint >= 0xd800 && codepoint < 0xe000) || codepoint > 0x10ffff)
+        {
+            continue;
+        }
+        if (sizeof(wchar_t) == 2 && codepoint > 0xffff)
+        {
+            unsigned int offset = codepoint - 0x10000;
+            capturedText.push_back(static_cast<wchar_t>(0xd800 + (offset >> 10)));
+            capturedText.push_back(static_cast<wchar_t>(0xdc00 + (offset & 0x3ff)));
+        }
+        else
+        {
+            capturedText.push_back(static_cast<wchar_t>(codepoint));
+        }
+    }
+}
+
+void CInput::HandleTextCaptureKey(int scancode, unsigned short modifiers, bool repeat)
+{
+    const bool control = (modifiers & SDL_KMOD_CTRL) != 0;
+    int key = ETextKey_None;
+    switch (scancode)
+    {
+    case SDL_SCANCODE_BACKSPACE:
+        key = control ? ETextKey_WordBackspace : ETextKey_Backspace;
+        break;
+    case SDL_SCANCODE_DELETE:
+        key = ETextKey_Delete;
+        break;
+    case SDL_SCANCODE_RETURN:
+    case SDL_SCANCODE_KP_ENTER:
+        key = repeat ? ETextKey_None : ETextKey_Enter;
+        break;
+    case SDL_SCANCODE_ESCAPE:
+        key = repeat ? ETextKey_None : ETextKey_Escape;
+        break;
+    case SDL_SCANCODE_TAB:
+        key = ETextKey_Tab;
+        break;
+    case SDL_SCANCODE_UP:
+        key = ETextKey_Up;
+        break;
+    case SDL_SCANCODE_DOWN:
+        key = ETextKey_Down;
+        break;
+    case SDL_SCANCODE_LEFT:
+        key = control ? ETextKey_WordLeft : ETextKey_Left;
+        break;
+    case SDL_SCANCODE_RIGHT:
+        key = control ? ETextKey_WordRight : ETextKey_Right;
+        break;
+    case SDL_SCANCODE_HOME:
+        key = ETextKey_Home;
+        break;
+    case SDL_SCANCODE_END:
+        key = ETextKey_End;
+        break;
+    case SDL_SCANCODE_PAGEUP:
+        key = ETextKey_PageUp;
+        break;
+    case SDL_SCANCODE_PAGEDOWN:
+        key = ETextKey_PageDown;
+        break;
+    case SDL_SCANCODE_V:
+        if (control && !repeat)
+        {
+            char* clipboard = SDL_GetClipboardText();
+            if (clipboard != 0)
+            {
+                AppendCapturedText(clipboard);
+                SDL_free(clipboard);
+            }
+        }
+        break;
+    default:
+        break;
+    }
+    if (key != ETextKey_None)
+    {
+        capturedKeys.push_back(key);
     }
 }
 

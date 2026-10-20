@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "game/client/audio/SoundEvents.hpp"
+#include "game/core/ChatScreen.hpp"
 #include "game/core/ClientMasterGameMode.hpp"
 #include "game/core/CTelemetryManager.hpp"
 #include "game/core/GameType.hpp"
@@ -29,6 +30,7 @@
 #include "game/ui/fuiRenderNode.hpp"
 #include "game/client/render/TexturePackRepository.hpp"
 #include "game/core/DLCPack.hpp"
+#include "game/core/ExtraStrings.hpp"
 #include "game/client/render/DLCTexturePack.hpp"
 #include "game/core/cCommerce.hpp"
 #include "game/minigame/Tutorial.hpp"
@@ -36,6 +38,7 @@
 #include "game/util/AABB.hpp"
 #include "game/util/Vec3.hpp"
 #include "game/core/Compression.hpp"
+#include "platform/CInput.hpp"
 #include "platform/CProfile.hpp"
 #include "platform/CStorage.hpp"
 #include "platform/Commerce.hpp"
@@ -203,8 +206,8 @@ void UIScene_PauseMenu::updateTooltips()
         gConsoleUIController.SetTooltips(m_playerId, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
                                          false, false);
     else
-        gConsoleUIController.SetTooltips(m_playerId, IDS_TOOLTIPS_SELECT, IDS_TOOLTIPS_BACK, saveTooltip, -1, -1, -1,
-                                         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, false, false);
+        gConsoleUIController.SetTooltips(m_playerId, IDS_TOOLTIPS_SELECT, IDS_TOOLTIPS_BACK, saveTooltip, IDS_LCE_CHAT,
+                                         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, false, false);
 }
 
 void UIScene_PauseMenu::updateComponents()
@@ -253,6 +256,20 @@ void UIScene_PauseMenu::handleInput(int playerId, int action, bool repeat, bool 
         if (pressed)
         {
             gConsoleUIController.PlayUISFX(SoundEvents::UI_BACK);
+            navigateBack();
+        }
+        break;
+    case EControllerActions_MenuY:
+        if (pressed && !repeat)
+        {
+            gConsoleUIController.PlayUISFX(SoundEvents::UI_PRESS);
+#if LCE_PLATFORM_PC
+            const bool keyboard = g_pInput->UsesKeyboard(playerId);
+#else
+            const bool keyboard = false;
+#endif
+            ChatScreen::OpenAfterMenus(playerId,
+                                       keyboard ? ChatScreen::EOpenMode_Keyboard : ChatScreen::EOpenMode_Controller);
             navigateBack();
         }
         break;

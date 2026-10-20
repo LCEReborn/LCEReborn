@@ -6,10 +6,11 @@
 class GuiMessage
 {
 public:
-    GuiMessage(const std::wstring& message);
+    GuiMessage(const std::wstring& message, unsigned int colour = 0xFFFFFF);
 
     std::wstring message;
     int age;
+    unsigned int colour;
 };
 
 #endif

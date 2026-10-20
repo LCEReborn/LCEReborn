@@ -17,6 +17,26 @@ public:
         EPcMenuClick_Secondary = 0x2,
         EPcMenuClick_Quick = 0x4
     };
+    enum ETextKey
+    {
+        ETextKey_None = -1,
+        ETextKey_Backspace,
+        ETextKey_Delete,
+        ETextKey_Enter,
+        ETextKey_Escape,
+        ETextKey_Tab,
+        ETextKey_Up,
+        ETextKey_Down,
+        ETextKey_Left,
+        ETextKey_Right,
+        ETextKey_Home,
+        ETextKey_End,
+        ETextKey_PageUp,
+        ETextKey_PageDown,
+        ETextKey_WordLeft,
+        ETextKey_WordRight,
+        ETextKey_WordBackspace
+    };
     enum EPromptStyle
     {
         EPromptStyle_Keyboard,
@@ -38,7 +58,8 @@ public:
 
     enum EKeyboardMode
     {
-        EKeyboardMode_0 = 0
+        EKeyboardMode_0 = 0,
+        EKeyboardMode_Chat = 8
     };
 
     typedef int (*ErrorViewerCallback)(void*);
@@ -130,6 +151,10 @@ public:
     virtual unsigned int GetPadButtons(int pad, bool pressedOnly) = 0;
     virtual bool ShowsJoinPromptOnLoad() = 0;
     virtual void PlaceMenuPointer(int pad, float x, float y) = 0;
+    virtual void BeginTextCapture(int pad) = 0;
+    virtual void EndTextCapture() = 0;
+    virtual bool ConsumeCapturedText(std::wstring* text) = 0;
+    virtual int ConsumeTextKey() = 0;
 #endif
 };
 

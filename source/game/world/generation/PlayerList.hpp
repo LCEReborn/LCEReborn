@@ -85,6 +85,7 @@ public:
     void broadcastPlaylistInfo(std::vector<LevelRules::LevelRulesetGroup*>* groups);
     std::wstring getPlayerNames();
     boost::shared_ptr<ServerPlayer> getPlayerByName(const std::wstring& name);
+    boost::shared_ptr<ServerPlayer> getPlayerByNameIgnoringCase(const std::wstring& name);
     boost::shared_ptr<ServerPlayer> getPlayerFromStatsUID(const StatsUID& uid);
     void broadcast(boost::shared_ptr<Player> source, double x, double y, double z, double radius, int dimension,
                    boost::shared_ptr<Packet> packet);

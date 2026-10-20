@@ -1,4 +1,5 @@
 #include "game/ui/Tooltips.hpp"
+#include "game/core/ExtraStrings.hpp"
 #include "game/core/StringIds.hpp"
 #include "game/core/EntityType.hpp"
 
@@ -37,7 +38,7 @@
 
 namespace
 {
-const int kTooltipsPerPlayer = 25;
+const int kTooltipsPerPlayer = EControllerActions_Count - EControllerActions_Jump;
 const unsigned int kTooltipMapVote = 0x1a66548e;
 const unsigned int kTooltipVote = 0x44c3150d;
 const unsigned int kTooltipLaunch = 0x568a07be;
@@ -53,7 +54,7 @@ void Tooltips::staticCtor()
     for (playerId = 0; playerId < 4; ++playerId)
     {
         gTooltipsDirty[playerId] = 1;
-        for (action = 0; action < 25; ++action)
+        for (action = 0; action < kTooltipsPerPlayer; ++action)
             gTooltips[playerId * kTooltipsPerPlayer + action] = -1;
     }
 }
@@ -320,13 +321,18 @@ void Tooltips::SetInteractTooltips(boost::shared_ptr<MultiplayerLocalPlayer> pla
     {
         OverwriteTooltip(playerId, EControllerActions_Inventory, static_cast<int>(IDS_CONTROLS_INVENTORY));
     }
+
+    if (CGameNetworkManager::sInstance.GetPlayerCount() > 1)
+        OverwriteTooltip(playerId, EControllerActions_Chat, IDS_LCE_CHAT);
+    else
+        ResetTooltip(playerId, EControllerActions_Chat);
 }
 
 void Tooltips::ResetAllTooltips(int playerId)
 {
     int action;
     gTooltipsDirty[playerId] = 1;
-    for (action = 0; action < 25; ++action)
+    for (action = 0; action < kTooltipsPerPlayer; ++action)
         gTooltips[playerId * kTooltipsPerPlayer + action] = -1;
 }
 

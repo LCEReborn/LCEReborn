@@ -22,6 +22,7 @@
 #include "game/network/ClientboundMoveVehiclePacket.hpp"
 #include "game/network/ClientboundContainerAckPacket.hpp"
 #include "game/network/ClientboundChatPacket.hpp"
+#include "game/network/ServerboundChatPacket.hpp"
 #include "game/network/CGameNetworkManager.hpp"
 #include "game/network/INetworkPlayer.hpp"
 #include "game/network/Packet.hpp"
@@ -56,6 +57,7 @@
 #include "game/core/Merchant.hpp"
 #include "game/core/Slot.hpp"
 #include "game/command/CommandDispatcher.hpp"
+#include "game/command/ChatCommands.hpp"
 #include "game/command/CommandSender.hpp"
 #include "game/entity/mob/AbstractHorse.hpp"
 #include "game/entity/mob/Horse.hpp"
@@ -741,6 +743,30 @@ void ServerGamePacketListenerImpl::handleSetCarriedItem(boost::shared_ptr<Server
 }
 void ServerGamePacketListenerImpl::handleChat(boost::shared_ptr<ClientboundChatPacket> packet)
 {
+}
+void ServerGamePacketListenerImpl::handleChat(boost::shared_ptr<ServerboundChatPacket> packet)
+{
+    const std::wstring text = ChatCommands::CleanMessage(packet->getMessage());
+    if (text.empty())
+        return;
+    mPlayer->resetLastActionTime();
+    if (mChatSpamTickCount > CHAT_SPAM_LIMIT)
+    {
+        ChatCommands::Error(mPlayer, L"You are sending messages too quickly.");
+        return;
+    }
+    mChatSpamTickCount += CHAT_SPAM_STEP;
+    if (text[0] == L'/')
+    {
+        ChatCommands::Run(mPlayer, text);
+        return;
+    }
+    const std::wstring formatted = ChatCommands::FormatMessage(text);
+    if (formatted.empty())
+        return;
+    std::wstring strings[2] = {mPlayer->getName(), formatted};
+    mServer->getPlayers()->broadcastAll(boost::shared_ptr<Packet>(
+        new ClientboundChatPacket(ClientboundChatPacket::eChatPacketMessage_PlayerChat, NULL, 0, strings, 2)));
 }
 void ServerGamePacketListenerImpl::handleAnimate(boost::shared_ptr<ServerboundSwingPacket> packet)
 {

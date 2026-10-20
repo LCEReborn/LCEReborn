@@ -118,6 +118,8 @@ enum EControllerActions
     EControllerActions_AltFlyDown,
     EControllerActions_QuickMoveModifier,
     EControllerActions_ToggleHud,
+    EControllerActions_Chat,
+    EControllerActions_ChatCommand,
     EControllerActions_Count
 };
 enum EJoypadButton
@@ -184,7 +186,7 @@ class GameSettings
     unsigned int mLoggingMask;
     unsigned char mActionMappings[25];
     unsigned char mInventoryMappings[2];
-    unsigned char mReservedBF;
+    unsigned char mChatMapping;
     unsigned int mGlideMiniGameMap;
 
 public:
@@ -200,6 +202,8 @@ public:
     static void SetInventoryMapping(int profile, int control, unsigned char button);
     static int InventoryMenuAction(int control);
     static int InventoryControlForAction(int action);
+    static unsigned char GetChatMapping(int profile);
+    static void SetChatMapping(int profile, unsigned char button);
     static uint8_t GetActionMapping(int, int);
     static void SetActionMapping(int, int, unsigned char);
     static void UpdateActionMapping(int profile, int scheme, bool swapPrimaryButtons);

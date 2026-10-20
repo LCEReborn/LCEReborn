@@ -1,4 +1,6 @@
 #include "game/world/generation/PlayerList.hpp"
+
+#include "game/core/StringUtils.hpp"
 #include "platform/CProfile.hpp"
 #include "game/core/StringIds.hpp"
 #include "game/core/EntityType.hpp"
@@ -1347,6 +1349,20 @@ boost::shared_ptr<ServerPlayer> PlayerList::getPlayerByName(const std::wstring& 
         boost::shared_ptr<ServerPlayer> player = mPlayers[i];
         if (player->getName() == name)
             return player;
+    }
+    return boost::shared_ptr<ServerPlayer>();
+}
+
+boost::shared_ptr<ServerPlayer> PlayerList::getPlayerByNameIgnoringCase(const std::wstring& name)
+{
+    boost::shared_ptr<ServerPlayer> exact = getPlayerByName(name);
+    if (exact)
+        return exact;
+    const std::wstring wanted = toLower(name);
+    for (unsigned int i = 0; i < mPlayers.size(); ++i)
+    {
+        if (toLower(mPlayers[i]->getName()) == wanted)
+            return mPlayers[i];
     }
     return boost::shared_ptr<ServerPlayer>();
 }

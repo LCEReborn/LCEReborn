@@ -96,6 +96,7 @@
 #include "game/core/GhostController.hpp"
 #include "game/core/GlStateManager.hpp"
 #include "game/core/GrassColor.hpp"
+#include "game/core/ChatScreen.hpp"
 #include "game/core/Gui.hpp"
 #include "game/core/HitResult.hpp"
 #include "game/core/Input.hpp"
@@ -2363,6 +2364,7 @@ void Minecraft::run_middle()
             continue;
         }
 
+        ChatScreen::Tick(i);
         gApp.ProcessFakePadValueA();
 
         if (g_pInput->ButtonPressed(i, EControllerActions_Jump,
@@ -2402,6 +2404,24 @@ void Minecraft::run_middle()
             unsigned char show = GameSettings::GetGameSettings(i, eGameSetting_DisplayHUD) != 0 ? 0 : 1;
             GameSettings::SetGameSettings(i, eGameSetting_DisplayHUD, show);
             GameSettings::SetGameSettings(i, eGameSetting_DisplayHand, show);
+        }
+        {
+#if LCE_PLATFORM_PC
+            const bool keyboard = g_pInput->UsesKeyboard(i);
+#else
+            const bool keyboard = false;
+#endif
+            if (keyboard && g_pInput->ButtonPressed(i, EControllerActions_ChatCommand, 0))
+                ChatScreen::Open(i, ChatScreen::EOpenMode_Command);
+            else if (g_pInput->ButtonPressed(i, EControllerActions_Chat, 0)
+                     && (keyboard || !mLocalPlayers[i]->mAbilities.mFlying
+                         || (GameSettings::GetInputButton(i, false, EControllerActions_Chat)
+                             & (GameSettings::GetInputButton(i, false, EControllerActions_FlyLeft)
+                                | GameSettings::GetInputButton(i, false, EControllerActions_FlyRight)
+                                | GameSettings::GetInputButton(i, false, EControllerActions_FlyUp)
+                                | GameSettings::GetInputButton(i, false, EControllerActions_FlyDown)))
+                                == 0))
+                ChatScreen::Open(i, keyboard ? ChatScreen::EOpenMode_Keyboard : ChatScreen::EOpenMode_Controller);
         }
         if (g_pInput->ButtonPressed(i, EControllerActions_ConfirmReady,
                                     GameSettings::GetInputButton(i, true, EControllerActions_ConfirmReady)))

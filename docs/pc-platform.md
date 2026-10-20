@@ -89,6 +89,40 @@ shows that world or mini game. The PC keeps the saved servers in
 Mini Games menu's Join tab lists the same saved servers but only the mini
 games found on the local network.
 
+## Chat
+
+Chat is drawn by the game itself (`game/core/ChatScreen`), so it works the
+same on PC and Wii U. Messages are up to 100 characters and show as
+`<name> message` for everyone in the game; the last ones fade out above the
+hotbar, and the prompt bar shows Chat while other players are in the game.
+
+- **Keyboard:** T opens chat and `/` opens it with a command started. A text
+  field opens along the bottom with the history above it. Tab completes
+  commands, their arguments and player names, Up and Down choose a
+  suggestion or recall sent messages, Page Up and Page Down or the wheel
+  scroll the history, Enter sends and Esc closes.
+- **Controllers:** D-pad Right opens a panel with two tabs, and Select
+  switches between them. Quick Chat sends a phrase, your position or starts a
+  reply with A. Keyboard is an on-screen keyboard: A types, X deletes, Y adds
+  a space, LT is Shift, LB and RB choose a suggestion, RT completes it and
+  Start sends. Pressing the right stick shows the whole chat history across
+  the screen; Up and Down scroll it, LT and RT scroll a page and B goes back. On the Wii U GamePad the Keyboard tab opens the GamePad's own
+  keyboard instead. While flying, D-pad Right steers and does not open chat.
+- **Pause menu:** Y opens chat for any device.
+
+Messages can use Java's formatting codes with `&`: `&0` to `&f` for colors,
+`&l` bold, `&o` italic, `&n` underline, `&m` strikethrough, `&k` obfuscated
+and `&r` to reset. The server turns them into `§` codes, which the game's
+font draws (`Font::draw`).
+
+The Chat button can be changed in Controls for keyboards and controllers.
+
+A message starting with `/` is a command: `/time`, `/weather`, `/gamemode`,
+`/tp` and `/kill`, and `/help` lists them. They follow the game's own
+permission rule: the host and moderators can use them when the world has
+Host Privileges on (`ChatCommands` in `game/command/`). Anyone else is told
+they don't have permission.
+
 ## Logging
 
 The game logs through `platform/pc/Log`. Each file declares a named logger

@@ -18,7 +18,7 @@ class PcKeyboardMouse
 public:
     enum
     {
-        ACTION_COUNT = 64,
+        ACTION_COUNT = 72,
         SCANCODE_COUNT = 512,
         MOUSE_BUTTON_COUNT = 8,
         INPUT_WHEEL_UP = SCANCODE_COUNT + MOUSE_BUTTON_COUNT,

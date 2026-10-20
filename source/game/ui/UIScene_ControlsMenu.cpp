@@ -225,13 +225,16 @@ void UIScene_ControlsMenu::Init(int player)
     m_controlsList.AddNewLabel(L10N::GetString(IDS_CONTROLS_INVENTORY), EControl_Label);
     AddControlRow(player, EControl_QuickMove, L10N::GetString(IDS_TOOLTIPS_QUICK_MOVE));
     AddControlRow(player, EControl_TakeHalf, L"Take Half");
+    m_controlsList.AddNewLabel(L" ", EControl_Label);
+    m_controlsList.AddNewLabel(L"Other", EControl_Label);
     if (UsesKeyboard(player))
     {
-        m_controlsList.AddNewLabel(L" ", EControl_Label);
-        m_controlsList.AddNewLabel(L"Other", EControl_Label);
         AddControlRow(player, EControl_PlayerList, L"Player List");
         AddControlRow(player, EControl_ToggleHud, L"Hide HUD");
     }
+    AddControlRow(player, EControl_Chat, L"Chat");
+    if (UsesKeyboard(player))
+        AddControlRow(player, EControl_ChatCommand, L"Command");
 
     m_controlsList.EnableItem(EControl_Look, false, true);
     m_controlsList.EnableItem(EControl_Move, false, true);
@@ -368,6 +371,10 @@ int UIScene_ControlsMenu::GetControlsAction(EControl control)
         return EControllerActions_Scoreboard;
     case EControl_ToggleHud:
         return EControllerActions_ToggleHud;
+    case EControl_Chat:
+        return EControllerActions_Chat;
+    case EControl_ChatCommand:
+        return EControllerActions_ChatCommand;
     default:
         return -1;
     }
@@ -393,10 +400,29 @@ int UIScene_ControlsMenu::InventoryControl(EControl control)
     }
 }
 
+unsigned char UIScene_ControlsMenu::PadMapping(int player, EControl control)
+{
+    if (InventoryControl(control) >= 0)
+        return GameSettings::GetInventoryMapping(player, InventoryControl(control));
+    if (control == EControl_Chat)
+        return GameSettings::GetChatMapping(player);
+    return GameSettings::GetActionMapping(player, GetControlsAction(control) - EControllerActions_Jump);
+}
+
+void UIScene_ControlsMenu::SetPadMapping(int player, EControl control, unsigned char mapping)
+{
+    if (InventoryControl(control) >= 0)
+        GameSettings::SetInventoryMapping(player, InventoryControl(control), mapping);
+    else if (control == EControl_Chat)
+        GameSettings::SetChatMapping(player, mapping);
+    else
+        GameSettings::SetActionMapping(player, GetControlsAction(control) - EControllerActions_Jump, mapping);
+}
+
 int UIScene_ControlsMenu::ControlGroup(EControl control)
 {
     if ((control >= EControl_Use && control <= EControl_FlyDown) || control == EControl_PlayerList
-        || control == EControl_ToggleHud)
+        || control == EControl_ToggleHud || control == EControl_Chat || control == EControl_ChatCommand)
         return 0;
     if (control >= EControl_ConfirmReady && control <= EControl_Vote)
         return 1;
@@ -415,10 +441,9 @@ std::wstring UIScene_ControlsMenu::GetControlsString(EControl control, bool& map
     int action = GetControlsAction(control);
     if (action < 0)
         return result;
-    int inventory = InventoryControl(control);
-    if (inventory >= 0 && !UsesKeyboard(m_playerId))
+    if ((InventoryControl(control) >= 0 || control == EControl_Chat) && !UsesKeyboard(m_playerId))
     {
-        unsigned char button = GameSettings::GetInventoryMapping(m_playerId, inventory);
+        unsigned char button = PadMapping(m_playerId, control);
         mapped = button != 0;
         if (!mapped)
             return L" " + std::wstring(L10N::GetString(IDS_CONTROLS_NONE));
@@ -644,6 +669,11 @@ unsigned int UIScene_ControlsMenu::CheckControls(int player, EControl control)
         if (candidate == control || ControlGroup(static_cast<EControl>(candidate)) != group
             || !m_controlsList.CheckElementExists(candidate))
             continue;
+        const bool chatPair = control == EControl_Chat || candidate == EControl_Chat;
+        const bool flyPair = (control >= EControl_FlyLeft && control <= EControl_FlyDown)
+                             || (candidate >= EControl_FlyLeft && candidate <= EControl_FlyDown);
+        if (chatPair && flyPair)
+            continue;
         if (SameMapping(player, control, static_cast<EControl>(candidate)))
         {
             found = true;
@@ -670,9 +700,7 @@ bool UIScene_ControlsMenu::HasMapping(int player, EControl control)
     if (UsesKeyboard(player))
         return g_pInput->HasKeyBinding(GetControlsAction(control));
 #endif
-    if (InventoryControl(control) >= 0)
-        return GameSettings::GetInventoryMapping(player, InventoryControl(control)) != 0;
-    return GameSettings::GetActionMapping(player, GetControlsAction(control) - EControllerActions_Jump) != 0;
+    return PadMapping(player, control) != 0;
 }
 
 bool UIScene_ControlsMenu::SameMapping(int player, EControl control, EControl otherControl)
@@ -688,6 +716,11 @@ bool UIScene_ControlsMenu::SameMapping(int player, EControl control, EControl ot
         unsigned char button = GameSettings::GetInventoryMapping(player, InventoryControl(control));
         return button != 0 && button == GameSettings::GetInventoryMapping(player, InventoryControl(otherControl));
     }
+    if (control == EControl_Chat || otherControl == EControl_Chat)
+    {
+        unsigned char button = PadMapping(player, control);
+        return button != 0 && button == PadMapping(player, otherControl);
+    }
     return GameSettings::GetActionMapping(player, GetControlsAction(control) - EControllerActions_Jump)
            == GameSettings::GetActionMapping(player, GetControlsAction(otherControl) - EControllerActions_Jump);
 }
@@ -701,12 +734,7 @@ void UIScene_ControlsMenu::ClearMapping(int player, EControl control)
         return;
     }
 #endif
-    if (InventoryControl(control) >= 0)
-    {
-        GameSettings::SetInventoryMapping(player, InventoryControl(control), 0);
-        return;
-    }
-    GameSettings::SetActionMapping(player, GetControlsAction(control) - EControllerActions_Jump, 0);
+    SetPadMapping(player, control, 0);
 }
 
 bool UIScene_ControlsMenu::UsesKeyboard(int player)
@@ -812,11 +840,7 @@ void UIScene_ControlsMenu::HandlePadCapture(int player)
 void UIScene_ControlsMenu::CommitPadButton(int player, unsigned char button)
 {
     EControl control = static_cast<EControl>(m_controlsList.getCurrentSelection());
-    int inventory = InventoryControl(control);
-    if (inventory >= 0)
-        GameSettings::SetInventoryMapping(player, inventory, button);
-    else
-        GameSettings::SetActionMapping(player, GetControlsAction(control) - EControllerActions_Jump, button);
+    SetPadMapping(player, control, button);
     GameSettings::SetSettingsChanged(player);
     m_mappingsChanged = true;
     FinishButtonEdit(player);
@@ -858,9 +882,7 @@ void UIScene_ControlsMenu::HandleButtonEdit(int player, int action, bool repeat,
         unsigned char mapping = (m_buttonCount == 1)
                                     ? m_firstButton
                                     : static_cast<unsigned char>(m_secondButton | (m_firstButton << 4));
-        GameSettings::SetActionMapping(
-            player, GetControlsAction((EControl)m_controlsList.getCurrentSelection()) - EControllerActions_Jump,
-            mapping);
+        SetPadMapping(player, (EControl)m_controlsList.getCurrentSelection(), mapping);
         GameSettings::SetSettingsChanged(player);
         m_mappingsChanged = true;
 

@@ -84,7 +84,9 @@ const ActionNameEntry kActionNames[] = {
     {EControllerActions_AltFlyUp, "AltFlyUp"},
     {EControllerActions_AltFlyDown, "AltFlyDown"},
     {EControllerActions_QuickMoveModifier, "QuickMove"},
-    {EControllerActions_ToggleHud, "ToggleHud"}};
+    {EControllerActions_ToggleHud, "ToggleHud"},
+    {EControllerActions_Chat, "Chat"},
+    {EControllerActions_ChatCommand, "ChatCommand"}};
 
 const char* const kContextNames[EPcInputContext_Count] = {"menu", "game"};
 
@@ -248,6 +250,8 @@ void PcKeyboardMouse::SetDefaultBindings()
     AddBinding(game, EControllerActions_RestartRace, Key(SDL_SCANCODE_BACKSPACE));
     AddBinding(game, EControllerActions_LookBehind, Key(SDL_SCANCODE_F));
     AddBinding(game, EControllerActions_ToggleHud, Key(SDL_SCANCODE_F1));
+    AddBinding(game, EControllerActions_Chat, Key(SDL_SCANCODE_T));
+    AddBinding(game, EControllerActions_ChatCommand, Key(SDL_SCANCODE_SLASH));
     AddBinding(game, EControllerActions_MenuA, Key(SDL_SCANCODE_RETURN));
     AddBinding(game, EControllerActions_MenuA, Key(SDL_SCANCODE_SPACE));
     AddBinding(game, EControllerActions_MenuOk, Key(SDL_SCANCODE_RETURN));

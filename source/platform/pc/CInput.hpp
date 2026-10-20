@@ -101,6 +101,10 @@ public:
     virtual unsigned int GetPadButtons(int pad, bool pressedOnly);
     virtual bool ShowsJoinPromptOnLoad();
     virtual void PlaceMenuPointer(int pad, float x, float y);
+    virtual void BeginTextCapture(int pad);
+    virtual void EndTextCapture();
+    virtual bool ConsumeCapturedText(std::wstring* text);
+    virtual int ConsumeTextKey();
 
 private:
     friend void PcInputHandleEvent(const SDL_Event& event);
@@ -222,6 +226,8 @@ private:
     void FinishKeyboard(bool accepted);
     void HandleKeyboardTextInput(const char* text);
     void HandleKeyboardKey(int scancode, unsigned short modifiers, bool repeat);
+    void HandleTextCaptureKey(int scancode, unsigned short modifiers, bool repeat);
+    void AppendCapturedText(const char* text);
     bool AppendKeyboardCodepoint(unsigned int codepoint);
     void TickVerifyStrings();
 
@@ -262,6 +268,10 @@ private:
     bool menuDrawsPointer;
     bool cursorShown;
     bool windowFocused;
+    bool textCapture;
+    unsigned int textCaptureWindowId;
+    std::wstring capturedText;
+    std::vector<int> capturedKeys;
     unsigned int lastWindowId;
 
     EKeyboardState keyboardState;

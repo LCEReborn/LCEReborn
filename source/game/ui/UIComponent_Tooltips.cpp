@@ -774,6 +774,9 @@ void UIComponent_Tooltips::SetTooltips(int player, int* tooltips, bool visible)
     changed = HandleToolTipButton(player, EControllerActions_RestartRace, button,
                                   tooltips[EControllerActions_RestartRace - EControllerActions_Jump])
               || changed;
+    changed = HandleToolTipButton(player, EControllerActions_Chat, button,
+                                  tooltips[EControllerActions_Chat - EControllerActions_Jump])
+              || changed;
     for (unsigned int index = button; index < 16; ++index)
     {
         if (m_tooltipValues[index].m_enabled)

@@ -174,6 +174,13 @@ public:
     void skyColorChanged();
     static unsigned int getGlobalChunkCountForOverworld();
 
+    int GetEntityCount() const
+    {
+        return mCountEntitiesTotal;
+    }
+
+    static volatile unsigned int sChunkUpdates;
+
 private:
     friend class Minecraft;
     friend class Chunk;

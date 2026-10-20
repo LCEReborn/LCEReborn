@@ -120,6 +120,7 @@ enum EControllerActions
     EControllerActions_ToggleHud,
     EControllerActions_Chat,
     EControllerActions_ChatCommand,
+    EControllerActions_DebugOverlay,
     EControllerActions_Count
 };
 enum EJoypadButton
@@ -174,11 +175,11 @@ class GameSettings
     unsigned int mFavoriteSkins[10];
     unsigned char mFavoriteSkinsPos;
     unsigned char mFavoriteSkinsCount;
-    unsigned short mReserved2;
+    unsigned short mDebugOverlayLow;
     unsigned int mHiddenMashupWorlds;
     unsigned char mMinecraftLanguage;
     unsigned char mMinecraftLocale;
-    unsigned short mReserved3;
+    unsigned short mDebugOverlayHigh;
     unsigned int mGameModeOptions;
     unsigned char mHostOptionVersion;
     unsigned char mReserved4[3];
@@ -203,6 +204,8 @@ public:
     static int InventoryMenuAction(int control);
     static int InventoryControlForAction(int action);
     static unsigned char GetChatMapping(int profile);
+    static int GetDebugOverlayState(int profile, int entry);
+    static void SetDebugOverlayState(int profile, int entry, int state);
     static void SetChatMapping(int profile, unsigned char button);
     static uint8_t GetActionMapping(int, int);
     static void SetActionMapping(int, int, unsigned char);

@@ -86,7 +86,8 @@ const ActionNameEntry kActionNames[] = {
     {EControllerActions_QuickMoveModifier, "QuickMove"},
     {EControllerActions_ToggleHud, "ToggleHud"},
     {EControllerActions_Chat, "Chat"},
-    {EControllerActions_ChatCommand, "ChatCommand"}};
+    {EControllerActions_ChatCommand, "ChatCommand"},
+    {EControllerActions_DebugOverlay, "DebugOverlay"}};
 
 const char* const kContextNames[EPcInputContext_Count] = {"menu", "game"};
 
@@ -252,6 +253,7 @@ void PcKeyboardMouse::SetDefaultBindings()
     AddBinding(game, EControllerActions_ToggleHud, Key(SDL_SCANCODE_F1));
     AddBinding(game, EControllerActions_Chat, Key(SDL_SCANCODE_T));
     AddBinding(game, EControllerActions_ChatCommand, Key(SDL_SCANCODE_SLASH));
+    AddBinding(game, EControllerActions_DebugOverlay, Key(SDL_SCANCODE_F3));
     AddBinding(game, EControllerActions_MenuA, Key(SDL_SCANCODE_RETURN));
     AddBinding(game, EControllerActions_MenuA, Key(SDL_SCANCODE_SPACE));
     AddBinding(game, EControllerActions_MenuOk, Key(SDL_SCANCODE_RETURN));

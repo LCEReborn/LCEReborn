@@ -26,6 +26,7 @@
 #include "game/core/HumanoidArm.hpp"
 #include "game/core/L10N.hpp"
 #include "game/core/LerpingBossEvent.hpp"
+#include "game/core/DebugOverlay.hpp"
 #include "game/core/Minecraft.hpp"
 #include "game/core/Mth.hpp"
 #include "game/core/StringConversion.hpp"
@@ -2016,6 +2017,7 @@ void UIScene_HUD::render(int width, int height, C4JRender::eViewportType viewpor
     if (!m_splitScreen)
     {
         UIScene::render(width, height, viewport);
+        DebugOverlay::RenderScreen(m_playerId, viewport, width, height);
         return;
     }
 
@@ -2069,6 +2071,7 @@ void UIScene_HUD::render(int width, int height, C4JRender::eViewportType viewpor
 
     gFui->render(m_movie, 0.0f, static_cast<float>(movieY), static_cast<float>(renderWidth),
                  static_cast<float>(renderHeight));
+    DebugOverlay::RenderScreen(m_playerId, viewport, width, height);
 }
 void UIScene_HUD::updateViewportTouchOffset()
 {

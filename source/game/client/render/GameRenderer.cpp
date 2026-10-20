@@ -472,6 +472,7 @@ int GameRenderer::runUpdate(void*)
         do
         {
             const int updated = minecraft->mLevelRenderer->updateDirtyChunks(dirtyChunkBuffer);
+            LevelRenderer::sChunkUpdates += static_cast<unsigned int>(updated);
             ++passCount;
             if (updated == 0)
                 break;

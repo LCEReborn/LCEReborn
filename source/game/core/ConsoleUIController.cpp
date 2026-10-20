@@ -2056,7 +2056,7 @@ void ConsoleUIController::HandlePointerInput(unsigned int pad)
     if (IsReloadingSkin() || m_rebuildingTouchBoxes || !g_pInput->GetMenuPointer((int)pad, &pointerX, &pointerY))
         return;
 
-    if (scene == 0 || containerScene)
+    if (scene == 0 || containerScene || scene->handlesPointer())
     {
         m_pointerHoverControl = 0;
         return;

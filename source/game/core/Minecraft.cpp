@@ -97,6 +97,7 @@
 #include "game/core/GlStateManager.hpp"
 #include "game/core/GrassColor.hpp"
 #include "game/core/ChatScreen.hpp"
+#include "game/core/DebugOverlay.hpp"
 #include "game/core/Gui.hpp"
 #include "game/core/HitResult.hpp"
 #include "game/core/Input.hpp"
@@ -2394,8 +2395,11 @@ void Minecraft::run_middle()
         {
             mLocalPlayers[i]->mButtonsDown |= 1LL << EControllerActions_Sneak;
         }
-        if (g_pInput->ButtonPressed(i, EControllerActions_ChangeCameraMode,
-                                    GameSettings::GetInputButton(i, true, EControllerActions_ChangeCameraMode)))
+        const bool stickChord = g_pInput->ButtonDown(i, EControllerActions_MenuStickPress)
+                                && g_pInput->ButtonDown(i, EControllerActions_MenuOtherStickPress);
+        if (!stickChord
+            && g_pInput->ButtonPressed(i, EControllerActions_ChangeCameraMode,
+                                       GameSettings::GetInputButton(i, true, EControllerActions_ChangeCameraMode)))
             mLocalPlayers[i]->mButtonsDown |= 1LL << EControllerActions_ChangeCameraMode;
         if (g_pInput->ButtonPressed(i, EControllerActions_Scoreboard, 0))
             mLocalPlayers[i]->mButtonsDown |= 1LL << EControllerActions_Scoreboard;
@@ -2422,6 +2426,11 @@ void Minecraft::run_middle()
                                 | GameSettings::GetInputButton(i, false, EControllerActions_FlyDown)))
                                 == 0))
                 ChatScreen::Open(i, keyboard ? ChatScreen::EOpenMode_Keyboard : ChatScreen::EOpenMode_Controller);
+            if (keyboard ? g_pInput->ButtonPressed(i, EControllerActions_DebugOverlay, 0)
+                         : stickChord && !gConsoleUIController.GetMenuDisplayed(i)
+                               && (g_pInput->ButtonPressed(i, EControllerActions_MenuStickPress, 0)
+                                   || g_pInput->ButtonPressed(i, EControllerActions_MenuOtherStickPress, 0)))
+                DebugOverlay::Toggle(i);
         }
         if (g_pInput->ButtonPressed(i, EControllerActions_ConfirmReady,
                                     GameSettings::GetInputButton(i, true, EControllerActions_ConfirmReady)))

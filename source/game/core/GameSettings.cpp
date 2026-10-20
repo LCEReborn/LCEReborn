@@ -465,6 +465,24 @@ void GameSettings::SetChatMapping(int profile, unsigned char button)
     g_pInput->SetGameJoypadMaps(profile, EControllerActions_Chat, GetInputButton(static_cast<unsigned int>(button)));
 }
 
+int GameSettings::GetDebugOverlayState(int profile, int entry)
+{
+    const unsigned int packed = gGameSettings[profile]->mDebugOverlayLow
+                                | (static_cast<unsigned int>(gGameSettings[profile]->mDebugOverlayHigh) << 16);
+    const int state = static_cast<int>((packed >> (entry * 2)) & 3);
+    return state == 3 ? 0 : state;
+}
+
+void GameSettings::SetDebugOverlayState(int profile, int entry, int state)
+{
+    unsigned int packed = gGameSettings[profile]->mDebugOverlayLow
+                          | (static_cast<unsigned int>(gGameSettings[profile]->mDebugOverlayHigh) << 16);
+    packed = (packed & ~(3u << (entry * 2))) | (static_cast<unsigned int>(state & 3) << (entry * 2));
+    gGameSettings[profile]->mDebugOverlayLow = static_cast<unsigned short>(packed & 0xFFFF);
+    gGameSettings[profile]->mDebugOverlayHigh = static_cast<unsigned short>(packed >> 16);
+    gGameSettings[profile]->mChanged = 1;
+}
+
 int GameSettings::InventoryMenuAction(int control)
 {
     return kInventoryActions[control];

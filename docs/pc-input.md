@@ -163,9 +163,10 @@ is using, and every row shows that device's buttons or keys.
   Quick Move is the key held while clicking (Shift by default) and Take Half
   is X. Take Everything stays on the tab-switching button it shares in the
   original game, so it has no row of its own.
-- **Other** (keyboard only): Player List (Tab), Hide HUD (F1), which hides
-  the HUD and hand together and shows them again, Chat (T) and Command (`/`),
-  which opens chat with a command started.
+- **Other**: Chat on every device. The keyboard also has Player List (Tab),
+  Hide HUD (F1), which hides the HUD and hand together and shows them again,
+  Command (`/`), which opens chat with a command started, and Debug Overlay
+  (F3).
 - Both devices share the game's conflict rule: binding an input already used
   by another action in the same group clears that action and asks the player
   to give it a new one. Leaving the menu with a required action unbound

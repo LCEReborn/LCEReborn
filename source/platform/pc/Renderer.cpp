@@ -43,6 +43,7 @@ struct RenderSamplerState
 namespace
 {
 const Logger sLog("Renderer");
+std::string sGpuName;
 const int TEXTURE_COUNT = 512;
 const int TEXTURE_STAGE_COUNT = 4;
 const int MAX_CHUNK_GRID_WIDTH = 2 * VideoSettings::RENDER_DISTANCE_MAX;
@@ -2065,6 +2066,7 @@ void Renderer::Initialise(bool bFirstTime)
         LOG_INFO(sLog, "%s / %s / %s", reinterpret_cast<const char*>(Gl::GetString(Gl::VENDOR)),
                  reinterpret_cast<const char*>(Gl::GetString(Gl::RENDERER)),
                  reinterpret_cast<const char*>(Gl::GetString(Gl::VERSION)));
+        sGpuName = reinterpret_cast<const char*>(Gl::GetString(Gl::RENDERER));
 
         mDevice = new Device;
         mDevice->Create(UI_WIDTH, UI_HEIGHT);
@@ -5244,4 +5246,9 @@ int Renderer::CommandBuffer::getNumVertices()
     }
 
     return numVertices;
+}
+
+const char* PcGpuName()
+{
+    return sGpuName.c_str();
 }

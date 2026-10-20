@@ -234,7 +234,10 @@ void UIScene_ControlsMenu::Init(int player)
     }
     AddControlRow(player, EControl_Chat, L"Chat");
     if (UsesKeyboard(player))
+    {
         AddControlRow(player, EControl_ChatCommand, L"Command");
+        AddControlRow(player, EControl_DebugOverlay, L"Debug Overlay");
+    }
 
     m_controlsList.EnableItem(EControl_Look, false, true);
     m_controlsList.EnableItem(EControl_Move, false, true);
@@ -375,6 +378,8 @@ int UIScene_ControlsMenu::GetControlsAction(EControl control)
         return EControllerActions_Chat;
     case EControl_ChatCommand:
         return EControllerActions_ChatCommand;
+    case EControl_DebugOverlay:
+        return EControllerActions_DebugOverlay;
     default:
         return -1;
     }
@@ -422,7 +427,8 @@ void UIScene_ControlsMenu::SetPadMapping(int player, EControl control, unsigned 
 int UIScene_ControlsMenu::ControlGroup(EControl control)
 {
     if ((control >= EControl_Use && control <= EControl_FlyDown) || control == EControl_PlayerList
-        || control == EControl_ToggleHud || control == EControl_Chat || control == EControl_ChatCommand)
+        || control == EControl_ToggleHud || control == EControl_Chat || control == EControl_ChatCommand
+        || control == EControl_DebugOverlay)
         return 0;
     if (control >= EControl_ConfirmReady && control <= EControl_Vote)
         return 1;

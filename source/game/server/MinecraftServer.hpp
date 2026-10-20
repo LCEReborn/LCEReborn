@@ -39,6 +39,7 @@ class _NetworkGameInitData;
 class MinecraftServer : public ConsoleInputSource
 {
 public:
+    static volatile float sAverageTickMilliseconds;
     struct postProcessRequest
     {
         int x;

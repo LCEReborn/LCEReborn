@@ -123,6 +123,18 @@ permission rule: the host and moderators can use them when the world has
 Host Privileges on (`ChatCommands` in `game/command/`). Anyone else is told
 they don't have permission.
 
+## Debug overlay
+
+A Java-style debug overlay (`game/core/DebugOverlay`) shows position, world,
+performance, system and server lines in grouped panels in the top-left
+corner. F3 opens it on a keyboard and pressing both sticks together opens it
+on a controller, on PC and Wii U.
+
+Settings > More Options > Debug Overlay sets each line to Always, With F3 or
+Off, with presets and a live preview (`UIScene_DebugOverlayMenu`). Lines set
+to Always show without opening the overlay, which suits the Wii U GamePad.
+The choices are saved in each player's profile.
+
 ## Logging
 
 The game logs through `platform/pc/Log`. Each file declares a named logger

@@ -38,6 +38,14 @@ const wchar_t* ExtraString(int id)
         return L"History";
     case IDS_LCE_CHAT_SCROLL:
         return L"Scroll";
+    case IDS_LCE_DEBUG_CHANGE:
+        return L"Change";
+    case IDS_LCE_DEBUG_PREVIEW:
+        return L"Preview";
+    case IDS_LCE_DEBUG_PRESET:
+        return L"Preset";
+    case IDS_LCE_DEBUG_RESET:
+        return L"Reset";
     default:
         return NULL;
     }

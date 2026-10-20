@@ -238,6 +238,11 @@ bool UIScene::blocksInput()
     return false;
 }
 
+bool UIScene::handlesPointer()
+{
+    return false;
+}
+
 UIControl* UIScene::GetMainPanel()
 {
     return 0;

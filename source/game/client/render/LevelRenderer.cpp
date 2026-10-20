@@ -151,6 +151,8 @@ int getChunkIndex(int dimension, int x, int y, int z)
     return -1;
 }
 
+volatile unsigned int LevelRenderer::sChunkUpdates = 0;
+
 LevelRenderer::DestroyedBlockManager::RecentBlock::RecentBlock(const BlockPos& blockPos, Level* sourceLevel)
     : pos(blockPos),
       level(sourceLevel),

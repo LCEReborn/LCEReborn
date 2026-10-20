@@ -17,10 +17,12 @@ public:
         eItem_FancyGraphics,
         eItem_SmoothLighting,
         eItem_Particles,
-        eItem_BiomeBlend
+        eItem_BiomeBlend,
+        eItem_DebugOverlay
     };
 
     virtual void Build(UIScene_CustomMenu& menu);
+    virtual void OnPress(UIScene_CustomMenu& menu, int id);
     virtual void OnToggle(UIScene_CustomMenu& menu, int id, bool checked);
     virtual void OnSlide(UIScene_CustomMenu& menu, int id, int value);
 

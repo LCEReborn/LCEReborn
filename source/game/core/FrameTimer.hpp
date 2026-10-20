@@ -14,6 +14,7 @@ public:
     int getLogStart();
     int getLogEnd();
     long long* getLog();
+    int getLogLength();
 
 private:
     long long mLoggedTimes[240];

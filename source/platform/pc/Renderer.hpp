@@ -248,4 +248,6 @@ private:
 extern Renderer* gRenderer;
 extern Renderer* gRendererInstance;
 
+const char* PcGpuName();
+
 #endif

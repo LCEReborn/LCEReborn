@@ -32,3 +32,23 @@ void FrameTimer::logFrameDuration(long long duration)
         mLogStart = wrapIndex(mLogEnd + 1);
     }
 }
+
+int FrameTimer::getLogStart()
+{
+    return mLogStart;
+}
+
+int FrameTimer::getLogEnd()
+{
+    return mLogEnd;
+}
+
+int FrameTimer::getLogLength()
+{
+    return mLogLength;
+}
+
+long long* FrameTimer::getLog()
+{
+    return mLoggedTimes;
+}

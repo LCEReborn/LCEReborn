@@ -92,7 +92,8 @@ enum EUIScene
     EUIScene_AchievementsMenu = 0x51,
     EUIScene_CustomMenu = 0x52,
     EUIScene_EditServerMenu = 0x53,
-    EUIScene_None = 0x54,
+    EUIScene_DebugOverlayMenu = 0x54,
+    EUIScene_None = 0x55,
     EUIScene_Count
 };
 

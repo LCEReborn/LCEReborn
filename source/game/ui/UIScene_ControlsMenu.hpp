@@ -50,6 +50,7 @@ public:
         EControl_ToggleHud,
         EControl_Chat,
         EControl_ChatCommand,
+        EControl_DebugOverlay,
         EControl_Label
     };
 

@@ -833,6 +833,8 @@ void MinecraftServer::fjSetServerPaused(bool paused)
     }
 }
 
+volatile float MinecraftServer::sAverageTickMilliseconds = 0.0f;
+
 void MinecraftServer::tick()
 {
     std::vector<std::wstring> expiredTimers;
@@ -1004,7 +1006,11 @@ void MinecraftServer::run(long long seed, void* argument)
                         unprocessedTime -= 50;
                         chunkPacketManagement_PreTick();
                         PIXBeginNamedEvent(0.0f, "Server tick");
+                        const uint64_t tickStart = System::processTimeInNanoSecs();
                         tick();
+                        const float tickMilliseconds =
+                            static_cast<float>(System::processTimeInNanoSecs() - tickStart) / 1000000.0f;
+                        sAverageTickMilliseconds = sAverageTickMilliseconds * 0.95f + tickMilliseconds * 0.05f;
                         PIXEndNamedEvent();
                     }
                 }

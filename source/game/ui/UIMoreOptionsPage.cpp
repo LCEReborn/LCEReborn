@@ -3,11 +3,15 @@
 #include <cwchar>
 #include <string>
 
+#include "game/core/ConsoleUIController.hpp"
 #include "game/core/VideoSettings.hpp"
+#include "game/ui/UILayer.hpp"
 #include "game/ui/UIScene_CustomMenu.hpp"
 #if LCE_PLATFORM_PC
 #include "platform/pc/PcWindow.hpp"
 #endif
+
+extern ConsoleUIController gConsoleUIController;
 
 void UIMoreOptionsPage::Build(UIScene_CustomMenu& menu)
 {
@@ -40,6 +44,17 @@ void UIMoreOptionsPage::Build(UIScene_CustomMenu& menu)
                    VideoSettings::GetBiomeBlend(),
                    L"Smooths grass, leaf and water colours across biome borders. Wider blending looks softer but "
                    L"builds chunks more slowly. The original game blends 3x3.");
+    menu.AddButton(eItem_DebugOverlay, L"Debug Overlay",
+                   L"Choose what the debug overlay shows down the left of the screen: each line is always shown, "
+                   L"shown while it is open, or off. F3 opens it on a keyboard, and both sticks pressed together "
+                   L"on a controller.");
+}
+
+void UIMoreOptionsPage::OnPress(UIScene_CustomMenu& menu, int id)
+{
+    if (id == eItem_DebugOverlay)
+        gConsoleUIController.NavigateToScene(menu.GetPlayer(), EUIScene_DebugOverlayMenu, NULL, EUILayer_Scene,
+                                             EUIGroup_PlayerDefault);
 }
 
 void UIMoreOptionsPage::OnToggle(UIScene_CustomMenu&, int id, bool checked)

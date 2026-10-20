@@ -1,11 +1,20 @@
 #include "platform/pc/PcSystemInfo.hpp"
 
+#include <cstring>
+
+#if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <psapi.h>
 #include <intrin.h>
+#else
+#include <unistd.h>
 
-#include <cstring>
+#include <cstdio>
+#include <fstream>
+#endif
+
+#if defined(_WIN32)
 
 bool PcMemoryUsage(unsigned long long* used, unsigned long long* total)
 {
@@ -42,3 +51,40 @@ std::string PcCpuName()
     const std::string::size_type last = name.find_last_not_of(' ');
     return first == std::string::npos ? std::string() : name.substr(first, last - first + 1);
 }
+#else
+bool PcMemoryUsage(unsigned long long* used, unsigned long long* total)
+{
+    std::FILE* file = std::fopen("/proc/self/statm", "r");
+    if (!file)
+        return false;
+    unsigned long long pages = 0;
+    unsigned long long resident = 0;
+    const bool read = std::fscanf(file, "%llu %llu", &pages, &resident) == 2;
+    std::fclose(file);
+    const long pageSize = sysconf(_SC_PAGESIZE);
+    const long physicalPages = sysconf(_SC_PHYS_PAGES);
+    if (!read || pageSize <= 0 || physicalPages <= 0)
+        return false;
+    *used = resident * static_cast<unsigned long long>(pageSize);
+    *total = static_cast<unsigned long long>(physicalPages) * static_cast<unsigned long long>(pageSize);
+    return true;
+}
+
+std::string PcCpuName()
+{
+    std::ifstream file("/proc/cpuinfo");
+    std::string line;
+    while (std::getline(file, line))
+    {
+        if (line.compare(0, 10, "model name") != 0)
+            continue;
+        const std::string::size_type colon = line.find(':');
+        if (colon == std::string::npos)
+            continue;
+        const std::string::size_type first = line.find_first_not_of(" \t", colon + 1);
+        const std::string::size_type last = line.find_last_not_of(" \t");
+        return first == std::string::npos ? std::string() : line.substr(first, last - first + 1);
+    }
+    return std::string();
+}
+#endif

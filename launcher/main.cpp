@@ -12,6 +12,7 @@ int main(int argc, char** argv)
 {
     QApplication application(argc, argv);
     QApplication::setApplicationName("LCEReborn Launcher");
+    QApplication::setDesktopFileName("org.lcereborn.LCERebornLauncher");
     QApplication::setApplicationVersion(BuildVersion());
     QApplication::setWindowIcon(QIcon(":/launcher/icon.png"));
     ApplyTheme(application);

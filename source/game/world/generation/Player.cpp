@@ -584,7 +584,7 @@ void Player::playSound(const SoundEvent* sound, float volume, float pitch)
                       volume, pitch, 16.0f);
 }
 
-uint64_t Player::GetType()
+unsigned long long Player::GetType()
 {
     return EntityType::PLAYER;
 }

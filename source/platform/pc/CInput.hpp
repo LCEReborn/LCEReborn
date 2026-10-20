@@ -108,7 +108,7 @@ public:
 
 private:
     friend void PcInputHandleEvent(const SDL_Event& event);
-    friend bool PcInputGetKeyboardText(std::wstring* title, std::wstring* text);
+    friend bool PcInputGetKeyboardText(struct PcKeyboardText* text);
 
     enum
     {
@@ -283,6 +283,7 @@ private:
     wchar_t keyboardText[KEYBOARD_TEXT_CAPACITY];
     std::vector<wchar_t> keyboardEditText;
     std::wstring keyboardTitle;
+    PcTextComposition keyboardComposition;
     bool keyboardAccepted;
     bool keyboardCancelled;
     bool destroyKeyboardRequested;

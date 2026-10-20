@@ -505,7 +505,7 @@ bool DLCManager::processDLCDataFile(unsigned int& numItemsAdded, unsigned char* 
 
     for (unsigned int i = 0; i < parameterCount; i++)
     {
-        std::wstring parameterName = char16towstring((wchar_t*)(pParameter + 2));
+        std::wstring parameterName = convUtf16ToWstring(pParameter + 2, pParameter[1]);
         EDLCParameterType parameterType = getParameterType(parameterName);
 
         if (parameterType != eDLCParameterType_Invalid)
@@ -559,7 +559,7 @@ bool DLCManager::processDLCDataFile(unsigned int& numItemsAdded, unsigned char* 
         }
         else if (itemType != eDLCType_Pack)
         {
-            pFile = pPack->addFile(itemType, char16towstring((wchar_t*)(pItemHeader + 3)));
+            pFile = pPack->addFile(itemType, convUtf16ToWstring(pItemHeader + 3, pItemHeader[2]));
 
             if (itemType == eDLCType_Skin && bHasXMLVersion)
             {
@@ -582,20 +582,20 @@ bool DLCManager::processDLCDataFile(unsigned int& numItemsAdded, unsigned char* 
             {
                 if (itemType == eDLCType_Pack)
                 {
-                    pPack->addParameter(it->second, char16towstring((wchar_t*)(pItemData + 2)));
+                    pPack->addParameter(it->second, convUtf16ToWstring(pItemData + 2, pItemData[1]));
                     numItemsAdded++;
                 }
                 else if (pFile != NULL)
                 {
-                    pFile->addParameter(it->second, char16towstring((wchar_t*)(pItemData + 2)));
+                    pFile->addParameter(it->second, convUtf16ToWstring(pItemData + 2, pItemData[1]));
                 }
                 else if (pTexturePack != NULL)
                 {
-                    pTexturePack->addParameter(it->second, char16towstring((wchar_t*)(pItemData + 2)));
+                    pTexturePack->addParameter(it->second, convUtf16ToWstring(pItemData + 2, pItemData[1]));
                 }
                 else if (pChildPack != NULL)
                 {
-                    pChildPack->addParameter(it->second, char16towstring((wchar_t*)(pItemData + 2)));
+                    pChildPack->addParameter(it->second, convUtf16ToWstring(pItemData + 2, pItemData[1]));
                 }
             }
 
@@ -654,7 +654,7 @@ bool DLCManager::processDLCDataFile(unsigned int& numItemsAdded, unsigned char* 
 
             if (pItemHeader[1] == eDLCType_Skin)
             {
-                gApp.m_dlcSkinNames.push_back(char16towstring((wchar_t*)(pItemHeader + 3)));
+                gApp.m_dlcSkinNames.push_back(convUtf16ToWstring(pItemHeader + 3, pItemHeader[2]));
             }
 
             numItemsAdded++;
@@ -747,7 +747,7 @@ unsigned int DLCManager::retrievePackID(unsigned char* pData, unsigned int size)
 
     for (unsigned int i = 0; i < parameterCount; i++)
     {
-        std::wstring parameterName = char16towstring((wchar_t*)(pParameter + 2));
+        std::wstring parameterName = convUtf16ToWstring(pParameter + 2, pParameter[1]);
         EDLCParameterType parameterType = getParameterType(parameterName);
 
         if (parameterType != eDLCParameterType_Invalid)
@@ -799,7 +799,7 @@ unsigned int DLCManager::retrievePackID(unsigned char* pData, unsigned int size)
                     if (it->second == eDLCParameterType_PackID)
                     {
                         {
-                            std::wstring packIDText = char16towstring((wchar_t*)(pItemData + 2));
+                            std::wstring packIDText = convUtf16ToWstring(pItemData + 2, pItemData[1]);
                             std::wstringstream stream;
 
                             stream << std::dec << packIDText.c_str();
@@ -813,7 +813,7 @@ unsigned int DLCManager::retrievePackID(unsigned char* pData, unsigned int size)
                 }
                 else if (itemType == eDLCType_Skin && packName.empty() && it->second == eDLCParameterType_DisplayName)
                 {
-                    packName = char16towstring((wchar_t*)(pItemData + 2));
+                    packName = convUtf16ToWstring(pItemData + 2, pItemData[1]);
                 }
             }
 

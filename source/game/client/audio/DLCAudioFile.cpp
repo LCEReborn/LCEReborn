@@ -73,7 +73,7 @@ bool DLCAudioFile::processDLCDataFile(unsigned char* pData, unsigned int size)
 
     for (unsigned int i = 0; i < parameterCount; i++)
     {
-        std::wstring parameterName = char16towstring((wchar_t*)(pParameter + 2));
+        std::wstring parameterName = convUtf16ToWstring(pParameter + 2, pParameter[1]);
         EAudioParameterType parameterType = getParameterType(parameterName);
 
         if (parameterType != eAudioParameterType_Invalid)
@@ -109,7 +109,7 @@ bool DLCAudioFile::processDLCDataFile(unsigned char* pData, unsigned int size)
         {
             if (parameterTypes.find((int)pItemData[0]) != parameterTypes.end())
             {
-                addParameter(audioType, (EAudioParameterType)pItemData[0], char16towstring((wchar_t*)(pItemData + 2)));
+                addParameter(audioType, (EAudioParameterType)pItemData[0], convUtf16ToWstring(pItemData + 2, pItemData[1]));
             }
 
             pItemData = (unsigned int*)((unsigned char*)pItemData + pItemData[1] * 2 + 12);

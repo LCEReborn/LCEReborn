@@ -200,7 +200,7 @@ public:
     GameMode* GetGameMode();
     void OnEquipArmor(not_null_ptr<ItemInstance> item);
     bool checkTotemDeathProtection(const DamageSource* source);
-    uint64_t GetType();
+    unsigned long long GetType();
     void getStats();
     void getLastActionTime();
 };

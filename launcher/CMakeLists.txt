@@ -59,6 +59,7 @@ target_link_libraries(LCERebornLauncher PRIVATE Qt6::Widgets Qt6::Network)
 set_target_properties(LCERebornLauncher PROPERTIES
   CXX_STANDARD 17
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+lce_desktop_entry(LCERebornLauncher "LCEReborn Launcher" resources/launcher/icon.png)
 
 if(WIN32)
   set(LCE_LAUNCHER_ICON "${CMAKE_SOURCE_DIR}/resources/launcher/icon.ico")

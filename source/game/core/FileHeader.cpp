@@ -20,6 +20,38 @@ static const unsigned int FILE_ENTRY_DATA_SIZE_V1 = 136;
 static const short CURRENT_SAVE_VERSION = 11;
 static const short MAX_SUPPORTED_SAVE_VERSION = 12;
 
+#if LCE_PLATFORM_PC
+static void ReadPcFileEntry(FileEntry* entry, const unsigned char* data, bool reverse, bool hasTimestamp)
+{
+    unsigned short name[64];
+    memcpy(name, data, sizeof(name));
+    memcpy(&entry->m_data.m_fileSize, data + 128, 4);
+    memcpy(&entry->m_data.m_startOffset, data + 132, 4);
+    if (hasTimestamp)
+        memcpy(&entry->m_data.m_timestamp, data + 136, 8);
+    if (reverse)
+    {
+        for (unsigned int character = 0; character < 64; ++character)
+            name[character] = static_cast<unsigned short>((name[character] >> 8) | (name[character] << 8));
+        System::ReverseULONG(&entry->m_data.m_fileSize);
+        System::ReverseULONG(&entry->m_data.m_startOffset);
+        System::ReverseULONGLONG(&entry->m_data.m_timestamp);
+    }
+    entry->m_fileName = convUtf16ToWstring(name, 64);
+    wcsncpy(entry->m_data.m_name, entry->m_fileName.c_str(), 63);
+}
+
+static void WritePcFileEntry(unsigned char* data, const FileEntry* entry)
+{
+    unsigned short name[64] = {};
+    convWstringToUtf16(std::wstring(entry->m_data.m_name), name, 64);
+    memcpy(data, name, sizeof(name));
+    memcpy(data + 128, &entry->m_data.m_fileSize, 4);
+    memcpy(data + 132, &entry->m_data.m_startOffset, 4);
+    memcpy(data + 136, &entry->m_data.m_timestamp, 8);
+}
+#endif
+
 FileHeader::FileHeader()
 {
     m_currentFile = NULL;
@@ -72,7 +104,11 @@ FileEntry* FileHeader::AddFile(const std::wstring& fileName, unsigned int fileSi
 
     memset(name, 0, sizeof(name));
 
+#if LCE_PLATFORM_PC
+    wcsncpy(name, fileName.c_str(), 63);
+#else
     memcpy(name, wstringtochar16(fileName), std::min(sizeof(name), sizeof(wchar_t) * fileName.length()));
+#endif
 
     for (unsigned int i = 0; i < m_fileEntries.size(); i++)
     {
@@ -145,7 +181,11 @@ void FileHeader::WriteHeader(void* pData)
 
     for (unsigned int i = 0; i < m_fileEntries.size(); i++)
     {
+#if LCE_PLATFORM_PC
+        WritePcFileEntry(pEntryData, m_fileEntries[i]);
+#else
         memcpy(pEntryData, &m_fileEntries[i]->m_data, FILE_ENTRY_DATA_SIZE);
+#endif
         pEntryData += FILE_ENTRY_DATA_SIZE;
     }
 }
@@ -202,7 +242,11 @@ void FileHeader::ReadHeader(void* pData, ESavePlatform platform)
         {
             FileEntry* pEntry = new FileEntry();
 
+#if LCE_PLATFORM_PC
+            ReadPcFileEntry(pEntry, pEntryData, m_saveEndian != SAVE_FILE_ENDIAN_LOCAL, false);
+#else
             memcpy(&pEntry->m_data, pEntryData, FILE_ENTRY_DATA_SIZE_V1);
+#endif
 
             pEntry->m_filePointer = pEntry->m_data.m_startOffset;
             m_currentFile = pEntry;
@@ -227,8 +271,10 @@ void FileHeader::ReadHeader(void* pData, ESavePlatform platform)
         {
             FileEntry* pEntry = new FileEntry();
 
+#if LCE_PLATFORM_PC
+            ReadPcFileEntry(pEntry, pEntryData, m_saveEndian != SAVE_FILE_ENDIAN_LOCAL, true);
+#else
             memcpy(&pEntry->m_data, pEntryData, FILE_ENTRY_DATA_SIZE);
-
             if (m_saveEndian != SAVE_FILE_ENDIAN_LOCAL)
             {
                 System::ReverseCHAR16A(pEntry->m_data.m_name, 64);
@@ -238,6 +284,7 @@ void FileHeader::ReadHeader(void* pData, ESavePlatform platform)
             }
 
             pEntry->m_fileName = char16towstring(pEntry->m_data.m_name);
+#endif
 
             pEntry->m_filePointer = pEntry->m_data.m_startOffset;
             m_currentFile = pEntry;

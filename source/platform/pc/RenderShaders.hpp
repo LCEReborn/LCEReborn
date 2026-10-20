@@ -17,6 +17,7 @@ enum RenderVertexShader
     RenderVertexShader_EntityLit,
     RenderVertexShader_ScreenQuad,
     RenderVertexShader_Clear,
+    RenderVertexShader_Keyboard,
     RenderVertexShader_Count
 };
 
@@ -40,6 +41,8 @@ enum RenderPixelShader
     RenderPixelShader_Gamma,
     RenderPixelShader_AlphaResolve,
     RenderPixelShader_AlphaAccumulate,
+    RenderPixelShader_Clear,
+    RenderPixelShader_Keyboard,
     RenderPixelShader_Count
 };
 
@@ -47,7 +50,8 @@ static const int RENDER_PIXEL_CONSTANT_COUNT = 32;
 static const int RENDER_PIXEL_CONSTANT_ALPHA_REFERENCE = 31;
 static const int RENDER_LIGHT_TEXTURE_UNIT = 4;
 static const int RENDER_VERTEX_CONSTANT_BINDING = 0;
-static const int RENDER_PIXEL_CONSTANT_BINDING = 1;
+static const int RENDER_PIXEL_CONSTANT_BINDING = 0;
+static const int RENDER_VIEWPORT_CONSTANT_BINDING = 1;
 
 int RenderVertexConstantCount(int vertexShader);
 std::string RenderVertexShaderSource(int vertexShader);

@@ -8,6 +8,8 @@ class BlockState;
 class Direction;
 
 std::wstring char16towstring(wchar_t* text);
+std::wstring convUtf16ToWstring(const void* text, unsigned int length);
+void convWstringToUtf16(const std::wstring& text, unsigned short* destination, unsigned int capacity);
 void charTowchar_tArray(const char* text, wchar_t* destination, unsigned int capacity);
 bool compareStrings(const std::wstring& first, const std::wstring& second);
 std::wstring convStringToWstring(wchar_t* text);

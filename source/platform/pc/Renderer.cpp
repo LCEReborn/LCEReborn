@@ -13,7 +13,8 @@
 
 #include "game/core/VideoSettings.hpp"
 #include "platform/FileApi.hpp"
-#include "platform/pc/GlApi.hpp"
+#include "platform/pc/PcGpu.hpp"
+#include <algorithm>
 #include "platform/pc/Log.hpp"
 #include "platform/pc/PcCrashReport.hpp"
 #include "platform/pc/PcKeyboardOverlay.hpp"
@@ -54,7 +55,6 @@ const unsigned int DYNAMIC_VERTEX_BUDGET = 0x200000;
 const int BONE_COUNT = 48;
 const int VERTEX_CONSTANT_COUNT = 256;
 const unsigned int STREAM_VERTEX_BUFFER_SIZE = 32 * 1024 * 1024;
-const unsigned int STREAM_CONSTANT_BUFFER_SIZE = 8 * 1024 * 1024;
 const int UI_WIDTH = 1280;
 const int UI_HEIGHT = 720;
 const int DRC_WIDTH = 854;
@@ -133,76 +133,43 @@ int LayoutForVertexType(int vertexType)
     }
 }
 
-GLenum CompareFunction(int function)
+SDL_GPUCompareOp CompareFunction(int function)
 {
-    return Gl::NEVER + (GLenum)(function & 7);
+    return (SDL_GPUCompareOp)(SDL_GPU_COMPAREOP_NEVER + (function & 7));
 }
 
-GLenum BlendFunction(int function)
+SDL_GPUBlendFactor BlendFunction(int function)
 {
-    switch (function)
-    {
-    case 0:
-        return Gl::ZERO;
-    case 1:
-        return Gl::ONE;
-    case 2:
-        return Gl::SRC_COLOR;
-    case 3:
-        return Gl::ONE_MINUS_SRC_COLOR;
-    case 4:
-        return Gl::SRC_ALPHA;
-    case 5:
-        return Gl::ONE_MINUS_SRC_ALPHA;
-    case 6:
-        return Gl::DST_ALPHA;
-    case 7:
-        return Gl::ONE_MINUS_DST_ALPHA;
-    case 8:
-        return Gl::DST_COLOR;
-    case 9:
-        return Gl::ONE_MINUS_DST_COLOR;
-    case 10:
-        return Gl::SRC_ALPHA_SATURATE;
-    case 11:
-        return Gl::SRC_ALPHA;
-    case 12:
-        return Gl::ONE_MINUS_SRC_ALPHA;
-    case 13:
-        return Gl::CONSTANT_COLOR;
-    case 14:
-        return Gl::ONE_MINUS_CONSTANT_COLOR;
-    case 15:
-        return Gl::SRC1_COLOR;
-    case 16:
-        return Gl::ONE_MINUS_SRC1_COLOR;
-    case 17:
-        return Gl::SRC1_ALPHA;
-    case 18:
-        return Gl::ONE_MINUS_SRC1_ALPHA;
-    case 19:
-        return Gl::CONSTANT_ALPHA;
-    case 20:
-        return Gl::ONE_MINUS_CONSTANT_ALPHA;
-    default:
-        return Gl::ONE;
-    }
+    static const SDL_GPUBlendFactor factors[] = {SDL_GPU_BLENDFACTOR_ZERO,
+                                                 SDL_GPU_BLENDFACTOR_ONE,
+                                                 SDL_GPU_BLENDFACTOR_SRC_COLOR,
+                                                 SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_COLOR,
+                                                 SDL_GPU_BLENDFACTOR_SRC_ALPHA,
+                                                 SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                                                 SDL_GPU_BLENDFACTOR_DST_ALPHA,
+                                                 SDL_GPU_BLENDFACTOR_ONE_MINUS_DST_ALPHA,
+                                                 SDL_GPU_BLENDFACTOR_DST_COLOR,
+                                                 SDL_GPU_BLENDFACTOR_ONE_MINUS_DST_COLOR,
+                                                 SDL_GPU_BLENDFACTOR_SRC_ALPHA_SATURATE,
+                                                 SDL_GPU_BLENDFACTOR_SRC_ALPHA,
+                                                 SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                                                 SDL_GPU_BLENDFACTOR_CONSTANT_COLOR,
+                                                 SDL_GPU_BLENDFACTOR_ONE_MINUS_CONSTANT_COLOR};
+    return function >= 0 && function < 15 ? factors[function] : SDL_GPU_BLENDFACTOR_ONE;
 }
 
-GLenum PrimitiveMode(int primitiveType)
+SDL_GPUPrimitiveType PrimitiveMode(int primitiveType)
 {
     switch (primitiveType)
     {
     case C4JRender::ePrimitiveType_TriangleStrip:
-        return Gl::TRIANGLE_STRIP;
-    case C4JRender::ePrimitiveType_TriangleFan:
-        return Gl::TRIANGLE_FAN;
+        return SDL_GPU_PRIMITIVETYPE_TRIANGLESTRIP;
     case C4JRender::ePrimitiveType_Lines:
-        return Gl::LINES;
+        return SDL_GPU_PRIMITIVETYPE_LINELIST;
     case C4JRender::ePrimitiveType_LineStrip:
-        return Gl::LINE_STRIP;
+        return SDL_GPU_PRIMITIVETYPE_LINESTRIP;
     default:
-        return Gl::TRIANGLES;
+        return SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
     }
 }
 
@@ -433,7 +400,7 @@ struct Renderer::Texture
     C4JRender::eTextureFormat mFormat;
     unsigned int mFlags;
     RenderSamplerState mSampler;
-    GLuint mName;
+    SDL_GPUTexture* mName;
     unsigned int mGeneration;
 };
 
@@ -637,27 +604,12 @@ public:
     int mLastRenderedFrame;
     bool mRecordState;
     bool mHasVertices;
-    GLuint mBuffer;
-    GLuint mVertexArray;
-    int mVertexArrayLayout;
+    SDL_GPUBuffer* mBuffer;
 };
 
 class Renderer::Device
 {
 public:
-    struct StreamBuffer
-    {
-        GLenum mTarget;
-        GLuint mBuffer;
-        size_t mSize;
-        size_t mOffset;
-
-        void Create(GLenum target, size_t size);
-        void Destroy();
-        bool Reserve(size_t size);
-        size_t Write(const void* data, size_t size, size_t alignment);
-    };
-
     struct TextureOperation
     {
         enum eType
@@ -666,793 +618,293 @@ public:
             eType_Level,
             eType_Delete
         };
-
         eType mType;
         int mSlot;
         unsigned int mGeneration;
         int mLevel;
         int mWidth;
         int mHeight;
-        GLuint mName;
+        SDL_GPUTexture* mName;
         bool mHasPixels;
         std::vector<unsigned char> mPixels;
     };
 
-    struct Program
-    {
-        GLuint mName;
-        GLint mQuadLocation;
-        GLint mFlipLocation;
-        GLint mGammaLocation;
-    };
-
     Device();
-
     void Create(int width, int height);
     void Destroy();
     void CreateTargets(int width, int height);
     void DestroyTargets();
-    bool IsGlThread() const;
-    const Program& GetProgram(int vertexShader, int pixelShader);
-    GLuint GetSampler(const RenderSamplerState& state);
-    void SetupVertexArray(GLuint vertexArray, GLuint buffer, int layout);
-    void EnsureQuadIndices(unsigned int quads);
-    void BindFramebuffer(GLuint framebuffer);
-    void BindTextureUnit(int unit, GLuint texture, GLuint sampler);
-    void UseProgram(GLuint program);
-    void BindVertexArray(GLuint vertexArray);
-    void SetCapability(int index, GLenum capability, bool bEnable);
-    void SetColourMaskMode(int mode, unsigned char mask);
+    bool IsRenderThread() const;
+    SDL_GPUSampler* GetSampler(const RenderSamplerState& state);
+    void BindFramebuffer(int framebuffer);
+    void BindTextureUnit(int unit, SDL_GPUTexture* texture, SDL_GPUSampler* sampler);
+    void BindVertexBuffer(SDL_GPUBuffer* buffer, int layout);
     void Invalidate();
     void FlushPending(Renderer& renderer);
-    void QueueBufferDelete(GLuint buffer, GLuint vertexArray);
+    void QueueBufferDelete(SDL_GPUBuffer* buffer);
     void ExecuteTextureStorage(Texture& texture, const void* pixels);
     void ExecuteTextureLevel(Texture& texture, int level, int width, int height, const void* pixels);
     bool PrepareDraw(Renderer& renderer, Context& context);
     void DrawRange(int primitiveType, unsigned int firstVertex, unsigned int count);
-    void DrawStream(Renderer& renderer, Context& context, const void* vertices, unsigned int size,
-                    unsigned int stride, int layout, int primitiveType, unsigned int count);
-    void DrawScreenQuad(int vertexShader, int pixelShader, const float* quad, float flipY, float gamma);
+    void DrawStream(Renderer& renderer, Context& context, const void* vertices, unsigned int size, unsigned int stride,
+                    int layout, int primitiveType, unsigned int count);
+    void DrawScreenQuad(int vertexShader, int pixelShader, const float* quad, float gamma);
+    void ScreenState(const float* viewport = NULL, const int* scissor = NULL);
+    void Clear(const GpuState& state, int flags, const float* colour);
+    void BeginPass();
+    bool BindPipeline(int primitiveType, bool vertexInput);
+    void EnsureIndices(unsigned int count, bool fan);
 
     std::thread::id mThread;
-    bool mReady;
-    int mWidth;
-    int mHeight;
-    int mTarget;
-    GLint mUniformAlignment;
-    StreamBuffer mVertexStream;
-    StreamBuffer mConstantStream;
-    GLuint mStreamVertexArrays[VertexLayout_Count];
-    GLuint mEmptyVertexArray;
-    GLuint mQuadIndexBuffer;
-    unsigned int mQuadIndexCapacity;
-    Program mPrograms[RenderVertexShader_Count][RenderPixelShader_Count];
-    GLuint mSamplers[2][2][2][2][3];
-    GLuint mMainFramebuffer;
-    GLuint mMainColourTexture;
-    GLuint mMainDepthStencil;
-    GLuint mAlphaFramebuffer;
-    GLuint mAlphaAccumulateTexture;
-    GLuint mAlphaWeightTexture;
-    GLuint mThumbnailFramebuffer[THUMBNAIL_LEVELS];
-    GLuint mThumbnailTexture[THUMBNAIL_LEVELS];
-    int mBoundVertexConstantCount;
-    bool mPixelConstantsBound;
-    Context* mBoundConstantContext;
-    bool mCacheValid;
-    GLuint mCurrentFramebuffer;
-    GLuint mCurrentProgram;
-    GLuint mCurrentVertexArray;
-    GLuint mCurrentTexture[RENDER_LIGHT_TEXTURE_UNIT + 1];
-    GLuint mCurrentSampler[RENDER_LIGHT_TEXTURE_UNIT + 1];
-    int mCapabilities[6];
-    int mColourMaskMode;
-    unsigned char mColourMask;
+    bool mReady = false;
+    int mWidth = 0;
+    int mHeight = 0;
+    int mTarget = RenderTarget_Main;
+    SDL_GPUBuffer* mVertexStream = NULL;
+    unsigned int mStreamOffset = 0;
+    SDL_GPUBuffer* mQuadIndexBuffer = NULL;
+    SDL_GPUBuffer* mFanIndexBuffer = NULL;
+    unsigned int mQuadIndexCapacity = 0;
+    unsigned int mFanIndexCapacity = 0;
+    SDL_GPUSampler* mSamplers[2][2][2][2][3] = {};
+    const int mMainFramebuffer = 1;
+    const int mAlphaFramebuffer = 2;
+    SDL_GPUTexture* mMainColourTexture = NULL;
+    SDL_GPUTexture* mMainDepthStencil = NULL;
+    SDL_GPUTexture* mAlphaAccumulateTexture = NULL;
+    SDL_GPUTexture* mAlphaWeightTexture = NULL;
+    int mThumbnailFramebuffer[THUMBNAIL_LEVELS];
+    SDL_GPUTexture* mThumbnailTexture[THUMBNAIL_LEVELS] = {};
+    SDL_GPUTextureFormat mDepthFormat = SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT;
+    int mCurrentFramebuffer = -1;
+    SDL_GPUBuffer* mCurrentBuffer = NULL;
+    int mCurrentLayout = VertexLayout_Standard;
+    SDL_GPUTextureSamplerBinding mBindings[RENDER_LIGHT_TEXTURE_UNIT + 1] = {};
+    GpuState mDrawState = {};
+    int mDrawVertexShader = 0;
+    int mDrawPixelShader = 0;
+    bool mAlphaInitialise = false;
+    bool mClearing = false;
+    Uint64 mUniformSerial = 0;
+    Context* mUniformContext = NULL;
+    int mBoundVertexConstantCount = 0;
+    bool mPixelConstantsBound = false;
+    Uint64 mViewportUniformSerial = 0;
+    int mViewportUniformBinding = -1;
+    float mViewportUniform[4] = {};
+    Uint64 mDynamicPassSerial = 0;
+    SDL_GPUViewport mLastViewport = {};
+    SDL_Rect mLastScissor = {};
+    SDL_FColor mLastBlend = {};
+    unsigned char mLastStencilReference = 0;
+    Uint64 mIndexPassSerial = 0;
+    SDL_GPUBuffer* mBoundIndexBuffer = NULL;
     C4JCriticalSection mPendingMutex;
     std::vector<TextureOperation> mTextureOperations;
-    std::vector<GLuint> mDeletedBuffers;
-    std::vector<GLuint> mDeletedVertexArrays;
+    std::vector<SDL_GPUBuffer*> mDeletedBuffers;
 };
-
-namespace
-{
-enum Capability
-{
-    Capability_CullFace,
-    Capability_DepthTest,
-    Capability_StencilTest,
-    Capability_Blend,
-    Capability_Scissor,
-    Capability_PolygonOffset
-};
-
-enum ColourMaskMode
-{
-    ColourMaskMode_Main,
-    ColourMaskMode_OrderIndependentAlpha
-};
-}
-
-void Renderer::Device::StreamBuffer::Create(GLenum target, size_t size)
-{
-    mTarget = target;
-    mSize = size;
-    mOffset = 0;
-    Gl::GenBuffers(1, &mBuffer);
-    Gl::BindBuffer(target, mBuffer);
-    Gl::BufferData(target, (GLsizeiptr)size, NULL, Gl::STREAM_DRAW);
-}
-
-void Renderer::Device::StreamBuffer::Destroy()
-{
-    if (mBuffer != 0)
-    {
-        Gl::DeleteBuffers(1, &mBuffer);
-        mBuffer = 0;
-    }
-}
-
-bool Renderer::Device::StreamBuffer::Reserve(size_t size)
-{
-    if (mOffset + size <= mSize)
-    {
-        return false;
-    }
-
-    Gl::BindBuffer(mTarget, mBuffer);
-    Gl::BufferData(mTarget, (GLsizeiptr)mSize, NULL, Gl::STREAM_DRAW);
-    mOffset = 0;
-    return true;
-}
-
-size_t Renderer::Device::StreamBuffer::Write(const void* data, size_t size, size_t alignment)
-{
-    size_t offset = (mOffset + alignment - 1) / alignment * alignment;
-
-    if (offset + size > mSize)
-    {
-        Gl::BindBuffer(mTarget, mBuffer);
-        Gl::BufferData(mTarget, (GLsizeiptr)mSize, NULL, Gl::STREAM_DRAW);
-        offset = 0;
-    }
-
-    Gl::BindBuffer(mTarget, mBuffer);
-    void* destination = Gl::MapBufferRange(mTarget, (GLintptr)offset, (GLsizeiptr)size,
-                                           Gl::MAP_WRITE_BIT | Gl::MAP_INVALIDATE_RANGE_BIT
-                                               | Gl::MAP_UNSYNCHRONIZED_BIT);
-    if (destination != NULL)
-    {
-        memcpy(destination, data, size);
-        Gl::UnmapBuffer(mTarget);
-    }
-    else
-    {
-        Gl::BufferSubData(mTarget, (GLintptr)offset, (GLsizeiptr)size, data);
-    }
-
-    mOffset = offset + size;
-    return offset;
-}
 
 Renderer::Device::Device()
 {
-    mReady = false;
-    mWidth = 0;
-    mHeight = 0;
-    mTarget = RenderTarget_Main;
-    mUniformAlignment = 256;
-    memset(&mVertexStream, 0, sizeof(mVertexStream));
-    memset(&mConstantStream, 0, sizeof(mConstantStream));
-    memset(mStreamVertexArrays, 0, sizeof(mStreamVertexArrays));
-    mEmptyVertexArray = 0;
-    mQuadIndexBuffer = 0;
-    mQuadIndexCapacity = 0;
-    memset(mPrograms, 0, sizeof(mPrograms));
-    memset(mSamplers, 0, sizeof(mSamplers));
-    mMainFramebuffer = 0;
-    mMainColourTexture = 0;
-    mMainDepthStencil = 0;
-    mAlphaFramebuffer = 0;
-    mAlphaAccumulateTexture = 0;
-    mAlphaWeightTexture = 0;
-    memset(mThumbnailFramebuffer, 0, sizeof(mThumbnailFramebuffer));
-    memset(mThumbnailTexture, 0, sizeof(mThumbnailTexture));
-    mBoundVertexConstantCount = 0;
-    mPixelConstantsBound = false;
-    mBoundConstantContext = NULL;
     InitializeCriticalSection(&mPendingMutex);
-    Invalidate();
+    for (int level = 0; level < THUMBNAIL_LEVELS; ++level)
+        mThumbnailFramebuffer[level] = 3 + level;
 }
 
-bool Renderer::Device::IsGlThread() const
+bool Renderer::Device::IsRenderThread() const
 {
     return mReady && std::this_thread::get_id() == mThread;
 }
 
 void Renderer::Device::Invalidate()
 {
-    mCacheValid = false;
-    mCurrentFramebuffer = 0xFFFFFFFFu;
-    mCurrentProgram = 0xFFFFFFFFu;
-    mCurrentVertexArray = 0xFFFFFFFFu;
-
-    for (int unit = 0; unit <= RENDER_LIGHT_TEXTURE_UNIT; ++unit)
-    {
-        mCurrentTexture[unit] = 0xFFFFFFFFu;
-        mCurrentSampler[unit] = 0xFFFFFFFFu;
-    }
-
-    for (int index = 0; index < 6; ++index)
-    {
-        mCapabilities[index] = -1;
-    }
-
-    mColourMaskMode = -1;
-    mColourMask = 0xFF;
-    mBoundVertexConstantCount = 0;
-    mPixelConstantsBound = false;
-    mBoundConstantContext = NULL;
+    PcGraphics().EndPass();
+    mCurrentFramebuffer = -1;
+    mCurrentBuffer = NULL;
+    mUniformContext = NULL;
 }
 
 void Renderer::Device::Create(int width, int height)
 {
     mThread = std::this_thread::get_id();
     mReady = true;
-
-    Gl::GetIntegerv(Gl::UNIFORM_BUFFER_OFFSET_ALIGNMENT, &mUniformAlignment);
-    if (mUniformAlignment < 16)
-    {
-        mUniformAlignment = 16;
-    }
-
-    Gl::PixelStorei(Gl::UNPACK_ALIGNMENT, 4);
-    Gl::PixelStorei(Gl::PACK_ALIGNMENT, 4);
-
-    mVertexStream.Create(Gl::ARRAY_BUFFER, STREAM_VERTEX_BUFFER_SIZE);
-    mConstantStream.Create(Gl::UNIFORM_BUFFER, STREAM_CONSTANT_BUFFER_SIZE);
-
-    Gl::GenBuffers(1, &mQuadIndexBuffer);
-    EnsureQuadIndices(0x4000);
-
-    Gl::GenVertexArrays(VertexLayout_Count, mStreamVertexArrays);
-    for (int layout = 0; layout < VertexLayout_Count; ++layout)
-    {
-        SetupVertexArray(mStreamVertexArrays[layout], mVertexStream.mBuffer, layout);
-    }
-
-    Gl::GenVertexArrays(1, &mEmptyVertexArray);
-
+    PcGpu& gpu = PcGraphics();
+    mVertexStream = gpu.Buffer(STREAM_VERTEX_BUFFER_SIZE, SDL_GPU_BUFFERUSAGE_VERTEX);
+    if (!SDL_GPUTextureSupportsFormat(gpu.device, mDepthFormat, SDL_GPU_TEXTURETYPE_2D,
+                                      SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET))
+        mDepthFormat = SDL_GPU_TEXTUREFORMAT_D32_FLOAT_S8_UINT;
     for (int level = 0, size = THUMBNAIL_SIZE; level < THUMBNAIL_LEVELS; ++level, size >>= 1)
     {
-        Gl::GenTextures(1, &mThumbnailTexture[level]);
-        Gl::BindTexture(Gl::TEXTURE_2D, mThumbnailTexture[level]);
-        Gl::TexImage2D(Gl::TEXTURE_2D, 0, (GLint)Gl::RGBA8, size, size, 0, Gl::RGBA, Gl::UNSIGNED_BYTE, NULL);
-        Gl::TexParameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MAX_LEVEL, 0);
-        Gl::GenFramebuffers(1, &mThumbnailFramebuffer[level]);
-        Gl::BindFramebuffer(Gl::FRAMEBUFFER, mThumbnailFramebuffer[level]);
-        Gl::FramebufferTexture2D(Gl::FRAMEBUFFER, Gl::COLOR_ATTACHMENT0, Gl::TEXTURE_2D, mThumbnailTexture[level], 0);
-        if (Gl::CheckFramebufferStatus(Gl::FRAMEBUFFER) != Gl::FRAMEBUFFER_COMPLETE)
-        {
-            FatalRendererError("thumbnail framebuffer is incomplete");
-        }
+        mThumbnailTexture[level] = gpu.Texture(size, size, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+                                               SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET);
+        SDL_GPUColorTargetInfo target = {};
+        target.texture = mThumbnailTexture[level];
+        target.load_op = SDL_GPU_LOADOP_CLEAR;
+        target.store_op = SDL_GPU_STOREOP_STORE;
+        gpu.BeginPass(&target, 1);
+        gpu.EndPass();
     }
-
     CreateTargets(width, height);
-    Invalidate();
 }
 
 void Renderer::Device::Destroy()
 {
-    if (!IsGlThread())
-    {
+    if (!IsRenderThread())
         return;
-    }
-
+    PcGpu& gpu = PcGraphics();
     DestroyTargets();
-
     for (int level = 0; level < THUMBNAIL_LEVELS; ++level)
-    {
-        Gl::DeleteFramebuffers(1, &mThumbnailFramebuffer[level]);
-        Gl::DeleteTextures(1, &mThumbnailTexture[level]);
-    }
-
-    for (int vertexShader = 0; vertexShader < RenderVertexShader_Count; ++vertexShader)
-    {
-        for (int pixelShader = 0; pixelShader < RenderPixelShader_Count; ++pixelShader)
-        {
-            if (mPrograms[vertexShader][pixelShader].mName != 0)
-            {
-                Gl::DeleteProgram(mPrograms[vertexShader][pixelShader].mName);
-            }
-        }
-    }
-
-    GLuint* samplers = &mSamplers[0][0][0][0][0];
-    for (size_t index = 0; index < sizeof(mSamplers) / sizeof(GLuint); ++index)
-    {
-        if (samplers[index] != 0)
-        {
-            Gl::DeleteSamplers(1, &samplers[index]);
-        }
-    }
-
-    Gl::DeleteVertexArrays(VertexLayout_Count, mStreamVertexArrays);
-    Gl::DeleteVertexArrays(1, &mEmptyVertexArray);
-    Gl::DeleteBuffers(1, &mQuadIndexBuffer);
-    mVertexStream.Destroy();
-    mConstantStream.Destroy();
+        SDL_ReleaseGPUTexture(gpu.device, mThumbnailTexture[level]);
+    for (auto& clampU : mSamplers)
+        for (auto& clampV : clampU)
+            for (auto& mag : clampV)
+                for (auto& min : mag)
+                    for (auto sampler : min)
+                        if (sampler)
+                            SDL_ReleaseGPUSampler(gpu.device, sampler);
+    if (mQuadIndexBuffer)
+        SDL_ReleaseGPUBuffer(gpu.device, mQuadIndexBuffer);
+    if (mFanIndexBuffer)
+        SDL_ReleaseGPUBuffer(gpu.device, mFanIndexBuffer);
+    SDL_ReleaseGPUBuffer(gpu.device, mVertexStream);
+    gpu.Submit(true);
     mReady = false;
 }
 
 void Renderer::Device::CreateTargets(int width, int height)
 {
+    PcGpu& gpu = PcGraphics();
+    gpu.EndPass();
     mWidth = width;
     mHeight = height;
-
-    Gl::GenTextures(1, &mMainColourTexture);
-    Gl::BindTexture(Gl::TEXTURE_2D, mMainColourTexture);
-    Gl::TexImage2D(Gl::TEXTURE_2D, 0, (GLint)Gl::RGBA8, width, height, 0, Gl::RGBA, Gl::UNSIGNED_BYTE, NULL);
-    Gl::TexParameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MAX_LEVEL, 0);
-
-    Gl::GenTextures(1, &mAlphaAccumulateTexture);
-    Gl::BindTexture(Gl::TEXTURE_2D, mAlphaAccumulateTexture);
-    Gl::TexImage2D(Gl::TEXTURE_2D, 0, (GLint)Gl::RGBA16F, width, height, 0, Gl::RGBA, Gl::HALF_FLOAT, NULL);
-    Gl::TexParameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MAX_LEVEL, 0);
-
-    Gl::GenTextures(1, &mAlphaWeightTexture);
-    Gl::BindTexture(Gl::TEXTURE_2D, mAlphaWeightTexture);
-    Gl::TexImage2D(Gl::TEXTURE_2D, 0, (GLint)Gl::R16F, width, height, 0, Gl::RED, Gl::HALF_FLOAT, NULL);
-    Gl::TexParameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MAX_LEVEL, 0);
-
-    Gl::GenRenderbuffers(1, &mMainDepthStencil);
-    Gl::BindRenderbuffer(Gl::RENDERBUFFER, mMainDepthStencil);
-    Gl::RenderbufferStorage(Gl::RENDERBUFFER, Gl::DEPTH24_STENCIL8, width, height);
-
-    Gl::GenFramebuffers(1, &mMainFramebuffer);
-    Gl::BindFramebuffer(Gl::FRAMEBUFFER, mMainFramebuffer);
-    Gl::FramebufferTexture2D(Gl::FRAMEBUFFER, Gl::COLOR_ATTACHMENT0, Gl::TEXTURE_2D, mMainColourTexture, 0);
-    Gl::FramebufferRenderbuffer(Gl::FRAMEBUFFER, Gl::DEPTH_STENCIL_ATTACHMENT, Gl::RENDERBUFFER, mMainDepthStencil);
-    GLenum mainBuffers[1] = {Gl::COLOR_ATTACHMENT0};
-    Gl::DrawBuffers(1, mainBuffers);
-    if (Gl::CheckFramebufferStatus(Gl::FRAMEBUFFER) != Gl::FRAMEBUFFER_COMPLETE)
+    const auto usage = SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
+    mMainColourTexture = gpu.Texture(width, height, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM, usage);
+    mAlphaAccumulateTexture = gpu.Texture(width, height, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT, usage);
+    mAlphaWeightTexture = gpu.Texture(width, height, SDL_GPU_TEXTUREFORMAT_R16_FLOAT, usage);
+    mMainDepthStencil = gpu.Texture(width, height, mDepthFormat, SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET);
+    SDL_GPUColorTargetInfo colours[3] = {};
+    colours[0].texture = mMainColourTexture;
+    colours[1].texture = mAlphaAccumulateTexture;
+    colours[2].texture = mAlphaWeightTexture;
+    for (auto& colour : colours)
     {
-        FatalRendererError("main framebuffer is incomplete");
+        colour.load_op = SDL_GPU_LOADOP_CLEAR;
+        colour.store_op = SDL_GPU_STOREOP_STORE;
     }
-
-    Gl::Disable(Gl::SCISSOR_TEST);
-    Gl::ColorMask(1, 1, 1, 1);
-    Gl::DepthMask(1);
-    Gl::StencilMask(0xFF);
-    Gl::ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    Gl::ClearDepth(1.0);
-    Gl::ClearStencil(0);
-    Gl::Clear(Gl::COLOR_BUFFER_BIT | Gl::DEPTH_BUFFER_BIT | Gl::STENCIL_BUFFER_BIT);
-
-    Gl::GenFramebuffers(1, &mAlphaFramebuffer);
-    Gl::BindFramebuffer(Gl::FRAMEBUFFER, mAlphaFramebuffer);
-    Gl::FramebufferTexture2D(Gl::FRAMEBUFFER, Gl::COLOR_ATTACHMENT0, Gl::TEXTURE_2D, mAlphaAccumulateTexture, 0);
-    Gl::FramebufferTexture2D(Gl::FRAMEBUFFER, Gl::COLOR_ATTACHMENT0 + 1, Gl::TEXTURE_2D, mMainColourTexture, 0);
-    Gl::FramebufferTexture2D(Gl::FRAMEBUFFER, Gl::COLOR_ATTACHMENT0 + 2, Gl::TEXTURE_2D, mAlphaWeightTexture, 0);
-    Gl::FramebufferRenderbuffer(Gl::FRAMEBUFFER, Gl::DEPTH_STENCIL_ATTACHMENT, Gl::RENDERBUFFER, mMainDepthStencil);
-    GLenum alphaBuffers[3] = {Gl::COLOR_ATTACHMENT0, Gl::COLOR_ATTACHMENT0 + 1, Gl::COLOR_ATTACHMENT0 + 2};
-    Gl::DrawBuffers(3, alphaBuffers);
-    if (Gl::CheckFramebufferStatus(Gl::FRAMEBUFFER) != Gl::FRAMEBUFFER_COMPLETE)
-    {
-        FatalRendererError("order independent alpha framebuffer is incomplete");
-    }
-
+    SDL_GPUDepthStencilTargetInfo depth = {};
+    depth.texture = mMainDepthStencil;
+    depth.clear_depth = 1.0f;
+    depth.load_op = depth.stencil_load_op = SDL_GPU_LOADOP_CLEAR;
+    depth.store_op = depth.stencil_store_op = SDL_GPU_STOREOP_STORE;
+    gpu.BeginPass(colours, 3, &depth);
     Invalidate();
 }
 
 void Renderer::Device::DestroyTargets()
 {
-    Gl::BindFramebuffer(Gl::FRAMEBUFFER, 0);
-    Gl::DeleteFramebuffers(1, &mMainFramebuffer);
-    Gl::DeleteFramebuffers(1, &mAlphaFramebuffer);
-    Gl::DeleteRenderbuffers(1, &mMainDepthStencil);
-    Gl::DeleteTextures(1, &mMainColourTexture);
-    Gl::DeleteTextures(1, &mAlphaAccumulateTexture);
-    Gl::DeleteTextures(1, &mAlphaWeightTexture);
-    mMainFramebuffer = 0;
-    mAlphaFramebuffer = 0;
-    mMainDepthStencil = 0;
-    mMainColourTexture = 0;
-    mAlphaAccumulateTexture = 0;
-    mAlphaWeightTexture = 0;
+    PcGpu& gpu = PcGraphics();
+    gpu.EndPass();
+    if (mMainColourTexture)
+    {
+        SDL_ReleaseGPUTexture(gpu.device, mMainColourTexture);
+        SDL_ReleaseGPUTexture(gpu.device, mMainDepthStencil);
+        SDL_ReleaseGPUTexture(gpu.device, mAlphaAccumulateTexture);
+        SDL_ReleaseGPUTexture(gpu.device, mAlphaWeightTexture);
+    }
+    mMainColourTexture = mMainDepthStencil = mAlphaAccumulateTexture = mAlphaWeightTexture = NULL;
     Invalidate();
 }
 
-namespace
+SDL_GPUSampler* Renderer::Device::GetSampler(const RenderSamplerState& state)
 {
-GLuint CompileShader(GLenum type, const std::string& source)
-{
-    GLuint shader = Gl::CreateShader(type);
-    const GLchar* text = source.c_str();
-    Gl::ShaderSource(shader, 1, &text, NULL);
-    Gl::CompileShader(shader);
-
-    GLint status = 0;
-    Gl::GetShaderiv(shader, Gl::COMPILE_STATUS, &status);
-    if (status == 0)
+    int mip = std::min<int>(state.mMipFilter, MIP_FILTER_LINEAR);
+    SDL_GPUSampler*& sampler = mSamplers[!!state.mClampU][!!state.mClampV][!!state.mMagLinear][!!state.mMinLinear][mip];
+    if (!sampler)
     {
-        GLint length = 0;
-        Gl::GetShaderiv(shader, Gl::INFO_LOG_LENGTH, &length);
-        std::vector<GLchar> log((size_t)(length > 1 ? length : 1));
-        Gl::GetShaderInfoLog(shader, (GLsizei)log.size(), NULL, &log[0]);
-        LOG_ERROR(sLog, "%s\n%s", &log[0], source.c_str());
-        FatalRendererError("shader compilation failed");
+        SDL_GPUSamplerCreateInfo info = {};
+        info.min_filter = state.mMinLinear ? SDL_GPU_FILTER_LINEAR : SDL_GPU_FILTER_NEAREST;
+        info.mag_filter = state.mMagLinear ? SDL_GPU_FILTER_LINEAR : SDL_GPU_FILTER_NEAREST;
+        info.mipmap_mode = mip == MIP_FILTER_LINEAR ? SDL_GPU_SAMPLERMIPMAPMODE_LINEAR
+                                                    : SDL_GPU_SAMPLERMIPMAPMODE_NEAREST;
+        info.address_mode_u = state.mClampU ? SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE
+                                            : SDL_GPU_SAMPLERADDRESSMODE_REPEAT;
+        info.address_mode_v = state.mClampV ? SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE
+                                            : SDL_GPU_SAMPLERADDRESSMODE_REPEAT;
+        info.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_REPEAT;
+        info.max_lod = mip == MIP_FILTER_NONE ? 0.0f : 1000.0f;
+        sampler = SDL_CreateGPUSampler(PcGraphics().device, &info);
+        PcGraphics().Check(sampler != NULL, "create sampler");
     }
-
-    return shader;
-}
-}
-
-const Renderer::Device::Program& Renderer::Device::GetProgram(int vertexShader, int pixelShader)
-{
-    Program& program = mPrograms[vertexShader][pixelShader];
-
-    if (program.mName != 0)
-    {
-        return program;
-    }
-
-    GLuint vertex = CompileShader(Gl::VERTEX_SHADER, RenderVertexShaderSource(vertexShader));
-    GLuint pixel = CompileShader(Gl::FRAGMENT_SHADER, RenderPixelShaderSource(pixelShader));
-    GLuint name = Gl::CreateProgram();
-    Gl::AttachShader(name, vertex);
-    Gl::AttachShader(name, pixel);
-    Gl::LinkProgram(name);
-    Gl::DeleteShader(vertex);
-    Gl::DeleteShader(pixel);
-
-    GLint status = 0;
-    Gl::GetProgramiv(name, Gl::LINK_STATUS, &status);
-    if (status == 0)
-    {
-        GLint length = 0;
-        Gl::GetProgramiv(name, Gl::INFO_LOG_LENGTH, &length);
-        std::vector<GLchar> log((size_t)(length > 1 ? length : 1));
-        Gl::GetProgramInfoLog(name, (GLsizei)log.size(), NULL, &log[0]);
-        LOG_ERROR(sLog, "%s", &log[0]);
-        FatalRendererError("shader program link failed");
-    }
-
-    UseProgram(name);
-
-    static const char* const samplerNames[4] = {"uTexture0", "uTexture1", "uTexture2", "uTexture3"};
-    for (int unit = 0; unit < 4; ++unit)
-    {
-        GLint location = Gl::GetUniformLocation(name, samplerNames[unit]);
-        if (location >= 0)
-        {
-            Gl::Uniform1i(location, unit);
-        }
-    }
-
-    GLint lightLocation = Gl::GetUniformLocation(name, "uLightTexture");
-    if (lightLocation >= 0)
-    {
-        Gl::Uniform1i(lightLocation, RENDER_LIGHT_TEXTURE_UNIT);
-    }
-
-    GLuint vertexBlock = Gl::GetUniformBlockIndex(name, "VertexConstants");
-    if (vertexBlock != Gl::INVALID_INDEX)
-    {
-        Gl::UniformBlockBinding(name, vertexBlock, RENDER_VERTEX_CONSTANT_BINDING);
-    }
-
-    GLuint pixelBlock = Gl::GetUniformBlockIndex(name, "PixelConstants");
-    if (pixelBlock != Gl::INVALID_INDEX)
-    {
-        Gl::UniformBlockBinding(name, pixelBlock, RENDER_PIXEL_CONSTANT_BINDING);
-    }
-
-    program.mQuadLocation = Gl::GetUniformLocation(name, "uQuad");
-    program.mFlipLocation = Gl::GetUniformLocation(name, "uFlipY");
-    program.mGammaLocation = Gl::GetUniformLocation(name, "uGamma");
-    program.mName = name;
-    return program;
-}
-
-GLuint Renderer::Device::GetSampler(const RenderSamplerState& state)
-{
-    int mipFilter = state.mMipFilter > MIP_FILTER_LINEAR ? MIP_FILTER_LINEAR : state.mMipFilter;
-    GLuint& sampler = mSamplers[state.mClampU ? 1 : 0][state.mClampV ? 1 : 0][state.mMagLinear ? 1 : 0]
-                               [state.mMinLinear ? 1 : 0][mipFilter];
-
-    if (sampler != 0)
-    {
-        return sampler;
-    }
-
-    GLenum minFilter;
-    if (mipFilter == MIP_FILTER_NONE)
-    {
-        minFilter = state.mMinLinear ? Gl::LINEAR : Gl::NEAREST;
-    }
-    else if (mipFilter == MIP_FILTER_POINT)
-    {
-        minFilter = state.mMinLinear ? Gl::LINEAR_MIPMAP_NEAREST : Gl::NEAREST_MIPMAP_NEAREST;
-    }
-    else
-    {
-        minFilter = state.mMinLinear ? Gl::LINEAR_MIPMAP_LINEAR : Gl::NEAREST_MIPMAP_LINEAR;
-    }
-
-    Gl::GenSamplers(1, &sampler);
-    Gl::SamplerParameteri(sampler, Gl::TEXTURE_MIN_FILTER, (GLint)minFilter);
-    Gl::SamplerParameteri(sampler, Gl::TEXTURE_MAG_FILTER, (GLint)(state.mMagLinear ? Gl::LINEAR : Gl::NEAREST));
-    Gl::SamplerParameteri(sampler, Gl::TEXTURE_WRAP_S, (GLint)(state.mClampU ? Gl::CLAMP_TO_EDGE : Gl::REPEAT));
-    Gl::SamplerParameteri(sampler, Gl::TEXTURE_WRAP_T, (GLint)(state.mClampV ? Gl::CLAMP_TO_EDGE : Gl::REPEAT));
     return sampler;
 }
 
-void Renderer::Device::SetupVertexArray(GLuint vertexArray, GLuint buffer, int layout)
-{
-    BindVertexArray(vertexArray);
-    Gl::BindBuffer(Gl::ARRAY_BUFFER, buffer);
-
-    switch (layout)
-    {
-    case VertexLayout_Terrain:
-        Gl::EnableVertexAttribArray(0);
-        Gl::VertexAttribIPointer(0, 4, Gl::SHORT, 0x10, reinterpret_cast<const void*>(0));
-        Gl::EnableVertexAttribArray(1);
-        Gl::VertexAttribIPointer(1, 4, Gl::SHORT, 0x10, reinterpret_cast<const void*>(8));
-        break;
-    case VertexLayout_Position:
-        Gl::EnableVertexAttribArray(0);
-        Gl::VertexAttribPointer(0, 2, Gl::FLOAT, 0, 8, reinterpret_cast<const void*>(0));
-        break;
-    case VertexLayout_ColouredUI:
-        Gl::EnableVertexAttribArray(0);
-        Gl::VertexAttribPointer(0, 2, Gl::FLOAT, 0, 0x14, reinterpret_cast<const void*>(0));
-        Gl::EnableVertexAttribArray(1);
-        Gl::VertexAttribPointer(1, 2, Gl::FLOAT, 0, 0x14, reinterpret_cast<const void*>(8));
-        Gl::EnableVertexAttribArray(2);
-        Gl::VertexAttribPointer(2, 4, Gl::UNSIGNED_BYTE, 1, 0x14, reinterpret_cast<const void*>(16));
-        break;
-    default:
-        Gl::EnableVertexAttribArray(0);
-        Gl::VertexAttribPointer(0, 3, Gl::FLOAT, 0, 0x20, reinterpret_cast<const void*>(0));
-        Gl::EnableVertexAttribArray(1);
-        Gl::VertexAttribPointer(1, 4, Gl::UNSIGNED_BYTE, 1, 0x20, reinterpret_cast<const void*>(20));
-        Gl::EnableVertexAttribArray(2);
-        Gl::VertexAttribIPointer(2, 4, Gl::BYTE, 0x20, reinterpret_cast<const void*>(24));
-        Gl::EnableVertexAttribArray(3);
-        Gl::VertexAttribPointer(3, 2, Gl::FLOAT, 0, 0x20, reinterpret_cast<const void*>(12));
-        Gl::EnableVertexAttribArray(4);
-        Gl::VertexAttribIPointer(4, 2, Gl::SHORT, 0x20, reinterpret_cast<const void*>(28));
-        break;
-    }
-
-    Gl::BindBuffer(Gl::ELEMENT_ARRAY_BUFFER, mQuadIndexBuffer);
-}
-
-void Renderer::Device::EnsureQuadIndices(unsigned int quads)
-{
-    if (quads <= mQuadIndexCapacity)
-    {
-        return;
-    }
-
-    unsigned int capacity = mQuadIndexCapacity * 2;
-    if (capacity < quads)
-    {
-        capacity = quads;
-    }
-
-    std::vector<unsigned int> indices((size_t)capacity * 6);
-    for (unsigned int quad = 0; quad < capacity; ++quad)
-    {
-        unsigned int base = quad * 4;
-        indices[quad * 6 + 0] = base;
-        indices[quad * 6 + 1] = base + 1;
-        indices[quad * 6 + 2] = base + 2;
-        indices[quad * 6 + 3] = base;
-        indices[quad * 6 + 4] = base + 2;
-        indices[quad * 6 + 5] = base + 3;
-    }
-
-    Gl::BindBuffer(Gl::ARRAY_BUFFER, mQuadIndexBuffer);
-    Gl::BufferData(Gl::ARRAY_BUFFER, (GLsizeiptr)(indices.size() * sizeof(unsigned int)), &indices[0],
-                   Gl::STATIC_DRAW);
-    mQuadIndexCapacity = capacity;
-}
-
-void Renderer::Device::BindFramebuffer(GLuint framebuffer)
+void Renderer::Device::BindFramebuffer(int framebuffer)
 {
     if (mCurrentFramebuffer != framebuffer)
     {
-        Gl::BindFramebuffer(Gl::FRAMEBUFFER, framebuffer);
+        PcGraphics().EndPass();
         mCurrentFramebuffer = framebuffer;
     }
 }
 
-void Renderer::Device::BindTextureUnit(int unit, GLuint texture, GLuint sampler)
+void Renderer::Device::BindTextureUnit(int unit, SDL_GPUTexture* texture, SDL_GPUSampler* sampler)
 {
-    if (mCurrentTexture[unit] != texture)
-    {
-        Gl::ActiveTexture(Gl::TEXTURE0 + (GLenum)unit);
-        Gl::BindTexture(Gl::TEXTURE_2D, texture);
-        mCurrentTexture[unit] = texture;
-    }
-
-    if (mCurrentSampler[unit] != sampler)
-    {
-        Gl::BindSampler((GLuint)unit, sampler);
-        mCurrentSampler[unit] = sampler;
-    }
+    mBindings[unit] = {texture, sampler};
 }
 
-void Renderer::Device::UseProgram(GLuint program)
+void Renderer::Device::BindVertexBuffer(SDL_GPUBuffer* buffer, int layout)
 {
-    if (mCurrentProgram != program)
-    {
-        Gl::UseProgram(program);
-        mCurrentProgram = program;
-    }
+    mCurrentBuffer = buffer;
+    mCurrentLayout = layout;
 }
 
-void Renderer::Device::BindVertexArray(GLuint vertexArray)
-{
-    if (mCurrentVertexArray != vertexArray)
-    {
-        Gl::BindVertexArray(vertexArray);
-        mCurrentVertexArray = vertexArray;
-    }
-}
-
-void Renderer::Device::SetCapability(int index, GLenum capability, bool bEnable)
-{
-    int value = bEnable ? 1 : 0;
-
-    if (mCapabilities[index] != value)
-    {
-        if (bEnable)
-        {
-            Gl::Enable(capability);
-        }
-        else
-        {
-            Gl::Disable(capability);
-        }
-
-        mCapabilities[index] = value;
-    }
-}
-
-void Renderer::Device::SetColourMaskMode(int mode, unsigned char mask)
-{
-    if (mColourMaskMode == mode && mColourMask == mask)
-    {
-        return;
-    }
-
-    if (mode == ColourMaskMode_OrderIndependentAlpha)
-    {
-        Gl::ColorMaski(0, 1, 1, 1, 0);
-        Gl::ColorMaski(1, 0, 0, 0, 1);
-        Gl::ColorMaski(2, 1, 0, 0, 0);
-    }
-    else
-    {
-        Gl::ColorMask((mask & 1) ? 1 : 0, (mask & 2) ? 1 : 0, (mask & 4) ? 1 : 0, (mask & 8) ? 1 : 0);
-    }
-
-    mColourMaskMode = mode;
-    mColourMask = mask;
-}
-
-void Renderer::Device::QueueBufferDelete(GLuint buffer, GLuint vertexArray)
+void Renderer::Device::QueueBufferDelete(SDL_GPUBuffer* buffer)
 {
     EnterCriticalSection(&mPendingMutex);
-
-    if (buffer != 0)
-    {
-        mDeletedBuffers.push_back(buffer);
-    }
-
-    if (vertexArray != 0)
-    {
-        mDeletedVertexArrays.push_back(vertexArray);
-    }
-
+    mDeletedBuffers.push_back(buffer);
     LeaveCriticalSection(&mPendingMutex);
 }
 
 void Renderer::Device::ExecuteTextureStorage(Texture& texture, const void* pixels)
 {
-    if (texture.mName == 0)
-    {
-        Gl::GenTextures(1, &texture.mName);
-    }
-
-    Gl::ActiveTexture(Gl::TEXTURE0);
-    Gl::BindTexture(Gl::TEXTURE_2D, texture.mName);
-    mCurrentTexture[0] = texture.mName;
-    Gl::TexImage2D(Gl::TEXTURE_2D, 0, (GLint)Gl::RGBA8, texture.mWidth, texture.mHeight, 0, Gl::RGBA,
-                   Gl::UNSIGNED_BYTE, pixels);
-
-    for (int level = 1; level < texture.mStorageLevels; ++level)
-    {
-        int width = texture.mWidth >> level;
-        int height = texture.mHeight >> level;
-        Gl::TexImage2D(Gl::TEXTURE_2D, level, (GLint)Gl::RGBA8, width > 0 ? width : 1, height > 0 ? height : 1, 0,
-                       Gl::RGBA, Gl::UNSIGNED_BYTE, NULL);
-    }
-
-    Gl::TexParameteri(Gl::TEXTURE_2D, Gl::TEXTURE_BASE_LEVEL, 0);
-    Gl::TexParameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MAX_LEVEL, texture.mStorageLevels - 1);
+    PcGpu& gpu = PcGraphics();
+    gpu.EndPass();
+    if (texture.mName)
+        SDL_ReleaseGPUTexture(gpu.device, texture.mName);
+    texture.mName = gpu.Texture(texture.mWidth, texture.mHeight, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+                                SDL_GPU_TEXTUREUSAGE_SAMPLER, texture.mStorageLevels);
+    gpu.Upload(texture.mName, 0, texture.mWidth, texture.mHeight, pixels);
 }
 
 void Renderer::Device::ExecuteTextureLevel(Texture& texture, int level, int width, int height, const void* pixels)
 {
-    if (texture.mName == 0)
-    {
-        return;
-    }
-
-    Gl::ActiveTexture(Gl::TEXTURE0);
-    Gl::BindTexture(Gl::TEXTURE_2D, texture.mName);
-    mCurrentTexture[0] = texture.mName;
-    Gl::TexSubImage2D(Gl::TEXTURE_2D, level, 0, 0, width, height, Gl::RGBA, Gl::UNSIGNED_BYTE, pixels);
+    if (texture.mName)
+        PcGraphics().Upload(texture.mName, level, width, height, pixels);
 }
 
 void Renderer::Device::FlushPending(Renderer& renderer)
 {
     EnterCriticalSection(&mPendingMutex);
-
     if (!mDeletedBuffers.empty())
-    {
-        Gl::DeleteBuffers((GLsizei)mDeletedBuffers.size(), &mDeletedBuffers[0]);
-        mDeletedBuffers.clear();
-    }
-
-    if (!mDeletedVertexArrays.empty())
-    {
-        for (size_t index = 0; index < mDeletedVertexArrays.size(); ++index)
-        {
-            if (mDeletedVertexArrays[index] == mCurrentVertexArray)
-            {
-                mCurrentVertexArray = 0xFFFFFFFFu;
-            }
-        }
-
-        Gl::DeleteVertexArrays((GLsizei)mDeletedVertexArrays.size(), &mDeletedVertexArrays[0]);
-        mDeletedVertexArrays.clear();
-    }
-
+        PcGraphics().EndPass();
+    for (auto buffer : mDeletedBuffers)
+        SDL_ReleaseGPUBuffer(PcGraphics().device, buffer);
+    mDeletedBuffers.clear();
     LeaveCriticalSection(&mPendingMutex);
 
     EnterCriticalSection(&renderer.mTextureMutex);
-
-    for (size_t index = 0; index < mTextureOperations.size(); ++index)
+    for (auto& operation : mTextureOperations)
     {
-        TextureOperation& operation = mTextureOperations[index];
-
         if (operation.mType == TextureOperation::eType_Delete)
         {
-            for (int unit = 0; unit <= RENDER_LIGHT_TEXTURE_UNIT; ++unit)
-            {
-                if (mCurrentTexture[unit] == operation.mName)
-                {
-                    mCurrentTexture[unit] = 0xFFFFFFFFu;
-                }
-            }
-
-            Gl::DeleteTextures(1, &operation.mName);
+            PcGraphics().EndPass();
+            SDL_ReleaseGPUTexture(PcGraphics().device, operation.mName);
             continue;
         }
-
         Texture& texture = renderer.mTextures[operation.mSlot];
         if (texture.mGeneration != operation.mGeneration)
-        {
             continue;
-        }
-
-        const void* pixels = operation.mHasPixels ? &operation.mPixels[0] : NULL;
-
+        const void* pixels = operation.mHasPixels ? operation.mPixels.data() : NULL;
         if (operation.mType == TextureOperation::eType_Storage)
         {
             texture.mWidth = operation.mWidth;
@@ -1460,81 +912,33 @@ void Renderer::Device::FlushPending(Renderer& renderer)
             ExecuteTextureStorage(texture, pixels);
         }
         else
-        {
             ExecuteTextureLevel(texture, operation.mLevel, operation.mWidth, operation.mHeight, pixels);
-        }
     }
-
     mTextureOperations.clear();
     LeaveCriticalSection(&renderer.mTextureMutex);
 }
 
 bool Renderer::Device::PrepareDraw(Renderer& renderer, Context& context)
 {
-    if (!IsGlThread() || renderer.mScreen != 0)
-    {
+    if (!IsRenderThread() || renderer.mScreen != 0)
         return false;
-    }
-
-    GpuState& gpu = context.mGpu;
-    if (gpu.mVertexShader < 0 || gpu.mPixelShader < 0)
-    {
+    GpuState& state = context.mGpu;
+    if (state.mVertexShader < 0 || state.mPixelShader < 0)
         return false;
-    }
-
     FlushPending(renderer);
-
-    bool bAlphaTarget = mTarget == RenderTarget_OrderIndependentAlpha;
-    BindFramebuffer(bAlphaTarget ? mAlphaFramebuffer : mMainFramebuffer);
-
-    Gl::Viewport((GLint)floorf(gpu.mViewport[0] + 0.5f), (GLint)floorf(gpu.mViewport[1] + 0.5f),
-                 (GLsizei)floorf(gpu.mViewport[2] + 0.5f), (GLsizei)floorf(gpu.mViewport[3] + 0.5f));
-    SetCapability(Capability_Scissor, Gl::SCISSOR_TEST, true);
-    Gl::Scissor(gpu.mScissor[0], gpu.mScissor[1], gpu.mScissor[2], gpu.mScissor[3]);
-
-    SetCapability(Capability_DepthTest, Gl::DEPTH_TEST, gpu.mDepthTest);
-    Gl::DepthFunc(CompareFunction(gpu.mDepthFunc));
-    Gl::DepthMask(gpu.mDepthWrite ? 1 : 0);
-
-    SetCapability(Capability_StencilTest, Gl::STENCIL_TEST, true);
-    Gl::StencilFunc(CompareFunction(gpu.mStencilFunc), gpu.mStencilReference, gpu.mStencilCompareMask);
-    Gl::StencilOp(Gl::KEEP, Gl::KEEP, Gl::REPLACE);
-    Gl::StencilMask(gpu.mStencilWriteMask);
-
-    SetCapability(Capability_CullFace, Gl::CULL_FACE, gpu.mCullBack);
-    Gl::CullFace(Gl::BACK);
-    Gl::FrontFace(gpu.mFrontFaceCCW ? Gl::CW : Gl::CCW);
-
-    SetCapability(Capability_PolygonOffset, Gl::POLYGON_OFFSET_FILL, true);
-    Gl::PolygonOffset(gpu.mPolygonOffsetScale, gpu.mPolygonOffsetBias);
-
-    if (bAlphaTarget)
-    {
-        SetCapability(Capability_Blend, Gl::BLEND, true);
-        Gl::BlendFuncSeparate(Gl::ONE, Gl::ONE, Gl::ZERO, Gl::ONE_MINUS_SRC_ALPHA);
-        SetColourMaskMode(ColourMaskMode_OrderIndependentAlpha, CHANNEL_MASK_RGBA);
-    }
-    else
-    {
-        SetCapability(Capability_Blend, Gl::BLEND, gpu.mBlendEnable);
-        Gl::BlendFunc(BlendFunction(gpu.mBlendSource), BlendFunction(gpu.mBlendDestination));
-        SetColourMaskMode(ColourMaskMode_Main, gpu.mColourMask);
-    }
-
-    Gl::BlendColor(gpu.mBlendColour[0], gpu.mBlendColour[1], gpu.mBlendColour[2], gpu.mBlendColour[3]);
-
-    const Program& program = GetProgram(gpu.mVertexShader, gpu.mPixelShader);
-    UseProgram(program.mName);
-
-    float alphaReference = gpu.mAlphaTestOn ? gpu.mAlphaReference : -3.4028235e38f;
+    BindFramebuffer(mTarget == RenderTarget_OrderIndependentAlpha ? mAlphaFramebuffer : mMainFramebuffer);
+    mDrawState = state;
+    mDrawVertexShader = state.mVertexShader;
+    mDrawPixelShader = state.mPixelShader;
+    float alphaReference = state.mAlphaTestOn ? state.mAlphaReference : -3.4028235e38f;
     if (context.mPixelConstants[RENDER_PIXEL_CONSTANT_ALPHA_REFERENCE][0] != alphaReference)
     {
         context.mPixelConstants[RENDER_PIXEL_CONSTANT_ALPHA_REFERENCE][0] = alphaReference;
         context.mPixelConstantsDirty = true;
     }
 
-    RenderSamplerState baseSampler = gpu.mPixelSampler[0];
-    bool bSharpUI = (gpu.mPixelShader == RenderPixelShader_UI || gpu.mPixelShader == RenderPixelShader_UIColourAdd)
+    RenderSamplerState baseSampler = state.mPixelSampler[0];
+    bool bSharpUI = (state.mPixelShader == RenderPixelShader_UI || state.mPixelShader == RenderPixelShader_UIColourAdd)
                     && baseSampler.mMagLinear == 0;
     float sharpUI = bSharpUI ? 1.0f : 0.0f;
     if (context.mPixelConstants[RENDER_PIXEL_CONSTANT_ALPHA_REFERENCE][1] != sharpUI)
@@ -1548,122 +952,377 @@ bool Renderer::Device::PrepareDraw(Renderer& renderer, Context& context)
         baseSampler.mMinLinear = 1;
     }
 
-    int vertexCount = RenderVertexConstantCount(gpu.mVertexShader);
-    bool bVertexUpload = vertexCount > 0
-                         && (context.mVertexConstantsDirty || vertexCount > mBoundVertexConstantCount
-                             || mBoundConstantContext != &context);
-    bool bPixelUpload = context.mPixelConstantsDirty || !mPixelConstantsBound || mBoundConstantContext != &context;
-    size_t vertexBytes = (size_t)vertexCount * 16;
-    size_t pixelBytes = (size_t)RENDER_PIXEL_CONSTANT_COUNT * 16;
-
-    if (bVertexUpload || bPixelUpload)
+    PcGpu& gpu = PcGraphics();
+    SDL_GPUCommandBuffer* command = gpu.Command();
+    bool changed = mUniformSerial != gpu.commandSerial || mUniformContext != &context;
+    int count = RenderVertexConstantCount(mDrawVertexShader);
+    if (count > 0 && (changed || context.mVertexConstantsDirty || count > mBoundVertexConstantCount))
     {
-        if (mConstantStream.Reserve(vertexBytes + pixelBytes + (size_t)mUniformAlignment * 2))
-        {
-            bVertexUpload = vertexCount > 0;
-            bPixelUpload = true;
-        }
-
-        if (bVertexUpload)
-        {
-            size_t offset = mConstantStream.Write(context.mVertexConstants, vertexBytes, (size_t)mUniformAlignment);
-            Gl::BindBufferRange(Gl::UNIFORM_BUFFER, RENDER_VERTEX_CONSTANT_BINDING, mConstantStream.mBuffer,
-                                (GLintptr)offset, (GLsizeiptr)vertexBytes);
-            mBoundVertexConstantCount = vertexCount;
-            context.mVertexConstantsDirty = false;
-        }
-
-        if (bPixelUpload)
-        {
-            size_t offset = mConstantStream.Write(context.mPixelConstants, pixelBytes, (size_t)mUniformAlignment);
-            Gl::BindBufferRange(Gl::UNIFORM_BUFFER, RENDER_PIXEL_CONSTANT_BINDING, mConstantStream.mBuffer,
-                                (GLintptr)offset, (GLsizeiptr)pixelBytes);
-            mPixelConstantsBound = true;
-            context.mPixelConstantsDirty = false;
-        }
-
-        mBoundConstantContext = &context;
+        SDL_PushGPUVertexUniformData(command, RENDER_VERTEX_CONSTANT_BINDING, context.mVertexConstants, count * 16);
+        context.mVertexConstantsDirty = false;
+        mBoundVertexConstantCount = count;
     }
-
-    GLuint defaultName = renderer.mTextures[renderer.mDefaultTexture].mName;
+    if (changed || context.mPixelConstantsDirty || !mPixelConstantsBound)
+    {
+        SDL_PushGPUFragmentUniformData(command, RENDER_PIXEL_CONSTANT_BINDING, context.mPixelConstants,
+                                       RENDER_PIXEL_CONSTANT_COUNT * 16);
+        context.mPixelConstantsDirty = false;
+        mPixelConstantsBound = true;
+    }
+    mUniformContext = &context;
+    mUniformSerial = gpu.commandSerial;
+    SDL_GPUTexture* defaultTexture = renderer.mTextures[renderer.mDefaultTexture].mName;
     for (int stage = 0; stage < TEXTURE_STAGE_COUNT; ++stage)
     {
-        GLuint name = renderer.mTextures[gpu.mPixelTexture[stage]].mName;
-        BindTextureUnit(stage, name != 0 ? name : defaultName,
-                        GetSampler(stage == 0 ? baseSampler : gpu.mPixelSampler[stage]));
+        SDL_GPUTexture* texture = renderer.mTextures[state.mPixelTexture[stage]].mName;
+        BindTextureUnit(stage, texture ? texture : defaultTexture,
+                        GetSampler(stage == 0 ? baseSampler : state.mPixelSampler[stage]));
     }
-
-    GLuint vertexName = renderer.mTextures[gpu.mVertexTexture].mName;
-    BindTextureUnit(RENDER_LIGHT_TEXTURE_UNIT, vertexName != 0 ? vertexName : defaultName,
-                    GetSampler(gpu.mVertexSampler));
-    mCacheValid = true;
+    SDL_GPUTexture* light = renderer.mTextures[state.mVertexTexture].mName;
+    BindTextureUnit(RENDER_LIGHT_TEXTURE_UNIT, light ? light : defaultTexture, GetSampler(state.mVertexSampler));
     return true;
+}
+
+void Renderer::Device::BeginPass()
+{
+    PcGpu& gpu = PcGraphics();
+    if (gpu.pass)
+        return;
+    SDL_GPUColorTargetInfo colours[3] = {};
+    SDL_GPUDepthStencilTargetInfo depth = {};
+    int count = 1;
+    bool hasDepth = mCurrentFramebuffer == mMainFramebuffer || mCurrentFramebuffer == mAlphaFramebuffer;
+    if (mCurrentFramebuffer == 0)
+        colours[0].texture = gpu.swapchain;
+    else if (mCurrentFramebuffer == mMainFramebuffer)
+        colours[0].texture = mMainColourTexture;
+    else if (mCurrentFramebuffer == mAlphaFramebuffer)
+    {
+        colours[0].texture = mAlphaAccumulateTexture;
+        colours[1].texture = mMainColourTexture;
+        colours[2].texture = mAlphaWeightTexture;
+        count = 3;
+    }
+    else
+        colours[0].texture = mThumbnailTexture[mCurrentFramebuffer - 3];
+    for (int i = 0; i < count; ++i)
+    {
+        colours[i].load_op = SDL_GPU_LOADOP_LOAD;
+        colours[i].store_op = SDL_GPU_STOREOP_STORE;
+    }
+    depth.texture = mMainDepthStencil;
+    depth.load_op = depth.stencil_load_op = SDL_GPU_LOADOP_LOAD;
+    depth.store_op = depth.stencil_store_op = SDL_GPU_STOREOP_STORE;
+    gpu.BeginPass(colours, count, hasDepth ? &depth : NULL);
+}
+
+bool Renderer::Device::BindPipeline(int primitiveType, bool vertexInput)
+{
+    PcGpu& gpu = PcGraphics();
+    float width = mCurrentFramebuffer == 0 ? gpu.swapWidth : mWidth;
+    float height = mCurrentFramebuffer == 0 ? gpu.swapHeight : mHeight;
+    if (mCurrentFramebuffer >= 3)
+        width = height = THUMBNAIL_SIZE >> (mCurrentFramebuffer - 3);
+    float x = floorf(mDrawState.mViewport[0] + 0.5f);
+    float y = floorf(mDrawState.mViewport[1] + 0.5f);
+    float originalWidth = floorf(mDrawState.mViewport[2] + 0.5f);
+    float originalHeight = floorf(mDrawState.mViewport[3] + 0.5f);
+    float left = std::max(0.0f, x);
+    float top = std::max(0.0f, y);
+    float right = std::min(width, x + originalWidth);
+    float bottom = std::min(height, y + originalHeight);
+    if (right <= left || bottom <= top)
+        return false;
+    SDL_GPUViewport viewport = {left, top, right - left, bottom - top, 0, 1};
+    float transform[4] = {originalWidth / viewport.w, originalHeight / viewport.h,
+                          (2 * (x - left) + originalWidth - viewport.w) / viewport.w,
+                          -(2 * (y - top) + originalHeight - viewport.h) / viewport.h};
+    bool alpha = mCurrentFramebuffer == mAlphaFramebuffer;
+    bool hasDepth = alpha || mCurrentFramebuffer == mMainFramebuffer;
+    SDL_GPUGraphicsPipelineCreateInfo info = {};
+    info.vertex_shader = gpu.Shader(mDrawVertexShader, true);
+    info.fragment_shader = gpu.Shader(mDrawPixelShader, false);
+    info.primitive_type = PrimitiveMode(primitiveType);
+    info.rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL;
+    info.rasterizer_state.cull_mode = mDrawState.mCullBack ? SDL_GPU_CULLMODE_BACK : SDL_GPU_CULLMODE_NONE;
+    info.rasterizer_state.front_face = mDrawState.mFrontFaceCCW ? SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE
+                                                                : SDL_GPU_FRONTFACE_CLOCKWISE;
+    info.rasterizer_state.enable_depth_clip = true;
+    info.rasterizer_state.enable_depth_bias = mDrawState.mPolygonOffsetScale != 0 || mDrawState.mPolygonOffsetBias != 0;
+    info.rasterizer_state.depth_bias_constant_factor = mDrawState.mPolygonOffsetBias;
+    info.rasterizer_state.depth_bias_slope_factor = mDrawState.mPolygonOffsetScale;
+    auto& depth = info.depth_stencil_state;
+    depth.enable_depth_test = hasDepth && mDrawState.mDepthTest;
+    depth.enable_depth_write = hasDepth && mDrawState.mDepthWrite;
+    depth.compare_op = CompareFunction(mDrawState.mDepthFunc);
+    depth.enable_stencil_test = hasDepth && !mClearing;
+    depth.compare_mask = mDrawState.mStencilCompareMask;
+    depth.write_mask = mDrawState.mStencilWriteMask;
+    depth.front_stencil_state.fail_op = depth.front_stencil_state.depth_fail_op = SDL_GPU_STENCILOP_KEEP;
+    depth.front_stencil_state.pass_op = SDL_GPU_STENCILOP_REPLACE;
+    depth.front_stencil_state.compare_op = CompareFunction(mDrawState.mStencilFunc);
+    depth.back_stencil_state = depth.front_stencil_state;
+    SDL_GPUVertexBufferDescription buffer = {};
+    SDL_GPUVertexAttribute attributes[5] = {};
+    auto attribute = [&](int location, SDL_GPUVertexElementFormat format, int offset) {
+        attributes[location].location = location;
+        attributes[location].format = format;
+        attributes[location].offset = offset;
+    };
+    if (vertexInput)
+    {
+        int count = 0;
+        if (mCurrentLayout == VertexLayout_Terrain)
+        {
+            buffer.pitch = 16;
+            attribute(0, SDL_GPU_VERTEXELEMENTFORMAT_SHORT4, 0);
+            attribute(1, SDL_GPU_VERTEXELEMENTFORMAT_SHORT4, 8);
+            count = 2;
+        }
+        else if (mCurrentLayout == VertexLayout_Position)
+        {
+            buffer.pitch = 8;
+            attribute(0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 0);
+            count = 1;
+        }
+        else if (mCurrentLayout == VertexLayout_ColouredUI)
+        {
+            buffer.pitch = 20;
+            attribute(0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 0);
+            attribute(1, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 8);
+            attribute(2, SDL_GPU_VERTEXELEMENTFORMAT_UBYTE4_NORM, 16);
+            count = 3;
+        }
+        else
+        {
+            buffer.pitch = 32;
+            attribute(0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, 0);
+            attribute(1, SDL_GPU_VERTEXELEMENTFORMAT_UBYTE4_NORM, 20);
+            attribute(2, SDL_GPU_VERTEXELEMENTFORMAT_BYTE4, 24);
+            attribute(3, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 12);
+            attribute(4, SDL_GPU_VERTEXELEMENTFORMAT_SHORT2, 28);
+            count = 5;
+        }
+        info.vertex_input_state.vertex_buffer_descriptions = &buffer;
+        info.vertex_input_state.num_vertex_buffers = 1;
+        info.vertex_input_state.vertex_attributes = attributes;
+        info.vertex_input_state.num_vertex_attributes = count;
+    }
+    SDL_GPUColorTargetDescription colours[3] = {};
+    colours[0].format = mCurrentFramebuffer == 0 ? gpu.swapFormat : SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
+    if (alpha)
+    {
+        colours[0].format = SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT;
+        colours[1].format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
+        colours[2].format = SDL_GPU_TEXTUREFORMAT_R16_FLOAT;
+    }
+    for (int i = 0; i < (alpha ? 3 : 1); ++i)
+    {
+        auto& blend = colours[i].blend_state;
+        blend.enable_color_write_mask = true;
+        blend.color_write_mask = mDrawState.mColourMask;
+        blend.enable_blend = mDrawState.mBlendEnable;
+        blend.color_blend_op = blend.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+        blend.src_color_blendfactor = blend.src_alpha_blendfactor = BlendFunction(mDrawState.mBlendSource);
+        blend.dst_color_blendfactor = blend.dst_alpha_blendfactor = BlendFunction(mDrawState.mBlendDestination);
+        if (alpha && !mClearing)
+        {
+            blend.color_write_mask = i == 0 ? 7 : (i == 1 ? 8 : 1);
+            if (mAlphaInitialise)
+            {
+                blend.enable_blend = false;
+                blend.color_write_mask = i == 1 ? 8 : 15;
+            }
+            else
+            {
+                blend.enable_blend = true;
+                blend.src_color_blendfactor = blend.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
+                blend.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ZERO;
+                blend.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+            }
+        }
+        if (alpha && mClearing && i != 0)
+            blend.color_write_mask = 0;
+    }
+    info.target_info.color_target_descriptions = colours;
+    info.target_info.num_color_targets = alpha ? 3 : 1;
+    info.target_info.has_depth_stencil_target = hasDepth;
+    info.target_info.depth_stencil_format = mDepthFormat;
+    SDL_GPUGraphicsPipeline* pipeline = gpu.Pipeline(info);
+    BeginPass();
+    gpu.BindPipeline(pipeline);
+    int viewportBinding = mDrawVertexShader == RenderVertexShader_Clear ? 0 : RENDER_VIEWPORT_CONSTANT_BINDING;
+    if (mViewportUniformSerial != gpu.commandSerial || mViewportUniformBinding != viewportBinding
+        || memcmp(mViewportUniform, transform, sizeof(transform)) != 0)
+    {
+        SDL_PushGPUVertexUniformData(gpu.Command(), viewportBinding, transform, sizeof(transform));
+        memcpy(mViewportUniform, transform, sizeof(transform));
+        mViewportUniformSerial = gpu.commandSerial;
+        mViewportUniformBinding = viewportBinding;
+    }
+    bool newPass = mDynamicPassSerial != gpu.passSerial;
+    if (newPass || memcmp(&mLastViewport, &viewport, sizeof(viewport)) != 0)
+    {
+        SDL_SetGPUViewport(gpu.pass, &viewport);
+        mLastViewport = viewport;
+    }
+    SDL_Rect scissor = {mDrawState.mScissor[0], mDrawState.mScissor[1], mDrawState.mScissor[2], mDrawState.mScissor[3]};
+    if (newPass || memcmp(&mLastScissor, &scissor, sizeof(scissor)) != 0)
+    {
+        SDL_SetGPUScissor(gpu.pass, &scissor);
+        mLastScissor = scissor;
+    }
+    if (newPass || mLastStencilReference != mDrawState.mStencilReference)
+    {
+        SDL_SetGPUStencilReference(gpu.pass, mDrawState.mStencilReference);
+        mLastStencilReference = mDrawState.mStencilReference;
+    }
+    SDL_FColor blend = {mDrawState.mBlendColour[0], mDrawState.mBlendColour[1], mDrawState.mBlendColour[2],
+                        mDrawState.mBlendColour[3]};
+    if (newPass || memcmp(&mLastBlend, &blend, sizeof(blend)) != 0)
+    {
+        SDL_SetGPUBlendConstants(gpu.pass, blend);
+        mLastBlend = blend;
+    }
+    mDynamicPassSerial = gpu.passSerial;
+    bool light = mDrawVertexShader == RenderVertexShader_Standard || mDrawVertexShader == RenderVertexShader_Terrain
+                 || mDrawVertexShader == RenderVertexShader_StandardLit
+                 || mDrawVertexShader == RenderVertexShader_TexGen || mDrawVertexShader == RenderVertexShader_Entity
+                 || mDrawVertexShader == RenderVertexShader_EntityLit;
+    if (light)
+        SDL_BindGPUVertexSamplers(gpu.pass, 0, &mBindings[RENDER_LIGHT_TEXTURE_UNIT], 1);
+    if (!mClearing && mDrawPixelShader != RenderPixelShader_AlphaAccumulate)
+    {
+        int count = mDrawPixelShader == RenderPixelShader_Copy || mDrawPixelShader == RenderPixelShader_Gamma
+                        ? 1
+                        : (mDrawPixelShader == RenderPixelShader_AlphaResolve ? 2 : 4);
+        SDL_BindGPUFragmentSamplers(gpu.pass, 0, mBindings, count);
+    }
+    return true;
+}
+
+void Renderer::Device::EnsureIndices(unsigned int count, bool fan)
+{
+    unsigned int& capacity = fan ? mFanIndexCapacity : mQuadIndexCapacity;
+    SDL_GPUBuffer*& buffer = fan ? mFanIndexBuffer : mQuadIndexBuffer;
+    if (count <= capacity)
+        return;
+    capacity = std::max(count, capacity * 2);
+    std::vector<unsigned int> indices((size_t)capacity * (fan ? 3 : 6));
+    for (unsigned int i = 0; i < capacity; ++i)
+    {
+        if (fan)
+        {
+            indices[i * 3] = 0;
+            indices[i * 3 + 1] = i + 1;
+            indices[i * 3 + 2] = i + 2;
+        }
+        else
+        {
+            unsigned int quad[6] = {i * 4, i * 4 + 1, i * 4 + 2, i * 4, i * 4 + 2, i * 4 + 3};
+            memcpy(&indices[i * 6], quad, sizeof(quad));
+        }
+    }
+    PcGpu& gpu = PcGraphics();
+    mBoundIndexBuffer = NULL;
+    if (buffer)
+        SDL_ReleaseGPUBuffer(gpu.device, buffer);
+    buffer = gpu.Buffer(indices.size() * sizeof(unsigned int), SDL_GPU_BUFFERUSAGE_INDEX);
+    gpu.Upload(buffer, 0, indices.data(), indices.size() * sizeof(unsigned int));
 }
 
 void Renderer::Device::DrawRange(int primitiveType, unsigned int firstVertex, unsigned int count)
 {
-    if (primitiveType == C4JRender::ePrimitiveType_Quads)
-    {
-        unsigned int quads = count / 4;
-        if (quads == 0)
-        {
-            return;
-        }
-
-        if (quads > mQuadIndexCapacity)
-        {
-            GLuint vertexArray = mCurrentVertexArray;
-            EnsureQuadIndices(quads);
-            mCurrentVertexArray = 0xFFFFFFFFu;
-            BindVertexArray(vertexArray);
-        }
-
-        Gl::DrawElementsBaseVertex(Gl::TRIANGLES, (GLsizei)(quads * 6), Gl::UNSIGNED_INT, NULL, (GLint)firstVertex);
+    if (!count)
         return;
-    }
-
-    if (count != 0)
+    bool quads = primitiveType == C4JRender::ePrimitiveType_Quads;
+    bool fan = primitiveType == C4JRender::ePrimitiveType_TriangleFan;
+    if ((quads && count < 4) || (fan && count < 3))
+        return;
+    unsigned int primitives = quads ? count / 4 : (fan ? count - 2 : 0);
+    if (quads || fan)
+        EnsureIndices(primitives, fan);
+    if (!BindPipeline(primitiveType, true))
+        return;
+    SDL_GPUBufferBinding vertex = {mCurrentBuffer, 0};
+    SDL_BindGPUVertexBuffers(PcGraphics().pass, 0, &vertex, 1);
+    if (quads || fan)
     {
-        Gl::DrawArrays(PrimitiveMode(primitiveType), (GLint)firstVertex, (GLsizei)count);
+        SDL_GPUBufferBinding index = {fan ? mFanIndexBuffer : mQuadIndexBuffer, 0};
+        if (mIndexPassSerial != PcGraphics().passSerial || mBoundIndexBuffer != index.buffer)
+        {
+            SDL_BindGPUIndexBuffer(PcGraphics().pass, &index, SDL_GPU_INDEXELEMENTSIZE_32BIT);
+            mBoundIndexBuffer = index.buffer;
+            mIndexPassSerial = PcGraphics().passSerial;
+        }
+        SDL_DrawGPUIndexedPrimitives(PcGraphics().pass, primitives * (fan ? 3 : 6), 1, 0, firstVertex, 0);
     }
+    else
+        SDL_DrawGPUPrimitives(PcGraphics().pass, count, 1, firstVertex, 0);
 }
 
 void Renderer::Device::DrawStream(Renderer& renderer, Context& context, const void* vertices, unsigned int size,
                                   unsigned int stride, int layout, int primitiveType, unsigned int count)
 {
-    if (size == 0 || !PrepareDraw(renderer, context))
-    {
+    if (!size || !PrepareDraw(renderer, context))
         return;
-    }
-
-    size_t offset = mVertexStream.Write(vertices, size, stride);
-    BindVertexArray(mStreamVertexArrays[layout]);
-    DrawRange(primitiveType, (unsigned int)(offset / stride), count);
+    unsigned int offset = (mStreamOffset + stride - 1) / stride * stride;
+    if (offset + size > STREAM_VERTEX_BUFFER_SIZE)
+        offset = 0;
+    if (size > STREAM_VERTEX_BUFFER_SIZE)
+        FatalRendererError("dynamic vertex upload exceeds stream capacity");
+    PcGraphics().Upload(mVertexStream, offset, vertices, size, offset == 0);
+    mStreamOffset = offset + size;
+    BindVertexBuffer(mVertexStream, layout);
+    DrawRange(primitiveType, offset / stride, count);
 }
 
-void Renderer::Device::DrawScreenQuad(int vertexShader, int pixelShader, const float* quad, float flipY,
-                                      float gamma)
+void Renderer::Device::ScreenState(const float* viewport, const int* scissor)
 {
-    const Program& program = GetProgram(vertexShader, pixelShader);
-    UseProgram(program.mName);
+    memset(&mDrawState, 0, sizeof(mDrawState));
+    mDrawState.mDepthFunc = COMPARE_ALWAYS;
+    mDrawState.mStencilFunc = COMPARE_ALWAYS;
+    mDrawState.mColourMask = CHANNEL_MASK_RGBA;
+    int width = mCurrentFramebuffer == 0 ? PcGraphics().swapWidth : mWidth;
+    int height = mCurrentFramebuffer == 0 ? PcGraphics().swapHeight : mHeight;
+    if (mCurrentFramebuffer >= 3)
+        width = height = THUMBNAIL_SIZE >> (mCurrentFramebuffer - 3);
+    float fullViewport[4] = {0, 0, (float)width, (float)height};
+    int fullScissor[4] = {0, 0, width, height};
+    memcpy(mDrawState.mViewport, viewport ? viewport : fullViewport, sizeof(fullViewport));
+    memcpy(mDrawState.mScissor, scissor ? scissor : fullScissor, sizeof(fullScissor));
+}
 
-    if (program.mQuadLocation >= 0)
+void Renderer::Device::DrawScreenQuad(int vertexShader, int pixelShader, const float* quad, float gamma)
+{
+    mUniformContext = NULL;
+    mDrawVertexShader = vertexShader;
+    mDrawPixelShader = pixelShader;
+    float vertex[4] = {quad[0], quad[1], quad[2], quad[3]};
+    if (vertexShader == RenderVertexShader_ScreenQuad)
+        SDL_PushGPUVertexUniformData(PcGraphics().Command(), 0, vertex, sizeof(vertex));
+    if (pixelShader == RenderPixelShader_Gamma)
     {
-        Gl::Uniform4f(program.mQuadLocation, quad[0], quad[1], quad[2], quad[3]);
+        float pixel[4] = {gamma, 0, 0, 0};
+        SDL_PushGPUFragmentUniformData(PcGraphics().Command(), 0, pixel, sizeof(pixel));
     }
+    if (!BindPipeline(C4JRender::ePrimitiveType_TriangleStrip, false))
+        return;
+    SDL_DrawGPUPrimitives(PcGraphics().pass, 4, 1, 0, 0);
+}
 
-    if (program.mFlipLocation >= 0)
-    {
-        Gl::Uniform1f(program.mFlipLocation, flipY);
-    }
-
-    if (program.mGammaLocation >= 0)
-    {
-        Gl::Uniform1f(program.mGammaLocation, gamma);
-    }
-
-    BindVertexArray(mEmptyVertexArray);
-    Gl::DrawArrays(Gl::TRIANGLE_STRIP, 0, 4);
+void Renderer::Device::Clear(const GpuState& state, int flags, const float* colour)
+{
+    BindFramebuffer(mTarget == RenderTarget_OrderIndependentAlpha ? mAlphaFramebuffer : mMainFramebuffer);
+    ScreenState(state.mViewport, state.mScissor);
+    mDrawState.mColourMask = flags & 2 ? 15 : 0;
+    mDrawState.mDepthTest = mDrawState.mDepthWrite = (flags & 1) != 0;
+    mDrawState.mDepthFunc = COMPARE_ALWAYS;
+    mClearing = true;
+    SDL_PushGPUFragmentUniformData(PcGraphics().Command(), 0, colour, 16);
+    float quad[4] = {0, 0, 1, 1};
+    DrawScreenQuad(RenderVertexShader_Clear, RenderPixelShader_Clear, quad, 1);
+    mClearing = false;
 }
 
 Renderer::Context::Context(Renderer* renderer)
@@ -1827,7 +1486,7 @@ Renderer::Renderer()
 
 Renderer::~Renderer()
 {
-    if (mDevice != NULL && mDevice->IsGlThread())
+    if (mDevice != NULL && mDevice->IsRenderThread())
     {
         PcKeyboardOverlayShutdown();
         mDevice->Destroy();
@@ -1866,9 +1525,9 @@ Renderer::Context& Renderer::getContext()
     return *static_cast<Context*>(sContext);
 }
 
-bool Renderer::IsGlThread()
+bool Renderer::IsRenderThread()
 {
-    return mDevice != NULL && mDevice->IsGlThread();
+    return mDevice != NULL && mDevice->IsRenderThread();
 }
 
 void Renderer::SetVertexUniformReg(unsigned int offset, unsigned int count, const float* values)
@@ -1885,8 +1544,12 @@ void Renderer::SetVertexUniformReg(unsigned int offset, unsigned int count, cons
         count = VERTEX_CONSTANT_COUNT * 4 - offset;
     }
 
-    memcpy(&context.mVertexConstants[0][0] + offset, values, count * sizeof(float));
-    context.mVertexConstantsDirty = true;
+    float* destination = &context.mVertexConstants[0][0] + offset;
+    if (memcmp(destination, values, count * sizeof(float)) != 0)
+    {
+        memcpy(destination, values, count * sizeof(float));
+        context.mVertexConstantsDirty = true;
+    }
 }
 
 void Renderer::SetPixelUniformReg(unsigned int offset, unsigned int count, const float* values)
@@ -1904,8 +1567,12 @@ void Renderer::SetPixelUniformReg(unsigned int offset, unsigned int count, const
         count = limit - offset;
     }
 
-    memcpy(&context.mPixelConstants[0][0] + offset, values, count * sizeof(float));
-    context.mPixelConstantsDirty = true;
+    float* destination = &context.mPixelConstants[0][0] + offset;
+    if (memcmp(destination, values, count * sizeof(float)) != 0)
+    {
+        memcpy(destination, values, count * sizeof(float));
+        context.mPixelConstantsDirty = true;
+    }
 }
 
 void Renderer::SetGpuShaders(int vertexShader, int pixelShader)
@@ -2055,18 +1722,15 @@ void Renderer::Initialise(bool bFirstTime)
 
         if (!PcWindowCreate(UI_WIDTH, UI_HEIGHT))
         {
-            FatalRendererError("the window and OpenGL 3.3 context could not be created");
+            FatalRendererError("the SDL window and Vulkan device could not be created");
         }
 
-        if (!Gl::LoadFunctions(PcWindowGetProcAddress))
-        {
-            FatalRendererError("the OpenGL 3.3 functions could not be loaded");
-        }
-
-        LOG_INFO(sLog, "%s / %s / %s", reinterpret_cast<const char*>(Gl::GetString(Gl::VENDOR)),
-                 reinterpret_cast<const char*>(Gl::GetString(Gl::RENDERER)),
-                 reinterpret_cast<const char*>(Gl::GetString(Gl::VERSION)));
-        sGpuName = reinterpret_cast<const char*>(Gl::GetString(Gl::RENDERER));
+        SDL_PropertiesID properties = SDL_GetGPUDeviceProperties(PcGraphics().device);
+        const char* deviceName = SDL_GetStringProperty(properties, SDL_PROP_GPU_DEVICE_NAME_STRING, "");
+        LOG_INFO(sLog, "%s / %s / %s", deviceName,
+                 SDL_GetStringProperty(properties, SDL_PROP_GPU_DEVICE_DRIVER_NAME_STRING, ""),
+                 SDL_GetStringProperty(properties, SDL_PROP_GPU_DEVICE_DRIVER_INFO_STRING, ""));
+        sGpuName = deviceName;
 
         mDevice = new Device;
         mDevice->Create(UI_WIDTH, UI_HEIGHT);
@@ -2184,7 +1848,7 @@ void Renderer::StartFrameInternal(int screen, bool bAlphaTest)
 
 void Renderer::StartFrame()
 {
-    if (IsGlThread())
+    if (IsRenderThread())
     {
         mDevice->FlushPending(*this);
         ResizeTargets();
@@ -2261,7 +1925,7 @@ void Renderer::ResetRenderState()
 
 void Renderer::GammaCorrect()
 {
-    if (IsGlThread())
+    if (IsRenderThread())
     {
         int drawableWidth = 0;
         int drawableHeight = 0;
@@ -2269,20 +1933,15 @@ void Renderer::GammaCorrect()
 
         if (drawableWidth > 0 && drawableHeight > 0)
         {
+            if (!PcGraphics().AcquireSwapchain(PcWindowIsVSync()))
+                return;
             mDevice->BindFramebuffer(0);
-            mDevice->SetCapability(Capability_Scissor, Gl::SCISSOR_TEST, false);
-            mDevice->SetCapability(Capability_DepthTest, Gl::DEPTH_TEST, false);
-            mDevice->SetCapability(Capability_StencilTest, Gl::STENCIL_TEST, false);
-            mDevice->SetCapability(Capability_CullFace, Gl::CULL_FACE, false);
-            mDevice->SetCapability(Capability_Blend, Gl::BLEND, false);
-            mDevice->SetColourMaskMode(ColourMaskMode_Main, CHANNEL_MASK_RGBA);
-            Gl::Viewport(0, 0, drawableWidth, drawableHeight);
-
+            mDevice->ScreenState();
             mDevice->BindTextureUnit(0, mDevice->mMainColourTexture,
                                      mDevice->GetSampler(MakeSampler(true, true, MIP_FILTER_NONE)));
             float quad[4] = {0.0f, 0.0f, 1.0f, 1.0f};
             float gamma = 1.0f / ((float)mGamma * 3.0517578125e-05f * 1.5f + 0.5f);
-            mDevice->DrawScreenQuad(RenderVertexShader_ScreenQuad, RenderPixelShader_Gamma, quad, 1.0f, gamma);
+            mDevice->DrawScreenQuad(RenderVertexShader_ScreenQuad, RenderPixelShader_Gamma, quad, gamma);
         }
     }
 
@@ -2323,14 +1982,14 @@ void Renderer::Present()
 
     mDRCFrameStarted = false;
 
-    if (IsGlThread())
+    if (IsRenderThread())
     {
-        int drawableWidth = 0;
-        int drawableHeight = 0;
-        PcWindowGetDrawableSize(&drawableWidth, &drawableHeight);
-        PcKeyboardOverlayDraw(drawableWidth, drawableHeight);
+        // A Wayland configure can arrive between rendering and acquisition.
+        // Position the overlay against the image actually acquired this frame.
+        PcKeyboardOverlayDraw(PcGraphics().swapWidth, PcGraphics().swapHeight);
         PcWindowSwap();
         mDevice->Invalidate();
+        mDevice->mStreamOffset = 0;
 
         if (!mDisplayEnabled)
         {
@@ -2354,54 +2013,10 @@ void Renderer::Clear(int flags)
     Context& context = getContext();
     GpuState& gpu = context.mGpu;
 
-    if (IsGlThread() && mScreen == 0 && (flags & 3) != 0)
+    if (IsRenderThread() && mScreen == 0 && (flags & 3) != 0)
     {
         mDevice->FlushPending(*this);
-        bool bAlphaTarget = mDevice->mTarget == RenderTarget_OrderIndependentAlpha;
-        mDevice->BindFramebuffer(bAlphaTarget ? mDevice->mAlphaFramebuffer : mDevice->mMainFramebuffer);
-
-        int viewportX0 = (int)floorf(gpu.mViewport[0] + 0.5f);
-        int viewportY0 = (int)floorf(gpu.mViewport[1] + 0.5f);
-        int viewportX1 = viewportX0 + (int)floorf(gpu.mViewport[2] + 0.5f);
-        int viewportY1 = viewportY0 + (int)floorf(gpu.mViewport[3] + 0.5f);
-        int x0 = gpu.mScissor[0] > viewportX0 ? gpu.mScissor[0] : viewportX0;
-        int y0 = gpu.mScissor[1] > viewportY0 ? gpu.mScissor[1] : viewportY0;
-        int x1 = gpu.mScissor[0] + gpu.mScissor[2] < viewportX1 ? gpu.mScissor[0] + gpu.mScissor[2] : viewportX1;
-        int y1 = gpu.mScissor[1] + gpu.mScissor[3] < viewportY1 ? gpu.mScissor[1] + gpu.mScissor[3] : viewportY1;
-
-        if (x1 > x0 && y1 > y0)
-        {
-            mDevice->SetCapability(Capability_Scissor, Gl::SCISSOR_TEST, true);
-            Gl::Scissor(x0, y0, x1 - x0, y1 - y0);
-
-            GLbitfield mask = 0;
-            if ((flags & 2) != 0)
-            {
-                if (bAlphaTarget)
-                {
-                    Gl::ColorMaski(0, 1, 1, 1, 1);
-                    Gl::ColorMaski(1, 0, 0, 0, 0);
-                    Gl::ColorMaski(2, 0, 0, 0, 0);
-                }
-                else
-                {
-                    Gl::ColorMask(1, 1, 1, 1);
-                }
-
-                mDevice->mColourMaskMode = -1;
-                Gl::ClearColor(mClearColour[0], mClearColour[1], mClearColour[2], mClearColour[3]);
-                mask |= Gl::COLOR_BUFFER_BIT;
-            }
-
-            if ((flags & 1) != 0)
-            {
-                Gl::DepthMask(1);
-                Gl::ClearDepth(1.0);
-                mask |= Gl::DEPTH_BUFFER_BIT;
-            }
-
-            Gl::Clear(mask);
-        }
+        mDevice->Clear(gpu, flags, mClearColour);
     }
 
     SetGpuShaders(RenderVertexShader_Clear, RenderPixelShader_Copy);
@@ -2504,7 +2119,7 @@ void Renderer::CaptureThumbnail(ImageFileBuffer* buffer)
         scaledRight = scaledRight - inset;
     }
 
-    if (!IsGlThread())
+    if (!IsRenderThread())
     {
         buffer->mFormat = 0;
         buffer->mData = NULL;
@@ -2513,13 +2128,7 @@ void Renderer::CaptureThumbnail(ImageFileBuffer* buffer)
     }
 
     mDevice->FlushPending(*this);
-    mDevice->SetCapability(Capability_Scissor, Gl::SCISSOR_TEST, false);
-    mDevice->SetCapability(Capability_DepthTest, Gl::DEPTH_TEST, false);
-    mDevice->SetCapability(Capability_StencilTest, Gl::STENCIL_TEST, false);
-    mDevice->SetCapability(Capability_CullFace, Gl::CULL_FACE, false);
-    mDevice->SetCapability(Capability_Blend, Gl::BLEND, false);
-    mDevice->SetColourMaskMode(ColourMaskMode_Main, CHANNEL_MASK_RGBA);
-    GLuint pointSampler = mDevice->GetSampler(MakeSampler(true, false, MIP_FILTER_NONE));
+    SDL_GPUSampler* pointSampler = mDevice->GetSampler(MakeSampler(true, false, MIP_FILTER_NONE));
 
     int size = THUMBNAIL_SIZE;
     float quad[4];
@@ -2528,9 +2137,9 @@ void Renderer::CaptureThumbnail(ImageFileBuffer* buffer)
     quad[2] = scaledRight / aspect - scaledLeft / aspect;
     quad[3] = height;
     mDevice->BindFramebuffer(mDevice->mThumbnailFramebuffer[0]);
-    Gl::Viewport(0, 0, size, size);
+    mDevice->ScreenState();
     mDevice->BindTextureUnit(0, mDevice->mMainColourTexture, pointSampler);
-    mDevice->DrawScreenQuad(RenderVertexShader_ScreenQuad, RenderPixelShader_Copy, quad, -1.0f, 1.0f);
+    mDevice->DrawScreenQuad(RenderVertexShader_ScreenQuad, RenderPixelShader_Copy, quad, 1.0f);
 
     for (int level = 1; level < THUMBNAIL_LEVELS; ++level)
     {
@@ -2540,13 +2149,14 @@ void Renderer::CaptureThumbnail(ImageFileBuffer* buffer)
         quad[2] = 1.0f;
         quad[3] = 1.0f;
         mDevice->BindFramebuffer(mDevice->mThumbnailFramebuffer[level]);
-        Gl::Viewport(0, 0, size, size);
+        mDevice->ScreenState();
         mDevice->BindTextureUnit(0, mDevice->mThumbnailTexture[level - 1], pointSampler);
-        mDevice->DrawScreenQuad(RenderVertexShader_ScreenQuad, RenderPixelShader_Copy, quad, -1.0f, 1.0f);
+        mDevice->DrawScreenQuad(RenderVertexShader_ScreenQuad, RenderPixelShader_Copy, quad, 1.0f);
     }
 
     std::vector<unsigned char> pixels(THUMBNAIL_OUTPUT_SIZE * THUMBNAIL_OUTPUT_SIZE * 4);
-    Gl::ReadPixels(0, 0, THUMBNAIL_OUTPUT_SIZE, THUMBNAIL_OUTPUT_SIZE, Gl::RGBA, Gl::UNSIGNED_BYTE, &pixels[0]);
+    PcGraphics().Download(mDevice->mThumbnailTexture[THUMBNAIL_LEVELS - 1], THUMBNAIL_OUTPUT_SIZE,
+                          THUMBNAIL_OUTPUT_SIZE, pixels.data());
     ConvertLinearToPng(buffer, &pixels[0], THUMBNAIL_OUTPUT_SIZE, THUMBNAIL_OUTPUT_SIZE);
 
     SetGpuShaders(RenderVertexShader_ScreenQuad, RenderPixelShader_Copy);
@@ -2558,6 +2168,15 @@ void Renderer::CaptureThumbnail(ImageFileBuffer* buffer)
 
 void Renderer::CaptureScreen(ImageFileBuffer* buffer, _XSOCIAL_PREVIEWIMAGE* previewImage)
 {
+    buffer->mFormat = 0;
+    buffer->mData = NULL;
+    buffer->mSize = 0;
+    if (!IsRenderThread())
+        return;
+    std::vector<unsigned char> pixels((size_t)mDevice->mWidth * mDevice->mHeight * 4);
+    PcGraphics().Download(mDevice->mMainColourTexture, mDevice->mWidth, mDevice->mHeight, pixels.data());
+    ConvertLinearToPng(buffer, pixels.data(), mDevice->mWidth, mDevice->mHeight);
+    mDevice->Invalidate();
 }
 
 void Renderer::BeginConditionalSurvey(int survey)
@@ -2583,24 +2202,15 @@ void Renderer::BeginOrderIndependentAlpha()
 
     mDevice->mTarget = RenderTarget_OrderIndependentAlpha;
 
-    if (IsGlThread() && mScreen == 0)
+    if (IsRenderThread() && mScreen == 0)
     {
         mDevice->FlushPending(*this);
         mDevice->BindFramebuffer(mDevice->mAlphaFramebuffer);
-        Gl::Viewport((GLint)floorf(gpu.mViewport[0] + 0.5f), (GLint)floorf(gpu.mViewport[1] + 0.5f),
-                     (GLsizei)floorf(gpu.mViewport[2] + 0.5f), (GLsizei)floorf(gpu.mViewport[3] + 0.5f));
-        mDevice->SetCapability(Capability_Scissor, Gl::SCISSOR_TEST, true);
-        Gl::Scissor(gpu.mScissor[0], gpu.mScissor[1], gpu.mScissor[2], gpu.mScissor[3]);
-        mDevice->SetCapability(Capability_DepthTest, Gl::DEPTH_TEST, false);
-        mDevice->SetCapability(Capability_StencilTest, Gl::STENCIL_TEST, false);
-        mDevice->SetCapability(Capability_CullFace, Gl::CULL_FACE, false);
-        mDevice->SetCapability(Capability_Blend, Gl::BLEND, false);
-        Gl::ColorMaski(0, 1, 1, 1, 1);
-        Gl::ColorMaski(1, 0, 0, 0, 1);
-        Gl::ColorMaski(2, 1, 1, 1, 1);
-        mDevice->mColourMaskMode = -1;
+        mDevice->ScreenState(gpu.mViewport, gpu.mScissor);
+        mDevice->mAlphaInitialise = true;
         float quad[4] = {0.0f, 0.0f, 1.0f, 1.0f};
-        mDevice->DrawScreenQuad(RenderVertexShader_Clear, RenderPixelShader_AlphaAccumulate, quad, -1.0f, 1.0f);
+        mDevice->DrawScreenQuad(RenderVertexShader_Clear, RenderPixelShader_AlphaAccumulate, quad, 1.0f);
+        mDevice->mAlphaInitialise = false;
     }
 
     SetGpuShaders(RenderVertexShader_Clear, RenderPixelShader_AlphaAccumulate);
@@ -2629,22 +2239,16 @@ void Renderer::EndOrderIndependentAlpha()
     context.mOrderIndependentAlpha = false;
     mDevice->mTarget = RenderTarget_Main;
 
-    if (IsGlThread() && mScreen == 0)
+    if (IsRenderThread() && mScreen == 0)
     {
         mDevice->FlushPending(*this);
         mDevice->BindFramebuffer(mDevice->mMainFramebuffer);
-        Gl::Viewport((GLint)floorf(gpu.mViewport[0] + 0.5f), (GLint)floorf(gpu.mViewport[1] + 0.5f),
-                     (GLsizei)floorf(gpu.mViewport[2] + 0.5f), (GLsizei)floorf(gpu.mViewport[3] + 0.5f));
-        mDevice->SetCapability(Capability_Scissor, Gl::SCISSOR_TEST, true);
-        Gl::Scissor(gpu.mScissor[0], gpu.mScissor[1], gpu.mScissor[2], gpu.mScissor[3]);
-        mDevice->SetCapability(Capability_DepthTest, Gl::DEPTH_TEST, false);
-        mDevice->SetCapability(Capability_StencilTest, Gl::STENCIL_TEST, false);
-        mDevice->SetCapability(Capability_CullFace, Gl::CULL_FACE, false);
-        mDevice->SetCapability(Capability_Blend, Gl::BLEND, true);
-        Gl::BlendFunc(Gl::ONE_MINUS_DST_ALPHA, Gl::DST_ALPHA);
-        mDevice->SetColourMaskMode(ColourMaskMode_Main, gpu.mColourMask);
-
-        GLuint pointSampler = mDevice->GetSampler(MakeSampler(true, false, MIP_FILTER_NONE));
+        mDevice->ScreenState(gpu.mViewport, gpu.mScissor);
+        mDevice->mDrawState.mBlendEnable = true;
+        mDevice->mDrawState.mBlendSource = 7;
+        mDevice->mDrawState.mBlendDestination = 6;
+        mDevice->mDrawState.mColourMask = gpu.mColourMask;
+        SDL_GPUSampler* pointSampler = mDevice->GetSampler(MakeSampler(true, false, MIP_FILTER_NONE));
         mDevice->BindTextureUnit(0, mDevice->mAlphaAccumulateTexture, pointSampler);
         mDevice->BindTextureUnit(1, mDevice->mAlphaWeightTexture, pointSampler);
 
@@ -2653,7 +2257,7 @@ void Renderer::EndOrderIndependentAlpha()
         quad[1] = context.mViewportScale[3];
         quad[2] = context.mViewportScale[0];
         quad[3] = context.mViewportScale[1];
-        mDevice->DrawScreenQuad(RenderVertexShader_ScreenQuad, RenderPixelShader_AlphaResolve, quad, -1.0f, 1.0f);
+        mDevice->DrawScreenQuad(RenderVertexShader_ScreenQuad, RenderPixelShader_AlphaResolve, quad, 1.0f);
     }
 
     SetGpuShaders(RenderVertexShader_ScreenQuad, RenderPixelShader_AlphaResolve);
@@ -2664,10 +2268,9 @@ void Renderer::EndOrderIndependentAlpha()
 
 void Renderer::ReleaseForeground()
 {
-    if (IsGlThread())
+    if (IsRenderThread())
     {
-        Gl::Flush();
-        Gl::Finish();
+        PcGraphics().Submit(true);
     }
 
     if (mReservedMEM1 != NULL)
@@ -2693,9 +2296,9 @@ void Renderer::WiiUWaitDrawDone()
         return;
     }
 
-    if (IsGlThread())
+    if (IsRenderThread())
     {
-        Gl::Finish();
+        PcGraphics().Submit(true);
     }
 }
 
@@ -2825,8 +2428,7 @@ void Renderer::MatrixPerspective(float fieldOfView, float aspect, float nearDist
     MultWithStack(matrix);
 }
 
-void Renderer::MatrixOrthogonal(float left, float right, float bottom, float top, float nearDistance,
-                                float farDistance)
+void Renderer::MatrixOrthogonal(float left, float right, float bottom, float top, float nearDistance, float farDistance)
 {
     float matrix[16];
     memset(matrix, 0, sizeof(matrix));
@@ -3752,9 +3354,9 @@ int Renderer::TextureCreate()
 
 void Renderer::TextureFree(int texture)
 {
-    bool bGlThread = IsGlThread();
+    bool bRenderThread = IsRenderThread();
 
-    if (bGlThread)
+    if (bRenderThread)
     {
         mDevice->FlushPending(*this);
     }
@@ -3764,17 +3366,10 @@ void Renderer::TextureFree(int texture)
 
     if (slot.mName != 0)
     {
-        if (bGlThread)
+        if (bRenderThread)
         {
-            for (int unit = 0; unit <= RENDER_LIGHT_TEXTURE_UNIT; ++unit)
-            {
-                if (mDevice->mCurrentTexture[unit] == slot.mName)
-                {
-                    mDevice->mCurrentTexture[unit] = 0xFFFFFFFFu;
-                }
-            }
-
-            Gl::DeleteTextures(1, &slot.mName);
+            PcGraphics().EndPass();
+            SDL_ReleaseGPUTexture(PcGraphics().device, slot.mName);
         }
         else
         {
@@ -3880,9 +3475,9 @@ int Renderer::TextureGetTextureLevels()
 
 void Renderer::SubmitTextureStorage(int slot, const void* data)
 {
-    bool bGlThread = IsGlThread();
+    bool bRenderThread = IsRenderThread();
 
-    if (bGlThread)
+    if (bRenderThread)
     {
         mDevice->FlushPending(*this);
     }
@@ -3890,7 +3485,7 @@ void Renderer::SubmitTextureStorage(int slot, const void* data)
     EnterCriticalSection(&mTextureMutex);
     Texture& texture = mTextures[slot];
 
-    if (bGlThread)
+    if (bRenderThread)
     {
         mDevice->ExecuteTextureStorage(texture, data);
     }
@@ -3918,9 +3513,9 @@ void Renderer::SubmitTextureStorage(int slot, const void* data)
 
 void Renderer::SubmitTextureLevel(int slot, int level, int width, int height, const void* data)
 {
-    bool bGlThread = IsGlThread();
+    bool bRenderThread = IsRenderThread();
 
-    if (bGlThread)
+    if (bRenderThread)
     {
         mDevice->FlushPending(*this);
     }
@@ -3928,7 +3523,7 @@ void Renderer::SubmitTextureLevel(int slot, int level, int width, int height, co
     EnterCriticalSection(&mTextureMutex);
     Texture& texture = mTextures[slot];
 
-    if (bGlThread)
+    if (bRenderThread)
     {
         mDevice->ExecuteTextureLevel(texture, level, width, height, data);
     }
@@ -4317,8 +3912,8 @@ void Renderer::DrawVertices(C4JRender::ePrimitiveType primitiveType, int numVert
 
     if (mDevice != NULL && numVertices > 0)
     {
-        mDevice->DrawStream(*this, context, vertices, size, VERTEX_STRIDES[vertexType],
-                            LayoutForVertexType(vertexType), primitiveType, (unsigned int)numVertices);
+        mDevice->DrawStream(*this, context, vertices, size, VERTEX_STRIDES[vertexType], LayoutForVertexType(vertexType),
+                            primitiveType, (unsigned int)numVertices);
     }
 }
 
@@ -4532,10 +4127,9 @@ void Renderer::CBuffEnd()
 
     if (context.mDeferredMode)
     {
-        context.mDeferredBuffers.push_back(DeferredCBuff(context.mRecordingId, context.mRecordingBuffer,
-                                                         context.mRecordingVertexType,
-                                                         context.mRecordingPixelShaderType,
-                                                         context.mRecordingPrimitiveType, context.mMatrixStack[3][0]));
+        context.mDeferredBuffers.push_back(DeferredCBuff(
+            context.mRecordingId, context.mRecordingBuffer, context.mRecordingVertexType,
+            context.mRecordingPixelShaderType, context.mRecordingPrimitiveType, context.mMatrixStack[3][0]));
         context.mMatrixMode = 0;
         context.mRecordingBuffer->EndRecording(VERTEX_STRIDES[context.mRecordingVertexType]);
         context.mRecordingBuffer = NULL;
@@ -4679,8 +4273,7 @@ bool Renderer::CBuffCall(int id, bool bApplyMatrix, unsigned char layerMask)
         mCurrentPixelShader = finalPixelShader;
     }
 
-    mCommandBuffers[slot]->Render((C4JRender::eVertexType)vertexType, context, primitiveType, bApplyMatrix,
-                                  layerMask);
+    mCommandBuffers[slot]->Render((C4JRender::eVertexType)vertexType, context, primitiveType, bApplyMatrix, layerMask);
 
     MultWithStack(&mCommandBufferMatrices[slot * 16]);
     MatrixIdentity(context.mMatrixStack[3][0]);
@@ -4781,8 +4374,6 @@ Renderer::CommandBuffer::CommandBuffer(bool bRecordState)
     mVerticesCapacity = COMMAND_BUFFER_INITIAL_CAPACITY;
     mHasVertices = true;
     mBuffer = 0;
-    mVertexArray = 0;
-    mVertexArrayLayout = -1;
 
     EnterCriticalSection(&sTotalAllocMutex);
     sTotalCommandBufferBytes += mVerticesCapacity;
@@ -4796,29 +4387,15 @@ Renderer::CommandBuffer::~CommandBuffer()
     free(mVertices);
 
     Device* device = gRendererInstance->mDevice;
-    if (device != NULL && (mBuffer != 0 || mVertexArray != 0))
+    if (device != NULL && mBuffer != NULL)
     {
-        if (device->IsGlThread())
+        if (device->IsRenderThread())
         {
-            if (mVertexArray != 0)
-            {
-                if (device->mCurrentVertexArray == mVertexArray)
-                {
-                    device->mCurrentVertexArray = 0xFFFFFFFFu;
-                }
-
-                Gl::DeleteVertexArrays(1, &mVertexArray);
-            }
-
-            if (mBuffer != 0)
-            {
-                Gl::DeleteBuffers(1, &mBuffer);
-            }
+            PcGraphics().EndPass();
+            SDL_ReleaseGPUBuffer(PcGraphics().device, mBuffer);
         }
         else
-        {
-            device->QueueBufferDelete(mBuffer, mVertexArray);
-        }
+            device->QueueBufferDelete(mBuffer);
     }
 
     EnterCriticalSection(&sTotalAllocMutex);
@@ -4919,7 +4496,8 @@ void Renderer::CommandBuffer::Render(C4JRender::eVertexType vertexType, Context&
             {
                 if (!batchOffset.empty()
                     && command.mVertices.mOffset
-                           == batchOffset.back() + (unsigned int)batchCount.back() * VERTEX_STRIDES[C4JRender::eVertexType_Terrain])
+                           == batchOffset.back()
+                                  + (unsigned int)batchCount.back() * VERTEX_STRIDES[C4JRender::eVertexType_Terrain])
                 {
                     batchCount.back() += (int)command.mVertices.mCount;
                 }
@@ -4936,7 +4514,7 @@ void Renderer::CommandBuffer::Render(C4JRender::eVertexType vertexType, Context&
                     int layout = LayoutForVertexType(shaderVertexType);
                     if (EnsureUploaded(device, layout))
                     {
-                        device->BindVertexArray(mVertexArray);
+                        device->BindVertexBuffer(mBuffer, LayoutForVertexType(shaderVertexType));
                         device->DrawRange(primitiveType, command.mVertices.mOffset / stride, command.mVertices.mCount);
                     }
                 }
@@ -4954,7 +4532,7 @@ void Renderer::CommandBuffer::Render(C4JRender::eVertexType vertexType, Context&
 
         if (bDraw)
         {
-            device->BindVertexArray(mVertexArray);
+            device->BindVertexBuffer(mBuffer, LayoutForVertexType(shaderVertexType));
         }
 
         for (size_t batch = 0; batch < batchOffset.size(); ++batch)
@@ -4987,23 +4565,10 @@ bool Renderer::CommandBuffer::EnsureUploaded(Device* device, int layout)
             return false;
         }
 
-        Gl::GenBuffers(1, &mBuffer);
-        Gl::BindBuffer(Gl::ARRAY_BUFFER, mBuffer);
-        Gl::BufferData(Gl::ARRAY_BUFFER, (GLsizeiptr)mVerticesUsed, mVertices, Gl::STATIC_DRAW);
+        mBuffer = PcGraphics().Buffer(mVerticesUsed, SDL_GPU_BUFFERUSAGE_VERTEX);
+        PcGraphics().Upload(mBuffer, 0, mVertices, mVerticesUsed);
         free(mVertices);
         mVertices = NULL;
-    }
-
-    if (mVertexArray == 0)
-    {
-        Gl::GenVertexArrays(1, &mVertexArray);
-        mVertexArrayLayout = -1;
-    }
-
-    if (mVertexArrayLayout != layout)
-    {
-        device->SetupVertexArray(mVertexArray, mBuffer, layout);
-        mVertexArrayLayout = layout;
     }
 
     return true;

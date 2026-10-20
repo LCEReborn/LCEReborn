@@ -1,6 +1,7 @@
 #include <SDL3/SDL.h>
 
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 
 #include "game/core/CConsoleMinecraftApp.hpp"
@@ -181,6 +182,7 @@ int main(int argc, char** argv)
     CGameNetworkManager::sInstance.SetLocalGame(true);
 
     float timingColour = 0.0f;
+    unsigned int renderedFrames = 0;
     while (!PcExitRequested())
     {
         PcPumpEvents();
@@ -233,6 +235,28 @@ int main(int argc, char** argv)
         InfoBarManager::EndTimingCategory(InfoBarManager::eTimingCagegory_Frame);
         PIXBeginNamedEvent(timingColour, "Frame present");
         gRenderer->Present();
+        if (PcGetLaunchOptions().frameLimit != 0 && ++renderedFrames >= PcGetLaunchOptions().frameLimit)
+        {
+            const std::string& screenshot = PcGetLaunchOptions().screenshot;
+            if (!screenshot.empty())
+            {
+                ImageFileBuffer image = {};
+                gRenderer->CaptureScreen(&image, NULL);
+                FILE* file = std::fopen(screenshot.c_str(), "wb");
+                bool written = false;
+                if (file)
+                {
+                    written = image.mSize > 0 && std::fwrite(image.mData, 1, image.mSize, file) == (size_t)image.mSize;
+                    written = std::fclose(file) == 0 && written;
+                }
+                std::free(image.mData);
+                if (written)
+                    LOG_INFO(sLog, "Frame captured to %s", screenshot.c_str());
+                else
+                    LOG_ERROR(sLog, "Frame capture failed: %s", screenshot.c_str());
+            }
+            PcRequestExit();
+        }
         PIXEndNamedEvent();
         PcWindowPaceFrame();
         gRenderer->Set_matrixDirty();

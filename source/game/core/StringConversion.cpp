@@ -52,6 +52,63 @@ std::wstring char16towstring(wchar_t* text)
     return std::wstring(text);
 }
 
+std::wstring convUtf16ToWstring(const void* text, unsigned int length)
+{
+    std::wstring result;
+    const unsigned char* bytes = static_cast<const unsigned char*>(text);
+    for (unsigned int i = 0; i < length; ++i)
+    {
+        unsigned short unit;
+        std::memcpy(&unit, bytes + i * 2, sizeof(unit));
+        if (unit == 0)
+            break;
+        unsigned int codePoint = unit;
+        if (sizeof(wchar_t) > 2 && unit >= 0xd800 && unit <= 0xdbff && i + 1 < length)
+        {
+            unsigned short low;
+            std::memcpy(&low, bytes + (i + 1) * 2, sizeof(low));
+            if (low >= 0xdc00 && low <= 0xdfff)
+            {
+                codePoint = 0x10000 + ((unit - 0xd800) << 10) + (low - 0xdc00);
+                ++i;
+            }
+        }
+        result.push_back(static_cast<wchar_t>(codePoint));
+    }
+    return result;
+}
+
+void convWstringToUtf16(const std::wstring& text, unsigned short* destination, unsigned int capacity)
+{
+    if (capacity == 0)
+        return;
+    unsigned int output = 0;
+    for (std::wstring::size_type i = 0; i < text.size() && output + 1 < capacity; ++i)
+    {
+        unsigned int codePoint = static_cast<unsigned int>(text[i]);
+        if (sizeof(wchar_t) == 2 && codePoint >= 0xd800 && codePoint <= 0xdbff && i + 1 < text.size())
+        {
+            unsigned int low = static_cast<unsigned int>(text[i + 1]);
+            if (low >= 0xdc00 && low <= 0xdfff)
+            {
+                codePoint = 0x10000 + ((codePoint - 0xd800) << 10) + (low - 0xdc00);
+                ++i;
+            }
+        }
+        if (codePoint > 0xffff && codePoint <= 0x10ffff)
+        {
+            if (output + 2 >= capacity)
+                break;
+            codePoint -= 0x10000;
+            destination[output++] = static_cast<unsigned short>(0xd800 + (codePoint >> 10));
+            destination[output++] = static_cast<unsigned short>(0xdc00 + (codePoint & 0x3ff));
+        }
+        else
+            destination[output++] = static_cast<unsigned short>(codePoint <= 0xffff ? codePoint : 0xfffd);
+    }
+    destination[output] = 0;
+}
+
 void charTowchar_tArray(const char* text, wchar_t* destination, unsigned int capacity)
 {
     bool finished = false;

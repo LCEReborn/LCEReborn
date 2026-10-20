@@ -3,6 +3,7 @@
 #include "platform/pc/PcLaunchOptions.hpp"
 #include "platform/pc/PcPaths.hpp"
 #include "platform/pc/PcPromptArt.hpp"
+#include "platform/pc/PcInputEvents.hpp"
 #include "platform/pc/Renderer.hpp"
 
 #include <SDL3/SDL.h>
@@ -177,14 +178,15 @@ void PcInputHandleEvent(const SDL_Event& event)
     }
 }
 
-bool PcInputGetKeyboardText(std::wstring* title, std::wstring* text)
+bool PcInputGetKeyboardText(PcKeyboardText* text)
 {
     if (g_pInputInstance == 0 || g_pInputInstance->keyboardState != CInput::EKeyboardState_Active)
     {
         return false;
     }
-    *title = g_pInputInstance->keyboardTitle;
-    text->assign(g_pInputInstance->keyboardEditText.begin(), g_pInputInstance->keyboardEditText.end());
+    text->title = g_pInputInstance->keyboardTitle;
+    text->text.assign(g_pInputInstance->keyboardEditText.begin(), g_pInputInstance->keyboardEditText.end());
+    text->composition = g_pInputInstance->keyboardComposition;
     return true;
 }
 
@@ -498,6 +500,13 @@ void CInput::HandleEvent(const SDL_Event& event)
         if (keyboardState == EKeyboardState_Active)
         {
             HandleKeyboardTextInput(event.text.text);
+            keyboardComposition.Clear();
+        }
+        break;
+    case SDL_EVENT_TEXT_EDITING:
+        if (keyboardState == EKeyboardState_Active)
+        {
+            keyboardComposition.Update(event.edit.text, event.edit.start, event.edit.length);
         }
         else if (textCapture)
         {
@@ -529,6 +538,7 @@ void CInput::HandleEvent(const SDL_Event& event)
         break;
     case SDL_EVENT_WINDOW_FOCUS_LOST:
         windowFocused = false;
+        keyboardComposition.Clear();
         ReleaseAllKeys();
         break;
     default:
@@ -2112,6 +2122,10 @@ void CInput::HandleKeyboardTextInput(const char* text)
 
 void CInput::HandleKeyboardKey(int scancode, unsigned short modifiers, bool repeat)
 {
+    // Enter/Escape/Backspace belong to the IME while it has a preedit string.
+    // Accepting the dialog here would discard the candidate being committed.
+    if (!keyboardComposition.text.empty())
+        return;
     switch (scancode)
     {
     case SDL_SCANCODE_BACKSPACE:
@@ -2188,6 +2202,7 @@ void CInput::FinishKeyboard(bool accepted)
         keyboardWindowId = 0;
     }
     keyboardEditText.clear();
+    keyboardComposition.Clear();
     keyboardAccepted = false;
     keyboardCancelled = false;
     destroyKeyboardRequested = false;
@@ -2202,11 +2217,20 @@ void CInput::TickKeyboard()
         keyboardAccepted = false;
         keyboardCancelled = false;
         keyboardWindowId = 0;
+        keyboardComposition.Clear();
         SDL_Window* window = LocateWindow();
-        if (window != 0 && SDL_StartTextInput(window))
+        SDL_PropertiesID properties = SDL_CreateProperties();
+        bool numeric = keyboardMode == 1 || keyboardMode == 6 || keyboardMode == 7;
+        SDL_SetNumberProperty(properties, SDL_PROP_TEXTINPUT_TYPE_NUMBER,
+                              numeric ? SDL_TEXTINPUT_TYPE_NUMBER : SDL_TEXTINPUT_TYPE_TEXT);
+        SDL_SetNumberProperty(properties, SDL_PROP_TEXTINPUT_CAPITALIZATION_NUMBER, SDL_CAPITALIZE_NONE);
+        SDL_SetBooleanProperty(properties, SDL_PROP_TEXTINPUT_AUTOCORRECT_BOOLEAN, false);
+        SDL_SetBooleanProperty(properties, SDL_PROP_TEXTINPUT_MULTILINE_BOOLEAN, false);
+        if (window != 0 && SDL_StartTextInputWithProperties(window, properties))
         {
             keyboardWindowId = SDL_GetWindowID(window);
         }
+        SDL_DestroyProperties(properties);
         keyboardState = EKeyboardState_Active;
         return;
     }

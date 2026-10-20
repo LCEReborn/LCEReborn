@@ -53,15 +53,63 @@ endif()
 
 # SDL3, for the window, input and audio of the PC layer.
 include(FetchContent)
-set(SDL_SHARED OFF CACHE BOOL "" FORCE)
-set(SDL_STATIC ON CACHE BOOL "" FORCE)
-set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
-set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
-FetchContent_Declare(SDL3
-  URL https://github.com/libsdl-org/SDL/releases/download/release-3.4.16/SDL3-3.4.16.tar.gz
-  URL_HASH SHA256=7322236cd12090c3eb40b9728be4d49c76f66ad17d04369584d4ecad5cf77c68
-  DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
-FetchContent_MakeAvailable(SDL3)
+option(LCE_USE_SYSTEM_SDL "Use an installed SDL3 instead of downloading it" OFF)
+if(LCE_USE_SYSTEM_SDL)
+  find_package(SDL3 3.4.0 REQUIRED CONFIG)
+  set(LCE_SDL_TARGET SDL3::SDL3)
+else()
+  set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+  set(SDL_STATIC ON CACHE BOOL "" FORCE)
+  set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+  set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
+  FetchContent_Declare(SDL3
+    URL https://www.libsdl.org/release/SDL3-3.4.18.tar.gz
+    URL_HASH SHA256=9c75cf16330322c217dedd2e0609f1124f1b54b8633e763467b4684d0f4334a3
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+  FetchContent_MakeAvailable(SDL3)
+  get_directory_property(LCE_SDL_WAYLAND DIRECTORY "${SDL3_SOURCE_DIR}" DEFINITION SDL_VIDEO_DRIVER_WAYLAND)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT LCE_SDL_WAYLAND)
+    message(FATAL_ERROR "SDL was built without native Wayland support. Install the Wayland, EGL, xkbcommon and wayland-scanner development dependencies, then reconfigure.")
+  endif()
+  set(LCE_SDL_TARGET SDL3::SDL3-static)
+endif()
+
+# Compile the game's shaders once, rather than compiling GLSL at runtime.
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+find_program(LCE_GLSLC glslc REQUIRED)
+add_executable(lce_shader_sources tools/build/shader_sources.cpp source/platform/pc/RenderShaders.cpp)
+target_include_directories(lce_shader_sources PRIVATE "${LCE_SOURCE}")
+set_target_properties(lce_shader_sources PROPERTIES CXX_STANDARD 17)
+set(LCE_SPIRV "${CMAKE_BINARY_DIR}/generated/LceSpirv.hpp")
+add_custom_command(OUTPUT "${LCE_SPIRV}"
+  COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/build/spirv.py"
+          --generator "$<TARGET_FILE:lce_shader_sources>" --compiler "${LCE_GLSLC}" --output "${LCE_SPIRV}"
+  DEPENDS lce_shader_sources tools/build/spirv.py
+  VERBATIM)
+add_custom_target(lce_shaders DEPENDS "${LCE_SPIRV}")
+
+option(LCE_BUILD_RENDER_TESTS "Build the Vulkan rendering and presentation test" OFF)
+if(LCE_BUILD_RENDER_TESTS)
+  enable_testing()
+  add_executable(lce_vulkan_smoke tests/vulkan_smoke.cpp source/platform/pc/PcGpu.cpp)
+  add_dependencies(lce_vulkan_smoke lce_shaders)
+  target_include_directories(lce_vulkan_smoke PRIVATE "${LCE_SOURCE}" "${CMAKE_BINARY_DIR}/generated")
+  target_link_libraries(lce_vulkan_smoke PRIVATE ${LCE_SDL_TARGET})
+  set_target_properties(lce_vulkan_smoke PROPERTIES CXX_STANDARD 17)
+  add_test(NAME vulkan_smoke COMMAND lce_vulkan_smoke)
+  set_tests_properties(vulkan_smoke PROPERTIES TIMEOUT 30)
+  add_executable(lce_platform_text tests/platform_text.cpp
+    source/game/core/StringConversion.cpp source/game/core/FileHeader.cpp source/game/core/FileEntry.cpp
+    source/platform/wiiu/System.cpp)
+  target_link_libraries(lce_platform_text PRIVATE lce_common)
+  set_target_properties(lce_platform_text PROPERTIES CXX_STANDARD 14)
+  add_test(NAME platform_text COMMAND lce_platform_text)
+  add_executable(lce_text_input tests/text_input.cpp source/platform/pc/PcTextInput.cpp)
+  target_include_directories(lce_text_input PRIVATE "${LCE_SOURCE}")
+  target_link_libraries(lce_text_input PRIVATE ${LCE_SDL_TARGET})
+  set_target_properties(lce_text_input PROPERTIES CXX_STANDARD 17)
+  add_test(NAME text_input COMMAND lce_text_input)
+endif()
 
 # The game core, in the C++ dialect it was written in.
 file(GLOB_RECURSE LCE_GAME_SOURCES CONFIGURE_DEPENDS "${LCE_SOURCE}/game/*.cpp")
@@ -117,7 +165,9 @@ list(APPEND LCE_PLATFORM_SOURCES
   "${LCE_SOURCE}/platform/wiiu/System.cpp"
   "${LCE_SOURCE}/platform/wiiu/WiiULeaderboardManager.cpp")
 add_library(lce_platform OBJECT ${LCE_PLATFORM_SOURCES})
-target_link_libraries(lce_platform PRIVATE lce_common SDL3::SDL3-static)
+add_dependencies(lce_platform lce_shaders)
+target_include_directories(lce_platform PRIVATE "${CMAKE_BINARY_DIR}/generated")
+target_link_libraries(lce_platform PRIVATE lce_common ${LCE_SDL_TARGET})
 set_target_properties(lce_platform PROPERTIES CXX_STANDARD 17)
 add_custom_target(lce_build_info
   COMMAND "${CMAKE_COMMAND}" -DSOURCE_DIR="${CMAKE_SOURCE_DIR}" -DOUTPUT="${CMAKE_BINARY_DIR}/generated/BuildInfo.hpp"
@@ -133,7 +183,7 @@ endif()
 # Audio: the game's sound bank and Bink Audio, played through SDL.
 file(GLOB_RECURSE LCE_PC_AUDIO_SOURCES CONFIGURE_DEPENDS "${LCE_SOURCE}/platform/pc/audio/*.cpp")
 add_library(lce_audio OBJECT ${LCE_PC_AUDIO_SOURCES})
-target_link_libraries(lce_audio PRIVATE lce_common SDL3::SDL3-static)
+target_link_libraries(lce_audio PRIVATE lce_common ${LCE_SDL_TARGET})
 set_target_properties(lce_audio PROPERTIES CXX_STANDARD 17)
 
 # zlib and libpng, the releases the game was built against (libpng with the game's own png.h and pngwrite.c).
@@ -156,7 +206,8 @@ if(MSVC)
 endif()
 
 add_executable(LCEReborn $<TARGET_OBJECTS:lce_game> $<TARGET_OBJECTS:lce_platform> $<TARGET_OBJECTS:lce_audio>)
-target_link_libraries(LCEReborn PRIVATE lce_png lce_zlib SDL3::SDL3-static)
+find_package(Threads REQUIRED)
+target_link_libraries(LCEReborn PRIVATE lce_png lce_zlib ${LCE_SDL_TARGET} Threads::Threads)
 if(WIN32)
   target_link_libraries(LCEReborn PRIVATE shell32 ws2_32 dbghelp)
   # The executable's icon (tools/pcart/make_icon.py).
@@ -172,6 +223,18 @@ add_custom_command(TARGET LCEReborn POST_BUILD
 if(MSVC)
   target_link_options(LCEReborn PRIVATE /errorlimit:0 /DEBUG /OPT:REF /OPT:ICF)
 endif()
+
+function(lce_desktop_entry target name icon)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_custom_command(TARGET ${target} POST_BUILD
+      COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/build/desktop.py"
+        --executable "$<TARGET_FILE:${target}>" --name "${name}"
+        --working-dir "${CMAKE_SOURCE_DIR}" --icon "${CMAKE_SOURCE_DIR}/${icon}"
+        --output "${CMAKE_BINARY_DIR}/org.lcereborn.${target}.desktop"
+      VERBATIM)
+  endif()
+endfunction()
+lce_desktop_entry(LCEReborn "LCEReborn" resources/pc/icon.png)
 
 option(LCE_BUILD_LAUNCHER "Build the Qt launcher (needs python tools/build/qt.py first)" ON)
 if(LCE_BUILD_LAUNCHER)

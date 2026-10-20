@@ -4,19 +4,19 @@
 
 namespace
 {
-const char* const kVertexHeader = R"(#version 330 core
-layout(std140) uniform VertexConstants
+const char* const kVertexHeader = R"(#version 450
+layout(std140, set=1, binding=0) uniform VertexConstants
 {
     vec4 uVC[VC_COUNT];
 };
 #define MAT_WV mat4(uVC[0], uVC[1], uVC[2], uVC[3])
 #define MAT_WV2 mat4(uVC[4], uVC[5], uVC[6], uVC[7])
 #define MAT_P mat4(uVC[8], uVC[9], uVC[10], uVC[11])
-out vec4 vColour;
-out vec4 vTexCoord;
+layout(location=0) out vec4 vColour;
+layout(location=1) out vec4 vTexCoord;
 void EmitPosition(vec4 clip)
 {
-    gl_Position = vec4(clip.x, -clip.y, clip.z, clip.w);
+    gl_Position = vec4(clip.xy, (clip.z + clip.w) * 0.5, clip.w);
 }
 )";
 
@@ -52,7 +52,7 @@ vec4 TransformUV(vec4 coordinate)
 )";
 
 const char* const kLightMap = R"(
-uniform sampler2D uLightTexture;
+layout(set=0, binding=0) uniform sampler2D uLightTexture;
 vec3 LightMap(ivec2 light)
 {
     vec2 coordinate = fract(max(vec2(light) * (1.0 / 256.0), uVC[16].xy));
@@ -123,7 +123,7 @@ void main()
 )";
 
 const char* const kTerrainMain = R"(
-uniform sampler2D uLightTexture;
+layout(set=0, binding=0) uniform sampler2D uLightTexture;
 layout(location = 0) in ivec4 aPosition;
 layout(location = 1) in ivec4 aTexture;
 void main()
@@ -255,36 +255,35 @@ void main()
 }
 )";
 
-const char* const kScreenQuadVertex = R"(#version 330 core
-uniform vec4 uQuad;
-uniform float uFlipY;
-out vec4 vColour;
-out vec4 vTexCoord;
+const char* const kScreenQuadVertex = R"(#version 450
+layout(std140, set=1, binding=0) uniform Quad { vec4 uQuad; };
+layout(location=0) out vec4 vColour;
+layout(location=1) out vec4 vTexCoord;
 void main()
 {
-    int column = gl_VertexID & 1;
-    int row = gl_VertexID >> 1;
+    int column = gl_VertexIndex & 1;
+    int row = gl_VertexIndex >> 1;
     vec2 position = vec2(float(column * 2 - 1), float(row * 2 - 1));
     vColour = vec4(1.0);
     vTexCoord = vec4(float(column) * uQuad.z + uQuad.x, float(1 - row) * uQuad.w + uQuad.y, 0.0, 0.0);
-    gl_Position = vec4(position.x, position.y * uFlipY, 1.0, 1.0);
+    gl_Position = vec4(position, 1.0, 1.0);
 }
 )";
 
-const char* const kClearVertex = R"(#version 330 core
-out vec4 vColour;
-out vec4 vTexCoord;
+const char* const kClearVertex = R"(#version 450
+layout(location=0) out vec4 vColour;
+layout(location=1) out vec4 vTexCoord;
 void main()
 {
     vColour = vec4(0.0);
     vTexCoord = vec4(0.0);
-    vec2 position = vec2(float((gl_VertexID & -2) - 1), float(((gl_VertexID & 1) << 1) - 1));
-    gl_Position = vec4(position.x, -position.y, 1.0, 1.0);
+    vec2 position = vec2(float((gl_VertexIndex & -2) - 1), float(((gl_VertexIndex & 1) << 1) - 1));
+    gl_Position = vec4(position, 1.0, 1.0);
 }
 )";
 
-const char* const kPixelHeader = R"(#version 330 core
-layout(std140) uniform PixelConstants
+const char* const kPixelHeader = R"(#version 450
+layout(std140, set=3, binding=0) uniform PixelConstants
 {
     vec4 uPC[32];
 };
@@ -296,13 +295,13 @@ layout(std140) uniform PixelConstants
 #define TEX_LAYER_COLOUR1 uPC[5]
 #define TEX_LAYER_COLOUR2 uPC[6]
 #define TEX_LAYER_COLOUR3 uPC[7]
-in vec4 vColour;
-in vec4 vTexCoord;
+layout(location=0) in vec4 vColour;
+layout(location=1) in vec4 vTexCoord;
 layout(location = 0) out vec4 oColour;
-uniform sampler2D uTexture0;
-uniform sampler2D uTexture1;
-uniform sampler2D uTexture2;
-uniform sampler2D uTexture3;
+layout(set=2, binding=0) uniform sampler2D uTexture0;
+layout(set=2, binding=1) uniform sampler2D uTexture1;
+layout(set=2, binding=2) uniform sampler2D uTexture2;
+layout(set=2, binding=3) uniform sampler2D uTexture3;
 void Emit(vec4 colour)
 {
     if (!(colour.a >= uPC[31].x))
@@ -486,21 +485,21 @@ void main()
 }
 )";
 
-const char* const kCopyPixel = R"(#version 330 core
-in vec4 vTexCoord;
+const char* const kCopyPixel = R"(#version 450
+layout(location=1) in vec4 vTexCoord;
 layout(location = 0) out vec4 oColour;
-uniform sampler2D uTexture0;
+layout(set=2, binding=0) uniform sampler2D uTexture0;
 void main()
 {
     oColour = texture(uTexture0, vTexCoord.xy);
 }
 )";
 
-const char* const kGammaPixel = R"(#version 330 core
-in vec4 vTexCoord;
+const char* const kGammaPixel = R"(#version 450
+layout(location=1) in vec4 vTexCoord;
 layout(location = 0) out vec4 oColour;
-uniform sampler2D uTexture0;
-uniform float uGamma;
+layout(set=2, binding=0) uniform sampler2D uTexture0;
+layout(std140, set=3, binding=0) uniform Gamma { float uGamma; };
 float GammaChannel(float value)
 {
     return exp2(uGamma * (value <= 0.0 ? -3.4028235e38 : log2(value)));
@@ -512,11 +511,11 @@ void main()
 }
 )";
 
-const char* const kAlphaResolvePixel = R"(#version 330 core
-in vec4 vTexCoord;
+const char* const kAlphaResolvePixel = R"(#version 450
+layout(location=1) in vec4 vTexCoord;
 layout(location = 0) out vec4 oColour;
-uniform sampler2D uTexture0;
-uniform sampler2D uTexture1;
+layout(set=2, binding=0) uniform sampler2D uTexture0;
+layout(set=2, binding=1) uniform sampler2D uTexture1;
 void main()
 {
     vec3 accumulated = texture(uTexture0, vTexCoord.xy).rgb;
@@ -525,7 +524,7 @@ void main()
 }
 )";
 
-const char* const kAlphaAccumulatePixel = R"(#version 330 core
+const char* const kAlphaAccumulatePixel = R"(#version 450
 layout(location = 0) out vec4 oColour;
 layout(location = 1) out vec4 oReveal;
 layout(location = 2) out vec4 oWeight;
@@ -654,10 +653,36 @@ std::string RenderVertexShaderSource(int vertexShader)
     case RenderVertexShader_Clear:
         source = kClearVertex;
         break;
+    case RenderVertexShader_Keyboard:
+        source = R"(#version 450
+layout(location=0) in vec2 aPosition;
+layout(location=1) in vec2 aTexCoord;
+layout(location=2) in vec4 aColour;
+layout(std140, set=1, binding=0) uniform Screen { vec2 uScreen; };
+layout(location=0) out vec4 vColour;
+layout(location=1) out vec4 vTexCoord;
+void main() {
+    vec2 clip = aPosition / uScreen * 2.0 - 1.0;
+    gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
+    vTexCoord = vec4(aTexCoord, 0.0, 0.0);
+    vColour = aColour;
+}
+)";
+        break;
     default:
         break;
     }
 
+    if (!source.empty() && vertexShader != RenderVertexShader_Keyboard)
+    {
+        source.insert(source.find('\n') + 1,
+                      std::string("layout(std140, set=1, binding=")
+                          + (vertexShader == RenderVertexShader_Clear ? "0" : "1")
+                          + ") uniform ViewportConstants { vec4 uViewport; };\n");
+        source.replace(source.find("void main()"), 11, "void RenderMain()");
+        source += "\nvoid main() { RenderMain(); gl_Position.xy = gl_Position.xy * uViewport.xy"
+                  " + gl_Position.w * uViewport.zw; }\n";
+    }
     return source;
 }
 
@@ -701,6 +726,23 @@ std::string RenderPixelShaderSource(int pixelShader)
         return kAlphaResolvePixel;
     case RenderPixelShader_AlphaAccumulate:
         return kAlphaAccumulatePixel;
+    case RenderPixelShader_Clear:
+        return R"(#version 450
+layout(std140, set=3, binding=0) uniform ClearColour { vec4 uClear; };
+layout(location=0) out vec4 oColour;
+void main() { oColour = uClear; }
+)";
+    case RenderPixelShader_Keyboard:
+        return R"(#version 450
+layout(location=0) in vec4 vColour;
+layout(location=1) in vec4 vTexCoord;
+layout(set=2, binding=0) uniform sampler2D uGlyphs;
+layout(location=0) out vec4 oColour;
+void main() {
+    float coverage = vTexCoord.x < 0.0 ? 1.0 : texture(uGlyphs, vTexCoord.xy).r;
+    oColour = vec4(vColour.rgb, vColour.a * coverage);
+}
+)";
     default:
         return std::string();
     }

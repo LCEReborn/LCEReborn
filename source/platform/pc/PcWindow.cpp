@@ -1,4 +1,5 @@
 #include "platform/pc/PcWindow.hpp"
+#include "platform/pc/PcGpu.hpp"
 
 #include <SDL3/SDL.h>
 #include <stb_image.h>
@@ -14,13 +15,14 @@
 #include "platform/pc/Log.hpp"
 #include "platform/pc/PcApplication.hpp"
 #include "platform/pc/PcInputEvents.hpp"
+#include "platform/pc/PcLaunchOptions.hpp"
 #include "platform/pc/PcPaths.hpp"
 
 namespace
 {
 const Logger sLog("Window");
+const Logger sSdlLog("SDL");
 SDL_Window* sWindow = NULL;
-SDL_GLContext sContext = NULL;
 bool sShown = false;
 bool sFullscreen = false;
 bool sVSync = true;
@@ -42,6 +44,16 @@ std::string WindowTitle()
         title += date;
     }
     return title;
+}
+
+void SdlLog(void*, int, SDL_LogPriority priority, const char* message)
+{
+    LogLevel level = priority >= SDL_LOG_PRIORITY_CRITICAL ? LogLevel::Fatal
+                     : priority >= SDL_LOG_PRIORITY_ERROR  ? LogLevel::Error
+                     : priority >= SDL_LOG_PRIORITY_WARN   ? LogLevel::Warn
+                     : priority >= SDL_LOG_PRIORITY_INFO   ? LogLevel::Info
+                                                           : LogLevel::Debug;
+    sSdlLog.WriteText(level, message);
 }
 
 std::string DisplaySettingsPath()
@@ -83,12 +95,6 @@ void SaveDisplaySettings()
     file << "VSync = " << (sVSync ? 1 : 0) << "\n";
 }
 
-void ApplyVSync()
-{
-    if (sContext != NULL && !SDL_GL_SetSwapInterval(sVSync ? 1 : 0))
-        LOG_WARN(sLog, "SDL_GL_SetSwapInterval failed: %s", SDL_GetError());
-}
-
 bool IsFullscreenToggle(const SDL_Event& event)
 {
     if (event.type != SDL_EVENT_KEY_DOWN && event.type != SDL_EVENT_KEY_UP)
@@ -97,6 +103,15 @@ bool IsFullscreenToggle(const SDL_Event& event)
         return true;
     return (event.key.scancode == SDL_SCANCODE_RETURN || event.key.scancode == SDL_SCANCODE_KP_ENTER)
            && (event.key.mod & SDL_KMOD_ALT) != 0;
+}
+
+void LogWindowScale()
+{
+    int width = 0, height = 0, pixelsWidth = 0, pixelsHeight = 0;
+    SDL_GetWindowSize(sWindow, &width, &height);
+    SDL_GetWindowSizeInPixels(sWindow, &pixelsWidth, &pixelsHeight);
+    LOG_INFO(sLog, "Window: %dx%d logical, %dx%d pixels, display scale %.2f", width, height,
+             pixelsWidth, pixelsHeight, SDL_GetWindowDisplayScale(sWindow));
 }
 
 void SetWindowIcon()
@@ -112,8 +127,15 @@ void SetWindowIcon()
         return;
     }
     SDL_Surface* icon = SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGBA32, pixels, width * 4);
-    if (icon == NULL || !SDL_SetWindowIcon(sWindow, icon))
+    if (icon == NULL)
         LOG_WARN(sLog, "The window icon could not be set: %s", SDL_GetError());
+    else if (!SDL_SetWindowIcon(sWindow, icon))
+    {
+        if (std::string(SDL_GetCurrentVideoDriver()) == "wayland")
+            LOG_DEBUG(sLog, "Compositor window icons are unavailable: %s", SDL_GetError());
+        else
+            LOG_WARN(sLog, "The window icon could not be set: %s", SDL_GetError());
+    }
     SDL_DestroySurface(icon);
     stbi_image_free(pixels);
 }
@@ -121,26 +143,28 @@ void SetWindowIcon()
 
 bool PcWindowCreate(int width, int height)
 {
+    SDL_SetLogOutputFunction(SdlLog, NULL);
+    SDL_SetAppMetadata("LCEReborn", NULL, "org.lcereborn.LCEReborn");
+    SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_TYPE_STRING, "game");
+    // We render preedit text; the platform still owns the candidate list.
+    SDL_SetHint(SDL_HINT_IME_IMPLEMENTED_UI, "composition");
+#if defined(__linux__)
+    // SDL's automatic selection can prefer XWayland on compositors without
+    // fifo-v1. This is a native Wayland port, so try Wayland first even there.
+    // Normal hint priority preserves an explicit SDL_VIDEO_DRIVER override.
+    const char* session = SDL_getenv("XDG_SESSION_TYPE");
+    if ((session && SDL_strcmp(session, "wayland") == 0)
+        || (!session && SDL_getenv("WAYLAND_DISPLAY")))
+        SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "wayland,x11");
+#endif
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS))
     {
         LOG_FATAL(sLog, "SDL_Init failed: %s", SDL_GetError());
         return false;
     }
 
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 0);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
-    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
-
     sWindow = SDL_CreateWindow(WindowTitle().c_str(), width, height,
-                               SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN
+                               SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN
                                    | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     if (sWindow == NULL)
     {
@@ -148,19 +172,18 @@ bool PcWindowCreate(int width, int height)
         return false;
     }
     SetWindowIcon();
+    LOG_INFO(sLog, "SDL %d.%d.%d", SDL_VERSIONNUM_MAJOR(SDL_GetVersion()),
+             SDL_VERSIONNUM_MINOR(SDL_GetVersion()), SDL_VERSIONNUM_MICRO(SDL_GetVersion()));
+    LogWindowScale();
 
-    sContext = SDL_GL_CreateContext(sWindow);
-    if (sContext == NULL)
+    if (!PcGraphics().Create(sWindow, PcGetLaunchOptions().gpuDebug))
     {
-        LOG_FATAL(sLog, "SDL_GL_CreateContext failed: %s", SDL_GetError());
+        LOG_FATAL(sLog, "Vulkan initialization failed: %s", SDL_GetError());
         SDL_DestroyWindow(sWindow);
         sWindow = NULL;
         return false;
     }
-
-    SDL_GL_MakeCurrent(sWindow, sContext);
     LoadDisplaySettings();
-    ApplyVSync();
     if (sFullscreen && !SDL_SetWindowFullscreen(sWindow, true))
     {
         LOG_WARN(sLog, "SDL_SetWindowFullscreen failed: %s", SDL_GetError());
@@ -172,11 +195,7 @@ bool PcWindowCreate(int width, int height)
 
 void PcWindowDestroy()
 {
-    if (sContext != NULL)
-    {
-        SDL_GL_DestroyContext(sContext);
-        sContext = NULL;
-    }
+    PcGraphics().Destroy();
 
     if (sWindow != NULL)
     {
@@ -196,10 +215,7 @@ void PcWindowShow()
 
 void PcWindowSwap()
 {
-    if (sWindow != NULL)
-    {
-        SDL_GL_SwapWindow(sWindow);
-    }
+    PcGraphics().Present();
 }
 
 void PcWindowGetDrawableSize(int* width, int* height)
@@ -214,11 +230,6 @@ void PcWindowGetDrawableSize(int* width, int* height)
 
     *width = drawableWidth;
     *height = drawableHeight;
-}
-
-void* PcWindowGetProcAddress(const char* name)
-{
-    return reinterpret_cast<void*>(SDL_GL_GetProcAddress(name));
 }
 
 void PcPumpEvents()
@@ -238,6 +249,10 @@ void PcPumpEvents()
             break;
         case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
             sFullscreen = false;
+            break;
+        case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+        case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+            LogWindowScale();
             break;
         case SDL_EVENT_WINDOW_FOCUS_GAINED:
             if (g_pInput != NULL)
@@ -299,6 +314,5 @@ bool PcWindowIsVSync()
 void PcWindowSetVSync(bool enabled)
 {
     sVSync = enabled;
-    ApplyVSync();
     SaveDisplaySettings();
 }

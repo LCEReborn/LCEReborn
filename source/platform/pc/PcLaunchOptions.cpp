@@ -2,6 +2,9 @@
 
 #include <cctype>
 #include <cstdio>
+#include <cerrno>
+#include <cstdlib>
+#include <climits>
 #include <vector>
 
 #if defined(_WIN32)
@@ -50,6 +53,9 @@ static void PrintUsage(std::FILE* stream)
                "  --license-file <file>       what is unlocked (default: license.cfg in the working folder)\n"
                "  --split-screen <on|off>     other controllers can join as more players (default: on)\n"
                "  --join-prompt <on|off>      prompt other controllers to join when a world loads (default: off)\n"
+               "  --frames <count>            exit after this many frames (for testing)\n"
+               "  --screenshot <file.png>     capture the last frame; requires --frames\n"
+               "  --gpu-debug                 enable SDL GPU checks and Vulkan validation when installed\n"
                "  --help                      show this message\n",
                stream);
 }
@@ -58,6 +64,7 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
 {
     exitCode = 1;
     const std::vector<std::string> arguments = CommandLineArguments(argc, argv);
+    std::string frameLimit;
 
     for (std::vector<std::string>::size_type index = 0; index < arguments.size(); ++index)
     {
@@ -78,6 +85,11 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
             PrintUsage(stdout);
             exitCode = 0;
             return false;
+        }
+        if (name == "--gpu-debug" && !hasValue)
+        {
+            sOptions.gpuDebug = true;
+            continue;
         }
 
         std::string* target = NULL;
@@ -102,6 +114,10 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
             target = &sOptions.uuid;
         else if (name == "--license-file")
             target = &sOptions.licenseFile;
+        else if (name == "--frames")
+            target = &frameLimit;
+        else if (name == "--screenshot")
+            target = &sOptions.screenshot;
         else
         {
             std::fprintf(stderr, "Unknown option: %s\n", arguments[index].c_str());
@@ -141,6 +157,24 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
         }
 
         *target = value;
+    }
+
+    if (!frameLimit.empty())
+    {
+        char* end = NULL;
+        errno = 0;
+        unsigned long count = std::strtoul(frameLimit.c_str(), &end, 10);
+        if (errno || *end || frameLimit[0] == '-' || count == 0 || count > UINT_MAX)
+        {
+            std::fprintf(stderr, "--frames must be a positive integer\n");
+            return false;
+        }
+        sOptions.frameLimit = static_cast<unsigned int>(count);
+    }
+    if (!sOptions.screenshot.empty() && sOptions.frameLimit == 0)
+    {
+        std::fprintf(stderr, "--screenshot requires --frames\n");
+        return false;
     }
 
     if (!sOptions.uuid.empty())

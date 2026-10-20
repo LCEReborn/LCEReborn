@@ -15,6 +15,9 @@ struct PcLaunchOptions
     std::string licenseFile;
     bool splitScreen = true;
     bool joinPrompt = false;
+    std::string screenshot;
+    unsigned int frameLimit = 0;
+    bool gpuDebug = false;
 };
 
 bool PcParseLaunchOptions(int argc, char** argv, int& exitCode);

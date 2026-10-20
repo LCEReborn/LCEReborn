@@ -1,4 +1,6 @@
 #include "game/util/LegacyUtilityFunctions.hpp"
+
+#include <stddef.h>
 #include "vendor/MilesApi.hpp"
 #include "vendor/MilesMem.hpp"
 #include "vendor/MilesRib.hpp"

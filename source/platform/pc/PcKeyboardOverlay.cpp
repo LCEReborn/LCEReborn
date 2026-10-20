@@ -10,7 +10,8 @@
 #include <string>
 #include <vector>
 
-#include "platform/pc/GlApi.hpp"
+#include "platform/pc/PcGpu.hpp"
+#include "platform/pc/RenderShaders.hpp"
 #include "platform/pc/Log.hpp"
 #include "platform/pc/PcInputEvents.hpp"
 #include "platform/pc/PcPaths.hpp"
@@ -26,34 +27,6 @@ const float kBakeHeight = 32.0f;
 const float kReferenceHeight = 720.0f;
 const float kTextHeight = 22.0f;
 const unsigned long long kCaretPeriod = 1000000000ull;
-
-const char* const kVertexSource = R"(#version 330 core
-layout(location = 0) in vec2 aPosition;
-layout(location = 1) in vec2 aTexCoord;
-layout(location = 2) in vec4 aColour;
-uniform vec2 uScreen;
-out vec2 vTexCoord;
-out vec4 vColour;
-void main()
-{
-    vec2 clip = aPosition / uScreen * 2.0 - 1.0;
-    gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
-    vTexCoord = aTexCoord;
-    vColour = aColour;
-}
-)";
-
-const char* const kFragmentSource = R"(#version 330 core
-in vec2 vTexCoord;
-in vec4 vColour;
-uniform sampler2D uGlyphs;
-out vec4 oColour;
-void main()
-{
-    float coverage = vTexCoord.x < 0.0 ? 1.0 : texture(uGlyphs, vTexCoord).r;
-    oColour = vec4(vColour.rgb, vColour.a * coverage);
-}
-)";
 
 struct Vertex
 {
@@ -77,70 +50,14 @@ struct OverlayState
     bool initialised;
     bool available;
     bool hasFont;
-    GLuint program;
-    GLint screenLocation;
-    GLint glyphLocation;
-    GLuint vertexArray;
-    GLuint vertexBuffer;
-    GLuint atlas;
+    SDL_GPUBuffer* vertexBuffer;
+    unsigned int bufferSize;
+    SDL_GPUTexture* atlas;
+    SDL_GPUSampler* sampler;
     stbtt_bakedchar glyphs[kGlyphCount];
 };
 
 OverlayState sOverlay;
-
-GLuint CompileShader(GLenum type, const char* source)
-{
-    GLuint shader = Gl::CreateShader(type);
-    Gl::ShaderSource(shader, 1, &source, NULL);
-    Gl::CompileShader(shader);
-    GLint status = 0;
-    Gl::GetShaderiv(shader, Gl::COMPILE_STATUS, &status);
-    if (status == 0)
-    {
-        char log[1024];
-        GLsizei length = 0;
-        Gl::GetShaderInfoLog(shader, sizeof(log), &length, log);
-        LOG_ERROR(sLog, "Keyboard overlay shader failed: %.*s", (int)length, log);
-        Gl::DeleteShader(shader);
-        return 0;
-    }
-    return shader;
-}
-
-bool CreateProgram()
-{
-    GLuint vertex = CompileShader(Gl::VERTEX_SHADER, kVertexSource);
-    GLuint fragment = CompileShader(Gl::FRAGMENT_SHADER, kFragmentSource);
-    if (vertex == 0 || fragment == 0)
-    {
-        if (vertex != 0)
-            Gl::DeleteShader(vertex);
-        if (fragment != 0)
-            Gl::DeleteShader(fragment);
-        return false;
-    }
-
-    sOverlay.program = Gl::CreateProgram();
-    Gl::AttachShader(sOverlay.program, vertex);
-    Gl::AttachShader(sOverlay.program, fragment);
-    Gl::LinkProgram(sOverlay.program);
-    Gl::DeleteShader(vertex);
-    Gl::DeleteShader(fragment);
-
-    GLint status = 0;
-    Gl::GetProgramiv(sOverlay.program, Gl::LINK_STATUS, &status);
-    if (status == 0)
-    {
-        LOG_ERROR(sLog, "Keyboard overlay program failed to link");
-        Gl::DeleteProgram(sOverlay.program);
-        sOverlay.program = 0;
-        return false;
-    }
-
-    sOverlay.screenLocation = Gl::GetUniformLocation(sOverlay.program, "uScreen");
-    sOverlay.glyphLocation = Gl::GetUniformLocation(sOverlay.program, "uGlyphs");
-    return true;
-}
 
 bool LoadFont()
 {
@@ -162,39 +79,26 @@ bool LoadFont()
         return false;
     }
 
-    Gl::GenTextures(1, &sOverlay.atlas);
-    Gl::BindTexture(Gl::TEXTURE_2D, sOverlay.atlas);
-    Gl::PixelStorei(Gl::UNPACK_ALIGNMENT, 1);
-    Gl::TexImage2D(Gl::TEXTURE_2D, 0, (GLint)Gl::RED, kAtlasSize, kAtlasSize, 0, Gl::RED, Gl::UNSIGNED_BYTE,
-                   bitmap.data());
-    Gl::PixelStorei(Gl::UNPACK_ALIGNMENT, 4);
-    Gl::TexParameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MIN_FILTER, (GLint)Gl::NEAREST);
-    Gl::TexParameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MAG_FILTER, (GLint)Gl::NEAREST);
-    Gl::TexParameteri(Gl::TEXTURE_2D, Gl::TEXTURE_WRAP_S, (GLint)Gl::CLAMP_TO_EDGE);
-    Gl::TexParameteri(Gl::TEXTURE_2D, Gl::TEXTURE_WRAP_T, (GLint)Gl::CLAMP_TO_EDGE);
+    sOverlay.atlas = PcGraphics().Texture(kAtlasSize, kAtlasSize, SDL_GPU_TEXTUREFORMAT_R8_UNORM,
+                                          SDL_GPU_TEXTUREUSAGE_SAMPLER);
+    PcGraphics().Upload(sOverlay.atlas, 0, kAtlasSize, kAtlasSize, bitmap.data(), 1);
     return true;
 }
 
 void Initialise()
 {
     sOverlay.initialised = true;
-    if (!CreateProgram())
-        return;
-
-    Gl::GenVertexArrays(1, &sOverlay.vertexArray);
-    Gl::GenBuffers(1, &sOverlay.vertexBuffer);
-    Gl::BindVertexArray(sOverlay.vertexArray);
-    Gl::BindBuffer(Gl::ARRAY_BUFFER, sOverlay.vertexBuffer);
-    Gl::EnableVertexAttribArray(0);
-    Gl::VertexAttribPointer(0, 2, Gl::FLOAT, Gl::FALSE_VALUE, sizeof(Vertex), (const void*)offsetof(Vertex, x));
-    Gl::EnableVertexAttribArray(1);
-    Gl::VertexAttribPointer(1, 2, Gl::FLOAT, Gl::FALSE_VALUE, sizeof(Vertex), (const void*)offsetof(Vertex, u));
-    Gl::EnableVertexAttribArray(2);
-    Gl::VertexAttribPointer(2, 4, Gl::UNSIGNED_BYTE, Gl::TRUE_VALUE, sizeof(Vertex),
-                            (const void*)offsetof(Vertex, colour));
-    Gl::BindVertexArray(0);
-
+    SDL_GPUSamplerCreateInfo info = {};
+    info.address_mode_u = info.address_mode_v = info.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
+    sOverlay.sampler = SDL_CreateGPUSampler(PcGraphics().device, &info);
+    PcGraphics().Check(sOverlay.sampler != NULL, "create keyboard sampler");
     sOverlay.hasFont = LoadFont();
+    if (!sOverlay.hasFont)
+    {
+        unsigned char white = 255;
+        sOverlay.atlas = PcGraphics().Texture(1, 1, SDL_GPU_TEXTUREFORMAT_R8_UNORM, SDL_GPU_TEXTUREUSAGE_SAMPLER);
+        PcGraphics().Upload(sOverlay.atlas, 0, 1, 1, &white, 1);
+    }
     sOverlay.available = true;
 }
 
@@ -226,10 +130,10 @@ int GlyphIndex(wchar_t character)
     return static_cast<int>(code) - kFirstGlyph;
 }
 
-float TextWidth(const std::wstring& text, size_t begin, float scale)
+float TextWidth(const std::wstring& text, size_t begin, float scale, size_t end = std::wstring::npos)
 {
     float width = 0.0f;
-    for (size_t index = begin; index < text.size(); ++index)
+    for (size_t index = begin; index < text.size() && index < end; ++index)
         width += sOverlay.glyphs[GlyphIndex(text[index])].xadvance * scale;
     return width;
 }
@@ -251,7 +155,28 @@ float PushText(std::vector<Vertex>& vertices, const std::wstring& text, size_t b
     return x;
 }
 
-void BuildOverlay(std::vector<Vertex>& vertices, const std::wstring& title, const std::wstring& text, float width,
+void SetTextInputArea(float left, float top, float right, float bottom, float caret, float width, float height)
+{
+    SDL_Window* window = SDL_GetKeyboardFocus();
+    if (!window)
+        return;
+    int logicalWidth = 0, logicalHeight = 0;
+    SDL_GetWindowSize(window, &logicalWidth, &logicalHeight);
+    // Wayland IME rectangles use surface coordinates, while this overlay is
+    // rendered in buffer pixels. These differ on fractional/high-DPI displays.
+    float scaleX = logicalWidth / width, scaleY = logicalHeight / height;
+    SDL_Rect area = {static_cast<int>(left * scaleX), static_cast<int>(top * scaleY),
+                     SDL_max(1, static_cast<int>(SDL_ceilf((right - left) * scaleX))),
+                     SDL_max(1, static_cast<int>(SDL_ceilf((bottom - top) * scaleY)))};
+    int offset = SDL_clamp(static_cast<int>((caret - left) * scaleX), 0, area.w);
+    SDL_Rect previous;
+    int previousOffset = 0;
+    if (!SDL_GetTextInputArea(window, &previous, &previousOffset) || previous.x != area.x || previous.y != area.y
+        || previous.w != area.w || previous.h != area.h || previousOffset != offset)
+        SDL_SetTextInputArea(window, &area, offset);
+}
+
+void BuildOverlay(std::vector<Vertex>& vertices, const PcKeyboardText& text, float width,
                   float height)
 {
     const Colour dim = {0, 0, 0, 150};
@@ -296,27 +221,52 @@ void BuildOverlay(std::vector<Vertex>& vertices, const std::wstring& title, cons
     PushRect(vertices, fieldLeft, fieldTop, fieldRight, fieldBottom, field);
 
     if (!sOverlay.hasFont)
+    {
+        SetTextInputArea(fieldLeft, fieldTop, fieldRight, fieldBottom, fieldLeft, width, height);
         return;
+    }
 
-    PushText(vertices, title, 0, left + padding, top + padding + kTextHeight * unit, textScale, titleColour);
+    PushText(vertices, text.title, 0, left + padding, top + padding + kTextHeight * unit, textScale, titleColour);
 
-    std::wstring shown = text;
-    if ((SDL_GetTicksNS() % kCaretPeriod) < kCaretPeriod / 2)
-        shown.push_back(L'_');
-    float available = fieldRight - fieldLeft - 2.0f * padding * 0.5f;
+    const std::wstring shown = text.text + text.composition.text;
+    size_t caretIndex = text.composition.text.empty() ? shown.size()
+                                                     : text.text.size() + text.composition.cursor;
+    float available = fieldRight - fieldLeft - padding - edge;
     size_t begin = 0;
     while (begin < shown.size() && TextWidth(shown, begin, textScale) > available)
         ++begin;
+    // Keep a caret in the middle of a long preedit visible, clipping the tail
+    // instead of scrolling the caret outside the field.
+    begin = SDL_min(begin, caretIndex);
+    size_t visibleEnd = shown.size();
+    while (visibleEnd > caretIndex && TextWidth(shown, begin, textScale, visibleEnd) > available)
+        --visibleEnd;
     float baseline = fieldTop + (fieldHeight + kTextHeight * unit * 0.8f) * 0.5f;
-    PushText(vertices, shown, begin, fieldLeft + padding * 0.5f, baseline, textScale, textColour);
+    float textLeft = fieldLeft + padding * 0.5f;
+    auto position = [&](size_t index) {
+        return textLeft + TextWidth(shown, begin, textScale, SDL_clamp(index, begin, visibleEnd));
+    };
+    float caret = position(caretIndex);
+    if (!text.composition.text.empty())
+    {
+        float preedit = position(text.text.size());
+        float end = position(visibleEnd);
+        PushRect(vertices, preedit, baseline + edge, end, baseline + 2 * edge, focus);
+        float selectedEnd = position(caretIndex + text.composition.selection);
+        if (text.composition.selection != 0)
+            PushRect(vertices, caret, fieldTop + edge, selectedEnd, fieldBottom - edge, shade);
+    }
+    PushText(vertices, shown.substr(begin, visibleEnd - begin), 0, textLeft, baseline, textScale, textColour);
+    if (!text.composition.text.empty() || (SDL_GetTicksNS() % kCaretPeriod) < kCaretPeriod / 2)
+        PushRect(vertices, caret, baseline - kTextHeight * unit, caret + edge, baseline + edge, textColour);
+    SetTextInputArea(fieldLeft, fieldTop, fieldRight, fieldBottom, caret, width, height);
 }
 }
 
 void PcKeyboardOverlayDraw(int width, int height)
 {
-    std::wstring title;
-    std::wstring text;
-    if (width <= 0 || height <= 0 || !PcInputGetKeyboardText(&title, &text))
+    PcKeyboardText text;
+    if (width <= 0 || height <= 0 || !PcGraphics().swapchain || !PcInputGetKeyboardText(&text))
         return;
 
     if (!sOverlay.initialised)
@@ -325,44 +275,77 @@ void PcKeyboardOverlayDraw(int width, int height)
         return;
 
     std::vector<Vertex> vertices;
-    BuildOverlay(vertices, title, text, (float)width, (float)height);
+    BuildOverlay(vertices, text, (float)width, (float)height);
 
-    Gl::BindFramebuffer(Gl::FRAMEBUFFER, 0);
-    Gl::Viewport(0, 0, width, height);
-    Gl::Disable(Gl::DEPTH_TEST);
-    Gl::Disable(Gl::STENCIL_TEST);
-    Gl::Disable(Gl::SCISSOR_TEST);
-    Gl::Disable(Gl::CULL_FACE);
-    Gl::ColorMask(Gl::TRUE_VALUE, Gl::TRUE_VALUE, Gl::TRUE_VALUE, Gl::TRUE_VALUE);
-    Gl::Enable(Gl::BLEND);
-    Gl::BlendFuncSeparate(Gl::SRC_ALPHA, Gl::ONE_MINUS_SRC_ALPHA, Gl::ONE, Gl::ONE_MINUS_SRC_ALPHA);
-
-    Gl::UseProgram(sOverlay.program);
-    Gl::Uniform2f(sOverlay.screenLocation, (float)width, (float)height);
-    Gl::Uniform1i(sOverlay.glyphLocation, 0);
-    Gl::ActiveTexture(Gl::TEXTURE0);
-    Gl::BindSampler(0, 0);
-    Gl::BindTexture(Gl::TEXTURE_2D, sOverlay.atlas);
-
-    Gl::BindVertexArray(sOverlay.vertexArray);
-    Gl::BindBuffer(Gl::ARRAY_BUFFER, sOverlay.vertexBuffer);
-    Gl::BufferData(Gl::ARRAY_BUFFER, (GLsizeiptr)(vertices.size() * sizeof(Vertex)), vertices.data(),
-                   Gl::STREAM_DRAW);
-    Gl::DrawArrays(Gl::TRIANGLES, 0, (GLsizei)vertices.size());
-    Gl::BindVertexArray(0);
+    PcGpu& gpu = PcGraphics();
+    if (!gpu.swapchain || vertices.empty())
+        return;
+    const unsigned int size = vertices.size() * sizeof(Vertex);
+    if (sOverlay.bufferSize < size)
+    {
+        gpu.EndPass();
+        if (sOverlay.vertexBuffer)
+            SDL_ReleaseGPUBuffer(gpu.device, sOverlay.vertexBuffer);
+        sOverlay.bufferSize = size * 2;
+        sOverlay.vertexBuffer = gpu.Buffer(sOverlay.bufferSize, SDL_GPU_BUFFERUSAGE_VERTEX);
+    }
+    gpu.Upload(sOverlay.vertexBuffer, 0, vertices.data(), size, true);
+    SDL_GPUGraphicsPipelineCreateInfo info = {};
+    info.vertex_shader = gpu.Shader(RenderVertexShader_Keyboard, true);
+    info.fragment_shader = gpu.Shader(RenderPixelShader_Keyboard, false);
+    info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
+    info.rasterizer_state.enable_depth_clip = true;
+    SDL_GPUVertexBufferDescription buffer = {};
+    buffer.pitch = sizeof(Vertex);
+    SDL_GPUVertexAttribute attributes[3] = {};
+    attributes[0].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2;
+    attributes[0].offset = offsetof(Vertex, x);
+    attributes[1].location = 1;
+    attributes[1].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2;
+    attributes[1].offset = offsetof(Vertex, u);
+    attributes[2].location = 2;
+    attributes[2].format = SDL_GPU_VERTEXELEMENTFORMAT_UBYTE4_NORM;
+    attributes[2].offset = offsetof(Vertex, colour);
+    info.vertex_input_state.vertex_buffer_descriptions = &buffer;
+    info.vertex_input_state.num_vertex_buffers = 1;
+    info.vertex_input_state.vertex_attributes = attributes;
+    info.vertex_input_state.num_vertex_attributes = 3;
+    SDL_GPUColorTargetDescription colour = {};
+    colour.format = gpu.swapFormat;
+    colour.blend_state.enable_blend = true;
+    colour.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    colour.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    colour.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
+    colour.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    colour.blend_state.color_blend_op = colour.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+    info.target_info.color_target_descriptions = &colour;
+    info.target_info.num_color_targets = 1;
+    SDL_GPUColorTargetInfo target = {};
+    target.texture = gpu.swapchain;
+    target.load_op = SDL_GPU_LOADOP_LOAD;
+    target.store_op = SDL_GPU_STOREOP_STORE;
+    SDL_GPUGraphicsPipeline* pipeline = gpu.Pipeline(info);
+    SDL_GPURenderPass* pass = gpu.BeginPass(&target, 1);
+    gpu.BindPipeline(pipeline);
+    float screen[4] = {(float)width, (float)height, 0, 0};
+    SDL_PushGPUVertexUniformData(gpu.Command(), 0, screen, sizeof(screen));
+    SDL_GPUTextureSamplerBinding atlas = {sOverlay.atlas, sOverlay.sampler};
+    SDL_BindGPUFragmentSamplers(pass, 0, &atlas, 1);
+    SDL_GPUBufferBinding binding = {sOverlay.vertexBuffer, 0};
+    SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
+    SDL_DrawGPUPrimitives(pass, vertices.size(), 1, 0, 0);
 }
 
 void PcKeyboardOverlayShutdown()
 {
     if (!sOverlay.initialised)
         return;
-    if (sOverlay.atlas != 0)
-        Gl::DeleteTextures(1, &sOverlay.atlas);
-    if (sOverlay.vertexBuffer != 0)
-        Gl::DeleteBuffers(1, &sOverlay.vertexBuffer);
-    if (sOverlay.vertexArray != 0)
-        Gl::DeleteVertexArrays(1, &sOverlay.vertexArray);
-    if (sOverlay.program != 0)
-        Gl::DeleteProgram(sOverlay.program);
+    PcGraphics().EndPass();
+    if (sOverlay.atlas)
+        SDL_ReleaseGPUTexture(PcGraphics().device, sOverlay.atlas);
+    if (sOverlay.vertexBuffer)
+        SDL_ReleaseGPUBuffer(PcGraphics().device, sOverlay.vertexBuffer);
+    if (sOverlay.sampler)
+        SDL_ReleaseGPUSampler(PcGraphics().device, sOverlay.sampler);
     sOverlay = OverlayState();
 }

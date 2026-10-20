@@ -63,6 +63,10 @@ testing. The PC version plays on Windows, and the two builds can play
 together. Both are still being refined toward the original function by
 function.
 
+The native PC port uses Vulkan through SDL3 GPU. It has been built and
+tested on Linux/Wayland through the menus and loading a trial world. See
+`docs/pc-platform.md` for building and running it with your prepared assets.
+
 - [docs/overview.md](docs/overview.md) - what is here, what is not, and status
 - [docs/building.md](docs/building.md) - preparing game files, building the RPX and running it in Cemu
 - [docs/pc-platform.md](docs/pc-platform.md) - the PC version: building, files, multiplayer, display, sound and releases
@@ -70,6 +74,7 @@ function.
 - [docs/pc-input.md](docs/pc-input.md) - keyboard, mouse and controllers on PC
 - [docs/measuring.md](docs/measuring.md) - comparing your build with your copy of the original, function by function
 - [docs/architecture.md](docs/architecture.md) - directory layout and the platform seam
+- [docs/pc-platform.md](docs/pc-platform.md#building-on-pc) - native PC build, Vulkan renderer and Linux/Wayland instructions
 - [docs/conventions.md](docs/conventions.md) - language level, naming and file rules
 - [docs/provenance.md](docs/provenance.md) - where the source comes from and contribution rules
 

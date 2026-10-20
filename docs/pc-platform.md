@@ -203,6 +203,23 @@ render distance.
 
 ## Window and display
 
+The PC renderer uses Vulkan through SDL3 GPU. Shaders are compiled to SPIR-V
+at build time and embedded in the executable; there is no OpenGL context or
+runtime shader compiler. SDL owns the native Wayland (or X11) surface,
+swapchain and Vulkan synchronization. The game records render passes,
+caches pipelines by shader/layout/render state and uses staging buffers for
+texture and mesh uploads. The world, menus, weighted transparency, gamma,
+save thumbnails and keyboard overlay all use the same backend.
+Oversized background viewports use a clip-space transform to preserve their
+framing while keeping SDL's viewport inside the render target.
+
+Mesh and streamed vertex uploads share a preparatory copy command buffer,
+submitted before the frame's draw commands. New or cycled buffers and disjoint
+stream ranges keep each draw's geometry intact without interrupting the render
+pass. Texture updates stay in draw order. Consecutive draws reuse pipeline and
+index-buffer bindings, dynamic render state and unchanged uniforms; rebinding
+an SDL pipeline would otherwise invalidate its descriptor sets on every chunk.
+
 The game draws into a resizable window at the window's own resolution and
 shape. The world fills the window, its field of view following the window's
 proportions. The menus and the HUD are the Wii U's 720p, 16:9 interface: they
@@ -242,6 +259,74 @@ place of the Miles Sound System the Wii U build uses:
 
 ## Building on PC
 
+### Linux / Wayland
+
+Install a C/C++ compiler (Clang is tested), CMake 3.24 or newer, Ninja,
+Python 3, `glslc` (shaderc), and your GPU's Vulkan loader and driver. For the
+system SDL option below, install SDL3 3.4 or newer with Wayland and Vulkan
+support. Otherwise CMake downloads and builds the pinned SDL3 release; its
+Wayland development dependencies must be installed.
+
+From the repository root:
+
+```sh
+python tools/build/deps.py build/deps
+python tools/build/layout.py build/deps build/third_party
+cmake -S . -B build/linux -G Ninja \
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+  -DLCE_USE_SYSTEM_SDL=ON -DLCE_BUILD_LAUNCHER=OFF
+cmake --build build/linux --parallel 8
+SDL_VIDEO_DRIVER=wayland ./build/linux/LCEReborn
+```
+
+The last command uses the prepared `assets/` and PC `resources/` folders in
+the repository root. `--content-dir`, `--resource-dir` and `--save-dir`
+also work with absolute paths when starting elsewhere. The game prefers native
+Wayland in a Wayland session, with X11 as a fallback. An explicit
+`SDL_VIDEO_DRIVER` overrides that preference. It does not
+need XWayland when using the Wayland driver. The Qt launcher can be included
+with `-DLCE_BUILD_LAUNCHER=ON` when the pinned Qt version is installed, either
+system-wide or by `tools/build/qt.py`.
+
+### Wayland integration
+
+The bundled dependency is SDL **3.4.18**. Its Wayland backend negotiates
+protocols with the compositor; the game does not bind a second set of
+protocol objects behind SDL's back. Bundled Linux builds fail configuration
+if the Wayland development dependencies are missing.
+
+| Feature | Integration |
+| --- | --- |
+| Native windows and fullscreen | SDL's xdg-shell backend; F11 or Alt+Enter toggles compositor-managed fullscreen. |
+| Fractional scaling and mixed-DPI monitors | High pixel density enabled; render targets track buffer pixels, while menu mouse coordinates and IME rectangles use logical window coordinates. SDL uses fractional-scale/viewporter where available. |
+| Mouse look | SDL relative mouse mode uses relative-pointer and pointer-constraints; focus loss releases held keys and capture. |
+| Text input | SDL Unicode text input, IME preedit/cursor/selection display, single-line and numeric input hints, clipboard paste, and candidate-window positioning. Native candidate UI remains with the input method. |
+| Activation and decorations | SDL consumes launch activation tokens; xdg-decoration or libdecor provides decorations as supported by the desktop. Install libdecor for desktops that require client-side decorations. |
+| Application identity and icons | Stable application IDs for the game and Qt launcher; SDL requests toplevel icons where supported. Generated desktop entries provide icons and matching application identity elsewhere. |
+| Idle inhibition | SDL requests idle inhibition for game surfaces so the display does not sleep during play. |
+| Color management | SDL reads compositor output/surface color feedback. The Vulkan swapchain declares the game's SDR sRGB output. |
+| Presentation | Vulkan WSI owns swapchain synchronization, including DRM timeline explicit synchronization, FIFO barriers and commit timing when supported by the driver/compositor. V-Sync uses FIFO; disabling it prefers mailbox, then immediate if available. |
+
+Linux builds generate `org.lcereborn.LCEReborn.desktop` and, when built,
+`org.lcereborn.LCERebornLauncher.desktop` in the build folder. These point to
+this checkout and its binaries; they can be installed with
+`desktop-file-install --dir="$HOME/.local/share/applications" <file.desktop>`.
+Regenerate them by building again after moving the checkout.
+
+Protocol availability depends on the compositor, SDL and Vulkan driver.
+Explicit display synchronization and VRR are negotiated by the driver's WSI
+and compositor; the game does not force them. The output is SDR, and the
+game's frame-based animations still impose the 60 fps limit above. Protocols
+only available in SDL development snapshots, such as session restoration,
+are not required. The overlay uses the supplied Mojangles font and substitutes
+`?` for glyphs outside its current atlas.
+
+The integration follows SDL's [Wayland guidance](https://wiki.libsdl.org/SDL3/README-wayland)
+and [high-DPI coordinate model](https://wiki.libsdl.org/SDL3/README-highdpi).
+
+### Windows
+
 ```
 python tools/build/deps.py build/deps
 python tools/build/layout.py build/deps build/third_party
@@ -250,7 +335,8 @@ cmake -S . -B build/pc -G Ninja -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER
 cmake --build build/pc
 ```
 
-Run CMake from a Visual Studio x64 developer prompt. The game core is
+Install the Vulkan SDK (including `glslc`) and a Vulkan-capable graphics
+driver. Run CMake from a Visual Studio x64 developer prompt. The game core is
 compiled as C++14, the dialect it was written in; the PC layer as C++17.
 `tools/build/qt.py` installs the Qt the launcher needs (`pc-launcher.md`);
 `-DLCE_BUILD_LAUNCHER=OFF` builds the game without it.
@@ -266,6 +352,42 @@ the game files, saves or logs in `build/pc`, and refuses a tree with
 uncommitted changes, since the zip names its commit as its source. License
 texts not found in the dependencies themselves are kept in
 `tools/package/licenses/`, taken from qtbase and the SPDX license list.
+
+### Renderer checks
+
+```sh
+cmake -S . -B build/linux -DLCE_BUILD_RENDER_TESTS=ON
+cmake --build build/linux --target lce_vulkan_smoke lce_platform_text lce_text_input
+SDL_VIDEO_DRIVER=wayland ctest --test-dir build/linux --output-on-failure
+```
+
+The Vulkan test creates a hidden window and verifies the actual shaders with GPU
+pixel readbacks: texture orientation, mip uploads, gamma, scissor,
+transparency resolve, indexed geometry, face culling, depth, stencil and
+alpha testing, including cropping an oversized background viewport. It also
+checks that streamed geometry preserves the active render pass and that
+cycled buffers and disjoint upload ranges retain each draw's vertices.
+`platform_text` checks bounded UTF-16 asset decoding and the fixed-width
+filenames in PC and Wii U save headers, including endian conversion.
+`text_input` checks UTF-8 IME preedit decoding and Unicode cursor/selection
+offsets, including supplementary characters and absent/invalid ranges.
+`./build/linux/lce_vulkan_smoke --present` also opens a short
+visible test of swapchain presentation, high-DPI pixel sizing, resizing,
+fullscreen transitions, native relative mouse capture/release and V-Sync changes.
+
+For an automated game startup and a PNG of the rendered frame:
+
+```sh
+SDL_VIDEO_DRIVER=wayland ./build/linux/LCEReborn \
+  --save-dir build/test-saves --log-dir build/test-logs \
+  --license-file build/test-license.cfg \
+  --frames 900 --screenshot build/startup.png --gpu-debug
+```
+
+`--gpu-debug` enables SDL GPU checks and Vulkan validation if the Khronos
+validation layer is installed. The frame capture reads the game render
+target before display gamma and the keyboard overlay. Temporary test saves,
+logs and licenses in this example stay under `build/`.
 
 ## Releases
 

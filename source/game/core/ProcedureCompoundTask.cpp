@@ -138,6 +138,16 @@ void ProcedureCompoundTask::handleUIInput(int input)
     }
 }
 
+bool ProcedureCompoundTask::waitsForInput(int input)
+{
+    for (std::vector<TutorialTask*>::iterator end = tasks.end(), it = tasks.begin(); it < end; ++it)
+    {
+        if ((*it)->waitsForInput(input))
+            return true;
+    }
+    return false;
+}
+
 void ProcedureCompoundTask::setAsCurrentTask(bool currentTask)
 {
     bool current = true;

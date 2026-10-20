@@ -36,6 +36,7 @@ public:
     virtual void useItem(not_null_ptr<ItemInstance> item, bool cancelled);
     virtual void completeUsingItem(not_null_ptr<ItemInstance> item);
     virtual void handleUIInput(int input);
+    virtual bool waitsForInput(int input);
     virtual void onCrafted(not_null_ptr<ItemInstance> item);
     virtual void onEquip(not_null_ptr<ItemInstance> item);
     virtual void onTake(not_null_ptr<ItemInstance> item, unsigned int itemCount, unsigned int exactCount);

@@ -434,6 +434,7 @@ public:
     void attack(boost::shared_ptr<Player> player, boost::shared_ptr<Entity> entity);
     void itemDamaged(not_null_ptr<class ItemInstance> item);
     void handleUIInput(int input);
+    bool waitsForInput(int input);
     void createItemSelected(not_null_ptr<class ItemInstance> item, bool selected);
     void onCrafted(not_null_ptr<class ItemInstance> item);
     void onEquip(not_null_ptr<class ItemInstance> item);

@@ -1984,6 +1984,11 @@ void Tutorial::handleUIInput(int input)
     currentTask[currentState]->handleUIInput(input);
 }
 
+bool Tutorial::waitsForInput(int input)
+{
+    return !popupPending && currentTask[currentState] != NULL && currentTask[currentState]->waitsForInput(input);
+}
+
 void Tutorial::createItemSelected(not_null_ptr<ItemInstance> item, bool selected)
 {
     std::vector<TutorialHint*>::iterator it = stateHints[currentState].begin();

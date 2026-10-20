@@ -4,12 +4,29 @@
 #include <QJsonObject>
 #include <QJsonValue>
 
+#include <algorithm>
+#include <vector>
+
+QJsonArray NewestFirst(const QJsonArray& releases)
+{
+    std::vector<QJsonValue> sorted(releases.begin(), releases.end());
+    const auto published = [](const QJsonValue& release) {
+        return QDateTime::fromString(release.toObject().value("published_at").toString(), Qt::ISODate);
+    };
+    std::stable_sort(sorted.begin(), sorted.end(),
+                     [&](const QJsonValue& a, const QJsonValue& b) { return published(a) > published(b); });
+    QJsonArray result;
+    for (const QJsonValue& release : sorted)
+        result.append(release);
+    return result;
+}
+
 NewerRelease FindNewerRelease(const QJsonArray& releases, const QString& commit, const QDate& built)
 {
     const QString ownTag = "build-" + commit;
     QJsonObject latest;
     bool ownIsRelease = false;
-    for (const QJsonValue& value : releases)
+    for (const QJsonValue& value : NewestFirst(releases))
     {
         const QJsonObject release = value.toObject();
         if (release.value("draft").toBool())

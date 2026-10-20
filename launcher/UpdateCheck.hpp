@@ -11,6 +11,7 @@ struct NewerRelease
     QString url;
 };
 
+QJsonArray NewestFirst(const QJsonArray& releases);
 NewerRelease FindNewerRelease(const QJsonArray& releases, const QString& commit, const QDate& built);
 
 #endif

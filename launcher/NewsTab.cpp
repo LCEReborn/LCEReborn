@@ -222,7 +222,7 @@ bool NewsTab::ShowReleases(const QByteArray& json, const QString& note)
     mReleases->blockSignals(true);
     mReleases->clear();
     int selectRow = 0;
-    for (const QJsonValue& value : document.array())
+    for (const QJsonValue& value : NewestFirst(document.array()))
     {
         const QJsonObject release = value.toObject();
         if (release.value("draft").toBool())

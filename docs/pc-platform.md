@@ -80,14 +80,15 @@ own. `full_game = true` unlocks the full game, otherwise it runs as the trial.
 
 The PC and Wii U builds share one network manager (`source/net/`), so they
 can play together. An online game is hosted on port 25570 (TCP for players,
-UDP for finding games on the local network). The Join tab lists worlds and
-mini games found on the local network, and Add Server saves a name and an
-address (`host` or `host:port`) for anything else. While the list is open,
-each saved server is asked every few seconds what it is hosting, and its row
-shows that world or mini game. The PC keeps the saved servers in
-`servers.dat` in the save folder; the Wii U keeps them in its save data. The
-Mini Games menu's Join tab lists the same saved servers but only the mini
-games found on the local network.
+UDP for finding games on the local network), and the host is told the port
+in chat on joining. The Join tab lists worlds and mini games found on the
+local network, and Add Server saves a name and an address (`host` or
+`host:port`) for anything else. While the list is open, each saved server is
+asked every few seconds what it is hosting, and its row shows that world or
+mini game. The PC keeps the saved servers in `servers.dat` in the save
+folder; the Wii U keeps them in its save data. The Mini Games menu's Join
+tab lists the same saved servers but only the mini games found on the local
+network.
 
 ## Chat
 
@@ -214,6 +215,8 @@ the same area.
 F11 or Alt+Enter switches between the window and borderless fullscreen.
 Whether the game is fullscreen and whether it waits for the monitor's refresh
 (V-Sync) are kept in `display.txt` in the save folder (`platform/pc/PcWindow`).
+The window's title gives the commit and date the game was built from, like
+the launcher's (`launcher/BuildInfo.cmake`).
 
 The game runs one frame at a time at 60 frames per second, like the Wii U: the
 menus and their animations advance one step per frame, so the main loop holds
@@ -278,6 +281,8 @@ builds, packages, and after asking, publishes a GitHub release named after
 the commit and the date it was built (`9b3a482d - 2026-10-19`, tag
 `build-9b3a482d`), with the Unreleased notes and the zip. It then files those
 notes under the release's name.
+An `@name` in the notes, such as the selector `@e`, is published as code so
+GitHub doesn't mention that account.
 `--dry-run` shows the release without publishing it, and `--prerelease`
 marks it as a pre-release. The launcher's News tab shows the published
 releases.

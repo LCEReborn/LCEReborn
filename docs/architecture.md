@@ -30,7 +30,7 @@ uses.
 | `game/item` | `Item`, `Items`, `ItemInstance`, inventories, containers, recipes and enchantments. |
 | `game/network` | `Packet` and every packet type, packet listeners, connections and the session protocol. |
 | `game/server` | The integrated server: chunk cache, command dispatcher, scoreboard, boss events. |
-| `game/command` | Console commands and their argument parsing. |
+| `game/command` | Chat and console commands, target selectors and argument parsing. |
 | `game/minigame` | Battle, Tumble and Glide: rule definitions, medals, arenas and minigame state. |
 | `game/ui` | The 4J user interface layer (`FJ_*`, `fui*`): screens, controls, HUD, menus and the UI node graph. |
 | `game/client/render` | Renderers, particles, models, texture packs and the block/entity render dispatchers. |

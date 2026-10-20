@@ -9,6 +9,7 @@
 #include <sstream>
 #include <string>
 
+#include "BuildInfo.hpp"
 #include "platform/CInput.hpp"
 #include "platform/pc/Log.hpp"
 #include "platform/pc/PcApplication.hpp"
@@ -25,6 +26,23 @@ bool sFullscreen = false;
 bool sVSync = true;
 Uint64 sNextFrame = 0;
 const Uint64 kFramePeriod = SDL_NS_PER_SECOND / 60;
+
+std::string WindowTitle()
+{
+    static const char* const kMonths[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+    std::string title = std::string("LCEReborn - ") + LCE_BUILD_COMMIT + (LCE_BUILD_DIRTY ? " (modified)" : "");
+    int year = 0;
+    int month = 0;
+    int day = 0;
+    if (sscanf(LCE_BUILD_DATE, "%d-%d-%d", &year, &month, &day) == 3 && month >= 1 && month <= 12)
+    {
+        char date[32];
+        snprintf(date, sizeof(date), ", %d %s %d", day, kMonths[month - 1], year);
+        title += date;
+    }
+    return title;
+}
 
 std::string DisplaySettingsPath()
 {
@@ -121,7 +139,7 @@ bool PcWindowCreate(int width, int height)
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
 
-    sWindow = SDL_CreateWindow("Minecraft: Wii U Edition", width, height,
+    sWindow = SDL_CreateWindow(WindowTitle().c_str(), width, height,
                                SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN
                                    | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     if (sWindow == NULL)

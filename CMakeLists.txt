@@ -119,6 +119,12 @@ list(APPEND LCE_PLATFORM_SOURCES
 add_library(lce_platform OBJECT ${LCE_PLATFORM_SOURCES})
 target_link_libraries(lce_platform PRIVATE lce_common SDL3::SDL3-static)
 set_target_properties(lce_platform PROPERTIES CXX_STANDARD 17)
+add_custom_target(lce_build_info
+  COMMAND "${CMAKE_COMMAND}" -DSOURCE_DIR="${CMAKE_SOURCE_DIR}" -DOUTPUT="${CMAKE_BINARY_DIR}/generated/BuildInfo.hpp"
+          -P "${CMAKE_SOURCE_DIR}/launcher/BuildInfo.cmake"
+  BYPRODUCTS "${CMAKE_BINARY_DIR}/generated/BuildInfo.hpp")
+add_dependencies(lce_platform lce_build_info)
+target_include_directories(lce_platform PRIVATE "${CMAKE_BINARY_DIR}/generated")
 if(MSVC)
   # Boost 1.53 still uses std::auto_ptr and std::unary_function, which C++17 removes.
   target_compile_definitions(lce_platform PRIVATE _HAS_AUTO_PTR_ETC=1)

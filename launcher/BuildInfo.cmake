@@ -1,5 +1,5 @@
-# Writes BuildInfo.hpp with the commit the launcher is built from and the build date. It runs on every build and
-# rewrites the header only when a value changed, so an unchanged tree doesn't recompile.
+# Writes BuildInfo.hpp with the commit the launcher and game are built from and the build date. It runs on every
+# build and rewrites the header only when a value changed, so an unchanged tree doesn't recompile.
 execute_process(COMMAND git rev-parse --short=8 HEAD
                 WORKING_DIRECTORY "${SOURCE_DIR}"
                 OUTPUT_VARIABLE COMMIT

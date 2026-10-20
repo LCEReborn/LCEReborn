@@ -6,6 +6,7 @@
 
 #include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/core/CMinecraftApp.hpp"
+#include "game/core/ExtraStrings.hpp"
 #include "game/client/audio/SoundEvents.hpp"
 #include "game/core/HtmlString.hpp"
 #include "game/core/Minecraft.hpp"
@@ -114,6 +115,8 @@ void UIScene_ControlsMenu::Init(int player)
                                   GameSettings::GetGameSettings(m_playerId, eGameSetting_InvertLook) != 0);
     m_controlsList.AddNewCheckbox(L10N::GetString(IDS_SOUTHPAW), EControl_SouthPaw,
                                   GameSettings::GetGameSettings(m_playerId, eGameSetting_SouthPaw) != 0);
+    m_controlsList.AddNewCheckbox(L10N::GetString(IDS_LCE_HOLD_TO_SNEAK), EControl_HoldToSneak,
+                                  GameSettings::GetGameSettings(m_playerId, eGameSetting_HoldToSneak) != 0);
 
     if (GameSettings::GetGameSettings(m_playerId, eGameSetting_SouthPaw))
     {
@@ -467,6 +470,8 @@ void UIScene_ControlsMenu::UpdateControls(int player)
                                     GameSettings::GetGameSettings(m_playerId, eGameSetting_InvertLook) != 0, false);
     m_controlsList.SetCheckboxValue(EControl_SouthPaw,
                                     GameSettings::GetGameSettings(m_playerId, eGameSetting_SouthPaw) != 0, false);
+    m_controlsList.SetCheckboxValue(EControl_HoldToSneak,
+                                    GameSettings::GetGameSettings(m_playerId, eGameSetting_HoldToSneak) != 0, false);
     controlString = GetControlsString(EControl_Look, mapped);
     m_controlsList.SetSecondaryLabel(EControl_Look, UIString(controlString), true, mapped, false);
     controlString = GetControlsString(EControl_Move, mapped);
@@ -623,6 +628,8 @@ void UIScene_ControlsMenu::handleCheckboxElementToggled(int first, int second, b
             m_updateControls = true;
         GameSettings::SetGameSettings(m_playerId, eGameSetting_SouthPaw, checked);
     }
+    else if (second == EControl_HoldToSneak)
+        GameSettings::SetGameSettings(m_playerId, eGameSetting_HoldToSneak, checked);
 }
 
 int UIScene_ControlsMenu::ResetDefaultsDialogReturned(void* context, int pad, C4JStorage::EMessageResult result)

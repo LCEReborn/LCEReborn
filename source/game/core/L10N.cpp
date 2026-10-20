@@ -46,6 +46,8 @@ const wchar_t* ExtraString(int id)
         return L"Preset";
     case IDS_LCE_DEBUG_RESET:
         return L"Reset";
+    case IDS_LCE_HOLD_TO_SNEAK:
+        return L"Hold to Sneak";
     default:
         return NULL;
     }

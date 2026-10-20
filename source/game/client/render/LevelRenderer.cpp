@@ -2533,11 +2533,15 @@ void LevelRenderer::renderHitOutline(boost::shared_ptr<Player> player, const Hit
         double camY = (player->mY - player->mYOld) * partialTick + player->mYOld;
         double camZ = (player->mZ - player->mZOld) * partialTick + player->mZOld;
 
-        AABB* box = block->getOutlineAABB(state, mLevels[userIndex], hit->getBlockPos())
-                        ->grow(0.0020000000949949026, 0.0020000000949949026, 0.0020000000949949026)
-                        ->move(-camX, -camY, -camZ);
-
-        renderLineBox(box, 0xffffff);
+        std::vector<const AABB*> boxes;
+        block->getOutlineAABBs(state, mLevels[userIndex], hit->getBlockPos(), boxes);
+        for (size_t index = 0; index < boxes.size(); ++index)
+        {
+            AABB* box = boxes[index]
+                            ->grow(0.0020000000949949026, 0.0020000000949949026, 0.0020000000949949026)
+                            ->move(-camX, -camY, -camZ);
+            renderLineBox(box, 0xffffff);
+        }
 
         GlStateManager::depthMask(true);
         GlStateManager::enableTexture();

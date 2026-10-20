@@ -11,11 +11,13 @@ class BlockPos;
 class BlockState;
 class BlockStateDefinition;
 class Direction;
+class HitResult;
 class Level;
 class LevelSource;
 class Mirror;
 class Random;
 class Rotation;
+class Vec3;
 
 class VineBlock : public Block
 {
@@ -35,6 +37,9 @@ public:
     VineBlock();
     virtual const AABB* getClipAABB(const BlockState* state, LevelSource* levelSource, const BlockPos& pos);
     virtual const AABB* getShape(const BlockState* state, LevelSource* levelSource, const BlockPos& pos);
+    virtual HitResult* clip(const BlockState* state, Level* level, const BlockPos& pos, Vec3* from, Vec3* to);
+    virtual void getOutlineAABBs(const BlockState* state, Level* level, const BlockPos& pos,
+                                 std::vector<const AABB*>& boxes);
     virtual const BlockState* fillVirtualBlockStateProperties(const BlockState* state, LevelSource* levelSource,
                                                               const BlockPos& pos);
     virtual bool isSolidRender(const BlockState* state) const;

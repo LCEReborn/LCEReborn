@@ -219,6 +219,8 @@ public:
     virtual EBlockFaceShape getBlockFaceShape(LevelSource* levelSource, const BlockState* state, const BlockPos& pos,
                                               const Direction* direction);
     virtual const AABB* getOutlineAABB(const BlockState* state, Level* level, const BlockPos& pos);
+    virtual void getOutlineAABBs(const BlockState* state, Level* level, const BlockPos& pos,
+                                 std::vector<const AABB*>& boxes);
     virtual void addCollisionAABBs(const BlockState* state, Level* level, const BlockPos& pos, const AABB* entityBox,
                                    std::vector<AABB*>* collidingBoxes, boost::shared_ptr<Entity> entity,
                                    bool isActualState);

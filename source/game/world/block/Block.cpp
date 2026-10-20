@@ -1014,6 +1014,12 @@ const AABB* Block::getOutlineAABB(const BlockState* state, Level* level, const B
     return state->getShape(level, pos)->move(pos);
 }
 
+void Block::getOutlineAABBs(const BlockState* state, Level* level, const BlockPos& pos,
+                            std::vector<const AABB*>& boxes)
+{
+    boxes.push_back(getOutlineAABB(state, level, pos));
+}
+
 void Block::addCollisionAABBs(const BlockState* state, Level* level, const BlockPos& pos, const AABB* entityBox,
                               std::vector<AABB*>* collidingBoxes, boost::shared_ptr<Entity> entity, bool isActualState)
 {

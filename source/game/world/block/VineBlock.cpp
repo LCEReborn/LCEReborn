@@ -2,6 +2,7 @@
 
 #include "game/core/FoliageColor.hpp"
 #include "game/core/GenericStats.hpp"
+#include "game/core/HitResult.hpp"
 #include "game/core/Minecraft.hpp"
 #include "game/core/Mirror.hpp"
 #include "game/core/Rotation.hpp"
@@ -9,6 +10,7 @@
 #include "game/item/Items.hpp"
 #include "game/util/AABB.hpp"
 #include "game/util/Random.hpp"
+#include "game/util/Vec3.hpp"
 #include "game/world/Level.hpp"
 #include "game/world/LevelSource.hpp"
 #include "game/world/biome/Biome.hpp"
@@ -45,6 +47,25 @@ VineBlock::VineBlock() : Block(Material::REPLACEABLE_PLANT)
                              ->setValue(SOUTH, false)
                              ->setValue(WEST, false));
     setTicking(true);
+}
+
+namespace
+{
+int FaceShapes(const BlockState* state, LevelSource* levelSource, const BlockPos& pos, const AABB** shapes)
+{
+    const BlockState* actualState = state->fillVirtualBlockStateProperties(levelSource, pos);
+    BooleanProperty* const faces[5] = {VineBlock::UP, VineBlock::NORTH, VineBlock::EAST, VineBlock::SOUTH,
+                                       VineBlock::WEST};
+    const AABB* const boxes[5] = {VineBlock::UP_AABB, VineBlock::NORTH_AABB, VineBlock::EAST_AABB,
+                                  VineBlock::SOUTH_AABB, VineBlock::WEST_AABB};
+    int count = 0;
+    for (int face = 0; face < 5; ++face)
+    {
+        if (actualState->getValue(faces[face]))
+            shapes[count++] = boxes[face];
+    }
+    return count;
+}
 }
 
 const AABB* VineBlock::getClipAABB(const BlockState* state, LevelSource* levelSource, const BlockPos& pos)
@@ -84,6 +105,46 @@ const AABB* VineBlock::getShape(const BlockState* state, LevelSource* levelSourc
         ++faces;
     }
     return faces == 1 ? shape : fullShape;
+}
+
+HitResult* VineBlock::clip(const BlockState* state, Level* level, const BlockPos& pos, Vec3* from, Vec3* to)
+{
+    const AABB* shapes[5];
+    const int count = FaceShapes(state, level, pos, shapes);
+    if (count == 0)
+        return Block::clip(state, level, pos, from, to);
+    HitResult* nearest = NULL;
+    double nearestDistance = 0.0;
+    for (int index = 0; index < count; ++index)
+    {
+        HitResult* hit = Block::clip(pos, from, to, shapes[index]);
+        if (hit == NULL)
+            continue;
+        const double distance = hit->mLocation->distanceToSqr(from);
+        if (nearest == NULL || distance < nearestDistance)
+        {
+            delete nearest;
+            nearest = hit;
+            nearestDistance = distance;
+        }
+        else
+            delete hit;
+    }
+    return nearest;
+}
+
+void VineBlock::getOutlineAABBs(const BlockState* state, Level* level, const BlockPos& pos,
+                                std::vector<const AABB*>& boxes)
+{
+    const AABB* shapes[5];
+    const int count = FaceShapes(state, level, pos, shapes);
+    if (count == 0)
+    {
+        Block::getOutlineAABBs(state, level, pos, boxes);
+        return;
+    }
+    for (int index = 0; index < count; ++index)
+        boxes.push_back(shapes[index]->move(pos));
 }
 
 const BlockState* VineBlock::fillVirtualBlockStateProperties(const BlockState* state, LevelSource* levelSource,

@@ -1,4 +1,5 @@
 #include "game/world/block/SandStoneBlock.hpp"
+#include "game/core/StringIds.hpp"
 
 #include <cstring>
 #include <typeinfo>
@@ -15,9 +16,12 @@
 #include "game/world/block/TypedBoxed.hpp"
 
 AbstractProperty<SandStoneBlock::Variant*>* SandStoneBlock::TYPE = NULL;
-SandStoneBlock::Variant* SandStoneBlock::SANDSTONE = new SandStoneBlock::Variant(0, L"sandstone", 0);
-SandStoneBlock::Variant* SandStoneBlock::CHISELED = new SandStoneBlock::Variant(1, L"chiseled_sandstone", 1);
-SandStoneBlock::Variant* SandStoneBlock::SMOOTH = new SandStoneBlock::Variant(2, L"smooth_sandstone", 2);
+SandStoneBlock::Variant* SandStoneBlock::SANDSTONE =
+    new SandStoneBlock::Variant(0, L"sandstone", IDS_TILE_SANDSTONE);
+SandStoneBlock::Variant* SandStoneBlock::CHISELED =
+    new SandStoneBlock::Variant(1, L"chiseled_sandstone", IDS_TILE_SANDSTONE_CHISELED);
+SandStoneBlock::Variant* SandStoneBlock::SMOOTH =
+    new SandStoneBlock::Variant(2, L"smooth_sandstone", IDS_TILE_SANDSTONE_SMOOTH);
 static SandStoneBlock::Variant* gSandStoneVariants[3] = {SandStoneBlock::SANDSTONE, SandStoneBlock::CHISELED,
                                                          SandStoneBlock::SMOOTH};
 static std::wstring gSandStoneTopTexture = L"sandstone_top";

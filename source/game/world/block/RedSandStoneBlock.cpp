@@ -19,9 +19,9 @@
 RedSandStoneBlock::Variant* RedSandStoneBlock::Variant::DEFAULT = new RedSandStoneBlock::Variant(0, L"red_sandstone",
                                                                                                  IDS_TILE_REDSANDSTONE);
 RedSandStoneBlock::Variant* RedSandStoneBlock::Variant::CHISELED = new RedSandStoneBlock::Variant(
-    1, L"chiseled_red_sandstone", 0xD03F0851);
+    1, L"chiseled_red_sandstone", IDS_TILE_REDSANDSTONE_CHISELED);
 RedSandStoneBlock::Variant* RedSandStoneBlock::Variant::SMOOTH = new RedSandStoneBlock::Variant(
-    2, L"smooth_red_sandstone", 0x40496822);
+    2, L"smooth_red_sandstone", IDS_TILE_REDSANDSTONE_SMOOTH);
 static RedSandStoneBlock::Variant* gRedSandStoneVariants[3] = {
     RedSandStoneBlock::Variant::DEFAULT, RedSandStoneBlock::Variant::CHISELED, RedSandStoneBlock::Variant::SMOOTH};
 EnumProperty<RedSandStoneBlock::Variant*>* RedSandStoneBlock::TYPE = NULL;

@@ -517,8 +517,10 @@ void Gui::render(float partialTick, bool hideGui, int width, int height)
         GlStateManager::pushMatrix();
         GlStateManager::scalef(xScale, yScale, 1.0f);
     }
-    ChatScreen::Render(playerIndex, *this, *mMinecraft->mFont, static_cast<int>(static_cast<float>(screenWidth) / xScale),
-                       static_cast<int>(static_cast<float>(screenHeight) / yScale), gGuiScreenScale);
+    if (!ChatScreen::DrawnOverHud(playerIndex))
+        ChatScreen::Render(playerIndex, *this, *mMinecraft->mFont,
+                           static_cast<int>(static_cast<float>(screenWidth) / xScale),
+                           static_cast<int>(static_cast<float>(screenHeight) / yScale), gGuiScreenScale);
     if (joinedLayout)
     {
         GlStateManager::popMatrix();

@@ -75,6 +75,7 @@ public:
                                 unsigned int* attributeValues, unsigned int* attributeIds);
     virtual bool SetLocalGame(bool localGame);
     virtual bool IsLocalGame();
+    virtual unsigned short GetListenPort();
     virtual void SetPrivateGame(bool privateGame);
     virtual bool IsPrivateGame();
     virtual bool IsLeavingGame();

@@ -57,6 +57,7 @@ public:
     bool IsLeavingGame();
     int GetPlayerCount();
     bool IsLocalGame();
+    unsigned short GetListenPort();
     bool StartNetworkGame(Minecraft* minecraft, void* data);
     bool _RunNetworkGame(void* data);
     int GetOnlinePlayerCount();

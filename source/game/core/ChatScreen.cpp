@@ -4,12 +4,17 @@
 #include <string.h>
 #include <wctype.h>
 
+#include <algorithm>
 #include <vector>
+
+#include <boost/unordered_set.hpp>
 
 #include "game/client/audio/SoundEvents.hpp"
 #include "game/client/render/Font.hpp"
 #include "game/command/ChatCommands.hpp"
+#include "game/client/render/Renderer.hpp"
 #include "game/core/ConsoleUIController.hpp"
+#include "game/core/DebugOverlay.hpp"
 #include "game/core/ExtraStrings.hpp"
 #include "game/core/GameSettings.hpp"
 #include "game/core/GlStateManager.hpp"
@@ -19,9 +24,16 @@
 #include "game/core/Minecraft.hpp"
 #include "game/core/StringConversion.hpp"
 #include "game/core/StringIds.hpp"
+#include "game/entity/mob/EntityIO.hpp"
+#include "game/entity/mob/MobEffect.hpp"
+#include "game/item/Enchantment.hpp"
+#include "game/item/Item.hpp"
 #include "game/network/CGameNetworkManager.hpp"
 #include "game/network/INetworkPlayer.hpp"
 #include "game/ui/Tooltips.hpp"
+#include "game/util/ResourceLocation.hpp"
+#include "game/world/block/Block.hpp"
+#include "game/world/block/MappedRegistry.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
 #include "platform/CInput.hpp"
 
@@ -31,7 +43,8 @@ namespace
 {
 const size_t kMaxLength = ChatCommands::kMaxMessageLength;
 const size_t kSentHistory = 50;
-const size_t kMaxSuggestions = 8;
+const size_t kMaxSuggestions = 100;
+const size_t kVisibleSuggestions = 10;
 const int kHistoryLines = 10;
 const int kPageLines = 10;
 const int kLineHeight = 9;
@@ -62,21 +75,10 @@ const unsigned int kTabFill = 0x80000000;
 const unsigned int kKeyFill = 0x14FFFFFF;
 const unsigned int kKeyFocusFill = 0x47FFFFFF;
 
-struct CommandInfo
-{
-    const wchar_t* name;
-    const wchar_t* usage;
-};
-
-const CommandInfo kCommands[] = {
-    {L"help", L""},
-    {L"time", L"set <time>"},
-    {L"weather", L"<weather>"},
-    {L"gamemode", L"<mode> [player]"},
-    {L"tp", L"[player] <target>"},
-    {L"teleport", L"[player] <target>"},
-    {L"kill", L""},
-};
+const wchar_t* const kSelectors[] = {L"@p", L"@a", L"@r", L"@s", L"@e"};
+const wchar_t* const kSelectorKeys[] = {L"type=", L"name=", L"r=",  L"rm=", L"c=",  L"m=",  L"l=",
+                                        L"lm=",   L"x=",    L"y=",  L"z=",  L"dx=", L"dy=", L"dz="};
+const wchar_t* const kGameModes[] = {L"survival", L"creative", L"adventure"};
 
 const wchar_t* const kQuickPhrases[] = {L"Hello!",      L"Follow me", L"Come here", L"Wait for me",
                                         L"Help!",       L"Thanks!",   L"Good game"};
@@ -137,6 +139,7 @@ struct State
 };
 
 State sStates[4];
+bool sDrawnOverHud[4];
 wchar_t sKeyboardBuffer[kMaxLength + 1];
 
 std::wstring Lower(const std::wstring& text)
@@ -191,14 +194,274 @@ std::vector<std::wstring> PlayerNames()
     return names;
 }
 
-const CommandInfo* FindCommand(const std::wstring& name)
+const ChatCommands::CommandUsage* FindCommand(const std::wstring& name)
 {
-    for (size_t index = 0; index < sizeof(kCommands) / sizeof(kCommands[0]); ++index)
+    size_t count = 0;
+    const ChatCommands::CommandUsage* usages = ChatCommands::Usages(&count);
+    for (size_t index = 0; index < count; ++index)
     {
-        if (name == kCommands[index].name)
-            return &kCommands[index];
+        if (name == usages[index].name)
+            return &usages[index];
     }
     return NULL;
+}
+
+template <class Map>
+std::vector<std::wstring> RegistryNames(const Map& keys)
+{
+    std::vector<std::wstring> names;
+    for (typename Map::const_iterator it = keys.begin(); it != keys.end(); ++it)
+    {
+        if (it->first.getPath() != L"air")
+            names.push_back(it->first.getPath());
+    }
+    std::sort(names.begin(), names.end());
+    return names;
+}
+
+const std::vector<std::wstring>& ItemNames()
+{
+    static std::vector<std::wstring> names;
+    if (names.empty())
+        names = RegistryNames(Item::itemRegistry.keySet());
+    return names;
+}
+
+const std::vector<std::wstring>& BlockNames()
+{
+    static std::vector<std::wstring> names;
+    if (names.empty())
+        names = RegistryNames(Block::blockRegistry->keySet());
+    return names;
+}
+
+const std::vector<std::wstring>& EffectNames()
+{
+    static std::vector<std::wstring> names;
+    if (names.empty())
+        names = RegistryNames(MobEffect::mobEffectRegistry->keySet());
+    return names;
+}
+
+const std::vector<std::wstring>& EnchantmentNames()
+{
+    static std::vector<std::wstring> names;
+    if (names.empty())
+        names = RegistryNames(Enchantment::enchantmentRegistry->keySet());
+    return names;
+}
+
+const std::vector<std::wstring>& EntityNames()
+{
+    static std::vector<std::wstring> names;
+    if (names.empty())
+    {
+        boost::unordered_set<ResourceLocation>* types = EntityIO::getAllEntityTypes();
+        for (boost::unordered_set<ResourceLocation>::const_iterator it = types->begin(); it != types->end(); ++it)
+        {
+            if (it->getPath() != L"player" && it->getPath() != L"LightningBolt")
+                names.push_back(it->getPath());
+        }
+        if (std::find(names.begin(), names.end(), L"lightning_bolt") == names.end())
+            names.push_back(L"lightning_bolt");
+        std::sort(names.begin(), names.end());
+    }
+    return names;
+}
+
+std::vector<std::wstring> SplitOptions(const std::wstring& kind)
+{
+    std::vector<std::wstring> options;
+    size_t start = 0;
+    while (start <= kind.size())
+    {
+        size_t end = kind.find(L'|', start);
+        if (end == std::wstring::npos)
+            end = kind.size();
+        options.push_back(kind.substr(start, end - start));
+        start = end + 1;
+    }
+    return options;
+}
+
+void AddSuggestion(State& s, const std::wstring& insert, const std::wstring& usage)
+{
+    if (s.suggestions.size() >= kMaxSuggestions)
+        return;
+    Suggestion suggestion;
+    suggestion.insert = insert;
+    suggestion.usage = usage;
+    s.suggestions.push_back(suggestion);
+}
+
+bool SuggestSelector(State& s, const std::wstring& word)
+{
+    if (word.size() < 3 || word[0] != L'@' || word[2] != L'[' || word.find(L']') != std::wstring::npos)
+        return false;
+    const size_t pairStart = word.find_last_of(L",[") + 1;
+    const std::wstring pair = word.substr(pairStart);
+    const size_t equals = pair.find(L'=');
+    if (equals == std::wstring::npos)
+    {
+        for (size_t index = 0; index < sizeof(kSelectorKeys) / sizeof(kSelectorKeys[0]); ++index)
+        {
+            if (StartsWithIgnoringCase(kSelectorKeys[index], pair))
+                AddSuggestion(s, word.substr(0, pairStart) + kSelectorKeys[index], std::wstring());
+        }
+        return true;
+    }
+
+    const std::wstring key = Lower(pair.substr(0, equals));
+    size_t valueStart = pairStart + equals + 1;
+    if (valueStart < word.size() && word[valueStart] == L'!')
+        ++valueStart;
+    const std::wstring value = word.substr(valueStart);
+    std::vector<std::wstring> options;
+    if (key == L"type")
+    {
+        options = EntityNames();
+        options.insert(std::lower_bound(options.begin(), options.end(), std::wstring(L"player")), L"player");
+    }
+    else if (key == L"m")
+        options.assign(kGameModes, kGameModes + 3);
+    else if (key == L"name")
+        options = PlayerNames();
+    for (size_t index = 0; index < options.size(); ++index)
+    {
+        if (StartsWithIgnoringCase(options[index], value) && Lower(options[index]) != Lower(value))
+            AddSuggestion(s, word.substr(0, valueStart) + options[index], std::wstring());
+    }
+    return true;
+}
+
+std::vector<std::wstring> ArgumentOptions(const std::wstring& kind, const std::vector<std::wstring>& before)
+{
+    std::vector<std::wstring> options;
+    if (kind == L"targets")
+    {
+        options = PlayerNames();
+        options.insert(options.end(), kSelectors, kSelectors + sizeof(kSelectors) / sizeof(kSelectors[0]));
+    }
+    else if (kind == L"player")
+        options = PlayerNames();
+    else if (kind == L"item")
+        options = ItemNames();
+    else if (kind == L"block")
+        options = BlockNames();
+    else if (kind == L"effect")
+    {
+        options.push_back(L"clear");
+        const std::vector<std::wstring>& effects = EffectNames();
+        options.insert(options.end(), effects.begin(), effects.end());
+    }
+    else if (kind == L"enchantment")
+        options = EnchantmentNames();
+    else if (kind == L"entity")
+        options = EntityNames();
+    else if (kind == L"mode")
+        options.assign(kGameModes, kGameModes + 3);
+    else if (kind == L"coord")
+    {
+        options.push_back(L"~");
+        options.push_back(L"^");
+    }
+    else if (kind == L"command")
+    {
+        size_t count = 0;
+        const ChatCommands::CommandUsage* usages = ChatCommands::Usages(&count);
+        for (size_t index = 0; index < count; ++index)
+        {
+            if (iswalpha(usages[index].name[0]))
+                options.push_back(usages[index].name);
+        }
+    }
+    else if (kind == L"xpvalue")
+    {
+        if (before.size() > 1 && Lower(before[1]) == L"query")
+        {
+            options.push_back(L"points");
+            options.push_back(L"levels");
+        }
+    }
+    else if (kind == L"execute")
+    {
+        const wchar_t* const parts[] = {L"as", L"at", L"positioned", L"if", L"unless", L"run"};
+        options.assign(parts, parts + 6);
+    }
+    else if (kind == L"execute-positioned")
+    {
+        options.push_back(L"as");
+        options.push_back(L"~");
+        options.push_back(L"^");
+    }
+    else if (kind == L"execute-entity")
+        options.push_back(L"entity");
+    else if (kind == L"time")
+    {
+        const std::wstring operation = before.size() > 1 ? Lower(before[1]) : std::wstring();
+        if (operation == L"set")
+        {
+            const wchar_t* const times[] = {L"day", L"noon", L"night", L"midnight"};
+            options.assign(times, times + 4);
+        }
+        else if (operation == L"query")
+        {
+            const wchar_t* const queries[] = {L"daytime", L"gametime", L"day"};
+            options.assign(queries, queries + 3);
+        }
+    }
+    else if (kind.find(L'|') != std::wstring::npos)
+        options = SplitOptions(kind);
+    return options;
+}
+
+std::wstring ExecuteKind(const std::vector<std::wstring>& args, size_t* runAt)
+{
+    size_t index = 0;
+    while (index < args.size())
+    {
+        const std::wstring part = Lower(args[index]);
+        const size_t left = args.size() - index - 1;
+        if (part == L"run")
+        {
+            *runAt = index + 1;
+            return std::wstring();
+        }
+        if (part == L"as" || part == L"at")
+        {
+            if (left == 0)
+                return L"targets";
+            index += 2;
+        }
+        else if (part == L"positioned")
+        {
+            if (left == 0)
+                return L"execute-positioned";
+            if (Lower(args[index + 1]) == L"as")
+            {
+                if (left == 1)
+                    return L"targets";
+                index += 3;
+            }
+            else
+            {
+                if (left < 3)
+                    return L"coord";
+                index += 4;
+            }
+        }
+        else if (part == L"if" || part == L"unless")
+        {
+            if (left == 0)
+                return L"execute-entity";
+            if (left == 1)
+                return Lower(args[index + 1]) == L"entity" ? L"targets" : std::wstring();
+            index += 3;
+        }
+        else
+            return std::wstring();
+    }
+    return L"execute";
 }
 
 void UpdateSuggestions(State& s)
@@ -219,60 +482,58 @@ void UpdateSuggestions(State& s)
     const bool command = !s.text.empty() && s.text[0] == L'/';
     if (command && wordStart == 0)
     {
-        for (size_t index = 0; index < sizeof(kCommands) / sizeof(kCommands[0]); ++index)
+        size_t count = 0;
+        const ChatCommands::CommandUsage* usages = ChatCommands::Usages(&count);
+        for (size_t index = 0; index < count; ++index)
         {
-            const std::wstring name = std::wstring(L"/") + kCommands[index].name;
+            const std::wstring name = std::wstring(L"/") + usages[index].name;
             if (!StartsWithIgnoringCase(name, word) || Lower(name) == Lower(word))
                 continue;
-            Suggestion suggestion;
-            suggestion.insert = name + (kCommands[index].usage[0] != 0 ? L" " : L"");
-            suggestion.usage = kCommands[index].usage;
-            s.suggestions.push_back(suggestion);
+            AddSuggestion(s, name + (usages[index].usage[0] != 0 ? L" " : L""), usages[index].usage);
         }
         return;
     }
 
     if (command)
     {
-        const std::vector<std::wstring> before = Words(s.text.substr(0, wordStart));
-        const CommandInfo* info = FindCommand(Lower(before[0].substr(1)));
-        if (info == NULL)
+        std::vector<std::wstring> line = Words(s.text.substr(1, wordStart - 1));
+        if (line.empty())
             return;
-        const size_t argument = before.size() - 1;
-        if (word.empty() && argument < Words(info->usage).size())
-            s.usage = std::wstring(L"/") + info->name + L" " + info->usage;
-        const std::wstring name = info->name;
-        if (name == L"time")
+        std::wstring kind;
+        bool resolved = false;
+        while (!resolved && Lower(line[0]) == L"execute")
         {
-            const wchar_t* const times[] = {L"day", L"noon", L"night", L"midnight"};
-            if (argument == 0)
-                options.push_back(L"set");
-            if (argument == 0 || (argument == 1 && Lower(before[1]) == L"set"))
-                options.insert(options.end(), times, times + 4);
-        }
-        else if (name == L"weather" && argument == 0)
-        {
-            options.push_back(L"clear");
-            options.push_back(L"rain");
-            options.push_back(L"thunder");
-        }
-        else if (name == L"gamemode")
-        {
-            if (argument == 0)
+            const std::vector<std::wstring> args(line.begin() + 1, line.end());
+            size_t runAt = std::wstring::npos;
+            kind = ExecuteKind(args, &runAt);
+            if (runAt == std::wstring::npos || runAt == args.size())
             {
-                options.push_back(L"survival");
-                options.push_back(L"creative");
-                options.push_back(L"adventure");
+                if (runAt == args.size())
+                    kind = L"command";
+                resolved = true;
+                break;
             }
-            else if (argument == 1)
-            {
-                options = PlayerNames();
-            }
+            line.assign(args.begin() + runAt, args.end());
+            if (line.empty())
+                return;
         }
-        else if ((name == L"tp" || name == L"teleport") && argument < 2)
+        if (!resolved)
         {
-            options = PlayerNames();
+            const ChatCommands::CommandUsage* info = FindCommand(Lower(line[0]));
+            if (info == NULL)
+                return;
+            const size_t argument = line.size() - 1;
+            const std::vector<std::wstring> kinds = Words(info->arguments);
+            if (argument < kinds.size())
+                kind = kinds[argument];
+            else if (!kinds.empty() && kinds.back() == L"text")
+                kind = L"text";
+            if (word.empty() && info->usage[0] != 0 && !kind.empty())
+                s.usage = std::wstring(L"/") + info->name + L" " + info->usage;
         }
+        if (kind == L"targets" && SuggestSelector(s, word))
+            return;
+        options = ArgumentOptions(kind, line);
     }
     else if (!word.empty())
     {
@@ -949,9 +1210,13 @@ void DrawSuggestions(Gui& gui, Font& font, State& s, int anchorX, int bottom, in
 {
     std::vector<std::wstring> labels;
     std::vector<std::wstring> usages;
+    size_t first = 0;
     if (!s.suggestions.empty())
     {
-        for (size_t index = 0; index < s.suggestions.size(); ++index)
+        const size_t selected = static_cast<size_t>(s.selected);
+        if (s.suggestions.size() > kVisibleSuggestions && selected >= kVisibleSuggestions)
+            first = selected - kVisibleSuggestions + 1;
+        for (size_t index = first; index < s.suggestions.size() && index < first + kVisibleSuggestions; ++index)
         {
             labels.push_back(Trim(s.suggestions[index].insert));
             usages.push_back(s.suggestions[index].usage);
@@ -987,7 +1252,7 @@ void DrawSuggestions(Gui& gui, Font& font, State& s, int anchorX, int bottom, in
     for (size_t index = 0; index < labels.size(); ++index)
     {
         const int y = y0 + 2 + static_cast<int>(index) * kRowHeight;
-        const bool selected = !s.suggestions.empty() && static_cast<int>(index) == s.selected;
+        const bool selected = !s.suggestions.empty() && static_cast<int>(first + index) == s.selected;
         int x = x0 + 5;
         Text(font, labels[index], x, y + 1, 0xFF000000 | (selected ? kYellow : kGrey), true);
         x += font.width(labels[index]);
@@ -1325,6 +1590,53 @@ void Render(int pad, Gui& gui, Font& font, int width, int height, float pixelsPe
     }
     GlStateManager::enableDepthTest();
     GlStateManager::popMatrix();
+}
+
+bool DrawnOverHud(int pad)
+{
+    if (pad < 0 || pad >= 4)
+        return false;
+    const bool drawn = sDrawnOverHud[pad];
+    sDrawnOverHud[pad] = false;
+    return drawn;
+}
+
+void RenderOverHud(int pad, int viewport, int width, int height)
+{
+    Minecraft* minecraft = Minecraft::GetInstance();
+    if (pad < 0 || pad >= 4 || minecraft == NULL || minecraft->mGui == NULL || minecraft->mFont == NULL
+        || minecraft->mHeight <= 0)
+        return;
+    sDrawnOverHud[pad] = true;
+
+    float screenWidth = 0.0f;
+    float viewportWidth = static_cast<float>(width);
+#if LCE_PLATFORM_PC
+    const Renderer::ELayout layout = gRenderer->GetLayout();
+    const bool fullWindow = viewport == C4JRender::eViewportType_FullScreen;
+    if (fullWindow)
+    {
+        gRenderer->SetLayout(Renderer::ELayout_Screen);
+        screenWidth = gConsoleUIController.getScreenHeight() * gRenderer->GetScreenAspect();
+        viewportWidth = screenWidth;
+    }
+#endif
+    const float unit = gConsoleUIController.getScreenHeight() / static_cast<float>(minecraft->mHeight);
+    int originX = 0;
+    int originY = 0;
+    DebugOverlay::ViewportOrigin(viewport, &originX, &originY);
+    DebugOverlay::BeginScreenDraw(originX, originY, unit, screenWidth);
+    GlStateManager::enableBlend();
+    GlStateManager::blendFunc(4, 5);
+    GlStateManager::color4f(1.0f, 1.0f, 1.0f, 1.0f);
+    Render(pad, *minecraft->mGui, *minecraft->mFont, static_cast<int>(viewportWidth / unit),
+           static_cast<int>(static_cast<float>(height) / unit), 1.0f);
+    GlStateManager::disableDepthTest();
+    DebugOverlay::EndScreenDraw();
+#if LCE_PLATFORM_PC
+    if (fullWindow)
+        gRenderer->SetLayout(layout);
+#endif
 }
 
 void RememberSender(int pad, const std::wstring& name)

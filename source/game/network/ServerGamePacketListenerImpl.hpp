@@ -81,6 +81,7 @@ public:
     virtual void warn(const std::wstring& message);
     virtual std::wstring getConsoleName();
     void disconnect(DisconnectPacket::eDisconnectReason reason);
+    void kick();
     void setShowOnMaps(bool show);
     bool isLocal();
     int countDelayedPackets();

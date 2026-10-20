@@ -21,6 +21,8 @@ void Close(int pad);
 bool IsOpen(int pad);
 void Tick(int pad);
 void Render(int pad, Gui& gui, Font& font, int width, int height, float pixelsPerUnit);
+bool DrawnOverHud(int pad);
+void RenderOverHud(int pad, int viewport, int width, int height);
 void RememberSender(int pad, const std::wstring& name);
 }
 

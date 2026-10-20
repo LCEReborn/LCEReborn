@@ -193,6 +193,12 @@ std::wstring ServerGamePacketListenerImpl::getConsoleName()
     return mPlayer->getName();
 }
 
+void ServerGamePacketListenerImpl::kick()
+{
+    mUseAltLeaveMessage = true;
+    disconnect(DisconnectPacket::eDisconnectReason_Kicked);
+}
+
 void ServerGamePacketListenerImpl::disconnect(DisconnectPacket::eDisconnectReason reason)
 {
     EnterCriticalSection(&mDisconnectMutex);

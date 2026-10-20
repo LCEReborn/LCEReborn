@@ -5,6 +5,8 @@
 #include "game/core/StringIds.hpp"
 #include "game/core/EntityType.hpp"
 
+#include <stdio.h>
+
 #include <algorithm>
 #include <boost/assert.hpp>
 #include <boost/pointer_cast.hpp>
@@ -33,6 +35,7 @@
 #include "game/item/Items.hpp"
 #include "game/item/ItemInstance.hpp"
 #include "game/core/Scoreboard.hpp"
+#include "game/command/ChatCommands.hpp"
 #include "game/network/ClientboundChatPacket.hpp"
 #include "game/network/ClientboundLoginPacket.hpp"
 #include "game/network/TexturePacket.hpp"
@@ -679,6 +682,15 @@ void PlayerList::placeNewPlayer(Connection* connection, boost::shared_ptr<Server
 
     broadcastAll(boost::shared_ptr<Packet>(new ClientboundChatPacket(
         player->getName(), ClientboundChatPacket::eChatPacketMessage_PlayerJoined, -1)));
+
+    const unsigned short port = CGameNetworkManager::sInstance.GetListenPort();
+    if (port != 0 && networkPlayer != NULL && networkPlayer->IsHost())
+    {
+        wchar_t message[96];
+        swprintf(message, sizeof(message) / sizeof(message[0]),
+                 L"§eYour world is open to other players on port %u.", static_cast<unsigned int>(port));
+        ChatCommands::Reply(player, message);
+    }
 
     MemSect(14);
     add(player);

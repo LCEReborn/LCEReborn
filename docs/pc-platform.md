@@ -117,11 +117,41 @@ font draws (`Font::draw`).
 
 The Chat button can be changed in Controls for keyboards and controllers.
 
-A message starting with `/` is a command: `/time`, `/weather`, `/gamemode`,
-`/tp` and `/kill`, and `/help` lists them. They follow the game's own
-permission rule: the host and moderators can use them when the world has
-Host Privileges on (`ChatCommands` in `game/command/`). Anyone else is told
-they don't have permission.
+A message starting with `/` is a command (`ChatCommands` in `game/command/`).
+They follow Java 1.12, with `/execute`, `/xp` and coordinates as in 1.13:
+
+- **Players and items:** `/give`, `/clear`, `/effect`, `/enchant`, `/xp`,
+  `/spawnpoint`, `/gamemode`, `/tp` and `/kill`.
+- **World:** `/time`, `/weather`, `/difficulty`, `/defaultgamemode`,
+  `/setworldspawn`, `/toggledownfall`, `/seed`, `/summon`, `/setblock` and
+  `/fill` (up to 32768 blocks).
+- **Chat and server:** `/say`, `/me`, `/msg` (also `/tell` and `/w`),
+  `/list` and `/kick`.
+- **Execute:** `/execute` runs a command as or at other entities: `as`,
+  `at`, `positioned` (or `positioned as`), `if entity`, `unless entity` and
+  `run`, such as
+  `/execute as @e[type=cow] at @s run tp @s ~ ~5 ~`. Messages go to the
+  entity running the command, so a mob running one shows nothing.
+
+`/xp add`, `set` and `query` take `points` or `levels`; the older
+`/xp 5L` form also works. `/effect` and `/enchant` work on any mob.
+
+`/help` lists them a page at a time, and `/help <command>` shows one usage.
+`/me`, `/msg`, `/list` and `/help` are open to everyone. The rest follow the
+game's own permission rule: the host and moderators can use them when the
+world has Host Privileges on, and anyone else is told they don't have
+permission. `/kick` can't remove the host or players on the host's console.
+
+Where a command takes targets, a player name or a selector works
+(`TargetSelector`): `@p` nearest player, `@a` all players, `@r` a random
+player, `@s` yourself and `@e` all entities. Selectors take Java's
+arguments in brackets, such as `@e[type=zombie,r=10]`: `type`, `name`, `m`,
+`l`, `lm`, `r`, `rm`, `c`, `x`, `y`, `z`, `dx`, `dy` and `dz`, and `!`
+negates `type`, `name` and `m`. Coordinates take `~` for values relative to
+where you are, or `^left ^up ^forward` for values relative to where you
+face; both are measured from whoever runs the command.
+Tab completes item, block, effect, enchantment and entity names, and selector
+arguments.
 
 ## Debug overlay
 

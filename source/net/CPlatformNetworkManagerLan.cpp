@@ -532,6 +532,11 @@ bool CPlatformNetworkManagerLan::IsLocalGame()
     return m_localGame;
 }
 
+unsigned short CPlatformNetworkManagerLan::GetListenPort()
+{
+    return m_listening ? lcenet::kDefaultPort : 0;
+}
+
 void CPlatformNetworkManagerLan::SetPrivateGame(bool privateGame)
 {
     m_privateGame = privateGame;

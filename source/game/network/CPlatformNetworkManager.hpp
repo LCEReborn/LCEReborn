@@ -106,6 +106,7 @@ public:
     virtual void CancelJoinGame();
     virtual bool SetLocalGame(bool bLocalGame) = 0;
     virtual bool IsLocalGame() = 0;
+    virtual unsigned short GetListenPort() = 0;
     virtual void SetPrivateGame(bool bPrivateGame) = 0;
     virtual bool IsPrivateGame() = 0;
     virtual bool IsLeavingGame() = 0;

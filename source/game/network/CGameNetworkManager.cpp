@@ -402,6 +402,10 @@ bool CGameNetworkManager::IsLocalGame()
 {
     return g_pPlatformNetworkManager->IsLocalGame();
 }
+unsigned short CGameNetworkManager::GetListenPort()
+{
+    return g_pPlatformNetworkManager->GetListenPort();
+}
 bool CGameNetworkManager::StartNetworkGame(Minecraft* minecraft, void* data)
 {
     _NetworkGameInitData* initData = static_cast<_NetworkGameInitData*>(data);

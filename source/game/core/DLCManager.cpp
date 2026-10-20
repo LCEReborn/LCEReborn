@@ -82,7 +82,7 @@ static bool SwapDLCText(unsigned char* pData, unsigned int size, unsigned int of
     return true;
 }
 
-static bool SwapDLCDataToHost(unsigned char* pData, unsigned int size)
+static bool SwapDLCDataToHost(unsigned char* pData, unsigned int size, bool nestedPacks)
 {
     if (size < 8)
     {
@@ -188,10 +188,11 @@ static bool SwapDLCDataToHost(unsigned char* pData, unsigned int size)
             return false;
         }
 
-        if (itemTypes[i] == DLCManager::eDLCType_TexturePack || itemTypes[i] == DLCManager::eDLCType_SkinPack ||
-            itemTypes[i] == DLCManager::eDLCType_Audio)
+        if (nestedPacks
+            && (itemTypes[i] == DLCManager::eDLCType_TexturePack || itemTypes[i] == DLCManager::eDLCType_SkinPack
+                || itemTypes[i] == DLCManager::eDLCType_Audio))
         {
-            if (!SwapDLCDataToHost(pData + offset, itemSizes[i]))
+            if (!SwapDLCDataToHost(pData + offset, itemSizes[i], itemTypes[i] != DLCManager::eDLCType_Audio))
             {
                 return false;
             }
@@ -706,7 +707,7 @@ bool DLCManager::readDLCDataFile(unsigned int& numItemsAdded, const std::string&
     }
 
 #if LCE_PLATFORM_PC
-    if (!SwapDLCDataToHost(pData, bytesRead))
+    if (!SwapDLCDataToHost(pData, bytesRead, true))
     {
         delete[] pData;
         pPack->SetIsCorrupt(true);
@@ -853,7 +854,7 @@ unsigned int DLCManager::retrievePackIDFromDLCDataFile(const std::string& fileNa
     }
 
 #if LCE_PLATFORM_PC
-    if (!SwapDLCDataToHost(pData, bytesRead))
+    if (!SwapDLCDataToHost(pData, bytesRead, true))
     {
         delete[] pData;
 

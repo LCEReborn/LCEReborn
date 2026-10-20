@@ -93,8 +93,8 @@ void UIScene_MapVoteMenu::InitForMap()
             wchar_t textureName[64] = L"default";
             TexturePack* texturePack = Minecraft::GetInstance()->mTexturePackRepository->getTexturePackById(
                 info->texturePackId);
-            unsigned int iconSize;
-            const void* icon = texturePack->getPackIcon(iconSize);
+            unsigned int iconSize = 0;
+            const void* icon = texturePack != NULL ? texturePack->getPackIcon(iconSize) : NULL;
             if (iconSize != 0 && icon != NULL)
             {
                 std::swprintf(textureName, 64, L"tpack%08x", texturePack->getId());

@@ -106,11 +106,8 @@ void UIScene_MapSelectMenu::_init()
 
         unsigned int texturePackId = group->rulesets[0]->getGenerationOptions()->getTexturePackId();
         TexturePack* texturePack = Minecraft::GetInstance()->mTexturePackRepository->getTexturePackById(texturePackId);
-        if (texturePack == NULL)
-            gApp.getDLCFolderName(static_cast<EDLC_ID>(texturePackId));
-
-        unsigned int iconSize;
-        const void* iconData = texturePack->getPackIcon(iconSize);
+        unsigned int iconSize = 0;
+        const void* iconData = texturePack != NULL ? texturePack->getPackIcon(iconSize) : NULL;
         if (iconSize != 0 && iconData != NULL)
         {
             std::swprintf(textureName, 64, L"tpack%08x", texturePack->getId());

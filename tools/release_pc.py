@@ -113,6 +113,18 @@ def unwrap(notes):
     return "\n".join(lines)
 
 
+def quote_mentions(notes):
+    # GitHub turns @name into a mention and lists that account as a contributor, so @p or @e[type=cow] go in code.
+    mention = re.compile(r"(?<![\w@])@[A-Za-z0-9][A-Za-z0-9-]*(?:\[[^\]\s`]*\])?")
+    parts = re.split(r"(`[^`]*`)", notes)
+    return "".join(part if index % 2 else mention.sub(lambda match: "`%s`" % match.group(0), part)
+                   for index, part in enumerate(parts))
+
+
+def release_notes(notes):
+    return quote_mentions(unwrap(notes))
+
+
 def file_notes(text, body_start, body_end, title, notes):
     return text[:body_start] + "\n## %s\n\n%s\n\n" % (title, notes) + text[body_end:].lstrip("\n")
 
@@ -168,7 +180,7 @@ def main():
 
         print("\nRelease  %s%s\nRepo     %s\nTag      %s\nCommit   %s\nZip      %s\n\nNotes:\n\n%s\n"
               % (title, " (pre-release)" if args.prerelease else "", repository, tag, commit,
-                 os.path.relpath(output, ROOT), unwrap(notes)))
+                 os.path.relpath(output, ROOT), release_notes(notes)))
         if args.dry_run:
             print("Dry run: nothing was published and the changelog is unchanged.")
             return 0
@@ -177,7 +189,7 @@ def main():
             return 1
 
         with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8") as handle:
-            handle.write(unwrap(notes) + "\n")
+            handle.write(release_notes(notes) + "\n")
             notes_file = handle.name
         try:
             run(command + [notes_file], "Publishing the release")

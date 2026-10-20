@@ -126,6 +126,7 @@ public:
     bool mIsArmourModel;
     const EquipmentSlot* mArmourSlot;
     float mSwimAmount;
+    bool mFirstPersonArm;
 };
 
 #endif

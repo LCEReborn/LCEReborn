@@ -604,6 +604,7 @@ bool Minecraft::isTutorial()
 
 bool Minecraft::TutorialTakesBack(int pad)
 {
+#if LCE_PLATFORM_PC
     if (mGameModes[pad] == NULL || !g_pInput->UsesKeyboard(pad) || !gConsoleUIController.IsTutorialVisible(pad))
         return false;
     Tutorial* tutorial = mGameModes[pad]->getTutorial();
@@ -611,6 +612,10 @@ bool Minecraft::TutorialTakesBack(int pad)
         return false;
     tutorial->handleUIInput(EControllerActions_MenuB);
     return true;
+#else
+    (void)pad;
+    return false;
+#endif
 }
 
 bool Minecraft::showOnlyReducedInfo()

@@ -44,6 +44,7 @@
 #include "platform/Commerce.hpp"
 #include "platform/wiiu/cNintendoDLCInfo.hpp"
 #include "game/ui/UIScene_FullscreenProgress.hpp"
+#include "game/world/LevelData.hpp"
 #include "vendor/_LoadingInputParams.hpp"
 #include "vendor/_NetworkGameInitData.hpp"
 
@@ -564,8 +565,8 @@ void IUIScene_StartGame::HostGame(unsigned int playerMask)
     }
     if (!m_customGame)
     {
-        initData->m_xzSize = 54;
-        initData->m_hellScale = 3;
+        initData->m_xzSize = LevelData::getWorldSizeWidth(m_launchData.mWorldSize);
+        initData->m_hellScale = LevelData::getWorldSizeHellScale(m_launchData.mWorldSize);
         initData->m_biomeScale = m_launchData.mBiomeScale;
         initData->m_biomeCentreXChunk = m_launchData.mBiomeCentreXChunk;
         initData->m_biomeCentreZChunk = m_launchData.mBiomeCentreZChunk;

@@ -31,6 +31,11 @@ public:
     virtual void write(DataOutputStream* output);
     virtual void handle(PacketListener* listener);
     virtual int getEstimatedSize();
+    virtual bool hasWideForm();
+    virtual int getWidePacketId();
+    virtual void writeWide(DataOutputStream* output);
+
+    static const int WIDE_PACKET_ID = 243;
 
     std::vector<DataItem*>* getUnpackedData();
     int getId();
@@ -49,14 +54,18 @@ public:
     CompoundTag* getAdditionalContructionDataTag();
 
     static boost::shared_ptr<Packet> create() { return boost::shared_ptr<Packet>(new ClientboundAddMobPacket()); }
+    static boost::shared_ptr<Packet> createWide();
 
 private:
+    void writeFields(DataOutputStream* output, bool wide);
+
     void init(boost::shared_ptr<LivingEntity> entity, int yRot, int xRot, int x, int y, int z, int yHeadRot,
               CompoundTag* additionalContructionDataTag);
 
     int id;
     std::wstring uuid;
     int type;
+    bool mWide;
     int x;
     int y;
     int z;

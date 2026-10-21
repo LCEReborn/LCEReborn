@@ -55,7 +55,6 @@ CPlatformNetworkManagerLan::CPlatformNetworkManagerLan()
     : m_gameNetworkManager(0),
       m_internalState(eState_Uninitialised),
       m_state(eState_Uninitialised),
-      m_maxSystemFlags(0),
       m_nextSmallId(0),
       m_host(false),
       m_inSession(false),
@@ -96,11 +95,10 @@ CPlatformNetworkManagerLan::CPlatformNetworkManagerLan()
     }
 }
 
-void CPlatformNetworkManagerLan::Initialise(CGameNetworkManager* manager, int maxSystemFlags)
+void CPlatformNetworkManagerLan::Initialise(CGameNetworkManager* manager, int)
 {
     EnterCriticalSection(&m_lock);
     m_gameNetworkManager = manager;
-    m_maxSystemFlags = maxSystemFlags < 0 ? 0 : (unsigned int)maxSystemFlags;
     m_leavingGame = false;
     m_leavePending = false;
     m_localGame = false;
@@ -659,7 +657,6 @@ void CPlatformNetworkManagerLan::SystemFlagAddPlayer(INetworkPlayer* player)
     EnterCriticalSection(&m_lock);
     PlayerFlags entry;
     entry.player = player;
-    entry.flags.assign((m_maxSystemFlags + 7) / 8, 0);
     for (unsigned int index = 0; index < m_playerFlags.size(); ++index)
     {
         if (player->IsSameSystem(m_playerFlags[index].player))
@@ -674,18 +671,18 @@ void CPlatformNetworkManagerLan::SystemFlagAddPlayer(INetworkPlayer* player)
 
 void CPlatformNetworkManagerLan::SystemFlagSet(INetworkPlayer* player, int flag)
 {
-    if (flag < 0 || flag >= (int)m_maxSystemFlags || player == 0)
+    if (flag < 0 || player == 0)
         return;
     EnterCriticalSection(&m_lock);
     for (unsigned int index = 0; index < m_playerFlags.size(); ++index)
         if (player->IsSameSystem(m_playerFlags[index].player))
-            m_playerFlags[index].flags[flag / 8] |= (unsigned char)(0x80 >> (flag % 8));
+            m_playerFlags[index].flags.insert(flag);
     LeaveCriticalSection(&m_lock);
 }
 
 bool CPlatformNetworkManagerLan::SystemFlagGet(INetworkPlayer* player, int flag)
 {
-    if (flag < 0 || flag >= (int)m_maxSystemFlags || player == 0)
+    if (flag < 0 || player == 0)
         return false;
     EnterCriticalSection(&m_lock);
     bool set = false;
@@ -693,12 +690,23 @@ bool CPlatformNetworkManagerLan::SystemFlagGet(INetworkPlayer* player, int flag)
     {
         if (m_playerFlags[index].player == player)
         {
-            set = (m_playerFlags[index].flags[flag / 8] & (0x80 >> (flag % 8))) != 0;
+            set = m_playerFlags[index].flags.find(flag) != m_playerFlags[index].flags.end();
             break;
         }
     }
     LeaveCriticalSection(&m_lock);
     return set;
+}
+
+void CPlatformNetworkManagerLan::SystemFlagClear(INetworkPlayer* player, int flag)
+{
+    if (flag < 0 || player == 0)
+        return;
+    EnterCriticalSection(&m_lock);
+    for (unsigned int index = 0; index < m_playerFlags.size(); ++index)
+        if (player->IsSameSystem(m_playerFlags[index].player))
+            m_playerFlags[index].flags.erase(flag);
+    LeaveCriticalSection(&m_lock);
 }
 
 void CPlatformNetworkManagerLan::SystemFlagClearAll(INetworkPlayer* player)
@@ -708,7 +716,7 @@ void CPlatformNetworkManagerLan::SystemFlagClearAll(INetworkPlayer* player)
     EnterCriticalSection(&m_lock);
     for (unsigned int index = 0; index < m_playerFlags.size(); ++index)
         if (m_playerFlags[index].player == player)
-            m_playerFlags[index].flags.assign(m_playerFlags[index].flags.size(), 0);
+            m_playerFlags[index].flags.clear();
     LeaveCriticalSection(&m_lock);
 }
 

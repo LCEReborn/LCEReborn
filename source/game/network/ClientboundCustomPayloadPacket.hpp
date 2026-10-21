@@ -27,6 +27,8 @@ public:
     virtual void handle(PacketListener* listener);
     virtual int getEstimatedSize();
 
+    static const std::wstring WORLD_SIZE_PACKET;
+
     std::wstring getIdentifier();
     arrayWithLength<unsigned char> getData();
 

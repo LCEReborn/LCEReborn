@@ -107,6 +107,7 @@ public:
     static int ChangeSessionTypeThreadProc(void* data);
     void SystemFlagSet(INetworkPlayer* player, int flag);
     bool SystemFlagGet(INetworkPlayer* player, int flag);
+    void SystemFlagClear(INetworkPlayer* player, int flag);
     void SystemFlagClearAll(INetworkPlayer* player);
     void ServerReady();
     void ServerStopped();

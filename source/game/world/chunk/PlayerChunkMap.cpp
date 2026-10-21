@@ -20,6 +20,7 @@
 #include "game/world/Dimension.hpp"
 #include "game/world/DimensionType.hpp"
 #include "game/world/Level.hpp"
+#include "game/world/chunk/ClientChunkCache.hpp"
 #include "game/world/chunk/LevelChunk.hpp"
 #include "game/world/chunk/PlayerChunkContainer.hpp"
 #include "game/core/VideoSettings.hpp"
@@ -128,6 +129,11 @@ int PlayerChunkMap::viewDistanceFor(boost::shared_ptr<ServerPlayer> player)
 bool PlayerChunkMap::shouldActuallyDropChunks()
 {
     return mShouldDropChunks;
+}
+
+bool PlayerChunkMap::clientsMustDropChunks()
+{
+    return mLevel->mDimension->getXZSize() > ClientChunkCache::RING_WIDTH;
 }
 
 void PlayerChunkMap::setViewDistance(int distance)

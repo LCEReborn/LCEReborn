@@ -69,6 +69,7 @@ public:
     ~Chunk();
 
     void reset();
+    void releaseIfMoving(int x, int z, int dimension);
     void setPos(int x, int z, int dimension);
     void translateToPos();
     unsigned int elementToBlockId(unsigned short element);

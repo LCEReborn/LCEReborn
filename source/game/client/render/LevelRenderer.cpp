@@ -78,7 +78,22 @@
 #include "game/world/TheEndDimension.hpp"
 #include "platform/CProfile.hpp"
 
-static const unsigned int gChunkDimensionSizes[2] = {80, 20};
+static const unsigned int gChunkDimensionSizes[2] = {80, 80};
+
+struct ChunkSlotOwner
+{
+    int x;
+    int z;
+    int users;
+};
+
+static ChunkSlotOwner gChunkSlotOwners[2][80 * 80];
+
+static int WrapChunkCoordinate(int value, int size)
+{
+    int wrapped = value % size;
+    return wrapped < 0 ? wrapped + size : wrapped;
+}
 
 #if LCE_PLATFORM_PC
 static unsigned int CommandBufferBudget()
@@ -106,7 +121,7 @@ float gCloudPrevTime = -1.0f;
 float gCloudDriftAccum = 0.0f;
 bool gCloudDriftLatched = false;
 
-int gChunkDimensionBases[4] = {0, 0x19000, 0x1a900, 0x1c640};
+int gChunkDimensionBases[4] = {0, 0x19000, 0x32000, 0x33d40};
 
 LevelRenderer* gLevelRenderer;
 
@@ -114,17 +129,20 @@ int getChunkIndex(int dimension, int x, int y, int z)
 {
     if ((unsigned int)dimension < 2)
     {
-        unsigned int size = gChunkDimensionSizes[dimension];
-        int half = (int)size / 2;
-        int offsetZ = half + z;
-        int offsetX = half + x;
-
-        if (offsetX >= 0 && offsetX < (int)size && (unsigned int)y < 16 && offsetZ >= 0 && offsetZ < (int)size)
+        if ((unsigned int)y >= 16)
         {
-            return gChunkDimensionBases[dimension] + (offsetX * size + offsetZ) * 16 + y;
+            return -1;
         }
 
-        return -1;
+        int size = (int)gChunkDimensionSizes[dimension];
+        int column = WrapChunkCoordinate(x, size) * size + WrapChunkCoordinate(z, size);
+        const ChunkSlotOwner& owner = gChunkSlotOwners[dimension][column];
+        if (owner.users > 0 && (owner.x != x || owner.z != z))
+        {
+            return -1;
+        }
+
+        return gChunkDimensionBases[dimension] + column * 16 + y;
     }
 
     if (dimension != 2)
@@ -691,67 +709,73 @@ void LevelRenderer::resortChunks(int x, int y, int z, int dimension)
 
     int spanX = mChunkGridWidth * 16;
 
-    for (int gridX = 0; gridX < mChunkGridWidth; ++gridX)
+    for (int pass = 0; pass < 2; ++pass)
     {
-        int worldX = gridX * 16;
-        int wrapX = (worldX + spanX / 2) - (x - 8);
-
-        if (wrapX < 0)
+        for (int gridX = 0; gridX < mChunkGridWidth; ++gridX)
         {
-            wrapX -= spanX - 1;
-        }
+            int worldX = gridX * 16;
+            int wrapX = (worldX + spanX / 2) - (x - 8);
 
-        wrapX = worldX - (wrapX / spanX) * spanX;
-
-        if (wrapX < mMinChunkX)
-        {
-            mMinChunkX = wrapX;
-        }
-
-        if (wrapX > mMaxChunkX)
-        {
-            mMaxChunkX = wrapX;
-        }
-
-        for (int gridZ = 0; gridZ < mChunkGridDepth; ++gridZ)
-        {
-            int worldZ = gridZ * 16;
-            int wrapZ = (worldZ + spanX / 2) - (z - 8);
-
-            if (wrapZ < 0)
+            if (wrapX < 0)
             {
-                wrapZ -= spanX - 1;
+                wrapX -= spanX - 1;
             }
 
-            wrapZ = worldZ - (wrapZ / spanX) * spanX;
+            wrapX = worldX - (wrapX / spanX) * spanX;
 
-            if (wrapZ < mMinChunkZ)
+            if (wrapX < mMinChunkX)
             {
-                mMinChunkZ = wrapZ;
+                mMinChunkX = wrapX;
             }
 
-            if (wrapZ > mMaxChunkZ)
+            if (wrapX > mMaxChunkX)
             {
-                mMaxChunkZ = wrapZ;
+                mMaxChunkX = wrapX;
             }
 
-            for (int gridY = 0; gridY < mChunkGridHeight; ++gridY)
+            for (int gridZ = 0; gridZ < mChunkGridDepth; ++gridZ)
             {
-                int worldY = gridY * 16;
+                int worldZ = gridZ * 16;
+                int wrapZ = (worldZ + spanX / 2) - (z - 8);
 
-                if (worldY < mMinChunkY)
+                if (wrapZ < 0)
                 {
-                    mMinChunkY = worldY;
+                    wrapZ -= spanX - 1;
                 }
 
-                if (worldY > mMaxChunkY)
+                wrapZ = worldZ - (wrapZ / spanX) * spanX;
+
+                if (wrapZ < mMinChunkZ)
                 {
-                    mMaxChunkY = worldY;
+                    mMinChunkZ = wrapZ;
                 }
 
-                mClipChunks[dimension]
-                    .data[(gridZ * mChunkGridHeight + gridY) * mChunkGridWidth + gridX]
-                    .mChunk->setPos(wrapX, worldY, wrapZ);
+                if (wrapZ > mMaxChunkZ)
+                {
+                    mMaxChunkZ = wrapZ;
+                }
+
+                for (int gridY = 0; gridY < mChunkGridHeight; ++gridY)
+                {
+                    int worldY = gridY * 16;
+
+                    if (worldY < mMinChunkY)
+                    {
+                        mMinChunkY = worldY;
+                    }
+
+                    if (worldY > mMaxChunkY)
+                    {
+                        mMaxChunkY = worldY;
+                    }
+
+                    Chunk* chunk =
+                        mClipChunks[dimension].data[(gridZ * mChunkGridHeight + gridY) * mChunkGridWidth + gridX].mChunk;
+                    if (pass == 0)
+                        chunk->releaseIfMoving(wrapX, worldY, wrapZ);
+                    else
+                        chunk->setPos(wrapX, worldY, wrapZ);
+                }
             }
         }
     }
@@ -3240,6 +3264,19 @@ unsigned char LevelRenderer::incGlobalChunkRefCount(int x, int y, int z, Level* 
 
     if (index != -1)
     {
+        int dimension = getDimensionIndexFromId(level->mDimension->getType()->getId());
+        if ((unsigned int)dimension < 2)
+        {
+            int columnStart = index - (index - gChunkDimensionBases[dimension]) % 16;
+            ChunkSlotOwner& owner = gChunkSlotOwners[dimension][(columnStart - gChunkDimensionBases[dimension]) / 16];
+            if (owner.users == 0 && (owner.x != (x >> 4) || owner.z != (z >> 4)))
+            {
+                memset(mGlobalChunkFlags + columnStart, 0, 16);
+            }
+            owner.x = x >> 4;
+            owner.z = z >> 4;
+            ++owner.users;
+        }
         unsigned char flags = mGlobalChunkFlags[index];
         unsigned char count = (flags >> 5) & 7;
         count++;
@@ -3259,6 +3296,16 @@ unsigned char LevelRenderer::decGlobalChunkRefCount(int x, int y, int z, Level* 
 
     if (index != -1)
     {
+        int dimension = getDimensionIndexFromId(level->mDimension->getType()->getId());
+        if ((unsigned int)dimension < 2)
+        {
+            int column = (index - gChunkDimensionBases[dimension]) / 16;
+            ChunkSlotOwner& owner = gChunkSlotOwners[dimension][column];
+            if (owner.users > 0)
+            {
+                --owner.users;
+            }
+        }
         unsigned char flags = mGlobalChunkFlags[index];
         unsigned char count = (flags >> 5) & 7;
         count--;

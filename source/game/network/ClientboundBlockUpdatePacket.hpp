@@ -24,6 +24,11 @@ public:
     virtual void write(DataOutputStream* output);
     virtual void handle(PacketListener* listener);
     virtual int getEstimatedSize();
+    virtual bool hasWideForm();
+    virtual int getWidePacketId();
+    virtual void writeWide(DataOutputStream* output);
+
+    static const int WIDE_PACKET_ID = 240;
 
     BlockPos getPos();
     const BlockState* getBlock();
@@ -31,12 +36,14 @@ public:
     unsigned int getLevelIdx();
 
     static boost::shared_ptr<Packet> create() { return boost::shared_ptr<Packet>(new ClientboundBlockUpdatePacket()); }
+    static boost::shared_ptr<Packet> createWide();
 
 private:
     BlockPos pos;
     const BlockState* block;
     const BlockState* extraBlock;
     unsigned int levelIdx;
+    bool mWide;
 };
 
 #endif

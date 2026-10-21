@@ -126,6 +126,7 @@ public:
     virtual void SystemFlagAddPlayer(INetworkPlayer* pPlayer) = 0;
     virtual void SystemFlagSet(INetworkPlayer* pPlayer, int iFlag) = 0;
     virtual bool SystemFlagGet(INetworkPlayer* pPlayer, int iFlag) = 0;
+    virtual void SystemFlagClear(INetworkPlayer* pPlayer, int iFlag) = 0;
     virtual void SystemFlagClearAll(INetworkPlayer* pPlayer) = 0;
     virtual std::wstring GatherStats() = 0;
     virtual std::wstring GatherRTTStats() = 0;

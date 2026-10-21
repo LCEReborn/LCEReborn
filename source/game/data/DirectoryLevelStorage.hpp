@@ -93,6 +93,7 @@ private:
     typedef boost::unordered_map<std::wstring, ByteArrayOutputStream*> CachedSaveDataMap;
 
     static const unsigned int MAX_PLAYER_DATA_SAVES = 80;
+    static const unsigned int MAX_MAP_IDS = 8192;
 
     File mFolder;
     std::wstring mPlayerDir;

@@ -1155,6 +1155,10 @@ bool CGameNetworkManager::SystemFlagGet(INetworkPlayer* p, int f)
 {
     return g_pPlatformNetworkManager->SystemFlagGet(p, f);
 }
+void CGameNetworkManager::SystemFlagClear(INetworkPlayer* p, int f)
+{
+    g_pPlatformNetworkManager->SystemFlagClear(p, f);
+}
 void CGameNetworkManager::SystemFlagClearAll(INetworkPlayer* p)
 {
     g_pPlatformNetworkManager->SystemFlagClearAll(p);

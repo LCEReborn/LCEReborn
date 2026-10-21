@@ -300,7 +300,7 @@ void ServerPlayer::flagEntitiesToBeRemoved(uint32_t* removedFlags, bool* flagsIn
 
 int ServerPlayer::getFlagIndexForChunk(const ChunkPos& chunkPos, int dimension)
 {
-    return LevelRenderer::getGlobalIndexForChunk(chunkPos.x << 4, 0, chunkPos.z << 4, dimension) / 16;
+    return getFlagIndexForChunk(chunkPos.x, chunkPos.z, dimension);
 }
 
 void ServerPlayer::disconnect()
@@ -683,8 +683,7 @@ void ServerPlayer::resetSentInfo()
 
 int32_t ServerPlayer::getFlagIndexForChunk(int32_t x, int32_t z, int32_t dimension)
 {
-    int index = LevelRenderer::getGlobalIndexForChunk(x * 16, 0, z * 16, dimension);
-    return index / 16;
+    return ((dimension + 1) & 3) << 28 | (x & 0x3FFF) << 14 | (z & 0x3FFF);
 }
 
 void ServerPlayer::resetChunkFlagsOutsideArea(int32_t minX, int32_t minZ, int32_t maxX, int32_t maxZ, int32_t dimension)

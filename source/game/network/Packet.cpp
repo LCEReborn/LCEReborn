@@ -210,6 +210,14 @@ void Packet::staticCtor()
         L"AddPlayer");
     map(22, true, false, true, true, typeid(ClientboundTakeItemEntityPacket), ClientboundTakeItemEntityPacket::create,
         L"TakeItemEntity");
+    map(ClientboundAddEntityPacket::WIDE_PACKET_ID, true, false, false, true, typeid(ClientboundAddEntityPacket),
+        ClientboundAddEntityPacket::createWide, L"AddEntityWide");
+    map(ClientboundAddMobPacket::WIDE_PACKET_ID, true, false, false, true, typeid(ClientboundAddMobPacket),
+        ClientboundAddMobPacket::createWide, L"AddMobWide");
+    map(ClientboundTeleportEntityPacket::WIDE_PACKET_ID, true, false, false, true,
+        typeid(ClientboundTeleportEntityPacket), ClientboundTeleportEntityPacket::createWide, L"TeleportEntityWide");
+    map(ClientboundBlockUpdatePacket::WIDE_PACKET_ID, true, false, true, true, typeid(ClientboundBlockUpdatePacket),
+        ClientboundBlockUpdatePacket::createWide, L"BlockUpdateWide");
     map(23, true, false, false, true, typeid(ClientboundAddEntityPacket), ClientboundAddEntityPacket::create,
         L"AddEntity");
     map(24, true, false, false, true, typeid(ClientboundAddMobPacket), ClientboundAddMobPacket::create, L"AddMob");
@@ -443,11 +451,34 @@ boost::shared_ptr<Packet> Packet::readPacket(DataInputStream* input, bool isServ
 }
 
 void Packet::writePacket(boost::shared_ptr<Packet> packet, DataOutputStream* output, bool isServer,
-                         unsigned int& packetsWritten)
+                         unsigned int& packetsWritten, bool wide)
 {
-    output->write(packet->getPacketId());
-    packet->write(output);
+    if (wide && packet->hasWideForm())
+    {
+        output->write(packet->getWidePacketId());
+        packet->writeWide(output);
+    }
+    else
+    {
+        output->write(packet->getPacketId());
+        packet->write(output);
+    }
     ++packetsWritten;
+}
+
+bool Packet::hasWideForm()
+{
+    return false;
+}
+
+int Packet::getWidePacketId()
+{
+    return getPacketId();
+}
+
+void Packet::writeWide(DataOutputStream* output)
+{
+    write(output);
 }
 
 void Packet::writeUtf(const std::wstring& text, DataOutputStream* output)

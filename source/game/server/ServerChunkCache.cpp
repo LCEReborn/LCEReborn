@@ -12,6 +12,11 @@
 #include "game/core/PIXNamedEvents.hpp"
 #include "platform/C4JEvent.hpp"
 #include "platform/Platform.hpp"
+#include "game/core/Mth.hpp"
+#include "game/core/System.hpp"
+#include "game/core/VideoSettings.hpp"
+#include "game/world/chunk/ClientChunkCache.hpp"
+#include "game/world/generation/Player.hpp"
 #include <algorithm>
 #include <cstring>
 
@@ -402,8 +407,12 @@ bool ServerChunkCache::hasChunk(int x, int z)
 
 bool ServerChunkCache::isChunkGeneratedAt(int x, int z)
 {
+    if (!inBounds(x, z))
+    {
+        return false;
+    }
     LevelChunk* chunk = m_cache[computeIdx(x, z)];
-    return inBounds(x, z) && chunk != NULL && !chunk->isEmpty();
+    return chunk != NULL && !chunk->isEmpty();
 }
 
 std::vector<LevelChunk*>& ServerChunkCache::getLoadedChunkList()
@@ -674,15 +683,67 @@ bool ServerChunkCache::tick()
             int idx = (chunk->x + m_xzOffset) * m_xzSize + (chunk->z + m_xzOffset);
             m_unloadedCache[idx] = chunk;
             m_cache[idx] = NULL;
+            if (freesUnloadedChunks())
+            {
+                UnloadedChunk unloaded = {chunk, System::processTimeInMilliSecs()};
+                m_unloadedQueue.push_back(unloaded);
+            }
         }
         m_toDrop.pop_front();
     }
+
+    freeOldUnloadedChunks();
 
     if (m_storage != NULL)
     {
         m_storage->tick();
     }
     return true;
+}
+
+bool ServerChunkCache::freesUnloadedChunks()
+{
+    return m_xzSize > ClientChunkCache::RING_WIDTH;
+}
+
+bool ServerChunkCache::isNearPlayer(LevelChunk* chunk)
+{
+    static const int KEEP_DISTANCE = VideoSettings::RENDER_DISTANCE_MAX + 2;
+    for (unsigned int i = 0; i < m_level->mPlayers.size(); ++i)
+    {
+        const int playerChunkX = Mth::floor(m_level->mPlayers[i]->mX / 16.0);
+        const int playerChunkZ = Mth::floor(m_level->mPlayers[i]->mZ / 16.0);
+        if (Mth::abs(chunk->x - playerChunkX) <= KEEP_DISTANCE && Mth::abs(chunk->z - playerChunkZ) <= KEEP_DISTANCE)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void ServerChunkCache::freeOldUnloadedChunks()
+{
+    static const long long UNLOADED_LIFETIME_MS = 60000;
+    const long long now = System::processTimeInMilliSecs();
+    const size_t pending = m_unloadedQueue.size();
+    for (size_t i = 0; i < pending && now - m_unloadedQueue.front().unloadedAt > UNLOADED_LIFETIME_MS; ++i)
+    {
+        UnloadedChunk unloaded = m_unloadedQueue.front();
+        m_unloadedQueue.pop_front();
+        const int idx = computeIdx(unloaded.chunk->x, unloaded.chunk->z);
+        if (m_unloadedCache[idx] != unloaded.chunk)
+        {
+            continue;
+        }
+        if (isNearPlayer(unloaded.chunk))
+        {
+            unloaded.unloadedAt = now;
+            m_unloadedQueue.push_back(unloaded);
+            continue;
+        }
+        m_unloadedCache[idx] = NULL;
+        delete unloaded.chunk;
+    }
 }
 
 bool ServerChunkCache::shouldSave()

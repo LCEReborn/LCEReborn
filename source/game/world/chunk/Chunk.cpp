@@ -88,6 +88,12 @@ void Chunk::reset()
     mClipChunk->mVisible = false;
 }
 
+void Chunk::releaseIfMoving(int x, int z, int dimension)
+{
+    if (mNonStack && (x != mX || z != mZ || dimension != mDimension))
+        reset();
+}
+
 void Chunk::setPos(int x, int z, int dimension)
 {
     if (!mNonStack || x != mX || z != mZ || dimension != mDimension)

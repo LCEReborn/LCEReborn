@@ -61,6 +61,14 @@ private:
     int mSimulationDistance;
     bool mHasAchievements;
     int mUnknownValue3;
+
+    static const int LCE_CAPABILITY_MAGIC = 0x4C430000;
+    static const int LCE_CAPABILITY_MASK = 0xFFFF0000;
+    static const int LCE_CAPABILITY_WIDE_COORDINATES = 1;
+    static bool hasCapability(int value, int capability)
+    {
+        return (value & LCE_CAPABILITY_MASK) == LCE_CAPABILITY_MAGIC && (value & capability) != 0;
+    }
     int mGameType;
     unsigned char mDifficultyValue;
     unsigned char mMaxPlayers;

@@ -1,6 +1,7 @@
 #include "platform/pc/FileApi.hpp"
 
 #include "platform/pc/PcPaths.hpp"
+#include "platform/pc/PcVirtualMemory.hpp"
 
 #include <algorithm>
 #include <climits>
@@ -72,23 +73,12 @@ struct FileHandleTable
     int nextHandle = 1;
 };
 
-struct VirtualMemoryRegion
-{
-    std::mutex mutex;
-    void* memory = nullptr;
-};
-
 static FileHandleTable& Handles()
 {
     static FileHandleTable table;
     return table;
 }
 
-static VirtualMemoryRegion& Region()
-{
-    static VirtualMemoryRegion region;
-    return region;
-}
 
 static int AllocateHandle(FileHandleTable& table)
 {
@@ -528,16 +518,28 @@ int CloseDir(int* directory)
     return table.directories.erase(*directory) != 0;
 }
 
-void* VirtualAlloc(void* address, unsigned long size, unsigned int, unsigned int)
+static const unsigned int kMemCommit = 0x1000;
+static const unsigned int kMemReserve = 0x2000;
+static const unsigned int kMemDecommit = 0x4000;
+static const unsigned int kMemRelease = 0x8000;
+
+void* VirtualAlloc(void* address, unsigned long size, unsigned int allocationType, unsigned int)
 {
-    VirtualMemoryRegion& region = Region();
-    std::lock_guard<std::mutex> lock(region.mutex);
+    const bool commit = (allocationType & kMemCommit) != 0;
     if (address == nullptr)
-        region.memory = std::malloc(size);
-    return region.memory;
+        return (allocationType & kMemReserve) != 0 || commit ? PcVirtualReserve(size, commit) : nullptr;
+    if (commit && !PcVirtualCommit(address, size))
+        return nullptr;
+    return address;
 }
 
-int VirtualFree(void*, unsigned long, unsigned int)
+int VirtualFree(void* address, unsigned long size, unsigned int freeType)
 {
+    if (address == nullptr)
+        return 0;
+    if ((freeType & kMemRelease) != 0)
+        return PcVirtualRelease(address, size) ? 1 : 0;
+    if ((freeType & kMemDecommit) != 0)
+        return PcVirtualDecommit(address, size) ? 1 : 0;
     return 1;
 }

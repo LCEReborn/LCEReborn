@@ -8,11 +8,23 @@
 #include "game/data/ByteArrayTag.hpp"
 #include "game/world/LevelSettings.hpp"
 
-static const int LEVEL_MAX_WIDTH = 54;
-static const int LEVEL_MIN_WIDTH = 54;
-static const int HELL_LEVEL_MAX_SCALE = 3;
+static const int LEVEL_MAX_WIDTH = 320;
+static const int LEVEL_MIN_WIDTH = LevelData::CLASSIC_WIDTH;
+static const int HELL_LEVEL_MAX_SCALE = 8;
 static const int HELL_LEVEL_MIN_SCALE = 3;
-static const int HELL_LEVEL_MAX_WIDTH = 18;
+static const int HELL_LEVEL_MAX_WIDTH = LEVEL_MAX_WIDTH / HELL_LEVEL_MAX_SCALE;
+static const int WORLD_SIZE_WIDTHS[LevelData::WORLD_SIZE_COUNT] = {LevelData::CLASSIC_WIDTH, 64, 192, 320};
+static const int WORLD_SIZE_HELL_SCALES[LevelData::WORLD_SIZE_COUNT] = {3, 3, 6, 8};
+
+int LevelData::getWorldSizeWidth(int worldSize)
+{
+    return WORLD_SIZE_WIDTHS[worldSize >= 0 && worldSize < WORLD_SIZE_COUNT ? worldSize : 0];
+}
+
+int LevelData::getWorldSizeHellScale(int worldSize)
+{
+    return WORLD_SIZE_HELL_SCALES[worldSize >= 0 && worldSize < WORLD_SIZE_COUNT ? worldSize : 0];
+}
 
 LevelData::LevelData()
 {
@@ -230,28 +242,7 @@ LevelData::LevelData(CompoundTag* tag)
 
     int xzSize = mXZSize;
     int hellScale = mHellScale;
-    if (xzSize > LEVEL_MAX_WIDTH)
-    {
-        xzSize = LEVEL_MAX_WIDTH;
-    }
-    if (xzSize < LEVEL_MIN_WIDTH)
-    {
-        xzSize = LEVEL_MIN_WIDTH;
-    }
-    if (hellScale > HELL_LEVEL_MAX_SCALE)
-    {
-        hellScale = HELL_LEVEL_MAX_SCALE;
-    }
-    if (hellScale < HELL_LEVEL_MIN_SCALE)
-    {
-        hellScale = HELL_LEVEL_MIN_SCALE;
-    }
-    mXZSize = xzSize;
-    while (xzSize / hellScale > HELL_LEVEL_MAX_WIDTH && hellScale < HELL_LEVEL_MAX_SCALE)
-    {
-        ++hellScale;
-    }
-    mHellScale = hellScale;
+    setWorldSize(xzSize, hellScale);
 
     if (tag->contains(L"BiomeScale"))
     {
@@ -319,28 +310,7 @@ LevelData::LevelData(LevelSettings* settings, const std::wstring& name)
     int hellScale = settings->getHellScale();
     bool modernEnd = settings->getModernEnd();
 
-    if (xzSize > LEVEL_MAX_WIDTH)
-    {
-        xzSize = LEVEL_MAX_WIDTH;
-    }
-    if (xzSize < LEVEL_MIN_WIDTH)
-    {
-        xzSize = LEVEL_MIN_WIDTH;
-    }
-    if (hellScale > HELL_LEVEL_MAX_SCALE)
-    {
-        hellScale = HELL_LEVEL_MAX_SCALE;
-    }
-    if (hellScale < HELL_LEVEL_MIN_SCALE)
-    {
-        hellScale = HELL_LEVEL_MIN_SCALE;
-    }
-    mXZSize = xzSize;
-    while (xzSize / hellScale > HELL_LEVEL_MAX_WIDTH && hellScale < HELL_LEVEL_MAX_SCALE)
-    {
-        ++hellScale;
-    }
-    mHellScale = hellScale;
+    setWorldSize(xzSize, hellScale);
     mModernEnd = modernEnd;
 
     mBiomeScale = settings->getBiomeScale();
@@ -802,6 +772,31 @@ void LevelData::setDimensionData(const DimensionType* dimension, CompoundTag* ta
 int LevelData::getXZSize()
 {
     return mXZSize;
+}
+void LevelData::setWorldSize(int xzSize, int hellScale)
+{
+    if (xzSize > LEVEL_MAX_WIDTH)
+    {
+        xzSize = LEVEL_MAX_WIDTH;
+    }
+    if (xzSize < LEVEL_MIN_WIDTH)
+    {
+        xzSize = LEVEL_MIN_WIDTH;
+    }
+    if (hellScale > HELL_LEVEL_MAX_SCALE)
+    {
+        hellScale = HELL_LEVEL_MAX_SCALE;
+    }
+    if (hellScale < HELL_LEVEL_MIN_SCALE)
+    {
+        hellScale = HELL_LEVEL_MIN_SCALE;
+    }
+    mXZSize = xzSize;
+    while (xzSize / hellScale > HELL_LEVEL_MAX_WIDTH && hellScale < HELL_LEVEL_MAX_SCALE)
+    {
+        ++hellScale;
+    }
+    mHellScale = hellScale;
 }
 int LevelData::getHellScale()
 {

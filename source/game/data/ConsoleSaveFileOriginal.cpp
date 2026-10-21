@@ -25,7 +25,7 @@ ConsoleSaveFileOriginal::ConsoleSaveFileOriginal(const std::wstring& filename, v
     : ConsoleSaveFileCommon()
 {
     if (s_saveData == NULL)
-        s_saveData = VirtualAlloc(NULL, 0x4000000, 0x2000, 4);
+        s_saveData = VirtualAlloc(NULL, ConsoleSaveFileOriginal::SAVE_DATA_RESERVE, 0x2000, 4);
     mData = s_saveData;
 
     unsigned int saveDataSize = dataSize;
@@ -55,7 +55,7 @@ ConsoleSaveFileOriginal::ConsoleSaveFileOriginal(const std::wstring& filename, v
 
 ConsoleSaveFileOriginal::~ConsoleSaveFileOriginal()
 {
-    VirtualFree(s_saveData, 0x4000000, 0x4000);
+    VirtualFree(s_saveData, ConsoleSaveFileOriginal::SAVE_DATA_RESERVE, 0x4000);
     s_saveDataSize = 0;
 }
 
@@ -73,7 +73,7 @@ void ConsoleSaveFileOriginal::refreshFromLevelgen()
         void* data = options->getBaseSaveData(dataSize);
         if (data != NULL && dataSize != 0)
         {
-            VirtualFree(s_saveData, 0x4000000, 0x4000);
+            VirtualFree(s_saveData, ConsoleSaveFileOriginal::SAVE_DATA_RESERVE, 0x4000);
             s_saveDataSize = 0;
             mFileHeader.Reset();
 #if LCE_PLATFORM_PC

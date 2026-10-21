@@ -78,8 +78,19 @@ private:
     std::vector<LevelChunk*> m_loadedChunkList;
     ServerLevel* m_level;
     Dimension* m_dimension;
+    struct UnloadedChunk
+    {
+        LevelChunk* chunk;
+        long long unloadedAt;
+    };
+
+    bool freesUnloadedChunks();
+    bool isNearPlayer(LevelChunk* chunk);
+    void freeOldUnloadedChunks();
+
     std::deque<LevelChunk*> m_toDrop;
     LevelChunk** m_unloadedCache;
+    std::deque<UnloadedChunk> m_unloadedQueue;
     C4JCriticalSection m_csLoadCreate;
     int m_xzSize;
     int m_xzOffset;

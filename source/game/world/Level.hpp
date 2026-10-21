@@ -156,7 +156,8 @@ public:
     void setBrightnessCached(unsigned int* cache, unsigned long long* dirty, LightLayer::variety layer, int x, int y,
                              int z, int brightness);
     void setBlocksDirty(const BlockPos& from, const BlockPos& to);
-    void flushCache(unsigned int* cache, unsigned long long dirty, LightLayer::variety layer);
+    void flushCache(unsigned int* cache, unsigned long long dirty, LightLayer::variety layer, int centreX,
+                    int centreZ);
     bool checkLight(LightLayer::variety layer, const BlockPos& pos, bool onlyLoadedChunks, bool skipCentre);
     bool checkLight(const BlockPos& pos, bool onlyLoadedChunks, bool skipCentre);
     void neighborChanged(const BlockPos& pos, Block* block, const BlockPos& fromPos);
@@ -416,6 +417,8 @@ public:
     virtual BlockPos* findNearestMapFeature(const std::wstring& feature, const BlockPos& pos, bool findUnexplored);
     int getAuxValueForMap(PlayerUID uid, int dimension, const BlockPos& pos, int scale);
     LevelChunk* getCacheChunkDirect(int x, int z);
+    LevelChunk* getCachedChunk(int chunkX, int chunkZ);
+    bool isChunkInCacheRange(int chunkX, int chunkZ);
     bool isChunkPostPostProcessed(int x, int z);
     bool isChunkFinalised(int x, int z);
     void refreshLevelInfoFromLevelGen();
@@ -563,6 +566,7 @@ private:
 protected:
     LevelChunk** mChunkCache;
     int mChunkCacheSize;
+    bool mChunkCacheWrapped;
 
 private:
     C4JCriticalSection mLightMutex;

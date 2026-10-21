@@ -66,6 +66,11 @@ public:
     virtual void write(DataOutputStream* output);
     virtual void handle(PacketListener* listener);
     virtual int getEstimatedSize();
+    virtual bool hasWideForm();
+    virtual int getWidePacketId();
+    virtual void writeWide(DataOutputStream* output);
+
+    static const int WIDE_PACKET_ID = 242;
 
     void _init(boost::shared_ptr<Entity> entity, int type, int data, int xa, int ya, int za, int yRot, int xRot);
     int getId();
@@ -86,8 +91,12 @@ public:
     void setData(int data);
 
     static boost::shared_ptr<Packet> create() { return boost::shared_ptr<Packet>(new ClientboundAddEntityPacket()); }
+    static boost::shared_ptr<Packet> createWide();
 
 private:
+    void writeFields(DataOutputStream* output, bool wide);
+
+    bool mWide;
     int mId;
     std::wstring mUUID;
     int mX;

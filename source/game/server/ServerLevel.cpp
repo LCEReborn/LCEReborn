@@ -141,6 +141,7 @@ ServerLevel::ServerLevel(MinecraftServer* server, boost::shared_ptr<LevelStorage
     mChunkSource = createChunkSource();
     mChunkCache = mChunkSource->getCache();
     mChunkCacheSize = mChunkSource->mLevelSize;
+    mChunkCacheWrapped = false;
     this->server = server;
     server->setLevel(dimension, this);
     serverLevelListener = new ServerLevelListener(server, this);

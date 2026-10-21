@@ -51,6 +51,7 @@ public:
 
     void removeClientPacketListener(ClientPacketListener* connection, bool sendDisconnect);
     ClientScoreboard* GetClientScoreboard();
+    ClientChunkCache* getClientChunkCache();
     void animateTick(int x, int y, int z);
     void animateTickDoWork();
     void removeAllPendingEntityRemovals();

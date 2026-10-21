@@ -1,5 +1,6 @@
 #include "game/world/Level.hpp"
 #include "game/world/LevelEvent.hpp"
+#include "game/item/MapItemSavedData.hpp"
 #include "game/world/block/BlockId.hpp"
 #include "game/core/EntityType.hpp"
 
@@ -185,6 +186,9 @@ void Level::_init()
     mProcessingBlockEntities = false;
 
     mLightUpdateQueue = new unsigned int[0x8000];
+    mChunkCache = NULL;
+    mChunkCacheSize = 0;
+    mChunkCacheWrapped = false;
 
     InitializeCriticalSectionAndSpinCount(&mLightMutex, 0x1400);
 
@@ -618,6 +622,13 @@ void Level::setBrightness(LightLayer::variety layer, const BlockPos& pos, int br
     }
 }
 
+static int CachedLightBlock(unsigned int chunkLowBits, int localBits, int referenceBlock)
+{
+    const int referenceChunk = referenceBlock >> 4;
+    const int delta = (int)(((chunkLowBits - (unsigned int)referenceChunk) & 0x3F) ^ 0x20) - 0x20;
+    return ((referenceChunk + delta) << 4) | (localBits & 0xF);
+}
+
 int Level::getBrightnessCached(unsigned int* cache, LightLayer::variety layer, int x, int y, int z)
 {
     if (cache == NULL || (y & 0xFFFFFF00) != 0)
@@ -645,9 +656,8 @@ int Level::getBrightnessCached(unsigned int* cache, LightLayer::variety layer, i
         if ((entry & 0x80000000) != 0)
         {
             setBrightness(layer,
-                          BlockPos((int)((((entry >> 6) & 0x3F0) | (x & 0xF)) << 22) >> 22,
-                                   ((entry >> 2) & 0xF0) | (y & 0xF),
-                                   (int)((((entry & 0x3F) << 4) | (z & 0xF)) << 22) >> 22),
+                          BlockPos(CachedLightBlock((entry >> 10) & 0x3F, x, x), ((entry >> 2) & 0xF0) | (y & 0xF),
+                                   CachedLightBlock(entry & 0x3F, z, z)),
                           (entry >> 24) & 0xF, true);
         }
 
@@ -684,9 +694,8 @@ int Level::getEmissionCached(unsigned int* cache, Block* block, const BlockPos& 
     if ((entry & 0xFFFF) != key && (entry & 0x80000000) != 0)
     {
         setBrightness(LightLayer::BLOCK,
-                      BlockPos((int)((((entry >> 6) & 0x3F0) | (pos.x & 0xF)) << 22) >> 22,
-                               ((entry >> 2) & 0xF0) | (pos.y & 0xF),
-                               (int)((((entry & 0x3F) << 4) | (pos.z & 0xF)) << 22) >> 22),
+                      BlockPos(CachedLightBlock((entry >> 10) & 0x3F, pos.x, pos.x), ((entry >> 2) & 0xF0) | (pos.y & 0xF),
+                               CachedLightBlock(entry & 0x3F, pos.z, pos.z)),
                       (entry >> 24) & 0xF, true);
     }
 
@@ -849,9 +858,8 @@ int Level::getBlockingCached(unsigned int* cache, LightLayer::variety layer, Blo
     if ((entry & 0xFFFF) != key && (entry & 0x80000000) != 0)
     {
         setBrightness(layer,
-                      BlockPos((int)((((entry >> 6) & 0x3F0) | (pos.x & 0xF)) << 22) >> 22,
-                               ((entry >> 2) & 0xF0) | (pos.y & 0xF),
-                               (int)((((entry & 0x3F) << 4) | (pos.z & 0xF)) << 22) >> 22),
+                      BlockPos(CachedLightBlock((entry >> 10) & 0x3F, pos.x, pos.x), ((entry >> 2) & 0xF0) | (pos.y & 0xF),
+                               CachedLightBlock(entry & 0x3F, pos.z, pos.z)),
                       (entry >> 24) & 0xF, true);
     }
 
@@ -983,9 +991,8 @@ void Level::setBrightnessCached(unsigned int* cache, unsigned long long* dirty, 
         if ((entry & 0x80000000) != 0)
         {
             setBrightness(layer,
-                          BlockPos((int)((((entry >> 6) & 0x3F0) | (x & 0xF)) << 22) >> 22,
-                                   ((entry >> 2) & 0xF0) | (y & 0xF),
-                                   (int)((((entry & 0x3F) << 4) | (z & 0xF)) << 22) >> 22),
+                          BlockPos(CachedLightBlock((entry >> 10) & 0x3F, x, x), ((entry >> 2) & 0xF0) | (y & 0xF),
+                                   CachedLightBlock(entry & 0x3F, z, z)),
                           (entry >> 24) & 0xF, true);
         }
 
@@ -1005,7 +1012,8 @@ void Level::setBlocksDirty(const BlockPos& from, const BlockPos& to)
     }
 }
 
-void Level::flushCache(unsigned int* cache, unsigned long long dirty, LightLayer::variety layer)
+void Level::flushCache(unsigned int* cache, unsigned long long dirty, LightLayer::variety layer, int centreX,
+                       int centreZ)
 {
     if (dirty == 0)
     {
@@ -1044,9 +1052,9 @@ void Level::flushCache(unsigned int* cache, unsigned long long dirty, LightLayer
                     if ((entry & 0x80000000) != 0)
                     {
                         setBrightness(layer,
-                                      BlockPos((int)((((entry >> 6) & 0x3F0) | x) << 22) >> 22,
+                                      BlockPos(CachedLightBlock((entry >> 10) & 0x3F, x, centreX),
                                                ((entry >> 2) & 0xF0) | (y & 0xF),
-                                               (int)(((z & 0xF) | ((entry & 0x3F) << 4)) << 22) >> 22),
+                                               CachedLightBlock(entry & 0x3F, z, centreZ)),
                                       (entry >> 24) & 0xF, true);
                     }
                 }
@@ -1287,7 +1295,7 @@ bool Level::checkLight(LightLayer::variety layer, const BlockPos& pos, bool only
 
     PIXEndNamedEvent();
     PIXBeginNamedEvent(0.0f, "flushCache");
-    flushCache(cache, dirty, layer);
+    flushCache(cache, dirty, layer, centreX, centreZ);
     PIXEndNamedEvent();
 
     LeaveCriticalSection(&mLightMutex);
@@ -1931,14 +1939,9 @@ void Level::getNeighbourBrightnesses(int* brightnesses, LightLayer::variety laye
 {
     if ((x & 0xF) != 0 && (x & 0xF) != 15 && (z & 0xF) != 0 && (z & 0xF) != 15 && (unsigned int)(y - 1) < 126)
     {
-        int size = mChunkCacheSize;
-        int half = size / 2;
-        int cacheX = (x >> 4) + half;
-        int cacheZ = (z >> 4) + half;
-
-        if (cacheX >= 0 && cacheX < size && cacheZ >= 0 && cacheZ < size)
+        if (isChunkInCacheRange(x >> 4, z >> 4))
         {
-            LevelChunk* chunk = mChunkCache[cacheX * size + cacheZ];
+            LevelChunk* chunk = getCachedChunk(x >> 4, z >> 4);
 
             if (chunk != NULL)
             {
@@ -1966,17 +1969,12 @@ void Level::getNeighbourBrightnesses(int* brightnesses, LightLayer::variety laye
 
 int Level::getBrightness(LightLayer::variety layer, const BlockPos& pos)
 {
-    int size = mChunkCacheSize;
-    int half = size / 2;
-    int cacheX = (pos.x >> 4) + half;
-    int cacheZ = (pos.z >> 4) + half;
-
-    if (cacheX < 0 || cacheX >= size || cacheZ < 0 || cacheZ >= size)
+    if (!isChunkInCacheRange(pos.x >> 4, pos.z >> 4))
     {
         return 0;
     }
 
-    LevelChunk* chunk = mChunkCache[cacheX * size + cacheZ];
+    LevelChunk* chunk = getCachedChunk(pos.x >> 4, pos.z >> 4);
 
     if (chunk != NULL)
     {
@@ -3595,7 +3593,8 @@ bool Level::isHumidAt(const BlockPos& pos)
 
 int Level::getAuxValueForMap(PlayerUID uid, int dimension, const BlockPos& pos, int scale)
 {
-    return getAuxValueForMap(uid, dimension, 0, 0, scale);
+    return getAuxValueForMap(uid, dimension, MapItemSavedData::getOriginCoordinate(pos.x, scale),
+                             MapItemSavedData::getOriginCoordinate(pos.z, scale), scale);
 }
 
 void Level::blockEntityAddedExtra(boost::shared_ptr<BlockEntity>)
@@ -5540,8 +5539,31 @@ void Level::setFromRawData(int x, int z, arrayWithLength<unsigned char> data)
 
 LevelChunk* Level::getCacheChunkDirect(int x, int z)
 {
-    int halfSize = mChunkCacheSize / 2;
-    return mChunkCache[(x + halfSize) * mChunkCacheSize + z + halfSize];
+    return getCachedChunk(x, z);
+}
+
+LevelChunk* Level::getCachedChunk(int chunkX, int chunkZ)
+{
+    if (mChunkCacheWrapped)
+    {
+        const int mask = mChunkCacheSize - 1;
+        LevelChunk* chunk = mChunkCache[(chunkX & mask) * mChunkCacheSize + (chunkZ & mask)];
+        return chunk != NULL && chunk->x == chunkX && chunk->z == chunkZ ? chunk : NULL;
+    }
+    if (!isChunkInCacheRange(chunkX, chunkZ))
+        return NULL;
+    const int half = mChunkCacheSize / 2;
+    return mChunkCache[(chunkX + half) * mChunkCacheSize + chunkZ + half];
+}
+
+bool Level::isChunkInCacheRange(int chunkX, int chunkZ)
+{
+    if (mChunkCacheWrapped)
+        return mDimension->containsChunk(chunkX, chunkZ);
+    const int half = mChunkCacheSize / 2;
+    const int cacheX = chunkX + half;
+    const int cacheZ = chunkZ + half;
+    return cacheX >= 0 && cacheX < mChunkCacheSize && cacheZ >= 0 && cacheZ < mChunkCacheSize;
 }
 
 bool Level::isChunkPostPostProcessed(int x, int z)

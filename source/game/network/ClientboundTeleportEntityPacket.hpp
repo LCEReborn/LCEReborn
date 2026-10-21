@@ -21,6 +21,11 @@ public:
     virtual int getEstimatedSize();
     virtual bool canBeInvalidated();
     virtual bool isInvalidatedBy(boost::shared_ptr<Packet> packet);
+    virtual bool hasWideForm();
+    virtual int getWidePacketId();
+    virtual void writeWide(DataOutputStream* output);
+
+    static const int WIDE_PACKET_ID = 241;
     int getId();
     int getX();
     int getY();
@@ -33,6 +38,7 @@ public:
     {
         return boost::shared_ptr<Packet>(new ClientboundTeleportEntityPacket());
     }
+    static boost::shared_ptr<Packet> createWide();
 
 private:
     int mId;
@@ -42,5 +48,6 @@ private:
     unsigned char myRot;
     unsigned char mxRot;
     bool mOnGround;
+    bool mWide;
 };
 #endif

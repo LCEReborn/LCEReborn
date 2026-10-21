@@ -42,9 +42,14 @@ MapItemSavedData::~MapItemSavedData()
 
 void MapItemSavedData::setOrigin(double x, double z, int scale)
 {
+    mXCenter = getOriginCoordinate(x, scale);
+    mZCenter = getOriginCoordinate(z, scale);
+}
+
+int MapItemSavedData::getOriginCoordinate(double coordinate, int scale)
+{
     int size = (1 << scale) << 7;
-    mXCenter = (int)Math::round(x / (double)size) * size;
-    mZCenter = (int)Math::round(z / (double)size) * size;
+    return (int)Math::round(coordinate / (double)size) * size;
 }
 
 boost::shared_ptr<MapItemSavedData::HoldingPlayer> MapItemSavedData::getHoldingPlayer(boost::shared_ptr<Player> player)

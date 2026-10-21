@@ -10,6 +10,7 @@
 
 ClientboundAddEntityPacket::ClientboundAddEntityPacket()
 {
+    mWide = false;
 }
 
 ClientboundAddEntityPacket::ClientboundAddEntityPacket(boost::shared_ptr<Entity> entity, int type, int data)
@@ -43,6 +44,7 @@ ClientboundAddEntityPacket::ClientboundAddEntityPacket(boost::shared_ptr<Entity>
 void ClientboundAddEntityPacket::_init(boost::shared_ptr<Entity> entity, int type, int data, int xa, int ya, int za,
                                        int yRot, int xRot)
 {
+    mWide = false;
     mId = entity->getId();
     mUUID = entity->getUUID();
     mX = (int)std::floor(entity->mX * 32.0);
@@ -79,9 +81,9 @@ void ClientboundAddEntityPacket::read(DataInputStream* input)
     mId = input->readShort();
     mUUID = input->readUTF();
     mType = input->readByte();
-    mX = input->readShort();
-    mY = input->readShort();
-    mZ = input->readShort();
+    mX = mWide ? input->readInt() : input->readShort();
+    mY = mWide ? input->readInt() : input->readShort();
+    mZ = mWide ? input->readInt() : input->readShort();
     mYRot = input->readByte();
     mXRot = input->readByte();
     mData = input->readInt();
@@ -99,12 +101,48 @@ void ClientboundAddEntityPacket::read(DataInputStream* input)
 
 void ClientboundAddEntityPacket::write(DataOutputStream* output)
 {
+    writeFields(output, false);
+}
+
+bool ClientboundAddEntityPacket::hasWideForm()
+{
+    return true;
+}
+
+int ClientboundAddEntityPacket::getWidePacketId()
+{
+    return WIDE_PACKET_ID;
+}
+
+void ClientboundAddEntityPacket::writeWide(DataOutputStream* output)
+{
+    writeFields(output, true);
+}
+
+boost::shared_ptr<Packet> ClientboundAddEntityPacket::createWide()
+{
+    ClientboundAddEntityPacket* packet = new ClientboundAddEntityPacket();
+    packet->mWide = true;
+    return boost::shared_ptr<Packet>(packet);
+}
+
+void ClientboundAddEntityPacket::writeFields(DataOutputStream* output, bool wide)
+{
     output->writeShort((short)mId);
     output->writeUTF(mUUID);
     output->writeByte((unsigned char)mType);
-    output->writeShort((short)mX);
-    output->writeShort((short)mY);
-    output->writeShort((short)mZ);
+    if (wide)
+    {
+        output->writeInt(mX);
+        output->writeInt(mY);
+        output->writeInt(mZ);
+    }
+    else
+    {
+        output->writeShort((short)mX);
+        output->writeShort((short)mY);
+        output->writeShort((short)mZ);
+    }
     output->writeByte(mYRot);
     output->writeByte(mXRot);
     output->writeInt(mData);

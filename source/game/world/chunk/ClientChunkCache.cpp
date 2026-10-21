@@ -93,7 +93,7 @@ ClientChunkCache::~ClientChunkCache()
     delete m_emptyChunk;
     delete m_waterChunk;
 
-    for (int i = 0; i < m_xzSize * m_xzSize; ++i)
+    for (int i = 0; i < RING_WIDTH * RING_WIDTH; ++i)
     {
         if (m_cache[i] != NULL)
         {
@@ -101,8 +101,8 @@ ClientChunkCache::~ClientChunkCache()
             m_cache[i] = NULL;
         }
     }
-    delete m_cache;
-    delete m_hasData;
+    delete[] m_cache;
+    delete[] m_hasData;
     DeleteCriticalSection(&m_csLoadCreate);
 
     if (m_storage != NULL)
@@ -136,7 +136,8 @@ void ClientChunkCache::reLoad(int x, int z, const std::vector<LevelChunk::BlockC
         return;
     }
 
-    int idx = (x + m_xzOffset) * m_xzSize + (z + m_xzOffset);
+    evictSlotFor(x, z);
+    int idx = slotFor(x, z);
     LevelChunk* previous = m_cache[idx];
     EnterCriticalSection(&m_csLoadCreate);
     LevelChunk* chunk = load(x, z, NULL);
@@ -218,11 +219,9 @@ int ClientChunkCache::StorageThreadProc(void* argument)
 
 void ClientChunkCache::MultiPlayerChunkCacheInit(Level* level, ChunkStorage* storage)
 {
-    m_xzSize = level->mDimension->getXZSize();
-    mLevelSize = m_xzSize;
-    m_xzOffset = m_xzSize / 2;
-    m_hasData = new bool[m_xzSize * m_xzSize];
-    std::memset(m_hasData, 0, m_xzSize * m_xzSize);
+    mLevelSize = RING_WIDTH;
+    m_hasData = new bool[RING_WIDTH * RING_WIDTH];
+    std::memset(m_hasData, 0, RING_WIDTH * RING_WIDTH);
     m_emptyChunk = new EmptyLevelChunk(level, 0, 0);
     m_reloadPending = false;
     m_stopThread = false;
@@ -311,8 +310,8 @@ void ClientChunkCache::MultiPlayerChunkCacheInit(Level* level, ChunkStorage* sto
 
     m_dimension = level->mDimension;
     m_level = level;
-    m_cache = new LevelChunk*[m_xzSize * m_xzSize];
-    std::memset(m_cache, 0, m_xzSize * m_xzSize * sizeof(LevelChunk*));
+    m_cache = new LevelChunk*[RING_WIDTH * RING_WIDTH];
+    std::memset(m_cache, 0, RING_WIDTH * RING_WIDTH * sizeof(LevelChunk*));
     InitializeCriticalSectionAndSpinCount(&m_csLoadCreate, 4000);
 }
 
@@ -356,11 +355,7 @@ LevelChunk* ClientChunkCache::getChunkIfLoaded(int x, int z)
     {
         return m_waterChunk != NULL ? m_waterChunk : m_emptyChunk;
     }
-    int ix = x + m_xzOffset;
-    int iz = z + m_xzOffset;
-    int idx = ix * m_xzSize + iz;
-    LevelChunk* chunk = m_cache[idx];
-    return chunk;
+    return chunkInSlot(slotFor(x, z), x, z);
 }
 
 LevelChunk* ClientChunkCache::getOrCreateChunk(int x, int z, bool)
@@ -399,11 +394,8 @@ bool ClientChunkCache::reallyHasChunk(int x, int z)
     {
         return true;
     }
-    int ix = x + m_xzOffset;
-    int iz = z + m_xzOffset;
-    int idx = ix * m_xzSize + iz;
-    LevelChunk* chunk = m_cache[idx];
-    if (chunk == NULL)
+    int idx = slotFor(x, z);
+    if (chunkInSlot(idx, x, z) == NULL)
     {
         return false;
     }
@@ -445,9 +437,11 @@ void ClientChunkCache::drop(int x, int z, bool force)
             return;
         }
         unqueueForReLoad(x, z);
-        int ix = x + m_xzOffset;
-        int iz = z + m_xzOffset;
-        int idx = ix * m_xzSize + iz;
+        int idx = slotFor(x, z);
+        if (chunkInSlot(idx, x, z) != chunk)
+        {
+            return;
+        }
         EnterCriticalSection(&m_csLoadCreate);
 #if LCE_PLATFORM_WIIU
         if (InterlockedCompareExchangeRelease(reinterpret_cast<volatile long*>(&m_cache[idx]), 0,
@@ -480,14 +474,12 @@ void ClientChunkCache::drop(int x, int z, bool force)
 
 void ClientChunkCache::dropOutsideArea(int minX, int minZ, int maxX, int maxZ, bool force)
 {
-    for (int x = -m_xzSize / 2; x < m_xzSize / 2; ++x)
+    const std::vector<ChunkPos> loaded = getLoadedPositions();
+    for (std::vector<ChunkPos>::const_iterator it = loaded.begin(); it != loaded.end(); ++it)
     {
-        for (int z = -m_xzSize / 2; z < m_xzSize / 2; ++z)
+        if (it->x < minX || it->x > maxX || it->z < minZ || it->z > maxZ)
         {
-            if (x < minX || x > maxX || z < minZ || z > maxZ)
-            {
-                drop(x, z, force);
-            }
+            drop(it->x, it->z, force);
         }
     }
 }
@@ -499,9 +491,8 @@ LevelChunk* ClientChunkCache::create(int x, int z)
         return m_waterChunk != NULL ? m_waterChunk : m_emptyChunk;
     }
 
-    int ix = x + m_xzOffset;
-    int iz = z + m_xzOffset;
-    int idx = ix * m_xzSize + iz;
+    evictSlotFor(x, z);
+    int idx = slotFor(x, z);
     LevelChunk* chunk = m_cache[idx];
     LevelChunk* previous = chunk;
     if (chunk == NULL)
@@ -573,10 +564,7 @@ LevelChunk* ClientChunkCache::getChunk(int x, int z)
     {
         return m_waterChunk != NULL ? m_waterChunk : m_emptyChunk;
     }
-    int ix = x + m_xzOffset;
-    int iz = z + m_xzOffset;
-    int idx = ix * m_xzSize + iz;
-    LevelChunk* chunk = m_cache[idx];
+    LevelChunk* chunk = chunkInSlot(slotFor(x, z), x, z);
     if (chunk == NULL)
     {
         return m_emptyChunk;
@@ -721,10 +709,11 @@ void ClientChunkCache::dataReceived(int x, int z)
 {
     if (m_dimension->containsChunk(x, z))
     {
-        int ix = x + m_xzOffset;
-        int iz = z + m_xzOffset;
-        int idx = ix * m_xzSize + iz;
-        m_hasData[idx] = true;
+        int idx = slotFor(x, z);
+        if (chunkInSlot(idx, x, z) != NULL)
+        {
+            m_hasData[idx] = true;
+        }
     }
 }
 
@@ -770,4 +759,43 @@ bool ClientChunkCache::mustQueueBlockEntityDataPackets()
 LevelChunk** ClientChunkCache::getCache()
 {
     return m_cache;
+}
+
+int ClientChunkCache::slotFor(int x, int z)
+{
+    return ((x & RING_MASK) << RING_BITS) | (z & RING_MASK);
+}
+
+LevelChunk* ClientChunkCache::chunkInSlot(int slot, int x, int z)
+{
+    LevelChunk* chunk = m_cache[slot];
+    return chunk != NULL && chunk->x == x && chunk->z == z ? chunk : NULL;
+}
+
+void ClientChunkCache::evictSlotFor(int x, int z)
+{
+    LevelChunk* occupant = m_cache[slotFor(x, z)];
+    if (occupant != NULL && (occupant->x != x || occupant->z != z))
+    {
+        drop(occupant->x, occupant->z, true);
+    }
+}
+
+LevelChunk* ClientChunkCache::getSlotChunkWithData(int slotX, int slotZ)
+{
+    int idx = ((slotX & RING_MASK) << RING_BITS) | (slotZ & RING_MASK);
+    return m_cache[idx] != NULL && m_hasData[idx] ? m_cache[idx] : NULL;
+}
+
+std::vector<ChunkPos> ClientChunkCache::getLoadedPositions()
+{
+    std::vector<ChunkPos> positions;
+    for (int i = 0; i < RING_WIDTH * RING_WIDTH; ++i)
+    {
+        if (m_cache[i] != NULL)
+        {
+            positions.push_back(ChunkPos(m_cache[i]->x, m_cache[i]->z));
+        }
+    }
+    return positions;
 }

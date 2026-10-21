@@ -85,6 +85,11 @@ ClientScoreboard* MultiPlayerLevel::GetClientScoreboard()
     return mClientScoreboard;
 }
 
+ClientChunkCache* MultiPlayerLevel::getClientChunkCache()
+{
+    return mClientChunkCache;
+}
+
 void MultiPlayerLevel::animateTick(int x, int y, int z)
 {
     int sectionX = x >> 3;
@@ -226,7 +231,8 @@ void MultiPlayerLevel::MultiPlayerLevelInit(ClientPacketListener* connection, Le
         setSeaLevel(seaLevel);
     mChunkSource = createChunkSource();
     mChunkCache = mChunkSource->getCache();
-    mChunkCacheSize = mChunkSource->mLevelSize;
+    mChunkCacheSize = ClientChunkCache::RING_WIDTH;
+    mChunkCacheWrapped = true;
     if (!mLevelData->isInitialized())
     {
         initializeLevel(settings);
@@ -308,8 +314,7 @@ void MultiPlayerLevel::tick()
         return;
     }
 
-    int size = mDimension->getXZSize();
-    int halfSize = size / 2;
+    const int size = ClientChunkCache::RING_WIDTH;
     for (int i = 0; i < size; ++i)
     {
         if (mChunkTickX + 1 < size)
@@ -329,9 +334,9 @@ void MultiPlayerLevel::tick()
             }
         }
 
-        if (reallyHasChunk(mChunkTickX - halfSize, mChunkTickZ - halfSize))
+        LevelChunk* chunk = mClientChunkCache->getSlotChunkWithData(mChunkTickX, mChunkTickZ);
+        if (chunk != NULL)
         {
-            LevelChunk* chunk = getChunk(mChunkTickX - halfSize, mChunkTickZ - halfSize);
             chunk->compressLighting();
             chunk->compressBlocks();
             chunk->compressData();

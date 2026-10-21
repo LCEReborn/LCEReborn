@@ -143,6 +143,14 @@ void ServerConnectionListener::handleLogin(boost::shared_ptr<ClientboundLoginPac
         return;
     }
 
+    if (!ClientboundLoginPacket::hasCapability(packet->mUnknownValue3,
+                                               ClientboundLoginPacket::LCE_CAPABILITY_WIDE_COORDINATES)
+        && m_server->getLevel(0)->getLevelData()->getXZSize() > LevelData::CLASSIC_WIDTH)
+    {
+        disconnect(DisconnectPacket::eDisconnectReason_ClientOutOfDate);
+        return;
+    }
+
     handleAcceptedLogin(packet);
 }
 

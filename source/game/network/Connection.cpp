@@ -217,7 +217,8 @@ bool Connection::writeTick()
         m_estimatedRemaining -= packet->getEstimatedSize() + 1;
         LeaveCriticalSection(&m_writeLock);
 
-        Packet::writePacket(packet, m_bufferedOutput, m_listener->isServerPacketListener(), m_packetsWritten);
+        Packet::writePacket(packet, m_bufferedOutput, m_listener->isServerPacketListener(), m_packetsWritten,
+                            m_listener->usesWideCoordinates());
         sWriteSizes[packet->getPacketId()] += packet->getEstimatedSize() + 1;
         didSomething = true;
     }
@@ -234,7 +235,8 @@ bool Connection::writeTick()
 
         if (packet->shouldDelay)
         {
-            Packet::writePacket(packet, m_byteArrayOutput, m_listener->isServerPacketListener(), m_packetsWritten);
+            Packet::writePacket(packet, m_byteArrayOutput, m_listener->isServerPacketListener(), m_packetsWritten,
+                                m_listener->usesWideCoordinates());
             if (m_bufferedOutput != NULL)
                 m_bufferedOutput->flush();
             m_socketOutput->writeWithFlags(m_byteArrayStream->mBuffer, 0, m_byteArrayStream->mCount, 1);
@@ -242,7 +244,8 @@ bool Connection::writeTick()
         }
         else
         {
-            Packet::writePacket(packet, m_bufferedOutput, m_listener->isServerPacketListener(), m_packetsWritten);
+            Packet::writePacket(packet, m_bufferedOutput, m_listener->isServerPacketListener(), m_packetsWritten,
+                                m_listener->usesWideCoordinates());
         }
         sWriteSizes[packet->getPacketId()] += packet->getEstimatedSize() + 1;
         m_slowWriteDelay = 0;

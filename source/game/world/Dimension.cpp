@@ -44,7 +44,12 @@ void Dimension::init(Level* level)
     mLevelType = level->getLevelData()->getGeneratorType();
     mSuperflatConfig = level->getLevelData()->getGeneratorOptions();
     updateLightRamp();
-    mXZSize = level->getLevelData()->getXZSize();
+    updateXZSize();
+}
+
+void Dimension::updateXZSize()
+{
+    mXZSize = mLevel->getLevelData()->getXZSize();
 }
 
 void Dimension::updateLightRamp()

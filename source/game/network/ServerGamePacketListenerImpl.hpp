@@ -146,6 +146,7 @@ public:
     Connection* getConnection();
     bool containsInvalidValues(boost::shared_ptr<ServerboundMovePlayerPacket> packet);
     int getRequestedViewDistance() const;
+    virtual bool usesWideCoordinates();
     void handleCommand(const std::wstring& command);
 
 private:
@@ -203,6 +204,7 @@ private:
     std::vector<std::wstring> mNames;
     bool mUseAltLeaveMessage;
     int mRequestedViewDistance;
+    bool mWideCoordinates;
 };
 
 INetworkPlayer* getNetworkPlayerFromIndex(int index);

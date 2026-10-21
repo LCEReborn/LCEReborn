@@ -44,7 +44,8 @@ MapItem::MapItem() : ComplexItem()
 not_null_ptr<ItemInstance> MapItem::setupNewMap(PlayerUID uid, Level* level, int dimension, double x, double z,
                                                 unsigned char scale, bool trackingPosition, bool unlimitedTracking)
 {
-    int mapId = level->getAuxValueForMap(uid, dimension, BlockPos((int)x, 0, (int)z), (int)scale);
+    int mapId = level->getAuxValueForMap(uid, dimension, MapItemSavedData::getOriginCoordinate(x, scale),
+                                         MapItemSavedData::getOriginCoordinate(z, scale), (int)scale);
     not_null_ptr<ItemInstance> itemInstance(new ItemInstance(Items::filledMap, 1, mapId));
     std::wstring name = L"map_" + _toString(itemInstance->getAuxValue());
     boost::shared_ptr<MapItemSavedData> data = boost::static_pointer_cast<MapItemSavedData>(

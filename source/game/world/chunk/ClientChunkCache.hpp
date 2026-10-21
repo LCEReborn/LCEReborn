@@ -40,6 +40,13 @@ public:
         const std::vector<LevelChunk::BlockChange>* changes;
     };
 
+    enum
+    {
+        RING_BITS = 7,
+        RING_WIDTH = 1 << RING_BITS,
+        RING_MASK = RING_WIDTH - 1
+    };
+
     ClientChunkCache(Level* level, ChunkStorage* storage);
     ClientChunkCache(Level* level);
     virtual ~ClientChunkCache();
@@ -77,8 +84,14 @@ public:
     void queueForReLoad(int x, int z, const std::vector<LevelChunk::BlockChange>* changes, bool replace);
     bool mustQueueBlockEntityDataPackets();
     virtual LevelChunk** getCache();
+    LevelChunk* getSlotChunkWithData(int slotX, int slotZ);
+    std::vector<ChunkPos> getLoadedPositions();
 
 private:
+    static int slotFor(int x, int z);
+    LevelChunk* chunkInSlot(int slot, int x, int z);
+    void evictSlotFor(int x, int z);
+
     LevelChunk* m_emptyChunk;
     LevelChunk* m_waterChunk;
     ChunkStorage* m_storage;
@@ -93,8 +106,6 @@ private:
     LevelChunk** m_cache;
     std::deque<LevelChunk*> m_toDrop;
     C4JCriticalSection m_csLoadCreate;
-    int m_xzSize;
-    int m_xzOffset;
     bool* m_hasData;
     Level* m_level;
     Dimension* m_dimension;

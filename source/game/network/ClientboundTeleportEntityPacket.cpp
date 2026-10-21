@@ -6,12 +6,14 @@
 #include <boost/pointer_cast.hpp>
 #include "game/core/Mth.hpp"
 
-ClientboundTeleportEntityPacket::ClientboundTeleportEntityPacket() : mId(-1), mX(0), mY(0), mZ(0), myRot(0), mxRot(0)
+ClientboundTeleportEntityPacket::ClientboundTeleportEntityPacket()
+    : mId(-1), mX(0), mY(0), mZ(0), myRot(0), mxRot(0), mOnGround(false), mWide(false)
 {
 }
 
 ClientboundTeleportEntityPacket::ClientboundTeleportEntityPacket(boost::shared_ptr<Entity> entity)
 {
+    mWide = false;
     mId = entity->getId();
     mX = Mth::floor(entity->mX * 32.0);
     mY = Mth::floor(entity->mY * 32.0);
@@ -28,9 +30,9 @@ int ClientboundTeleportEntityPacket::getPacketId()
 void ClientboundTeleportEntityPacket::read(DataInputStream* input)
 {
     mId = input->readVarInt();
-    mX = input->readShort();
-    mY = input->readShort();
-    mZ = input->readShort();
+    mX = mWide ? input->readInt() : input->readShort();
+    mY = mWide ? input->readInt() : input->readShort();
+    mZ = mWide ? input->readInt() : input->readShort();
     myRot = input->readByte();
     mxRot = input->readByte();
     mOnGround = input->readBoolean();
@@ -55,6 +57,34 @@ void ClientboundTeleportEntityPacket::handle(PacketListener* listener)
 int ClientboundTeleportEntityPacket::getEstimatedSize()
 {
     return 10;
+}
+
+bool ClientboundTeleportEntityPacket::hasWideForm()
+{
+    return true;
+}
+
+int ClientboundTeleportEntityPacket::getWidePacketId()
+{
+    return WIDE_PACKET_ID;
+}
+
+void ClientboundTeleportEntityPacket::writeWide(DataOutputStream* output)
+{
+    output->writeVarInt(mId);
+    output->writeInt(mX);
+    output->writeInt(mY);
+    output->writeInt(mZ);
+    output->writeByte(myRot);
+    output->writeByte(mxRot);
+    output->writeBoolean(mOnGround);
+}
+
+boost::shared_ptr<Packet> ClientboundTeleportEntityPacket::createWide()
+{
+    ClientboundTeleportEntityPacket* packet = new ClientboundTeleportEntityPacket();
+    packet->mWide = true;
+    return boost::shared_ptr<Packet>(packet);
 }
 
 bool ClientboundTeleportEntityPacket::canBeInvalidated()

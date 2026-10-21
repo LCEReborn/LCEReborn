@@ -71,6 +71,7 @@ public:
     bool chunkInRange(int x, int z, int centerX, int centerZ, int distance);
     int viewDistanceFor(boost::shared_ptr<ServerPlayer> player);
     bool shouldActuallyDropChunks();
+    bool clientsMustDropChunks();
     void setViewDistance(int distance);
     void tick();
     static long long getKeyForChunk(int x, int z);

@@ -36,8 +36,11 @@ public:
     static boost::shared_ptr<Packet> readPacket(DataInputStream* input, bool isServer, unsigned int& packetsRead,
                                                 bool& protocolError);
     static void writePacket(boost::shared_ptr<Packet> packet, DataOutputStream* output, bool isServer,
-                            unsigned int& packetsWritten);
+                            unsigned int& packetsWritten, bool wide = false);
     static bool canSendToAnyClient(boost::shared_ptr<Packet> packet);
+    virtual bool hasWideForm();
+    virtual int getWidePacketId();
+    virtual void writeWide(DataOutputStream* output);
 
     static void writeUtf(const std::wstring& text, DataOutputStream* output);
     static std::wstring readUtf(DataInputStream* input, int maxLength);

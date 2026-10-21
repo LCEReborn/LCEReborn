@@ -13,6 +13,7 @@
 
 ClientboundAddMobPacket::ClientboundAddMobPacket()
 {
+    mWide = false;
     id = -1;
     uuid = L"";
     type = 0;
@@ -56,6 +57,7 @@ ClientboundAddMobPacket::~ClientboundAddMobPacket()
 void ClientboundAddMobPacket::init(boost::shared_ptr<LivingEntity> entity, int yRot, int xRot, int x, int y, int z,
                                    int yHeadRot, CompoundTag* additionalContructionDataTag)
 {
+    mWide = false;
     id = entity->getId();
     uuid = entity->getUUID();
     type = EntityIO::sRegistry.getId(entity->GetType());
@@ -133,9 +135,9 @@ void ClientboundAddMobPacket::read(DataInputStream* input)
     id = input->readShort();
     uuid = input->readUTF();
     type = input->readVarInt();
-    x = input->readShort();
-    y = input->readShort();
-    z = input->readShort();
+    x = mWide ? input->readInt() : input->readShort();
+    y = mWide ? input->readInt() : input->readShort();
+    z = mWide ? input->readInt() : input->readShort();
     yRot = input->readByte();
     xRot = input->readByte();
     yHeadRot = input->readByte();
@@ -168,12 +170,48 @@ void ClientboundAddMobPacket::read(DataInputStream* input)
 
 void ClientboundAddMobPacket::write(DataOutputStream* output)
 {
+    writeFields(output, false);
+}
+
+bool ClientboundAddMobPacket::hasWideForm()
+{
+    return true;
+}
+
+int ClientboundAddMobPacket::getWidePacketId()
+{
+    return WIDE_PACKET_ID;
+}
+
+void ClientboundAddMobPacket::writeWide(DataOutputStream* output)
+{
+    writeFields(output, true);
+}
+
+boost::shared_ptr<Packet> ClientboundAddMobPacket::createWide()
+{
+    ClientboundAddMobPacket* packet = new ClientboundAddMobPacket();
+    packet->mWide = true;
+    return boost::shared_ptr<Packet>(packet);
+}
+
+void ClientboundAddMobPacket::writeFields(DataOutputStream* output, bool wide)
+{
     output->writeShort(id);
     output->writeUTF(uuid);
     output->writeVarInt(type);
-    output->writeShort(x);
-    output->writeShort(y);
-    output->writeShort(z);
+    if (wide)
+    {
+        output->writeInt(x);
+        output->writeInt(y);
+        output->writeInt(z);
+    }
+    else
+    {
+        output->writeShort(x);
+        output->writeShort(y);
+        output->writeShort(z);
+    }
     output->writeByte(yRot);
     output->writeByte(xRot);
     output->writeByte(yHeadRot);

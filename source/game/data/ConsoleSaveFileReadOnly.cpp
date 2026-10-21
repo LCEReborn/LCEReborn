@@ -1,4 +1,5 @@
 #include "game/core/CConsoleMinecraftApp.hpp"
+#include "game/data/ConsoleSaveFileOriginal.hpp"
 #include "game/data/ConsoleSaveFileReadOnly.hpp"
 
 #include <algorithm>
@@ -19,7 +20,7 @@ ConsoleSaveFileReadOnly::ConsoleSaveFileReadOnly(const std::wstring& filename, v
     : ConsoleSaveFileCommon()
 {
     if (sSaveData == NULL)
-        sSaveData = VirtualAlloc(NULL, 0x4000000, 0x2000, 4);
+        sSaveData = VirtualAlloc(NULL, ConsoleSaveFileOriginal::SAVE_DATA_RESERVE, 0x2000, 4);
     mData = sSaveData;
 
     unsigned int saveDataSize = dataSize;
@@ -45,7 +46,7 @@ ConsoleSaveFileReadOnly::ConsoleSaveFileReadOnly(const std::wstring& filename, v
 
 ConsoleSaveFileReadOnly::~ConsoleSaveFileReadOnly()
 {
-    VirtualFree(sSaveData, 0x4000000, 0x4000);
+    VirtualFree(sSaveData, ConsoleSaveFileOriginal::SAVE_DATA_RESERVE, 0x4000);
     sSaveDataPages = 0;
 }
 
@@ -58,7 +59,7 @@ void ConsoleSaveFileReadOnly::refreshFromLevelgen()
         void* saveData = options->getBaseSaveData(saveDataSize);
         if (saveData != NULL && saveDataSize != 0)
         {
-            VirtualFree(sSaveData, 0x4000000, 0x4000);
+            VirtualFree(sSaveData, ConsoleSaveFileOriginal::SAVE_DATA_RESERVE, 0x4000);
             sSaveDataPages = 0;
             mFileHeader.Reset();
 #if LCE_PLATFORM_PC

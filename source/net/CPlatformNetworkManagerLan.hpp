@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include <boost/unordered_set.hpp>
+
 #include "game/core/CriticalSection.hpp"
 #include "game/core/GameSessionData.hpp"
 #include "game/network/CPlatformNetworkManager.hpp"
@@ -95,6 +97,7 @@ public:
     virtual void SystemFlagAddPlayer(INetworkPlayer* player);
     virtual void SystemFlagSet(INetworkPlayer* player, int flag);
     virtual bool SystemFlagGet(INetworkPlayer* player, int flag);
+    virtual void SystemFlagClear(INetworkPlayer* player, int flag);
     virtual void SystemFlagClearAll(INetworkPlayer* player);
     virtual std::wstring GatherStats();
     virtual std::wstring GatherRTTStats();
@@ -197,7 +200,7 @@ private:
     struct PlayerFlags
     {
         INetworkPlayer* player;
-        std::vector<unsigned char> flags;
+        boost::unordered_set<int> flags;
     };
 
     struct PendingRemoval
@@ -278,7 +281,6 @@ private:
     std::vector<NetworkPlayerLan*> m_roomPlayers;
     std::map<std::wstring, std::wstring> m_displayNames;
     std::vector<PlayerFlags> m_playerFlags;
-    unsigned int m_maxSystemFlags;
     unsigned char m_nextSmallId;
     bool m_host;
     bool m_inSession;

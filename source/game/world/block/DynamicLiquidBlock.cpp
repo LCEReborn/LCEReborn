@@ -90,10 +90,7 @@ bool DynamicLiquidBlock::_isWaterBlocking(Level* level, const BlockPos& pos, con
 bool DynamicLiquidBlock::_canSpreadTo(Level* level, const BlockPos& pos, const BlockPos& sourcePos,
                                       const Direction* direction)
 {
-    int size = level->mChunkCacheSize;
-    int chunkX = (pos.x >> 4) + size / 2;
-    int chunkZ = (pos.z >> 4) + size / 2;
-    if (chunkX >= 0 && chunkX < size && chunkZ >= 0 && chunkZ < size)
+    if (level->isChunkInCacheRange(pos.x >> 4, pos.z >> 4))
     {
         Block* liquid = Block::byId(LiquidBlock::getLiquidElement(level, pos) >> 4);
         if (liquid->mMaterial != mMaterial && liquid->mMaterial != Material::LAVA)

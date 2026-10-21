@@ -6,6 +6,8 @@
 #include "game/network/PacketListener.hpp"
 #include "game/world/biome/arrayWithLength.hpp"
 
+const std::wstring ClientboundCustomPayloadPacket::WORLD_SIZE_PACKET = L"LCE|World";
+
 ClientboundCustomPayloadPacket::ClientboundCustomPayloadPacket()
 {
 }

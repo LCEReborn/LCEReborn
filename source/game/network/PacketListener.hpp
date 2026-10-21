@@ -265,6 +265,7 @@ public:
     virtual void handleVote(boost::shared_ptr<VotePacket> packet);
     virtual void handleClientboundSetPlayerTeamPacket(boost::shared_ptr<ClientboundSetPlayerTeamPacket> packet);
     virtual bool isServerPacketListener();
+    virtual bool usesWideCoordinates();
 };
 
 #endif

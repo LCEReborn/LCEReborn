@@ -305,7 +305,9 @@ ClientPacketListener::ClientPacketListener(Minecraft* minecraft, Socket* socket,
       m_destroyedBlockCount(0),
       m_playerId(playerId),
       m_savedDataStorage(0),
-      m_sentViewDistance(-1)
+      m_sentViewDistance(-1),
+      m_worldXZSize(0),
+      m_worldHellScale(0)
 {
     InitializeCriticalSection(&m_mutex);
     m_savedDataStorage = new SavedDataMemoryStorage();
@@ -1431,17 +1433,11 @@ void ClientPacketListener::handleChunkVisibilityArea(boost::shared_ptr<ChunkVisi
         }
         else
         {
-            const int radius = m_level->mDimension->getXZSize() / 2;
-            for (int x = -radius; x <= radius; ++x)
+            const std::vector<ChunkPos> loaded = m_level->getClientChunkCache()->getLoadedPositions();
+            for (std::vector<ChunkPos>::const_iterator it = loaded.begin(); it != loaded.end(); ++it)
             {
-                for (int z = -radius; z <= radius; ++z)
-                {
-                    if (x < packet->minX || x > packet->maxX || z < packet->minZ || z > packet->maxZ)
-                    {
-                        if (m_level->hasChunk(x, z, false))
-                            m_level->setChunkVisible(x, z, packet->visible, packet->loaded);
-                    }
-                }
+                if (it->x < packet->minX || it->x > packet->maxX || it->z < packet->minZ || it->z > packet->maxZ)
+                    m_level->setChunkVisible(it->x, it->z, packet->visible, packet->loaded);
             }
         }
     }
@@ -2616,10 +2612,13 @@ void ClientPacketListener::handlePreLogin(boost::shared_ptr<ClientboundPreLoginP
         gProfile->GetXUID(m_playerId, &offlineUid, false);
 
         const bool friendsOnly = CGameNetworkManager::sInstance.IsFriendsOnlyUGC(m_playerId);
-        send(boost::shared_ptr<ClientboundLoginPacket>(new ClientboundLoginPacket(
+        boost::shared_ptr<ClientboundLoginPacket> login(new ClientboundLoginPacket(
             m_minecraft->mUser->name, 0x13c, offlineUid, onlineUid, friendsOnly, packet->mSeed,
             GameSettings::GetPlayerSkinId(m_playerId), GameSettings::GetPlayerCapeId(m_playerId),
-            gProfile->IsGuest(m_playerId), false)));
+            gProfile->IsGuest(m_playerId), false));
+        login->mUnknownValue3 =
+            ClientboundLoginPacket::LCE_CAPABILITY_MAGIC | ClientboundLoginPacket::LCE_CAPABILITY_WIDE_COORDINATES;
+        send(login);
 
         if (!CGameNetworkManager::sInstance.IsHost())
             m_minecraft->mProgressRenderer->progressStagePercentage(50);
@@ -2943,7 +2942,9 @@ void ClientPacketListener::handleRespawn(boost::shared_ptr<ClientboundRespawnPac
             LevelSettings* settings = new LevelSettings(
                 packet->m_mapSeed, packet->getPlayerGameType(), false,
                 m_minecraft->mLevel->getLevelData()->isHardcore(), packet->m_newSeaLevel, packet->getLevelType(),
-                packet->m_xzSize, packet->m_hellScale, packet->m_cloudHeight, packet->m_modernEnd, packet->m_biomeScale,
+                m_worldXZSize != 0 ? m_worldXZSize : packet->m_xzSize,
+                m_worldXZSize != 0 ? m_worldHellScale : packet->m_hellScale, packet->m_cloudHeight, packet->m_modernEnd,
+                packet->m_biomeScale,
                 packet->m_biomeCentreXChunk, packet->m_biomeCentreZChunk);
             level = new MultiPlayerLevel(this, settings, packet->getDimension(), packet->getDifficulty(),
                                          packet->m_seaLevel);
@@ -3661,6 +3662,20 @@ void ClientPacketListener::handleCustomPayload(boost::shared_ptr<ClientboundCust
         not_null_ptr<ItemInstance> book = hand == 1 ? m_minecraft->mLocalPlayers[m_playerId]->getOffhandItem()
                                                     : m_minecraft->mLocalPlayers[m_playerId]->getMainHandItem();
         book->getItem();
+    }
+    else if (packet->getIdentifier() == ClientboundCustomPayloadPacket::WORLD_SIZE_PACKET)
+    {
+        m_worldXZSize = input.readInt();
+        m_worldHellScale = input.readInt();
+        for (int dimension = -1; dimension <= 1; ++dimension)
+        {
+            MultiPlayerLevel* level = m_minecraft->getLevel(dimension);
+            if (level != NULL)
+            {
+                level->getLevelData()->setWorldSize(m_worldXZSize, m_worldHellScale);
+                level->mDimension->updateXZSize();
+            }
+        }
     }
     byteStream.reset();
 }

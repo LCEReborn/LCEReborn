@@ -150,7 +150,8 @@ ServerGamePacketListenerImpl::ServerGamePacketListenerImpl(MinecraftServer* serv
       mAboveGroundVehicleTickCount(0),
       mReceivedMovePacketCount(0),
       mKnownMovePacketCount(0),
-      mRequestedViewDistance(VideoSettings::RENDER_DISTANCE_DEFAULT)
+      mRequestedViewDistance(VideoSettings::RENDER_DISTANCE_DEFAULT),
+      mWideCoordinates(false)
 {
     connection->setListener(this);
     mPlayer = player;
@@ -1220,6 +1221,11 @@ void ServerGamePacketListenerImpl::handlePlayerAbilities(boost::shared_ptr<Serve
 int ServerGamePacketListenerImpl::getRequestedViewDistance() const
 {
     return mRequestedViewDistance;
+}
+
+bool ServerGamePacketListenerImpl::usesWideCoordinates()
+{
+    return mWideCoordinates;
 }
 
 void ServerGamePacketListenerImpl::handleCustomPayload(boost::shared_ptr<ServerboundCustomPayloadPacket> packet)

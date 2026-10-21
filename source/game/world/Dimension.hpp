@@ -50,6 +50,7 @@ public:
     virtual bool canUnloadChunk(int x, int z);
     virtual const DimensionType* getType() const = 0;
     virtual int getXZSize();
+    void updateXZSize();
     virtual AABB* getPlayerConstraints(const BlockPos& pos);
     virtual bool inPlayerConstraints(const BlockPos& pos);
     virtual bool containsChunk(int x, int z);

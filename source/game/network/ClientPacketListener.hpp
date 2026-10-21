@@ -257,6 +257,8 @@ private:
     int m_playerId;
     SavedDataMemoryStorage* m_savedDataStorage;
     int m_sentViewDistance;
+    int m_worldXZSize;
+    int m_worldHellScale;
 };
 
 #endif

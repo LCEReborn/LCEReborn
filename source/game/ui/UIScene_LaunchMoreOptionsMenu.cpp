@@ -26,6 +26,7 @@
 #include "platform/CInput.hpp"
 #include "platform/CProfile.hpp"
 #include "game/core/GameSettings.hpp"
+#include "game/world/LevelData.hpp"
 
 extern ConsoleUIController gConsoleUIController;
 
@@ -74,6 +75,11 @@ static int descriptionIds[] = {IDS_GAMEOPTION_ONLINE,
                                IDS_MG02_SPECTATOR_PARTICIPATION_DESC,
                                IDS_MG02_LAYER_SCALE_DESC,
                                IDS_MG02_LAYER_COUNT_DESC};
+
+static const int WORLD_SIZE_SLIDER_ID = 0x36;
+static const int worldSizeLabels[LevelData::WORLD_SIZE_COUNT] = {
+    static_cast<int>(IDS_WORLD_SIZE_CLASSIC), static_cast<int>(IDS_SMALL), static_cast<int>(IDS_MEDIUM),
+    static_cast<int>(IDS_LARGE)};
 
 static float arenaSizeTable[] = {0.5f, 0.625f, 0.75f, 0.875f, 1.0f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f};
 
@@ -197,7 +203,8 @@ void UIScene_LaunchMoreOptionsMenu::UpdateDescriptionText()
     if (m_focusedItemId == -1)
         return;
 
-    int descriptionId = descriptionIds[m_focusedItemId];
+    int descriptionId = m_focusedItemId == WORLD_SIZE_SLIDER_ID ? static_cast<int>(IDS_GAMEOPTION_WORLD_SIZE)
+                                                              : descriptionIds[m_focusedItemId];
     std::wstring description(L"");
     bool hiDef;
     if (descriptionId == -1 || descriptionId == -2)
@@ -403,6 +410,13 @@ void UIScene_LaunchMoreOptionsMenu::_init()
                 m_worldOptionsList.AddNewLabel(std::wstring(L10N::GetString(0xae4164b2)), 0x34);
                 m_worldOptionsList.AddNewCheckbox(std::wstring(L10N::GetString(IDS_FIND_BALANCED)), 0x17,
                                                   m_initData->mFindBalancedSeed);
+#if LCE_PLATFORM_PC
+                m_worldOptionsList.AddNewLabel(std::wstring(L" "), 0x34);
+                m_worldOptionsList.AddNewLabel(std::wstring(L10N::GetString(IDS_WORLD_SIZE)), 0x34);
+                m_worldOptionsList.AddNewSlider(std::wstring(L10N::GetString(worldSizeLabels[m_initData->mWorldSize])),
+                                                WORLD_SIZE_SLIDER_ID, 0, LevelData::WORLD_SIZE_COUNT - 1,
+                                                m_initData->mWorldSize, false, 7, 3);
+#endif
                 m_worldOptionsList.AddNewLabel(std::wstring(L" "), 0x34);
                 m_worldOptionsList.AddNewLabel(std::wstring(L10N::GetString(IDS_BIOME_SCALE)), 0x34);
                 m_worldOptionsList.AddNewSlider(std::wstring(L10N::GetString(biomeLabels[m_initData->mBiomeScale])),
@@ -811,6 +825,12 @@ void UIScene_LaunchMoreOptionsMenu::handleSliderElementMove(int, int second, int
         m_initData->mSettingsChanged = true;
         return;
     }
+    case WORLD_SIZE_SLIDER_ID:
+        m_initData->mWorldSize = value;
+        m_worldOptionsList.SetItemLabel(WORLD_SIZE_SLIDER_ID, UIString(L10N::GetString(worldSizeLabels[value])),
+                                        false);
+        m_initData->mSettingsChanged = true;
+        return;
     case 0x1c:
         m_initData->mMatchmakingFilters[0] = value;
         m_lootSet.Update(m_gameOptionsList, value);

@@ -166,8 +166,12 @@ void PlayerChunkContainer::remove(boost::shared_ptr<ServerPlayer> player, bool s
                 }
                 if (!sentToSameSystem)
                 {
+                    const bool drop = mMap->shouldActuallyDropChunks() || mMap->clientsMustDropChunks();
                     player->mConnection->send(boost::shared_ptr<ChunkVisibilityPacket>(
-                        new ChunkVisibilityPacket(mPos.x, mPos.z, false, mMap->shouldActuallyDropChunks())));
+                        new ChunkVisibilityPacket(mPos.x, mPos.z, false, drop)));
+                    if (drop)
+                        CGameNetworkManager::sInstance.SystemFlagClear(
+                            networkPlayer, ServerPlayer::getFlagIndexForChunk(mPos, mMap->mDimension));
                 }
             }
         }

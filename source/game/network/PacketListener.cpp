@@ -767,4 +767,9 @@ bool PacketListener::isServerPacketListener()
     return false;
 }
 
+bool PacketListener::usesWideCoordinates()
+{
+    return false;
+}
+
 #undef onUnhandledPacket

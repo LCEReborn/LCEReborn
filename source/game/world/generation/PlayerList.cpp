@@ -36,7 +36,10 @@
 #include "game/item/ItemInstance.hpp"
 #include "game/core/Scoreboard.hpp"
 #include "game/command/ChatCommands.hpp"
+#include "game/core/ByteArrayOutputStream.hpp"
+#include "game/core/DataOutputStream.hpp"
 #include "game/network/ClientboundChatPacket.hpp"
+#include "game/network/ClientboundCustomPayloadPacket.hpp"
 #include "game/network/ClientboundLoginPacket.hpp"
 #include "game/network/TexturePacket.hpp"
 #include "game/network/XZPacket.hpp"
@@ -664,6 +667,8 @@ void PlayerList::placeNewPlayer(Connection* connection, boost::shared_ptr<Server
     connectionListener->mFriendsOnly = loginPacket->mHardcore;
     connectionListener->mPlayerUID = loginPacket->mPlayerUID;
     connectionListener->mOldPlayerUID = loginPacket->mPlayerUID2;
+    connectionListener->mWideCoordinates = ClientboundLoginPacket::hasCapability(
+        loginPacket->mUnknownValue3, ClientboundLoginPacket::LCE_CAPABILITY_WIDE_COORDINATES);
     if (loginPacket->mHardcore)
         ++mServer->ugcPlayersVersion;
     addPlayerToReceiving(player, false);
@@ -682,6 +687,16 @@ void PlayerList::placeNewPlayer(Connection* connection, boost::shared_ptr<Server
         level->getLevelData()->getBiomeScale(), level->getLevelData()->getBiomeCentreXChunk(),
         level->getLevelData()->getBiomeCentreZChunk(),
         level->useNewSeaLevel() ? level->getSeaLevel() : -1)));
+
+    if (connectionListener->usesWideCoordinates())
+    {
+        ByteArrayOutputStream bytes;
+        DataOutputStream output(&bytes);
+        output.writeInt(level->getLevelData()->getXZSize());
+        output.writeInt(level->getLevelData()->getHellScale());
+        connectionListener->send(boost::shared_ptr<Packet>(
+            new ClientboundCustomPayloadPacket(ClientboundCustomPayloadPacket::WORLD_SIZE_PACKET, bytes.toByteArray())));
+    }
 
     connectionListener->send(boost::shared_ptr<ClientboundPlayerAbilitiesPacket>(
         new ClientboundPlayerAbilitiesPacket(&player->mAbilities, player->getId())));

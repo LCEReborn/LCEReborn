@@ -23,6 +23,11 @@ class Player;
 class LevelData
 {
 public:
+    static const int CLASSIC_WIDTH = 54;
+    static const int WORLD_SIZE_COUNT = 4;
+    static int getWorldSizeWidth(int worldSize);
+    static int getWorldSizeHellScale(int worldSize);
+
     LevelData();
     explicit LevelData(CompoundTag* tag);
     LevelData(LevelSettings* settings, const std::wstring& name);
@@ -105,6 +110,7 @@ public:
     virtual void setDimensionData(const DimensionType* dimension, CompoundTag* tag);
     virtual int getXZSize();
     virtual int getHellScale();
+    void setWorldSize(int xzSize, int hellScale);
     virtual void setModernEnd();
     virtual bool getModernEnd();
     virtual unsigned char getBiomeScale();

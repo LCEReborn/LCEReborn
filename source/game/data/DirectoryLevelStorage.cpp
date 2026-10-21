@@ -49,7 +49,7 @@ DirectoryLevelStorage::DirectoryLevelStorage(ConsoleSaveFile* saveFile, File fol
     mFixer = fixer;
     mHasLoadedMapDataMappings = false;
     mSaveFile = saveFile;
-    mUsedMappings = arrayWithLength<unsigned char>(32, true);
+    mUsedMappings = arrayWithLength<unsigned char>(MAX_MAP_IDS / 8, true);
     mStructureManager = createIfMissing ? new StructureManager(fixer) : NULL;
 }
 
@@ -323,7 +323,7 @@ LevelData* DirectoryLevelStorage::prepareLevel()
                 PlayerUID uid = input.readPlayerUID();
                 mPlayerMappings[uid].readMappings(&input);
             }
-            input.readFully(mUsedMappings);
+            input.read(mUsedMappings, 0, mUsedMappings.length);
         }
 
         if (getSaveFile()->getSaveVersion() < 5)

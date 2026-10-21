@@ -58,6 +58,7 @@ public:
     MapItemSavedData(const std::wstring& id);
     virtual ~MapItemSavedData();
     void setOrigin(double x, double z, int scale);
+    static int getOriginCoordinate(double coordinate, int scale);
     boost::shared_ptr<HoldingPlayer> getHoldingPlayer(boost::shared_ptr<Player> player);
     void setDirty(int x, int y);
     int fjEnumerateAxisPoint(int point);

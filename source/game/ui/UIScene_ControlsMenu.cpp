@@ -6,6 +6,7 @@
 
 #include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/core/CMinecraftApp.hpp"
+#include "game/core/ExtraStrings.hpp"
 #include "game/client/audio/SoundEvents.hpp"
 #include "game/core/HtmlString.hpp"
 #include "game/core/Minecraft.hpp"
@@ -24,6 +25,18 @@
 #include "game/core/GameSettings.hpp"
 
 extern ConsoleUIController gConsoleUIController;
+
+namespace
+{
+bool HoldToSneak(int player)
+{
+#if LCE_PLATFORM_PC
+    if (g_pInput->UsesKeyboard(player))
+        return !g_pInput->GetKeyboardMouseSetting(C_4JInput::EKeyboardMouseSetting_ToggleSneak);
+#endif
+    return GameSettings::GetGameSettings(player, eGameSetting_HoldToSneak) != 0;
+}
+}
 
 UIScene_ControlsMenu::UIScene_ControlsMenu(int player, void* data, UILayer* layer) : UIScene(player, layer)
 {
@@ -114,6 +127,8 @@ void UIScene_ControlsMenu::Init(int player)
                                   GameSettings::GetGameSettings(m_playerId, eGameSetting_InvertLook) != 0);
     m_controlsList.AddNewCheckbox(L10N::GetString(IDS_SOUTHPAW), EControl_SouthPaw,
                                   GameSettings::GetGameSettings(m_playerId, eGameSetting_SouthPaw) != 0);
+    m_controlsList.AddNewCheckbox(L10N::GetString(IDS_LCE_HOLD_TO_SNEAK), EControl_HoldToSneak,
+                                  HoldToSneak(m_playerId));
 
     if (GameSettings::GetGameSettings(m_playerId, eGameSetting_SouthPaw))
     {
@@ -467,6 +482,8 @@ void UIScene_ControlsMenu::UpdateControls(int player)
                                     GameSettings::GetGameSettings(m_playerId, eGameSetting_InvertLook) != 0, false);
     m_controlsList.SetCheckboxValue(EControl_SouthPaw,
                                     GameSettings::GetGameSettings(m_playerId, eGameSetting_SouthPaw) != 0, false);
+    m_controlsList.SetCheckboxValue(EControl_HoldToSneak,
+                                    HoldToSneak(m_playerId), false);
     controlString = GetControlsString(EControl_Look, mapped);
     m_controlsList.SetSecondaryLabel(EControl_Look, UIString(controlString), true, mapped, false);
     controlString = GetControlsString(EControl_Move, mapped);
@@ -622,6 +639,15 @@ void UIScene_ControlsMenu::handleCheckboxElementToggled(int first, int second, b
         if ((GameSettings::GetGameSettings(m_playerId, eGameSetting_SouthPaw) != 0) != checked)
             m_updateControls = true;
         GameSettings::SetGameSettings(m_playerId, eGameSetting_SouthPaw, checked);
+    }
+    else if (second == EControl_HoldToSneak)
+    {
+#if LCE_PLATFORM_PC
+        if (g_pInput->UsesKeyboard(m_playerId))
+            g_pInput->SetKeyboardMouseSetting(C_4JInput::EKeyboardMouseSetting_ToggleSneak, !checked);
+        else
+#endif
+            GameSettings::SetGameSettings(m_playerId, eGameSetting_HoldToSneak, checked);
     }
 }
 

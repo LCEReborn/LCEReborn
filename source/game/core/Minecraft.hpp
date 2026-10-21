@@ -119,6 +119,7 @@ public:
 
     bool isClientSide();
     bool isTutorial();
+    bool TutorialTakesBack(int pad);
     bool showOnlyReducedInfo();
     bool isUsingDefaultSkin();
 

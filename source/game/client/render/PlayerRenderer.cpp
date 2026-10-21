@@ -349,7 +349,10 @@ void PlayerRenderer::renderRightHand(boost::shared_ptr<Player> player)
     model->mAttackTime = 0.0f;
     model->mCrouching = false;
     model->mRiding = false;
+    model->mSwimming = false;
+    model->mFirstPersonArm = true;
     model->setupAnim(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, scale, player, _SkinAdjustments());
+    model->mFirstPersonArm = false;
     model->mRightArm->mXRot = 0.0f;
     model->mRightArm->render(scale, true, model->IsBodyPartDisabled(HumanoidModel::eAnimBit_RightArm));
     if (mIs64x64)
@@ -372,7 +375,10 @@ void PlayerRenderer::renderLeftHand(boost::shared_ptr<Player> player)
     model->mAttackTime = 0.0f;
     model->mCrouching = false;
     model->mRiding = false;
+    model->mSwimming = false;
+    model->mFirstPersonArm = true;
     model->setupAnim(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, scale, player, _SkinAdjustments());
+    model->mFirstPersonArm = false;
     model->mLeftArm->mXRot = 0.0f;
     model->mLeftArm->render(scale, true, model->IsBodyPartDisabled(HumanoidModel::eAnimBit_LeftArm));
     if (mIs64x64)

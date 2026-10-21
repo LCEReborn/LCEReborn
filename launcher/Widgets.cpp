@@ -8,6 +8,7 @@
 #include <QRandomGenerator>
 #include <QResizeEvent>
 #include <QTimer>
+#include <QtMath>
 
 #include "GameArt.hpp"
 
@@ -111,9 +112,15 @@ QFont GameFont(int pixelSize)
     QFont font(family.isEmpty() ? FallbackFamily() : family);
     font.setPixelSize(pixelSize);
     if (!family.isEmpty())
+    {
         font.setStyleStrategy(QFont::NoAntialias);
+        font.setWeight(QFont::Normal);
+    }
     else
+    {
+        font.setStyleStrategy(QFont::PreferDefault);
         font.setWeight(QFont::DemiBold);
+    }
     return font;
 }
 
@@ -386,6 +393,17 @@ void TabbedPanel::paintEvent(QPaintEvent*)
     }
 }
 
+bool TabbedPanel::event(QEvent* event)
+{
+    if (event->type() == QEvent::LayoutRequest || event->type() == QEvent::FontChange
+        || event->type() == QEvent::Show)
+    {
+        resizeEvent(nullptr);
+        update();
+    }
+    return QWidget::event(event);
+}
+
 void TabbedPanel::resizeEvent(QResizeEvent*)
 {
     const int inset = kPanelOutline + kPanelBevel + 6;
@@ -444,8 +462,8 @@ void ShadowLabel::SetColour(const QColor& colour)
 
 QSize ShadowLabel::sizeHint() const
 {
-    const QFontMetrics metrics(GameFont(mPixelSize));
-    return QSize(metrics.horizontalAdvance(mText) + 4, metrics.height() + 2);
+    const QFontMetricsF metrics(GameFont(mPixelSize));
+    return QSize(qCeil(metrics.horizontalAdvance(mText)) + 4, qCeil(metrics.height()) + 2);
 }
 
 QSize ShadowLabel::minimumSizeHint() const

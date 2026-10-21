@@ -16,6 +16,7 @@ public:
     virtual eTutorial_CompletionAction getCompletionAction();
     virtual void setAsCurrentTask(bool currentTask);
     virtual void handleUIInput(int input);
+    virtual bool waitsForInput(int input);
 
 private:
     void sendTelemetry();

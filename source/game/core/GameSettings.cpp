@@ -380,6 +380,8 @@ uint32_t GameSettings::GetGameSettings(int profile, eGameSetting setting)
         return gGameSettings[profile]->mSettingFlags >> 31;
     case eGameSetting_SkinAdjustments:
         return gGameSettings[profile]->mSkinFlags & 15;
+    case eGameSetting_HoldToSneak:
+        return gGameSettings[profile]->mReserved & 1;
     case eGameSetting_ControlMappings:
         return 0;
     default:
@@ -844,6 +846,9 @@ void GameSettings::SetGameSettings(int profile, eGameSetting setting, unsigned c
     case eGameSetting_SkinAdjustments:
         setGameSettingsHelper<unsigned char>(profile, setting, value, &gameSettings->mSkinFlags, 0xf, 0);
         break;
+    case eGameSetting_HoldToSneak:
+        setGameSettingsHelper<unsigned short>(profile, setting, value, &gameSettings->mReserved, 0x1, 0);
+        break;
     case eGameSetting_ControlMappings:
         break;
     default:
@@ -978,6 +983,7 @@ void GameSettings::SetDefaultControls(C4JStorage::PROFILESETTINGS* values, int p
 {
     SetGameSettings(profile, eGameSetting_InvertLook, static_cast<unsigned char>(values->values[0] != 0));
     SetGameSettings(profile, eGameSetting_SouthPaw, values->flags);
+    SetGameSettings(profile, eGameSetting_HoldToSneak, 0);
 
     for (int action = 0; action < 25; ++action)
     {

@@ -288,6 +288,12 @@ void MainWindow::OnImported()
 {
     GameArt::Reload();
     QApplication::setFont(GameFont(16));
+    for (QWidget* widget : QApplication::allWidgets())
+    {
+        QEvent fontChange(QEvent::ApplicationFontChange);
+        QCoreApplication::sendEvent(widget, &fontChange);
+        widget->updateGeometry();
+    }
     mPanorama->Reload();
     mNews->Refresh();
     mStore.NotifySkinsChanged();

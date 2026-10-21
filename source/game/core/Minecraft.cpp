@@ -602,6 +602,17 @@ bool Minecraft::isTutorial()
     return mTutorialPlayers != 0;
 }
 
+bool Minecraft::TutorialTakesBack(int pad)
+{
+    if (mGameModes[pad] == NULL || !g_pInput->UsesKeyboard(pad) || !gConsoleUIController.IsTutorialVisible(pad))
+        return false;
+    Tutorial* tutorial = mGameModes[pad]->getTutorial();
+    if (tutorial == NULL || !tutorial->waitsForInput(EControllerActions_MenuB))
+        return false;
+    tutorial->handleUIInput(EControllerActions_MenuB);
+    return true;
+}
+
 bool Minecraft::showOnlyReducedInfo()
 {
     return mPlayer && mPlayer->isReducedDebugInfo();
@@ -2383,7 +2394,7 @@ void Minecraft::run_middle()
         if (g_pInput->ButtonPressed(i, EControllerActions_Crafting,
                                     GameSettings::GetInputButton(i, true, EControllerActions_Crafting)))
             mLocalPlayers[i]->mButtonsDown |= 1LL << EControllerActions_Crafting;
-        if (g_pInput->ButtonPressed(i, EControllerActions_Pause, 0))
+        if (g_pInput->ButtonPressed(i, EControllerActions_Pause, 0) && !TutorialTakesBack(i))
             mLocalPlayers[i]->mButtonsDown |= 1LL << EControllerActions_Pause;
         if (g_pInput->ButtonPressed(i, EControllerActions_Drop,
                                     GameSettings::GetInputButton(i, true, EControllerActions_Drop)))

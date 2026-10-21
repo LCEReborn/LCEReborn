@@ -146,6 +146,11 @@ void TutorialTask::handleUIInput(int)
 {
 }
 
+bool TutorialTask::waitsForInput(int)
+{
+    return false;
+}
+
 void TutorialTask::onCrafted(not_null_ptr<ItemInstance>)
 {
 }

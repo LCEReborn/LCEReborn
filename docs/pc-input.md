@@ -215,6 +215,10 @@ Toggle Sneak restores press-to-toggle crouching, and Toggle Sprint latches the
 sprint key until another press, a context change or focus loss. The normal
 in-game restrictions on sprinting still apply.
 
+The Controls menu’s Hold to Sneak checkbox updates the same keyboard setting
+as Toggle Sneak, with the opposite value. Controllers retain their profile’s
+Hold to Sneak option.
+
 These settings are shared by the keyboard device and saved in `input.txt`
 beside `keybinds.txt`:
 

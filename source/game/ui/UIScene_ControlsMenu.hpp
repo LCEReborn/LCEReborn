@@ -51,7 +51,8 @@ public:
         EControl_Chat,
         EControl_ChatCommand,
         EControl_DebugOverlay,
-        EControl_Label
+        EControl_Label,
+        EControl_HoldToSneak
     };
 
     UIScene_ControlsMenu(int player, void* data, UILayer* layer);

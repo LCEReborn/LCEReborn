@@ -61,6 +61,8 @@ FallingBlockEntity::FallingBlockEntity(Level* level, double x, double y, double 
 FallingBlockEntity::FallingBlockEntity(Level* level) : Entity(level, true)
 {
     _init();
+    mBlockState = Blocks::sand->defaultBlockState();
+    mTime = 1;
 }
 
 FallingBlockEntity::~FallingBlockEntity()

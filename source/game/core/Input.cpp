@@ -97,7 +97,18 @@ void Input::tick(LocalPlayer* player)
         mSwimming = false;
     }
 
-    if ((!player->mAbilities.mFlying && !swimming) || player->isPassenger())
+    const bool sneakAllowed = (!player->mAbilities.mFlying && !swimming) || player->isPassenger();
+    bool holdToSneak = GameSettings::GetGameSettings(playerIndex, eGameSetting_HoldToSneak) != 0;
+#if LCE_PLATFORM_PC
+    if (g_pInput->UsesKeyboard(playerIndex))
+        holdToSneak = !g_pInput->GetKeyboardMouseSetting(C_4JInput::EKeyboardMouseSetting_ToggleSneak);
+#endif
+    if (holdToSneak)
+    {
+        mSneaking = sneakAllowed && g_pInput->ButtonDown(playerIndex, EControllerActions_Sneak)
+                    && minecraft->mGameModes[playerIndex]->isInputAllowed(EControllerActions_Sneak);
+    }
+    else if (sneakAllowed)
     {
         if ((player->mButtonsDown & (1LL << EControllerActions_Sneak)) != 0
             && minecraft->mGameModes[playerIndex]->isInputAllowed(EControllerActions_Sneak))
@@ -105,16 +116,6 @@ void Input::tick(LocalPlayer* player)
             mSneaking = !mSneaking;
         }
     }
-
-#if LCE_PLATFORM_PC
-    if (g_pInput->UsesKeyboard(playerIndex)
-        && !g_pInput->GetKeyboardMouseSetting(C_4JInput::EKeyboardMouseSetting_ToggleSneak))
-    {
-        mSneaking = ((!player->mAbilities.mFlying && !swimming) || player->isPassenger())
-                    && g_pInput->ButtonDown(playerIndex, EControllerActions_Sneak)
-                    && minecraft->mGameModes[playerIndex]->isInputAllowed(EControllerActions_Sneak);
-    }
-#endif
 
     if (mSneaking)
     {

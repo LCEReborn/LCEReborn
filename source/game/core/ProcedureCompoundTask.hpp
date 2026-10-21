@@ -24,6 +24,7 @@ public:
     virtual bool isCompleted();
     virtual void onCrafted(not_null_ptr<ItemInstance> item);
     virtual void handleUIInput(int input);
+    virtual bool waitsForInput(int input);
     virtual void setAsCurrentTask(bool currentTask);
     virtual bool ShowMinimumTime();
     virtual bool hasBeenActivated();

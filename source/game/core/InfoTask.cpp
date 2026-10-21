@@ -118,6 +118,12 @@ void InfoTask::setAsCurrentTask(bool currentTask)
     TutorialTask::setAsCurrentTask(currentTask);
 }
 
+bool InfoTask::waitsForInput(int input)
+{
+    boost::unordered_map<int, bool>::iterator it = completedInputs.find(input);
+    return activated && it != completedInputs.end() && !it->second;
+}
+
 void InfoTask::handleUIInput(int input)
 {
     if (activated)

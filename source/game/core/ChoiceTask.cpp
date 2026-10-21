@@ -125,6 +125,11 @@ void ChoiceTask::setAsCurrentTask(bool currentTask)
     TutorialTask::setAsCurrentTask(currentTask);
 }
 
+bool ChoiceTask::waitsForInput(int input)
+{
+    return activated && shownForMinimumTime && (input == firstInput || input == secondInput);
+}
+
 void ChoiceTask::handleUIInput(int input)
 {
     if (!activated || !shownForMinimumTime)

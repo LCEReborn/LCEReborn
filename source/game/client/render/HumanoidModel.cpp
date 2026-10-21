@@ -147,6 +147,7 @@ void HumanoidModel::_init(float scale, float yOffset, int texWidth, int texHeigh
     }
 
     mSwimAmount = 0.0f;
+    mFirstPersonArm = false;
     mUseItemProgress = 0.0f;
     mCrouching = false;
     mEating = false;
@@ -541,7 +542,7 @@ void HumanoidModel::setupAnim(float limbSwing, float limbSwingAmount, float ageI
 
     if (entity)
     {
-        mSwimAmount = entity->getSwimAmount(limbSwingAmount);
+        mSwimAmount = mFirstPersonArm ? 0.0f : entity->getSwimAmount(limbSwingAmount);
 
         fallFlying = eTYPE_DERIVED_FROM(EntityType::LIVING_ENTITY, entity->GetType())
                      && boost::static_pointer_cast<LivingEntity>(entity)->getFallFlyingTicks() > 4;

@@ -51,7 +51,8 @@ enum eGameSetting
     eGameSetting_ShowGlideGhost,
     eGameSetting_ShowGlideGhostPath,
     eGameSetting_AutoJump,
-    eGameSetting_SkinAdjustments
+    eGameSetting_SkinAdjustments,
+    eGameSetting_HoldToSneak
 };
 enum EControllerActions
 {

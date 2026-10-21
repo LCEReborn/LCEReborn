@@ -58,6 +58,8 @@
 #include "game/world/block/BlockPos.hpp"
 #include "game/world/block/BlockState.hpp"
 #include "game/world/block/Blocks.hpp"
+#include "game/world/block/DynamicLiquidBlock.hpp"
+#include "game/world/block/StaticLiquidBlock.hpp"
 #include "game/world/generation/PlayerList.hpp"
 
 namespace
@@ -1070,6 +1072,15 @@ bool ParseBlockData(const CommandSource& source, const Words& words, size_t inde
     return true;
 }
 
+Block* StillLiquid(Block* block)
+{
+    if (block == Blocks::flowing_water)
+        return Blocks::water;
+    if (block == Blocks::flowing_lava)
+        return Blocks::lava;
+    return block;
+}
+
 bool SetBlock(const CommandSource& source, const Words& words)
 {
     if (words.size() < 5 || words.size() > 7)
@@ -1108,7 +1119,7 @@ bool SetBlock(const CommandSource& source, const Words& words)
 
 bool Fill(const CommandSource& source, const Words& words)
 {
-    if (words.size() < 8 || words.size() > 11)
+    if (words.size() < 8 || words.size() > 12)
         return false;
     BlockPos first;
     BlockPos second;
@@ -1122,6 +1133,7 @@ bool Fill(const CommandSource& source, const Words& words)
     if (mode != L"replace" && mode != L"destroy" && mode != L"keep" && mode != L"hollow" && mode != L"outline")
         return false;
     Block* filter = NULL;
+    int filterData = -1;
     if (words.size() > 10)
     {
         if (mode != L"replace")
@@ -1129,6 +1141,12 @@ bool Fill(const CommandSource& source, const Words& words)
         filter = FindBlock(source, words[10]);
         if (filter == NULL)
             return true;
+        filter = StillLiquid(filter);
+        if (words.size() > 11 && !ParseInt(words[11], -1, 15, &filterData))
+        {
+            Fail(source, L"The data value must be a whole number from -1 to 15.");
+            return true;
+        }
     }
 
     const int x0 = std::min(first.x, second.x);
@@ -1180,8 +1198,14 @@ bool Fill(const CommandSource& source, const Words& words)
                     continue;
                 else if (mode == L"keep" && !level->isEmptyBlock(pos))
                     continue;
-                else if (filter != NULL && level->getBlockState(pos)->getBlock() != filter)
-                    continue;
+                else if (filter != NULL)
+                {
+                    const BlockState* current = level->getBlockState(pos);
+                    Block* currentBlock = current->getBlock();
+                    if (StillLiquid(currentBlock) != filter
+                        || (filterData >= 0 && currentBlock->convertBlockStateToLegacyData(current) != filterData))
+                        continue;
+                }
                 if (mode == L"destroy")
                     level->destroyBlock(pos, true);
                 if (level->setBlock(pos, placed, Block::UPDATE_ALL, false))
@@ -1313,8 +1337,8 @@ const Entry kEntries[] = {
     {L"summon", L"<entity> [x y z]", L"entity coord coord coord", false, false, Summon},
     {L"setblock", L"<x y z> <block> [data] [replace|destroy|keep]",
      L"coord coord coord block number replace|destroy|keep", false, false, SetBlock},
-    {L"fill", L"<x1 y1 z1> <x2 y2 z2> <block> [data] [mode] [replaceBlock]",
-     L"coord coord coord coord coord coord block number replace|destroy|keep|hollow|outline block", false, false,
+    {L"fill", L"<x1 y1 z1> <x2 y2 z2> <block> [data] [mode] [replaceBlock] [replaceData]",
+     L"coord coord coord coord coord coord block number replace|destroy|keep|hollow|outline block number", false, false,
      Fill},
     {L"say", L"<message>", L"text", false, false, Say},
     {L"me", L"<action>", L"text", true, false, Me},

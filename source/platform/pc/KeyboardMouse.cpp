@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL.h>
 
+#include <algorithm>
 #include <cctype>
 #include <cstring>
 #include <fstream>
@@ -148,7 +149,14 @@ const std::vector<int>& EmptyBindings()
 PcKeyboardMouse::PcKeyboardMouse()
 {
     std::memset(mInputDown, 0, sizeof(mInputDown));
-    std::memset(mInputPressed, 0, sizeof(mInputPressed));
+    mContext = EPcInputContext_Menu;
+    mPendingAnyPressed = false;
+    mMouseSensitivity = 100;
+    mToggleSneak = false;
+    mToggleSprint = false;
+    mSprintLatched = false;
+    mWheelX = mWheelY = 0.0f;
+    mCaptureModifier = -1;
     for (int input = 0; input < INPUT_COUNT; ++input)
         mInputContext[input] = EPcInputContext_Menu;
     std::memset(mActions, 0, sizeof(mActions));
@@ -175,7 +183,8 @@ PcKeyboardMouse::PcKeyboardMouse()
 
 void PcKeyboardMouse::AddBinding(EPcInputContext context, int action, int input)
 {
-    if (action >= 0 && action < ACTION_COUNT && input >= 0 && input < INPUT_COUNT)
+    if (action >= 0 && action < ACTION_COUNT && input >= 0 && (input & INPUT_MASK) > 0
+        && (input & INPUT_MASK) < INPUT_COUNT && (input & ~(INPUT_MASK | MOD_MASK)) == 0)
         mBindings[context][action].push_back(input);
 }
 
@@ -259,22 +268,24 @@ void PcKeyboardMouse::SetDefaultBindings()
     AddBinding(game, EControllerActions_MenuOk, Key(SDL_SCANCODE_RETURN));
     AddBinding(game, EControllerActions_MenuB, Key(SDL_SCANCODE_BACKSPACE));
     AddBinding(game, EControllerActions_MenuCancel, Key(SDL_SCANCODE_BACKSPACE));
+    RebuildBindingIndex();
 }
 
 const std::vector<int>& PcKeyboardMouse::GetBindings(EPcInputContext context, int action) const
 {
-    if (action < 0 || action >= ACTION_COUNT)
+    if (context < 0 || context >= EPcInputContext_Count || action < 0 || action >= ACTION_COUNT)
         return EmptyBindings();
     return mBindings[context][action];
 }
 
 void PcKeyboardMouse::SetBindings(EPcInputContext context, int action, const std::vector<int>& inputs)
 {
-    if (action < 0 || action >= ACTION_COUNT)
+    if (context < 0 || context >= EPcInputContext_Count || action < 0 || action >= ACTION_COUNT)
         return;
     mBindings[context][action].clear();
     for (size_t index = 0; index < inputs.size(); ++index)
         AddBinding(context, action, inputs[index]);
+    RebuildBindingIndex();
 }
 
 const char* PcKeyboardMouse::ActionName(int action)
@@ -289,6 +300,21 @@ const char* PcKeyboardMouse::ActionName(int action)
 
 std::string PcKeyboardMouse::InputName(int input)
 {
+    if ((input & MOD_MASK) != 0)
+    {
+        std::string prefix;
+        if (input & MOD_CTRL)
+            prefix += "Ctrl+";
+        if (input & MOD_SHIFT)
+            prefix += "Shift+";
+        if (input & MOD_ALT)
+            prefix += "Alt+";
+        return prefix + InputName(input & INPUT_MASK);
+    }
+    if (input == INPUT_WHEEL_LEFT)
+        return "Wheel Left";
+    if (input == INPUT_WHEEL_RIGHT)
+        return "Wheel Right";
     if (input == INPUT_WHEEL_UP)
         return "Wheel Up";
     if (input == INPUT_WHEEL_DOWN)
@@ -339,10 +365,21 @@ EPcInputContext PcKeyboardMouse::ActionContext(int action)
 
 std::string PcKeyboardMouse::DisplayName(int input)
 {
+    if ((input & MOD_MASK) != 0)
+    {
+        std::string prefix;
+        if (input & MOD_CTRL)
+            prefix += "Ctrl+";
+        if (input & MOD_SHIFT)
+            prefix += "Shift+";
+        if (input & MOD_ALT)
+            prefix += "Alt+";
+        return prefix + DisplayName(input & INPUT_MASK);
+    }
     if (input >= kMouseInputBase && input < kMouseInputBase + MOUSE_BUTTON_COUNT)
     {
-        static const char* const kShortNames[MOUSE_BUTTON_COUNT] = {
-            "Mouse 0", "LMB", "MMB", "RMB", "Mouse 4", "Mouse 5", "Mouse 6", "Mouse 7"};
+        static const char* const kShortNames[MOUSE_BUTTON_COUNT] = {"Mouse 0", "LMB",     "MMB",     "RMB",
+                                                                    "Mouse 4", "Mouse 5", "Mouse 6", "Mouse 7"};
         return kShortNames[input - kMouseInputBase];
     }
     if (input >= 0 && input < SCANCODE_COUNT)
@@ -357,6 +394,24 @@ std::string PcKeyboardMouse::DisplayName(int input)
 
 int PcKeyboardMouse::InputFromName(const std::string& name)
 {
+    size_t plus = name.find('+');
+    if (plus != std::string::npos)
+    {
+        std::string prefix = Trim(name.substr(0, plus));
+        int modifier = SameText(prefix, "Ctrl")    ? MOD_CTRL
+                       : SameText(prefix, "Shift") ? MOD_SHIFT
+                       : SameText(prefix, "Alt")   ? MOD_ALT
+                                                   : 0;
+        if (modifier != 0)
+        {
+            int input = InputFromName(Trim(name.substr(plus + 1)));
+            return input > 0 ? input | modifier : -1;
+        }
+    }
+    if (SameText(name, "Wheel Left"))
+        return INPUT_WHEEL_LEFT;
+    if (SameText(name, "Wheel Right"))
+        return INPUT_WHEEL_RIGHT;
     if (SameText(name, "Wheel Up"))
         return INPUT_WHEEL_UP;
     if (SameText(name, "Wheel Down"))
@@ -370,6 +425,70 @@ int PcKeyboardMouse::InputFromName(const std::string& name)
     if (scancode != SDL_SCANCODE_UNKNOWN)
         return static_cast<int>(scancode);
     return -1;
+}
+
+int PcKeyboardMouse::GetSetting(int setting) const
+{
+    switch (setting)
+    {
+    case C_4JInput::EKeyboardMouseSetting_Sensitivity:
+        return mMouseSensitivity;
+    case C_4JInput::EKeyboardMouseSetting_ToggleSneak:
+        return mToggleSneak;
+    case C_4JInput::EKeyboardMouseSetting_ToggleSprint:
+        return mToggleSprint;
+    default:
+        return 0;
+    }
+}
+
+void PcKeyboardMouse::SetSetting(int setting, int value)
+{
+    switch (setting)
+    {
+    case C_4JInput::EKeyboardMouseSetting_Sensitivity:
+        mMouseSensitivity = std::max(1, std::min(200, value));
+        break;
+    case C_4JInput::EKeyboardMouseSetting_ToggleSneak:
+        mToggleSneak = value != 0;
+        break;
+    case C_4JInput::EKeyboardMouseSetting_ToggleSprint:
+        if (mToggleSprint != (value != 0))
+            SetToggleSprint(value != 0);
+        break;
+    }
+}
+
+void PcKeyboardMouse::LoadSettings(const std::string& path)
+{
+    std::ifstream file(path.c_str());
+    std::string line;
+    while (std::getline(file, line))
+    {
+        size_t equals = line.find('=');
+        if (equals == std::string::npos)
+            continue;
+        std::string key = Trim(line.substr(0, equals));
+        std::istringstream stream(line.substr(equals + 1));
+        int value;
+        if (!(stream >> value))
+            continue;
+        if (key == "MouseSensitivity")
+            SetSetting(C_4JInput::EKeyboardMouseSetting_Sensitivity, value);
+        else if (key == "ToggleSneak")
+            SetSetting(C_4JInput::EKeyboardMouseSetting_ToggleSneak, value);
+        else if (key == "ToggleSprint")
+            SetSetting(C_4JInput::EKeyboardMouseSetting_ToggleSprint, value);
+    }
+}
+
+bool PcKeyboardMouse::SaveSettings(const std::string& path) const
+{
+    std::ofstream file(path.c_str(), std::ios::trunc);
+    file << "MouseSensitivity = " << mMouseSensitivity << '\n';
+    file << "ToggleSneak = " << mToggleSneak << '\n';
+    file << "ToggleSprint = " << mToggleSprint << '\n';
+    return static_cast<bool>(file);
 }
 
 void PcKeyboardMouse::LoadBindings(const std::string& path)
@@ -412,6 +531,7 @@ void PcKeyboardMouse::LoadBindings(const std::string& path)
             continue;
         }
         std::vector<int> inputs;
+        bool valid = true;
         std::stringstream list(line.substr(equals + 1));
         std::string inputName;
         while (std::getline(list, inputName, ','))
@@ -424,11 +544,13 @@ void PcKeyboardMouse::LoadBindings(const std::string& path)
             {
                 SDL_LogWarn(SDL_LOG_CATEGORY_INPUT, "%s:%d: unknown input %s", path.c_str(), lineNumber,
                             inputName.c_str());
+                valid = false;
                 continue;
             }
             inputs.push_back(input);
         }
-        SetBindings(static_cast<EPcInputContext>(context), action, inputs);
+        if (valid)
+            SetBindings(static_cast<EPcInputContext>(context), action, inputs);
     }
 }
 
@@ -441,14 +563,13 @@ bool PcKeyboardMouse::SaveBindings(const std::string& path) const
         return false;
     }
     file << "# Keyboard and mouse bindings: context.Action = input, input\n";
-    file << "# Inputs use SDL key names, Mouse Left/Middle/Right/Back/Forward and Wheel Up/Down.\n";
+    file
+        << "# SDL key names, Mouse Left/Middle/Right/Back/Forward, Wheel Up/Down/Left/Right; Ctrl+/Shift+/Alt+ chords.\n";
     for (int context = 0; context < EPcInputContext_Count; ++context)
     {
         for (size_t index = 0; index < sizeof(kActionNames) / sizeof(kActionNames[0]); ++index)
         {
             const std::vector<int>& inputs = mBindings[context][kActionNames[index].action];
-            if (inputs.empty())
-                continue;
             file << kContextNames[context] << '.' << kActionNames[index].name << " = ";
             for (size_t input = 0; input < inputs.size(); ++input)
             {
@@ -462,27 +583,167 @@ bool PcKeyboardMouse::SaveBindings(const std::string& path) const
     return static_cast<bool>(file);
 }
 
-void PcKeyboardMouse::PressInput(int input, EPcInputContext context)
+int PcKeyboardMouse::ModifierForInput(int input)
 {
-    if (input < 0 || input >= INPUT_COUNT)
-        return;
-    if (!mInputDown[input])
-    {
-        mInputPressed[input] = true;
-        mInputContext[input] = context;
-    }
-    mInputDown[input] = true;
+    if (input == SDL_SCANCODE_LCTRL || input == SDL_SCANCODE_RCTRL)
+        return MOD_CTRL;
+    if (input == SDL_SCANCODE_LSHIFT || input == SDL_SCANCODE_RSHIFT)
+        return MOD_SHIFT;
+    if (input == SDL_SCANCODE_LALT || input == SDL_SCANCODE_RALT)
+        return MOD_ALT;
+    return 0;
 }
 
-void PcKeyboardMouse::ReleaseInput(int input)
+int PcKeyboardMouse::Modifiers() const
 {
-    if (input < 0 || input >= INPUT_COUNT || !mInputDown[input])
+    int modifiers = 0;
+    if (mInputDown[SDL_SCANCODE_LCTRL] || mInputDown[SDL_SCANCODE_RCTRL])
+        modifiers |= MOD_CTRL;
+    if (mInputDown[SDL_SCANCODE_LSHIFT] || mInputDown[SDL_SCANCODE_RSHIFT])
+        modifiers |= MOD_SHIFT;
+    if (mInputDown[SDL_SCANCODE_LALT] || mInputDown[SDL_SCANCODE_RALT])
+        modifiers |= MOD_ALT;
+    return modifiers;
+}
+
+void PcKeyboardMouse::RebuildBindingIndex()
+{
+    ReleaseAll();
+    for (int context = 0; context < EPcInputContext_Count; ++context)
+    {
+        for (int input = 0; input < INPUT_COUNT; ++input)
+            mBindingIndex[context][input].clear();
+        for (int action = 0; action < ACTION_COUNT; ++action)
+        {
+            const std::vector<int>& bindings = mBindings[context][action];
+            for (size_t index = 0; index < bindings.size(); ++index)
+            {
+                BindingTarget target = {action, bindings[index] & MOD_MASK};
+                mBindingIndex[context][bindings[index] & INPUT_MASK].push_back(target);
+            }
+        }
+    }
+}
+
+void PcKeyboardMouse::ChangeAction(int action, int change, unsigned long long timestamp)
+{
+    ActionState& state = mActions[action];
+    bool wasHeld = state.held != 0;
+    state.held += change;
+    if (!wasHeld && state.held != 0)
+    {
+        state.pendingPressed = true;
+        state.pressTime = timestamp;
+        state.repeatStarted = false;
+        if (action == EControllerActions_Sprint && mToggleSprint)
+            mSprintLatched = !mSprintLatched;
+    }
+    if (wasHeld && state.held == 0)
+        state.pendingReleased = true;
+}
+
+void PcKeyboardMouse::RefreshInput(int input, unsigned long long timestamp, bool activate)
+{
+    std::vector<int> next;
+    if (mInputDown[input] && mInputContext[input] == mContext)
+    {
+        int modifiers = Modifiers();
+        int best = -1;
+        const std::vector<BindingTarget>& targets = mBindingIndex[mContext][input];
+        for (size_t index = 0; index < targets.size(); ++index)
+        {
+            int required = targets[index].modifiers;
+            if ((required & modifiers) != required)
+                continue;
+            int count = ((required & MOD_CTRL) != 0) + ((required & MOD_SHIFT) != 0) + ((required & MOD_ALT) != 0);
+            if (count > best)
+                best = count;
+        }
+        for (size_t index = 0; index < targets.size(); ++index)
+        {
+            int required = targets[index].modifiers;
+            int count = ((required & MOD_CTRL) != 0) + ((required & MOD_SHIFT) != 0) + ((required & MOD_ALT) != 0);
+            if (count == best && (required & modifiers) == required
+                && (activate
+                    || std::find(mActiveActions[input].begin(), mActiveActions[input].end(), targets[index].action)
+                           != mActiveActions[input].end())
+                && std::find(next.begin(), next.end(), targets[index].action) == next.end())
+                next.push_back(targets[index].action);
+        }
+    }
+    const std::vector<int>& active = mActiveActions[input];
+    for (size_t index = 0; index < active.size(); ++index)
+    {
+        if (std::find(next.begin(), next.end(), active[index]) == next.end())
+            ChangeAction(active[index], -1, timestamp);
+    }
+    for (size_t index = 0; index < next.size(); ++index)
+    {
+        if (std::find(active.begin(), active.end(), next[index]) == active.end())
+            ChangeAction(next[index], 1, timestamp);
+    }
+    mActiveActions[input].swap(next);
+}
+
+void PcKeyboardMouse::RefreshModifiers(unsigned long long timestamp)
+{
+    for (int input = 1; input < INPUT_COUNT; ++input)
+    {
+        if (mInputDown[input])
+            RefreshInput(input, timestamp, false);
+    }
+}
+
+void PcKeyboardMouse::PressInput(int input, unsigned long long timestamp)
+{
+    if (input <= 0 || input >= INPUT_COUNT || mInputDown[input])
+        return;
+    mPendingAnyPressed = true;
+    mInputDown[input] = true;
+    mInputContext[input] = mContext;
+    RefreshInput(input, timestamp);
+    if (ModifierForInput(input))
+        RefreshModifiers(timestamp);
+}
+
+void PcKeyboardMouse::ReleaseInput(int input, unsigned long long timestamp)
+{
+    if (input <= 0 || input >= INPUT_COUNT || !mInputDown[input])
         return;
     mInputDown[input] = false;
+    RefreshInput(input, timestamp);
+    if (ModifierForInput(input))
+        RefreshModifiers(timestamp);
+}
+
+void PcKeyboardMouse::SetContext(EPcInputContext context)
+{
+    if (context == mContext)
+        return;
+    mContext = context;
+    for (int input = 0; input < INPUT_COUNT; ++input)
+        mInputContext[input] = EPcInputContext_Count;
+    for (int input = 0; input < INPUT_COUNT; ++input)
+        mActiveActions[input].clear();
+    std::memset(mActions, 0, sizeof(mActions));
+    std::memset(mFakeTicks, 0, sizeof(mFakeTicks));
+    mSprintLatched = false;
+    mPendingAnyPressed = false;
+    mAnyPressed = false;
+    mMoveX = mMoveY = 0.0f;
+    DiscardRelativeInput();
+}
+
+void PcKeyboardMouse::SetToggleSprint(bool enabled)
+{
+    mToggleSprint = enabled;
+    mSprintLatched = false;
 }
 
 void PcKeyboardMouse::BeginCapture()
 {
+    ReleaseAll();
+    mCaptureModifier = -1;
     mCapturing = true;
     mCaptured = C_4JInput::EKeyCapture_None;
 }
@@ -490,6 +751,8 @@ void PcKeyboardMouse::BeginCapture()
 void PcKeyboardMouse::CancelCapture()
 {
     mCapturing = false;
+    mCaptureModifier = -1;
+    ReleaseAll();
     mCaptured = C_4JInput::EKeyCapture_None;
 }
 
@@ -505,7 +768,8 @@ bool PcKeyboardMouse::QuickMoveHeld() const
     const std::vector<int>& inputs = mBindings[EPcInputContext_Menu][EControllerActions_QuickMoveModifier];
     for (size_t index = 0; index < inputs.size(); ++index)
     {
-        if (mInputDown[inputs[index]])
+        int input = inputs[index];
+        if (mInputDown[input & INPUT_MASK] && (Modifiers() & (input & MOD_MASK)) == (input & MOD_MASK))
             return true;
     }
     return false;
@@ -518,32 +782,94 @@ bool PcKeyboardMouse::CaptureEvent(const SDL_Event& event)
     {
     case SDL_EVENT_KEY_DOWN:
         if (event.key.repeat || event.key.scancode >= SCANCODE_COUNT)
-            return event.key.repeat;
+            return true;
+        if (ModifierForInput(event.key.scancode))
+        {
+            mInputDown[event.key.scancode] = true;
+            mCaptureModifier = event.key.scancode;
+            return true;
+        }
         input = event.key.scancode == SDL_SCANCODE_ESCAPE ? static_cast<int>(C_4JInput::EKeyCapture_Cancelled)
-                                                          : static_cast<int>(event.key.scancode);
+                                                          : static_cast<int>(event.key.scancode) | Modifiers();
+        break;
+    case SDL_EVENT_KEY_UP:
+        if (ModifierForInput(event.key.scancode))
+        {
+            mInputDown[event.key.scancode] = false;
+            if (event.key.scancode == mCaptureModifier)
+                input = mCaptureModifier;
+        }
+        if (input == C_4JInput::EKeyCapture_None)
+            return true;
         break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
         if (event.button.button >= MOUSE_BUTTON_COUNT)
-            return false;
-        input = kMouseInputBase + event.button.button;
+            return true;
+        input = (kMouseInputBase + event.button.button) | Modifiers();
         break;
     case SDL_EVENT_MOUSE_WHEEL:
-        if (event.wheel.integer_y == 0)
-            return false;
-        input = (event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -event.wheel.integer_y : event.wheel.integer_y) > 0
-                    ? INPUT_WHEEL_UP
-                    : INPUT_WHEEL_DOWN;
+    {
+        float x = event.wheel.x;
+        float y = event.wheel.y;
+        if (event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED)
+        {
+            x = -x;
+            y = -y;
+        }
+        if (x == 0.0f && y == 0.0f)
+            return true;
+        input = (SDL_fabsf(y) >= SDL_fabsf(x) ? (y > 0 ? INPUT_WHEEL_UP : INPUT_WHEEL_DOWN)
+                                              : (x > 0 ? INPUT_WHEEL_RIGHT : INPUT_WHEEL_LEFT))
+                | Modifiers();
         break;
+    }
     default:
         return false;
     }
     mCapturing = false;
+    ReleaseAll();
     mCaptured = input;
     return true;
 }
 
+bool PcKeyboardMouse::PulseInput(int input, unsigned long long timestamp)
+{
+    PressInput(input, timestamp);
+    bool bound = !mActiveActions[input].empty();
+    ReleaseInput(input, timestamp);
+    return bound;
+}
+
+void PcKeyboardMouse::Wheel(float x, float y, unsigned long long timestamp)
+{
+    mWheelX += x;
+    mWheelY += y;
+    int stepsX = static_cast<int>(mWheelX);
+    int stepsY = static_cast<int>(mWheelY);
+    mWheelX -= stepsX;
+    mWheelY -= stepsY;
+    for (int step = 0; step < SDL_abs(stepsX); ++step)
+        PulseInput(stepsX > 0 ? INPUT_WHEEL_RIGHT : INPUT_WHEEL_LEFT, timestamp);
+    for (int step = 0; step < SDL_abs(stepsY); ++step)
+    {
+        bool bound = PulseInput(stepsY > 0 ? INPUT_WHEEL_UP : INPUT_WHEEL_DOWN, timestamp);
+        if (!bound)
+        {
+            if (mContext == EPcInputContext_Game)
+            {
+                mHotbarSlot = -1;
+                mHotbarScroll += stepsY > 0 ? -1 : 1;
+            }
+            else
+                mMenuWheel += stepsY > 0 ? 1 : -1;
+        }
+    }
+}
+
 void PcKeyboardMouse::HandleEvent(const SDL_Event& event, EPcInputContext context, bool mouseCaptured)
 {
+    SetContext(context);
+    unsigned long long timestamp = event.common.timestamp != 0 ? event.common.timestamp : SDL_GetTicksNS();
     if (mCapturing && CaptureEvent(event))
         return;
     switch (event.type)
@@ -551,8 +877,8 @@ void PcKeyboardMouse::HandleEvent(const SDL_Event& event, EPcInputContext contex
     case SDL_EVENT_KEY_DOWN:
         if (event.key.repeat)
             break;
-        PressInput(static_cast<int>(event.key.scancode), context);
-        if (context == EPcInputContext_Game && event.key.scancode >= SDL_SCANCODE_1
+        PressInput(static_cast<int>(event.key.scancode), timestamp);
+        if (context == EPcInputContext_Game && Modifiers() == 0 && event.key.scancode >= SDL_SCANCODE_1
             && event.key.scancode <= SDL_SCANCODE_9)
         {
             mHotbarSlot = static_cast<int>(event.key.scancode - SDL_SCANCODE_1);
@@ -560,7 +886,7 @@ void PcKeyboardMouse::HandleEvent(const SDL_Event& event, EPcInputContext contex
         }
         break;
     case SDL_EVENT_KEY_UP:
-        ReleaseInput(static_cast<int>(event.key.scancode));
+        ReleaseInput(static_cast<int>(event.key.scancode), timestamp);
         break;
     case SDL_EVENT_MOUSE_MOTION:
         mPointerX = event.motion.x;
@@ -578,7 +904,7 @@ void PcKeyboardMouse::HandleEvent(const SDL_Event& event, EPcInputContext contex
         break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
         if (event.button.button < MOUSE_BUTTON_COUNT)
-            PressInput(kMouseInputBase + event.button.button, context);
+            PressInput(kMouseInputBase + event.button.button, timestamp);
         if (!mouseCaptured)
         {
             mPointerX = event.button.x;
@@ -591,27 +917,12 @@ void PcKeyboardMouse::HandleEvent(const SDL_Event& event, EPcInputContext contex
         break;
     case SDL_EVENT_MOUSE_BUTTON_UP:
         if (event.button.button < MOUSE_BUTTON_COUNT)
-            ReleaseInput(kMouseInputBase + event.button.button);
+            ReleaseInput(kMouseInputBase + event.button.button, timestamp);
         break;
     case SDL_EVENT_MOUSE_WHEEL:
     {
-        int steps = event.wheel.integer_y;
-        if (event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED)
-            steps = -steps;
-        if (steps == 0)
-            break;
-        int input = steps > 0 ? INPUT_WHEEL_UP : INPUT_WHEEL_DOWN;
-        mInputPressed[input] = true;
-        mInputContext[input] = context;
-        if (context == EPcInputContext_Game)
-        {
-            mHotbarSlot = -1;
-            mHotbarScroll -= steps;
-        }
-        else
-        {
-            mMenuWheel += steps;
-        }
+        float direction = event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -1.0f : 1.0f;
+        Wheel(event.wheel.x * direction, event.wheel.y * direction, timestamp);
         break;
     }
     default:
@@ -621,50 +932,33 @@ void PcKeyboardMouse::HandleEvent(const SDL_Event& event, EPcInputContext contex
 
 void PcKeyboardMouse::Update(EPcInputContext context, float initialRepeatDelay, float repeatDelay)
 {
+    SetContext(context);
     unsigned long long now = SDL_GetTicksNS();
     mMovedThisTick = mMotionSinceTick >= kMouseActivityDistance;
     mMotionSinceTick = 0.0f;
-    mAnyPressed = false;
-    for (int input = 0; input < INPUT_COUNT; ++input)
-    {
-        if (mInputPressed[input])
-            mAnyPressed = true;
-    }
-
+    mAnyPressed = mPendingAnyPressed;
+    mPendingAnyPressed = false;
     for (int action = 0; action < ACTION_COUNT; ++action)
     {
         ActionState& state = mActions[action];
-        bool down = false;
-        bool pressed = false;
-        for (int bindingContext = 0; bindingContext < EPcInputContext_Count; ++bindingContext)
-        {
-            const std::vector<int>& inputs = mBindings[bindingContext][action];
-            for (size_t index = 0; index < inputs.size(); ++index)
-            {
-                int input = inputs[index];
-                if (mInputContext[input] != static_cast<EPcInputContext>(bindingContext))
-                    continue;
-                if (mInputDown[input] || mInputPressed[input])
-                    down = true;
-                if (mInputPressed[input])
-                    pressed = true;
-            }
-        }
-        if (mFakeTicks[action] > 0)
-        {
+        bool fake = mFakeTicks[action] > 0;
+        if (fake)
             --mFakeTicks[action];
-            down = true;
-            pressed = true;
-        }
-        if (pressed && !state.down)
+        bool pressed = state.pendingPressed || (fake && !state.down);
+        bool down = state.held != 0 || state.pendingPressed || fake;
+        if (action == EControllerActions_Sprint && mToggleSprint)
+            down = mSprintLatched;
+        state.released = state.pendingReleased || (state.down && !down);
+        state.pressed = pressed;
+        if (pressed)
         {
-            state.pressTime = now;
-            state.repeatStarted = false;
-            state.nextRepeat = now + static_cast<unsigned long long>(initialRepeatDelay * 1.0e9f);
+            if (fake)
+                state.pressTime = now;
+            state.nextRepeat = state.pressTime + static_cast<unsigned long long>(initialRepeatDelay * 1.0e9f);
         }
-        state.pressed = pressed && !state.down;
-        state.released = state.down && !down;
         state.down = down;
+        state.pendingPressed = false;
+        state.pendingReleased = false;
         if (!down)
             state.repeatStarted = false;
     }
@@ -681,11 +975,6 @@ void PcKeyboardMouse::Update(EPcInputContext context, float initialRepeatDelay, 
     }
     mMoveX = right;
     mMoveY = forward;
-
-    for (int input = 0; input < INPUT_COUNT; ++input)
-    {
-        mInputPressed[input] = false;
-    }
 }
 
 bool PcKeyboardMouse::ActionRepeat(int action)
@@ -714,8 +1003,19 @@ void PcKeyboardMouse::ReleaseAll()
     for (int input = 0; input < INPUT_COUNT; ++input)
     {
         mInputDown[input] = false;
-        mInputPressed[input] = false;
+        mActiveActions[input].clear();
     }
+    for (int action = 0; action < ACTION_COUNT; ++action)
+    {
+        bool released = mActions[action].pendingReleased || mActions[action].down || mActions[action].held != 0;
+        std::memset(&mActions[action], 0, sizeof(ActionState));
+        mActions[action].pendingReleased = released;
+    }
+    std::memset(mFakeTicks, 0, sizeof(mFakeTicks));
+    mMoveX = mMoveY = 0.0f;
+    mMotionSinceTick = 0.0f;
+    mPendingAnyPressed = mAnyPressed = false;
+    mSprintLatched = false;
     DiscardRelativeInput();
 }
 
@@ -820,6 +1120,7 @@ void PcKeyboardMouse::DiscardRelativeInput()
 {
     mLookX = 0.0f;
     mLookY = 0.0f;
+    mWheelX = mWheelY = 0.0f;
     mHotbarSlot = -1;
     mHotbarScroll = 0;
     mMenuWheel = 0;

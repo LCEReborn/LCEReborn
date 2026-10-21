@@ -6,6 +6,7 @@ void PcWindowDestroy();
 void PcWindowShow();
 void PcWindowSwap();
 void PcWindowGetDrawableSize(int* width, int* height);
+void PcWindowWaitForFrame();
 void PcPumpEvents();
 void PcWindowPaceFrame();
 bool PcWindowIsFullscreen();

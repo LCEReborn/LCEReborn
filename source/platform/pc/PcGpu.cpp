@@ -44,6 +44,8 @@ void PcGpu::Destroy()
 {
     if (!device)
         return;
+    if (mFrameCommand)
+        Present();
     Submit(true);
     for (const auto& pipeline : mPipelines)
         SDL_ReleaseGPUGraphicsPipeline(device, pipeline.second);
@@ -69,11 +71,28 @@ SDL_GPUCommandBuffer* PcGpu::Command()
     {
         mCommand = SDL_AcquireGPUCommandBuffer(device);
         Check(mCommand != nullptr, "acquire command buffer");
-        ++commandSerial;
-        const float viewport[4] = {1, 1, 0, 0};
-        SDL_PushGPUVertexUniformData(mCommand, 1, viewport, sizeof(viewport));
+        BeginCommand();
     }
     return mCommand;
+}
+
+void PcGpu::BeginCommand()
+{
+    ++commandSerial;
+    const float viewport[4] = {1, 1, 0, 0};
+    SDL_PushGPUVertexUniformData(mCommand, 1, viewport, sizeof(viewport));
+}
+
+void PcGpu::SubmittedCommand()
+{
+    mCommand = nullptr;
+    // An image acquired early stays on its own command buffer until the frame
+    // moves onto it; any other acquired image was presented by this submission.
+    if (!mFrameCommand)
+    {
+        swapchain = nullptr;
+        mAcquired = false;
+    }
 }
 
 void PcGpu::EndPass()
@@ -95,9 +114,7 @@ void PcGpu::Submit(bool wait)
         // A submission also presents an acquired swapchain image, including a
         // minimized window (which can return a successful acquire with no image).
         Check(SDL_SubmitGPUCommandBuffer(mCommand), "submit command buffer");
-        mCommand = nullptr;
-        swapchain = nullptr;
-        mAcquired = false;
+        SubmittedCommand();
     }
     mUploadOffset = 0;
     if (wait)
@@ -114,25 +131,50 @@ void PcGpu::SubmitBufferUploads()
     mBufferCopy = nullptr;
 }
 
+void PcGpu::SetPresentMode(bool vsync)
+{
+    if (mVsync == vsync)
+        return;
+    Submit();
+    SDL_GPUPresentMode mode = SDL_GPU_PRESENTMODE_VSYNC;
+    if (!vsync)
+    {
+        if (SDL_WindowSupportsGPUPresentMode(device, mWindow, SDL_GPU_PRESENTMODE_MAILBOX))
+            mode = SDL_GPU_PRESENTMODE_MAILBOX;
+        else if (SDL_WindowSupportsGPUPresentMode(device, mWindow, SDL_GPU_PRESENTMODE_IMMEDIATE))
+            mode = SDL_GPU_PRESENTMODE_IMMEDIATE;
+    }
+    Check(SDL_SetGPUSwapchainParameters(device, mWindow, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, mode),
+          "set presentation mode");
+    mVsync = vsync;
+}
+
+void PcGpu::WaitForFrame(bool vsync)
+{
+    if (!device || mAcquired)
+        return;
+    SetPresentMode(vsync);
+    mFrameCommand = SDL_AcquireGPUCommandBuffer(device);
+    Check(mFrameCommand != nullptr, "acquire command buffer");
+    Check(SDL_WaitAndAcquireGPUSwapchainTexture(mFrameCommand, mWindow, &swapchain, &swapWidth, &swapHeight),
+          "acquire swapchain image");
+    mAcquired = true;
+}
+
 bool PcGpu::AcquireSwapchain(bool vsync)
 {
+    if (mFrameCommand)
+    {
+        // Send the frame drawn so far, then finish it on the image's command buffer.
+        Submit();
+        mCommand = mFrameCommand;
+        mFrameCommand = nullptr;
+        BeginCommand();
+        return swapchain != nullptr;
+    }
     if (mAcquired)
         return swapchain != nullptr;
-    if (mVsync != vsync)
-    {
-        Submit();
-        SDL_GPUPresentMode mode = SDL_GPU_PRESENTMODE_VSYNC;
-        if (!vsync)
-        {
-            if (SDL_WindowSupportsGPUPresentMode(device, mWindow, SDL_GPU_PRESENTMODE_MAILBOX))
-                mode = SDL_GPU_PRESENTMODE_MAILBOX;
-            else if (SDL_WindowSupportsGPUPresentMode(device, mWindow, SDL_GPU_PRESENTMODE_IMMEDIATE))
-                mode = SDL_GPU_PRESENTMODE_IMMEDIATE;
-        }
-        Check(SDL_SetGPUSwapchainParameters(device, mWindow, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, mode),
-              "set presentation mode");
-        mVsync = vsync;
-    }
+    SetPresentMode(vsync);
     EndPass();
     Check(SDL_WaitAndAcquireGPUSwapchainTexture(Command(), mWindow, &swapchain, &swapWidth, &swapHeight),
           "acquire swapchain image");
@@ -142,6 +184,16 @@ bool PcGpu::AcquireSwapchain(bool vsync)
 
 void PcGpu::Present()
 {
+    // A frame that drew nothing to the screen still has to give its image back.
+    if (mFrameCommand && AcquireSwapchain(mVsync))
+    {
+        SDL_GPUColorTargetInfo target = {};
+        target.texture = swapchain;
+        target.load_op = SDL_GPU_LOADOP_CLEAR;
+        target.store_op = SDL_GPU_STOREOP_STORE;
+        target.clear_color.a = 1.0f;
+        BeginPass(&target, 1);
+    }
     Submit();
 }
 
@@ -280,9 +332,7 @@ void PcGpu::Download(SDL_GPUTexture* texture, int width, int height, void* pixel
     SubmitBufferUploads();
     SDL_GPUFence* fence = SDL_SubmitGPUCommandBufferAndAcquireFence(mCommand);
     Check(fence != nullptr, "submit readback");
-    mCommand = nullptr;
-    swapchain = nullptr;
-    mAcquired = false;
+    SubmittedCommand();
     mUploadOffset = 0;
     Check(SDL_WaitForGPUFences(device, true, &fence, 1), "wait for readback");
     SDL_ReleaseGPUFence(device, fence);

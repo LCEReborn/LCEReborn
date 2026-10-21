@@ -185,6 +185,7 @@ int main(int argc, char** argv)
     unsigned int renderedFrames = 0;
     while (!PcExitRequested())
     {
+        PcWindowWaitForFrame();
         PcPumpEvents();
         InfoBarManager::StartTimingCategory(InfoBarManager::eTimingCagegory_Frame);
         gRenderer->StartFrame();

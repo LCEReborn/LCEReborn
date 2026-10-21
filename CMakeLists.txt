@@ -109,6 +109,10 @@ if(LCE_BUILD_RENDER_TESTS)
   target_link_libraries(lce_text_input PRIVATE ${LCE_SDL_TARGET})
   set_target_properties(lce_text_input PROPERTIES CXX_STANDARD 17)
   add_test(NAME text_input COMMAND lce_text_input)
+  add_executable(lce_keyboard_mouse tests/keyboard_mouse.cpp source/platform/pc/KeyboardMouse.cpp)
+  target_link_libraries(lce_keyboard_mouse PRIVATE lce_common ${LCE_SDL_TARGET})
+  set_target_properties(lce_keyboard_mouse PROPERTIES CXX_STANDARD 17)
+  add_test(NAME keyboard_mouse COMMAND lce_keyboard_mouse)
 endif()
 
 # The game core, in the C++ dialect it was written in.

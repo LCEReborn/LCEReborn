@@ -129,6 +129,14 @@ public:
     virtual unsigned char IsDRCConnected() = 0;
     virtual void AcquiredForeground() = 0;
 #if LCE_PLATFORM_PC
+    enum EKeyboardMouseSetting
+    {
+        EKeyboardMouseSetting_Sensitivity,
+        EKeyboardMouseSetting_ToggleSneak,
+        EKeyboardMouseSetting_ToggleSprint
+    };
+    virtual int GetKeyboardMouseSetting(EKeyboardMouseSetting setting) = 0;
+    virtual void SetKeyboardMouseSetting(EKeyboardMouseSetting setting, int value) = 0;
     virtual bool ConsumeMouseLook(int pad, float* x, float* y) = 0;
     virtual bool ConsumeMenuPointer(int pad, float* x, float* y) = 0;
     virtual unsigned int ConsumeMenuClicks(int pad) = 0;

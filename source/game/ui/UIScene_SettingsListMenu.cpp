@@ -20,6 +20,11 @@
 #include "game/ui/fuiRenderNode.hpp"
 #include "platform/CProfile.hpp"
 
+#if LCE_PLATFORM_PC
+#include "game/core/ExtraStrings.hpp"
+#include "platform/CInput.hpp"
+#endif
+
 extern ConsoleUIController gConsoleUIController;
 
 UIScene_SettingsListMenu::UIScene_SettingsListMenu(int sceneType, void* data, UILayer* layer)
@@ -134,6 +139,20 @@ void UIScene_SettingsListMenu::Init()
                       GameSettings::GetGameSettings(m_playerId, eGameSetting_GameSensitivity));
         m_multiList.AddNewSlider(std::wstring(text), 7, 1, 200,
                                  GameSettings::GetGameSettings(m_playerId, eGameSetting_GameSensitivity), true, 7, 3);
+#if LCE_PLATFORM_PC
+        if (g_pInput->UsesKeyboard(m_playerId))
+        {
+            int sensitivity = g_pInput->GetKeyboardMouseSetting(C_4JInput::EKeyboardMouseSetting_Sensitivity);
+            std::swprintf(text, 256, L"%ls: %d%%", L10N::GetString(IDS_LCE_MOUSE_SENSITIVITY), sensitivity);
+            m_multiList.AddNewSlider(std::wstring(text), 40, 1, 200, sensitivity, true, 7, 3);
+            m_multiList.AddNewCheckbox(std::wstring(L10N::GetString(IDS_LCE_TOGGLE_SNEAK)), 41,
+                                       g_pInput->GetKeyboardMouseSetting(C_4JInput::EKeyboardMouseSetting_ToggleSneak)
+                                           != 0);
+            m_multiList.AddNewCheckbox(std::wstring(L10N::GetString(IDS_LCE_TOGGLE_SPRINT)), 42,
+                                       g_pInput->GetKeyboardMouseSetting(C_4JInput::EKeyboardMouseSetting_ToggleSprint)
+                                           != 0);
+        }
+#endif
         if (canChangeDifficulty)
         {
             int difficulty = static_cast<int>(GameSettings::GetGameSettings(m_playerId, eGameSetting_Difficulty));
@@ -252,6 +271,14 @@ void UIScene_SettingsListMenu::Init()
 
 void UIScene_SettingsListMenu::setGameSettings()
 {
+#if LCE_PLATFORM_PC
+    if (m_multiList.CheckElementExists(41))
+        g_pInput->SetKeyboardMouseSetting(C_4JInput::EKeyboardMouseSetting_ToggleSneak,
+                                          m_multiList.GetCheckboxValue(41));
+    if (m_multiList.CheckElementExists(42))
+        g_pInput->SetKeyboardMouseSetting(C_4JInput::EKeyboardMouseSetting_ToggleSprint,
+                                          m_multiList.GetCheckboxValue(42));
+#endif
     switch (m_settingsMode)
     {
     case 0:
@@ -529,6 +556,13 @@ void UIScene_SettingsListMenu::handleSliderElementMove(int, int id, int value)
             gConsoleUIController.UpdateSelectedItemPos(m_playerId);
         }
         break;
+#if LCE_PLATFORM_PC
+    case 40:
+        g_pInput->SetKeyboardMouseSetting(C_4JInput::EKeyboardMouseSetting_Sensitivity, value);
+        std::swprintf(text, 256, L"%ls: %d%%", L10N::GetString(IDS_LCE_MOUSE_SENSITIVITY), value);
+        m_multiList.SetItemLabel(40, UIString(text), false);
+        break;
+#endif
     case 27:
         GameSettings::SetGameSettings(m_playerId, eGameSetting_InterfaceSensitivity, value);
         std::swprintf(text, 256, L"%ls: %d%%", L10N::GetString(IDS_SLIDER_SENSITIVITY_INMENU), value);

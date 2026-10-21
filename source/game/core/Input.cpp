@@ -106,6 +106,16 @@ void Input::tick(LocalPlayer* player)
         }
     }
 
+#if LCE_PLATFORM_PC
+    if (g_pInput->UsesKeyboard(playerIndex)
+        && !g_pInput->GetKeyboardMouseSetting(C_4JInput::EKeyboardMouseSetting_ToggleSneak))
+    {
+        mSneaking = ((!player->mAbilities.mFlying && !swimming) || player->isPassenger())
+                    && g_pInput->ButtonDown(playerIndex, EControllerActions_Sneak)
+                    && minecraft->mGameModes[playerIndex]->isInputAllowed(EControllerActions_Sneak);
+    }
+#endif
+
     if (mSneaking)
     {
         mMoveStrafe *= 0.3f;

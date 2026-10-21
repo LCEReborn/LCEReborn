@@ -36,10 +36,24 @@ on PC; the player's own bindings are kept in `keybinds.txt` in the save folder,
 one action per line, using SDL's key names, and that file is rewritten whenever
 the bindings change.
 
-**Action state.** Once per input tick the bound inputs are sampled, and each
-action records whether it is down, whether it was pressed or released this
-tick, and when it should next repeat. `ButtonDown`, `ButtonPressed`,
-`ButtonReleased` and `GetValue` read this directly for slot 0.
+**Action state.** SDL events update actions in arrival order through an index
+from inputs to bindings. A press and release between frames preserves both
+edges; releasing and pressing again also registers while an action was already
+down. An action with several bindings stays held until its last held binding
+releases. Repeat deadlines use the SDL event timestamp. Once per input tick,
+`ButtonDown`, `ButtonPressed`, `ButtonReleased` and `GetValue` receive that
+state. For the game's existing down queries, a short tap remains down for one
+input tick as well.
+
+Only the current menu or gameplay context can activate bindings. Changing
+contexts clears pending actions, wheel fractions and sprint toggles; a key
+held across the change must be released and pressed again. Losing focus clears
+held keys, mouse motion and toggles immediately.
+
+Wheel and touchpad input accumulates fractional steps separately on each axis.
+Vertical scrolling selects hotbar slots or scrolls menus by default. An explicit
+wheel binding consumes that direction instead; horizontal scrolling is bindable
+as Wheel Left/Right. SDL's flipped wheel direction is normalized.
 
 **Direct input.** Some PC controls have no console action:
 
@@ -152,8 +166,10 @@ is using, and every row shows that device's buttons or keys.
 - **Keyboard and mouse:** choosing a row starts a capture in
   `PcKeyboardMouse`. The next key, mouse button or wheel step becomes that
   action's only binding and is written to `keybinds.txt` straight away; Esc
-  cancels. The captured press never reaches the menus, so Enter, Esc or a
-  click can be bound like any other input.
+  cancels. Hold Ctrl, Shift or Alt while pressing a key, mouse button or wheel
+  direction to capture a chord. Pressing and releasing a modifier by itself
+  binds that modifier. Captured presses never reach menu actions.
+  Chords display as labelled keycaps in the Controls menu and prompts.
 - On PC a controller row waits for a physical button rather than a menu
   action, so a remapped menu button never hides the real one.
 - **Inventory** rows (Quick Move, Take Half) remap the container buttons.
@@ -172,6 +188,69 @@ is using, and every row shows that device's buttons or keys.
   to give it a new one. Leaving the menu with a required action unbound
   raises the game's warning. Reset to Defaults resets the keyboard bindings as
   well when the keyboard is the player's device.
+
+Bindings in `keybinds.txt` can also use chords, for example:
+
+```text
+game.PickBlock = Ctrl+Q
+game.Inventory = Alt+Wheel Right
+menu.QuickMove = Left Shift, Right Shift
+```
+
+Ctrl/Shift/Alt match either side of the keyboard. For the same primary input,
+the matching chord with the most modifiers takes precedence over a plain
+binding. Chords activate when the primary input is pressed with its modifiers
+held. Releasing a modifier releases that chord without firing the plain
+binding. Modifier keys can still operate their own actions, such as Ctrl for
+sprint. Empty binding lines persist deliberately unbound actions; a misspelled
+input leaves the previous binding in place and logs a warning.
+
+## Keyboard and mouse settings
+
+Help & Options > Settings > Game Options shows Mouse Sensitivity, Toggle Sneak and
+Toggle Sprint when using the keyboard. Mouse Sensitivity is independent of
+the existing in-game sensitivity slider used for controllers. It defaults to
+100% and ranges from 1% to 200%. Sneak and sprint default to hold; enabling
+Toggle Sneak restores press-to-toggle crouching, and Toggle Sprint latches the
+sprint key until another press, a context change or focus loss. The normal
+in-game restrictions on sprinting still apply.
+
+These settings are shared by the keyboard device and saved in `input.txt`
+beside `keybinds.txt`:
+
+```text
+MouseSensitivity = 100
+ToggleSneak = 0
+ToggleSprint = 0
+```
+
+## Native input and latency
+
+Windows enables SDL's [raw keyboard events](https://wiki.libsdl.org/SDL3/SDL_HINT_WINDOWS_RAW_KEYBOARD).
+Text entry continues through SDL text input and IME; committed text and
+composition updates have separate paths. An explicit SDL environment hint
+can override the raw-keyboard default. Linux uses SDL's Wayland relative
+pointer and locking support, or the X11 backend when selected. Mouse look
+uses [relative mouse mode](https://wiki.libsdl.org/SDL3/SDL_SetWindowRelativeMouseMode)
+with system acceleration disabled by default. Fullscreen menus confine the
+pointer while focused and release it on focus loss.
+
+The frame waits for its swapchain image before sampling input. Near 60 Hz,
+VSync supplies the frame timing with a slightly higher timer cap so the two
+clocks do not drift into an extra wait after input. Other refresh rates and
+VSync-off keep the existing 60 fps cap. The renderer pumps pending events
+again immediately before applying mouse look, retaining action events for
+the next input tick while consuming the latest motion for this frame.
+
+The native Linux build and Wayland/Vulkan presentation can be verified here;
+Windows raw keyboard behavior still needs a Windows runtime check.
+
+The input regression suite is part of `LCE_BUILD_RENDER_TESTS`:
+
+```sh
+cmake --build build/linux --target lce_keyboard_mouse
+ctest --test-dir build/linux --output-on-failure
+```
 
 ## What changes in the game
 

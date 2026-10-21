@@ -57,6 +57,7 @@
 #if LCE_PLATFORM_PC
 #include "game/item/PowerupItems.hpp"
 #include "platform/CInput.hpp"
+#include "platform/pc/PcWindow.hpp"
 #endif
 #include "game/core/System.hpp"
 #include "game/entity/mob/Animal.hpp"
@@ -3229,6 +3230,7 @@ void GameRenderer::renderItemActivationAnimation(int width, int height, float pa
 #if LCE_PLATFORM_PC
 static void ApplyMouseLook(Minecraft* minecraft)
 {
+    PcPumpEvents();
     for (int player = 0; player < 4; ++player)
     {
         float x;
@@ -3255,7 +3257,8 @@ static void ApplyMouseLook(Minecraft* minecraft)
             y = -y;
         }
         float sensitivity =
-            static_cast<float>(GameSettings::GetGameSettings(player, eGameSetting_GameSensitivity)) / 200.0f * 0.6f
+            static_cast<float>(g_pInput->GetKeyboardMouseSetting(C_4JInput::EKeyboardMouseSetting_Sensitivity))
+                / 200.0f * 0.6f
             + 0.2f;
         float scale = sensitivity * sensitivity * sensitivity * 8.0f;
         localPlayer->turn(x * scale, y * scale);

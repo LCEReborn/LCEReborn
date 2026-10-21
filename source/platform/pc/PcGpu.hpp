@@ -15,6 +15,11 @@ public:
     SDL_GPUCommandBuffer* Command();
     void EndPass();
     void Submit(bool wait = false);
+    // Waits for the next swapchain image before the frame reads its input, so
+    // the wait for the display is not added to the age of that input. The image
+    // is held on a command buffer of its own; work submitted during the frame
+    // leaves it alone, and AcquireSwapchain finishes the frame on it.
+    void WaitForFrame(bool vsync);
     bool AcquireSwapchain(bool vsync);
     void Present();
     SDL_GPURenderPass* BeginPass(const SDL_GPUColorTargetInfo* colours, int count,
@@ -44,9 +49,13 @@ public:
 
 private:
     void SubmitBufferUploads();
+    void SetPresentMode(bool vsync);
+    void BeginCommand();
+    void SubmittedCommand();
     SDL_GPUTransferBuffer* Stage(const void* data, Uint32 size, Uint32& offset);
     SDL_Window* mWindow = nullptr;
     SDL_GPUCommandBuffer* mCommand = nullptr;
+    SDL_GPUCommandBuffer* mFrameCommand = nullptr;
     SDL_GPUCommandBuffer* mBufferCommand = nullptr;
     SDL_GPUCopyPass* mBufferCopy = nullptr;
     SDL_GPUGraphicsPipeline* mBoundPipeline = nullptr;

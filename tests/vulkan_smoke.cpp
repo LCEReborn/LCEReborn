@@ -312,6 +312,9 @@ int main(int argc, char** argv)
 
     // Exercise native surface presentation, resize and VSync changes. An SDL
     // compositor may temporarily return no image during a resize; that is valid.
+    // From frame 4 the image is taken at the start of the frame, as the game
+    // does, and kept through a submission partway through the frame; frame 36
+    // draws nothing to it.
     int presented = 0;
     for (int frame = 0; presentation && frame < 40; ++frame)
     {
@@ -342,7 +345,17 @@ int main(int argc, char** argv)
             Require(SDL_SyncWindow(window), "wait for windowed configure");
             Require((SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) == 0, "windowed state acknowledged");
         }
-        if (gpu.AcquireSwapchain(frame < 12))
+        if (frame >= 4)
+        {
+            gpu.WaitForFrame(frame < 12);
+            SDL_GPUColorTargetInfo offscreen = {};
+            offscreen.texture = output;
+            offscreen.load_op = SDL_GPU_LOADOP_CLEAR;
+            offscreen.store_op = SDL_GPU_STOREOP_STORE;
+            gpu.BeginPass(&offscreen, 1);
+            gpu.Submit();
+        }
+        if (frame != 36 && gpu.AcquireSwapchain(frame < 12))
         {
             ++presented;
             int width = 0, height = 0;

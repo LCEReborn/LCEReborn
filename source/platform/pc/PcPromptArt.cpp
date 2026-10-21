@@ -375,6 +375,8 @@ std::string KeyLabel(int input)
 
 Image ComposeInput(int input)
 {
+    if (input & PcKeyboardMouse::MOD_MASK)
+        return TextKey(KeyLabel(input));
     switch (input)
     {
     case SDL_SCANCODE_UP:
@@ -607,7 +609,8 @@ Image Enlarge(const Image& source)
 
 bool Compose(int art, Image* image)
 {
-    if (art >= 0 && art < PcKeyboardMouse::INPUT_COUNT)
+    if (art >= 0 && (art & PcKeyboardMouse::INPUT_MASK) < PcKeyboardMouse::INPUT_COUNT
+        && (art & ~(PcKeyboardMouse::INPUT_MASK | PcKeyboardMouse::MOD_MASK)) == 0)
     {
         *image = ComposeInput(art);
         return true;

@@ -356,6 +356,7 @@ void CInput::Initialise(int count, unsigned char gameMapCount, unsigned char men
     initialised = true;
     keyBindingsPath = PcSaveRoot() + "/keybinds.txt";
     keyboardMouse.LoadBindings(keyBindingsPath);
+    keyboardMouse.LoadSettings(PcSaveRoot() + "/input.txt");
 
     int gamepadCount = 0;
     SDL_JoystickID* gamepads = SDL_GetGamepads(&gamepadCount);
@@ -470,6 +471,9 @@ void CInput::RemoveGamepad(unsigned int gamepadId)
 
 void CInput::HandleEvent(const SDL_Event& event)
 {
+    if (!windowFocused && (event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_MOUSE_MOTION
+                           || event.type == SDL_EVENT_MOUSE_BUTTON_DOWN || event.type == SDL_EVENT_MOUSE_WHEEL))
+        return;
     switch (event.type)
     {
     case SDL_EVENT_GAMEPAD_ADDED:
@@ -502,15 +506,15 @@ void CInput::HandleEvent(const SDL_Event& event)
             HandleKeyboardTextInput(event.text.text);
             keyboardComposition.Clear();
         }
+        else if (textCapture)
+        {
+            AppendCapturedText(event.text.text);
+        }
         break;
     case SDL_EVENT_TEXT_EDITING:
         if (keyboardState == EKeyboardState_Active)
         {
             keyboardComposition.Update(event.edit.text, event.edit.start, event.edit.length);
-        }
-        else if (textCapture)
-        {
-            AppendCapturedText(event.text.text);
         }
         break;
     case SDL_EVENT_KEY_UP:
@@ -540,6 +544,7 @@ void CInput::HandleEvent(const SDL_Event& event)
         windowFocused = false;
         keyboardComposition.Clear();
         ReleaseAllKeys();
+        UpdateMouseCapture();
         break;
     default:
         break;
@@ -770,9 +775,23 @@ SDL_Window* CInput::LocateWindow() const
     return window;
 }
 
+int CInput::GetKeyboardMouseSetting(EKeyboardMouseSetting setting)
+{
+    return keyboardMouse.GetSetting(setting);
+}
+
+void CInput::SetKeyboardMouseSetting(EKeyboardMouseSetting setting, int value)
+{
+    if (keyboardMouse.GetSetting(setting) == value)
+        return;
+    keyboardMouse.SetSetting(setting, value);
+    if (!keyboardMouse.SaveSettings(PcSaveRoot() + "/input.txt"))
+        SDL_LogWarn(SDL_LOG_CATEGORY_INPUT, "could not save keyboard/mouse settings");
+}
+
 bool CInput::ConsumeMouseLook(int pad, float* x, float* y)
 {
-    if (!mouseLookEnabled || pad != KeyboardPlayer())
+    if (!windowFocused || !mouseCaptured || !mouseLookEnabled || IsKeyboardInMenu() || pad != KeyboardPlayer())
     {
         return false;
     }
@@ -781,26 +800,33 @@ bool CInput::ConsumeMouseLook(int pad, float* x, float* y)
 
 void CInput::UpdateMouseCapture()
 {
-    bool desired = windowFocused && keyboardState == EKeyboardState_Idle
+    bool desired = windowFocused && !textCapture && keyboardState == EKeyboardState_Idle
                    && errorViewerState == EErrorViewerState_None && KeyboardPlayer() >= 0 && !IsKeyboardInMenu();
-    mouseLookEnabled = desired;
+    mouseLookEnabled = desired && mouseCaptured;
     bool showCursor = !desired && !(menuDrawsPointer && keyboardState == EKeyboardState_Idle)
                       && lastInputJoypad == kKeyboardJoypad;
     if (showCursor != cursorShown && (showCursor ? SDL_ShowCursor() : SDL_HideCursor()))
     {
         cursorShown = showCursor;
     }
+    SDL_Window* window = LocateWindow();
+    if (window != 0)
+    {
+        bool grab = windowFocused && (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0;
+        if (SDL_GetWindowMouseGrab(window) != grab)
+            SDL_SetWindowMouseGrab(window, grab);
+    }
     if (desired == mouseCaptured)
     {
         return;
     }
     keyboardMouse.DiscardRelativeInput();
-    SDL_Window* window = LocateWindow();
     if (window != 0)
     {
         if (SDL_SetWindowRelativeMouseMode(window, desired))
         {
             mouseCaptured = desired;
+            mouseLookEnabled = desired;
             if (!desired && windowFocused)
             {
                 if (pointerPlacementPending)
@@ -1667,7 +1693,8 @@ int CInput::ConsumeCapturedKey()
 
 bool CInput::HasKeyBinding(int action)
 {
-    return !keyboardMouse.GetBindings(PcKeyboardMouse::ActionContext(action), action).empty();
+    return PcKeyboardMouse::IsLookAction(action)
+           || !keyboardMouse.GetBindings(PcKeyboardMouse::ActionContext(action), action).empty();
 }
 
 bool CInput::SameKeyBinding(int action, int otherAction)
@@ -2005,6 +2032,7 @@ void CInput::SetMenuDisplayed(int pad, bool displayed)
     if (static_cast<unsigned int>(pad) < 4)
     {
         menuDisplayed[pad] = displayed;
+        keyboardMouse.SetContext(KeyboardContext());
     }
 }
 

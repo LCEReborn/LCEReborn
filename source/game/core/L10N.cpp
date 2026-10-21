@@ -44,6 +44,12 @@ const wchar_t* ExtraString(int id)
         return L"Preview";
     case IDS_LCE_DEBUG_PRESET:
         return L"Preset";
+    case IDS_LCE_MOUSE_SENSITIVITY:
+        return L"Mouse Sensitivity";
+    case IDS_LCE_TOGGLE_SNEAK:
+        return L"Toggle Sneak";
+    case IDS_LCE_TOGGLE_SPRINT:
+        return L"Toggle Sprint";
     case IDS_LCE_DEBUG_RESET:
         return L"Reset";
     default:

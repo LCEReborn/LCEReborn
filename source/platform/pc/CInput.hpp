@@ -79,6 +79,8 @@ public:
     virtual unsigned int IsPadClassicController(int pad);
     virtual unsigned char IsDRCConnected();
     virtual void AcquiredForeground();
+    virtual int GetKeyboardMouseSetting(EKeyboardMouseSetting setting);
+    virtual void SetKeyboardMouseSetting(EKeyboardMouseSetting setting, int value);
     virtual bool ConsumeMouseLook(int pad, float* x, float* y);
     virtual bool ConsumeMenuPointer(int pad, float* x, float* y);
     virtual unsigned int ConsumeMenuClicks(int pad);

@@ -28,6 +28,11 @@ bool sFullscreen = false;
 bool sVSync = true;
 Uint64 sNextFrame = 0;
 const Uint64 kFramePeriod = SDL_NS_PER_SECOND / 60;
+// With VSync on a display of about 60 Hz the display paces the frames and the
+// timer is only a cap a little above it. Pacing to both clocks lets them drift
+// apart, which moves the wait for the display to after the frame's input.
+const float kVSyncPacedRefresh = 61.0f;
+const Uint64 kVSyncCapPeriod = SDL_NS_PER_SECOND / 62;
 
 std::string WindowTitle()
 {
@@ -95,6 +100,16 @@ void SaveDisplaySettings()
     file << "VSync = " << (sVSync ? 1 : 0) << "\n";
 }
 
+Uint64 FramePeriod()
+{
+    if (!sVSync || sWindow == NULL)
+        return kFramePeriod;
+    const SDL_DisplayMode* mode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(sWindow));
+    if (mode == NULL || mode->refresh_rate <= 0.0f || mode->refresh_rate >= kVSyncPacedRefresh)
+        return kFramePeriod;
+    return kVSyncCapPeriod;
+}
+
 bool IsFullscreenToggle(const SDL_Event& event)
 {
     if (event.type != SDL_EVENT_KEY_DOWN && event.type != SDL_EVENT_KEY_UP)
@@ -148,6 +163,10 @@ bool PcWindowCreate(int width, int height)
     SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_TYPE_STRING, "game");
     // We render preedit text; the platform still owns the candidate list.
     SDL_SetHint(SDL_HINT_IME_IMPLEMENTED_UI, "composition");
+    SDL_SetHint(SDL_HINT_MOUSE_RELATIVE_SYSTEM_SCALE, "0");
+#if defined(_WIN32)
+    SDL_SetHint(SDL_HINT_WINDOWS_RAW_KEYBOARD, "1");
+#endif
 #if defined(__linux__)
     // SDL's automatic selection can prefer XWayland on compositors without
     // fifo-v1. This is a native Wayland port, so try Wayland first even there.
@@ -218,6 +237,11 @@ void PcWindowSwap()
     PcGraphics().Present();
 }
 
+void PcWindowWaitForFrame()
+{
+    PcGraphics().WaitForFrame(sVSync);
+}
+
 void PcWindowGetDrawableSize(int* width, int* height)
 {
     int drawableWidth = 0;
@@ -277,15 +301,16 @@ void PcPumpEvents()
 
 void PcWindowPaceFrame()
 {
+    const Uint64 period = FramePeriod();
     Uint64 now = SDL_GetTicksNS();
-    if (sNextFrame == 0 || now >= sNextFrame + kFramePeriod)
+    if (sNextFrame == 0 || now >= sNextFrame + period)
     {
-        sNextFrame = now + kFramePeriod;
+        sNextFrame = now + period;
         return;
     }
     if (now < sNextFrame)
         SDL_DelayPrecise(sNextFrame - now);
-    sNextFrame += kFramePeriod;
+    sNextFrame += period;
 }
 
 bool PcWindowIsFullscreen()

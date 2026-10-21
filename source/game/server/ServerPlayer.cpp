@@ -3,6 +3,7 @@
 #include "game/core/EntityType.hpp"
 #include "game/core/GameMode.hpp"
 #include "game/core/Mth.hpp"
+#include "game/core/VideoSettings.hpp"
 #include "game/core/ResultSlot.hpp"
 #include "game/item/ArmorItem.hpp"
 #include "game/core/Stat.hpp"
@@ -142,6 +143,7 @@ ServerPlayer::ServerPlayer(MinecraftServer* server, ServerLevel* level, const st
       mTrackedChunks(),
       mState(0),
       mChunkRequestTime(0),
+      mChunkViewDistance(VideoSettings::RENDER_DISTANCE_DEFAULT),
       mLevitationSourceY(NULL),
       mLastRecordedHealth(std::numeric_limits<float>::min()),
       mLastRecordedFood(std::numeric_limits<int>::min()),

@@ -1,5 +1,6 @@
 #include "game/core/VideoSettings.hpp"
 
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 
@@ -12,6 +13,7 @@
 
 int VideoSettings::sFov = VideoSettings::FOV_NORMAL;
 int VideoSettings::sRenderDistance = VideoSettings::RENDER_DISTANCE_DEFAULT;
+int VideoSettings::sSimulationDistance = VideoSettings::SIMULATION_DISTANCE_DEFAULT;
 bool VideoSettings::sFancyGraphics = true;
 bool VideoSettings::sSmoothLighting = true;
 int VideoSettings::sParticles = VideoSettings::EParticles_All;
@@ -45,6 +47,25 @@ int VideoSettings::GetRenderDistance()
 void VideoSettings::SetRenderDistance(int chunks)
 {
     sRenderDistance = Clamp(chunks, RENDER_DISTANCE_MIN, RENDER_DISTANCE_MAX);
+    Save();
+}
+
+int VideoSettings::GetViewDistanceForPlayers(int players)
+{
+    if (players < 1)
+        players = 1;
+    const int grid = (int)sqrtf(4.0f * (float)(sRenderDistance * sRenderDistance) / (float)players);
+    return Clamp(grid / 2, RENDER_DISTANCE_MIN, RENDER_DISTANCE_MAX);
+}
+
+int VideoSettings::GetSimulationDistance()
+{
+    return sSimulationDistance;
+}
+
+void VideoSettings::SetSimulationDistance(int chunks)
+{
+    sSimulationDistance = Clamp(chunks, SIMULATION_DISTANCE_MIN, SIMULATION_DISTANCE_MAX);
     Save();
 }
 
@@ -116,6 +137,8 @@ void VideoSettings::Load(const std::string& path)
             sFov = Clamp(value, FOV_MIN, FOV_MAX);
         else if (std::strcmp(key, "RenderDistance") == 0)
             sRenderDistance = Clamp(value, RENDER_DISTANCE_MIN, RENDER_DISTANCE_MAX);
+        else if (std::strcmp(key, "SimulationDistance") == 0)
+            sSimulationDistance = Clamp(value, SIMULATION_DISTANCE_MIN, SIMULATION_DISTANCE_MAX);
         else if (std::strcmp(key, "FancyGraphics") == 0)
             sFancyGraphics = value != 0;
         else if (std::strcmp(key, "SmoothLighting") == 0)
@@ -145,6 +168,7 @@ void VideoSettings::Save()
     }
     std::fprintf(file, "Fov = %d\n", sFov);
     std::fprintf(file, "RenderDistance = %d\n", sRenderDistance);
+    std::fprintf(file, "SimulationDistance = %d\n", sSimulationDistance);
     std::fprintf(file, "FancyGraphics = %d\n", sFancyGraphics ? 1 : 0);
     std::fprintf(file, "SmoothLighting = %d\n", sSmoothLighting ? 1 : 0);
     std::fprintf(file, "Particles = %d\n", sParticles);

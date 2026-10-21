@@ -14,6 +14,9 @@ public:
         RENDER_DISTANCE_MIN = 2,
         RENDER_DISTANCE_DEFAULT = 10,
         RENDER_DISTANCE_MAX = 32,
+        SIMULATION_DISTANCE_MIN = 5,
+        SIMULATION_DISTANCE_DEFAULT = 10,
+        SIMULATION_DISTANCE_MAX = 32,
         BIOME_BLEND_DEFAULT = 1,
         BIOME_BLEND_MAX = 7
     };
@@ -30,6 +33,9 @@ public:
     static void SetFov(int fov);
     static int GetRenderDistance();
     static void SetRenderDistance(int chunks);
+    static int GetViewDistanceForPlayers(int players);
+    static int GetSimulationDistance();
+    static void SetSimulationDistance(int chunks);
     static bool GetFancyGraphics();
     static void SetFancyGraphics(bool fancy);
     static bool GetSmoothLighting();
@@ -48,6 +54,7 @@ private:
 
     static int sFov;
     static int sRenderDistance;
+    static int sSimulationDistance;
     static bool sFancyGraphics;
     static bool sSmoothLighting;
     static int sParticles;

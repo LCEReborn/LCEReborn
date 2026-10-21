@@ -54,7 +54,7 @@ CustomSet::Node* CustomSet::find(const ChunkPos& pos)
 
     Node* node = mBuckets[hash & (mBucketCount - 1)];
 
-    while (node != NULL && node->mHash != hash)
+    while (node != NULL && (node->mHash != hash || !(node->mPos == pos)))
     {
         node = node->mNext;
     }

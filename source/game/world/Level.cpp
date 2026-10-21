@@ -4537,9 +4537,9 @@ void Level::tickWeather(bool immediate)
 
 void Level::buildAndPrepareChunksToPoll()
 {
-    int count = std::min(static_cast<int>(mPlayers.size()), 8);
-    int chunkX[8];
-    int chunkZ[8];
+    const int count = static_cast<int>(mPlayers.size());
+    std::vector<int> chunkX(count);
+    std::vector<int> chunkZ(count);
     for (int i = 0; i < count; ++i)
     {
         boost::shared_ptr<Player> player = mPlayers[i];
@@ -4547,7 +4547,8 @@ void Level::buildAndPrepareChunksToPoll()
         chunkZ[i] = Mth::floor(player->mZ * 0.0625);
         mChunksToPoll.insert(ChunkPos(chunkX[i], chunkZ[i]));
     }
-    for (int radius = 1; radius <= 9; ++radius)
+    const int pollRange = getChunkPollRange();
+    for (int radius = 1; radius <= pollRange; ++radius)
     {
         for (int offset = 0; offset < radius * 2; ++offset)
         {

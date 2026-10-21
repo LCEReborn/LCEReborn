@@ -16,6 +16,7 @@
 #include "game/core/Input.hpp"
 #include "game/network/ClientPacketListener.hpp"
 #include "game/core/GameSettings.hpp"
+#include "game/core/VideoSettings.hpp"
 #include "game/network/TextureChangePacket.hpp"
 #include "game/network/TextureAndGeometryChangePacket.hpp"
 #include "game/world/block/BlockPos.hpp"
@@ -86,6 +87,16 @@ void MultiplayerLocalPlayer::fjResetBounceHeight()
 
 void MultiplayerLocalPlayer::tick()
 {
+    if (mPacketListener != NULL)
+    {
+        int localPlayers = 0;
+        for (int i = 0; i < 4; ++i)
+        {
+            if (mMinecraft->mLocalPlayers[i] != NULL)
+                ++localPlayers;
+        }
+        mPacketListener->sendViewDistance(VideoSettings::GetViewDistanceForPlayers(localPlayers));
+    }
     if (!mLevel->hasChunkAt(BlockPos(Mth::floor(mX), 0, Mth::floor(mZ))))
         return;
     LocalPlayer::tick();

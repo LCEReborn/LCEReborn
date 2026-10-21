@@ -145,6 +145,7 @@ public:
     bool isGuest();
     Connection* getConnection();
     bool containsInvalidValues(boost::shared_ptr<ServerboundMovePlayerPacket> packet);
+    int getRequestedViewDistance() const;
     void handleCommand(const std::wstring& command);
 
 private:
@@ -201,6 +202,7 @@ private:
     bool mConnectionClosed;
     std::vector<std::wstring> mNames;
     bool mUseAltLeaveMessage;
+    int mRequestedViewDistance;
 };
 
 INetworkPlayer* getNetworkPlayerFromIndex(int index);

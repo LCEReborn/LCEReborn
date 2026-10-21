@@ -24,6 +24,7 @@ public:
     virtual void reloadAllPlayers(int minX, int minZ, int maxX, int maxZ);
     virtual void onPlayerJoin(boost::shared_ptr<ServerPlayer> player);
     virtual void onPlayerLeave(boost::shared_ptr<ServerPlayer> player);
+    virtual void updatePlayerViewDistance(boost::shared_ptr<ServerPlayer> player);
     uint32_t containsPlayer(boost::shared_ptr<ServerPlayer> player);
 };
 

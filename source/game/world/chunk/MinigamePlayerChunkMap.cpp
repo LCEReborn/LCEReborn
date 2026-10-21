@@ -20,6 +20,11 @@ MinigamePlayerChunkMap::~MinigamePlayerChunkMap()
 {
 }
 
+void MinigamePlayerChunkMap::updatePlayerViewDistance(boost::shared_ptr<ServerPlayer> player)
+{
+    player->mChunkViewDistance = viewDistanceFor(player);
+}
+
 void MinigamePlayerChunkMap::updatePlayerReferences(boost::shared_ptr<ServerPlayer> player)
 {
     for (unsigned int i = 0; i < mPlayers.size(); ++i)
@@ -130,6 +135,7 @@ void MinigamePlayerChunkMap::reloadAllPlayers(int minX, int minZ, int maxX, int 
 
 void MinigamePlayerChunkMap::onPlayerJoin(boost::shared_ptr<ServerPlayer> player)
 {
+    player->mChunkViewDistance = viewDistanceFor(player);
     mPlayers.push_back(player);
     loadPlayerInActiveArea(player);
 }

@@ -308,7 +308,8 @@ defaults, which are the original game's values).
 
 | Setting | Range | Default | What follows it |
 | --- | --- | --- | --- |
-| Render Distance | 2 to 32 chunks | 10 | `LevelRenderer::allChanged` sizes the chunk grid (split screen shares the same area, as before); the fog scales with it; the host's server sends chunks that far (`PlayerChunkMap` accepts 2 to 32) |
+| Render Distance | 2 to 32 chunks | 10 | `LevelRenderer::allChanged` sizes the chunk grid (split screen shares the same area, as before); the fog scales with it; each client reports its distance on the `LCE\|ViewDist` payload channel, and the host's server sends and tracks each player that far, up to the host's own (clients that don't report get 10) |
+| Simulation Distance | 5 to 32 chunks | 10 | on the host: entities tick within it, random ticks reach one chunk less, and mobs spawn up to two chunks less (at most 8) |
 | FOV | 30 to 110 degrees, "Normal" at 70, "Quake Pro" at 110 | 70 | `GameRenderer::getFov` |
 | Fancy Graphics | on/off | on | `Options::mFancyGraphics`: leaves, shadows and item detail; the world is rebuilt when it changes |
 | Smooth Lighting | on/off | on | `Options::mAmbientOcclusion`; the world is rebuilt |

@@ -36,10 +36,11 @@ private:
     static const long long CHUNK_POLL_REFRESH_MS = 1000;
     enum
     {
-        CHUNK_POLL_RADIUS = 8,
+        MAX_CHUNK_POLL_RADIUS = 8,
         SPAWN_GROUPS = 3,
         SPAWN_PACK_SIZE = 4,
-        SPAWN_POLL_BUDGET = (2 * CHUNK_POLL_RADIUS + 1) * (2 * CHUNK_POLL_RADIUS + 1) * SPAWN_GROUPS * SPAWN_PACK_SIZE
+        SPAWN_POLL_BUDGET =
+            (2 * MAX_CHUNK_POLL_RADIUS + 1) * (2 * MAX_CHUNK_POLL_RADIUS + 1) * SPAWN_GROUPS * SPAWN_PACK_SIZE
     };
     static const unsigned int MAX_GHASTS = 4;
     static const unsigned int PIG_ZOMBIE_CAP_MARGIN = 10;

@@ -88,7 +88,8 @@ class MobEffectInstance;
 
 PlayerList::PlayerList(MinecraftServer* server, MasterGameMode* gameMode)
     : mServer(server), mGameMode(gameMode), mPlayerIO(NULL), mUnknownState(false), mOverrideGameMode(NULL),
-      mAllowCheatsForAllPlayers(false), mViewDistance(10), mMaxRange(0)
+      mAllowCheatsForAllPlayers(false), mViewDistance(10),
+      mSimulationDistance(10), mMaxRange(0)
 {
     mMaxPlayers = server->mSettings->getInt(eServerSetting_MaxPlayers, 20);
     InitializeCriticalSection(&mPlayersToKickLock);
@@ -132,6 +133,16 @@ int PlayerList::getViewDistance()
 void PlayerList::setViewDistance(int distance)
 {
     mViewDistance = distance;
+}
+
+int PlayerList::getSimulationDistance()
+{
+    return mSimulationDistance;
+}
+
+void PlayerList::setSimulationDistance(int distance)
+{
+    mSimulationDistance = distance;
 }
 
 boost::shared_ptr<ServerPlayer> PlayerList::findAlivePlayerOnSystem(boost::shared_ptr<ServerPlayer> player)

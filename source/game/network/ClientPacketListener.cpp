@@ -178,6 +178,7 @@
 #include "game/network/ClientboundContainerSetContentPacket.hpp"
 #include "game/network/ClientboundContainerSetSlotPacket.hpp"
 #include "game/network/ClientboundCustomPayloadPacket.hpp"
+#include "game/network/ServerboundCustomPayloadPacket.hpp"
 #include "game/network/ClientboundEntityEventPacket.hpp"
 #include "game/network/ClientboundExplodePacket.hpp"
 #include "game/network/ClientboundGameEventPacket.hpp"
@@ -236,7 +237,9 @@
 #include "game/data/McRegionLevelStorage.hpp"
 #include "game/data/ConsoleSaveFileReadOnly.hpp"
 #include "game/core/ByteArrayInputStream.hpp"
+#include "game/core/ByteArrayOutputStream.hpp"
 #include "game/core/DataInputStream.hpp"
+#include "game/core/DataOutputStream.hpp"
 #include "game/core/AreaConstraint.hpp"
 #include "game/core/RegionFileCache.hpp"
 #include "game/client/audio/SoundEvents.hpp"
@@ -301,7 +304,8 @@ ClientPacketListener::ClientPacketListener(Minecraft* minecraft, Socket* socket,
       m_destroyedBlocks(0),
       m_destroyedBlockCount(0),
       m_playerId(playerId),
-      m_savedDataStorage(0)
+      m_savedDataStorage(0),
+      m_sentViewDistance(-1)
 {
     InitializeCriticalSection(&m_mutex);
     m_savedDataStorage = new SavedDataMemoryStorage();
@@ -436,6 +440,18 @@ void ClientPacketListener::tick()
     if (!m_closed)
         m_connection->tick();
     m_connection->flush();
+}
+
+void ClientPacketListener::sendViewDistance(int distance)
+{
+    if (m_closed || distance == m_sentViewDistance)
+        return;
+    m_sentViewDistance = distance;
+    ByteArrayOutputStream bytes;
+    DataOutputStream output(&bytes);
+    output.writeInt(distance);
+    send(boost::shared_ptr<Packet>(
+        new ServerboundCustomPayloadPacket(ServerboundCustomPayloadPacket::VIEW_DISTANCE_PACKET, bytes.toByteArray())));
 }
 
 INetworkPlayer* ClientPacketListener::getNetworkPlayer()

@@ -77,7 +77,9 @@
 #include "platform/CStorage.hpp"
 
 #include <algorithm>
+#include <cstdlib>
 #include <typeinfo>
+#include <vector>
 
 namespace
 {
@@ -86,13 +88,15 @@ C4JCriticalSection sBlockUpdateMutex[3];
 C4JThreadImpl* sBlockUpdateThread = 0;
 ServerLevel* sBlockUpdateLevels[3] = {0, 0, 0};
 int sBlockUpdateChunkCounts[3] = {0, 0, 0};
-int sBlockUpdateChunkX[3][0xB48];
-int sBlockUpdateChunkZ[3][0xB48];
+std::vector<int> sBlockUpdateChunkX[3];
+std::vector<int> sBlockUpdateChunkZ[3];
 int sBlockUpdateTickCounts[3] = {0, 0, 0};
 int sBlockUpdateRandom[3] = {0, 0, 0};
-int sBlockUpdateTickX[3][256];
-int sBlockUpdateTickY[3][256];
-int sBlockUpdateTickZ[3][256];
+int sBlockUpdateTickLimit[3] = {256, 256, 256};
+int sBlockUpdateCommonBlockLimit[3] = {100, 100, 100};
+std::vector<int> sBlockUpdateTickX[3];
+std::vector<int> sBlockUpdateTickY[3];
+std::vector<int> sBlockUpdateTickZ[3];
 
 inline PlayerList* serverPlayers()
 {
@@ -298,9 +302,10 @@ int ServerLevel::runUpdate(void* param)
                     int id;
                     int extraId;
                     chunk->getBlockAndExtraId_NoLock(x, y, z, &id, &extraId);
-                    if (sBlockUpdateTickCounts[dimension] >= 256)
+                    if (sBlockUpdateTickCounts[dimension] >= sBlockUpdateTickLimit[dimension])
                         break;
-                    if ((id == 2 && grassCount >= 100) || (id == 11 && lavaCount >= 100))
+                    const int commonLimit = sBlockUpdateCommonBlockLimit[dimension];
+                    if ((id == 2 && grassCount >= commonLimit) || (id == 11 && lavaCount >= commonLimit))
                         continue;
                     int queued = sBlockUpdateTickCounts[dimension];
                     if (id != 0)
@@ -328,7 +333,7 @@ int ServerLevel::runUpdate(void* param)
                     }
                     if (queued < sBlockUpdateTickCounts[dimension])
                         continue;
-                    if ((extraId == 11 && lavaCount >= 100) || extraId == 0)
+                    if ((extraId == 11 && lavaCount >= commonLimit) || extraId == 0)
                         continue;
                     Block* extraBlock = Block::byId(extraId);
                     if (extraBlock != 0 && extraBlock->isTicking()
@@ -712,6 +717,12 @@ void ServerLevel::tickBlocks()
     PIXEndNamedEvent();
     sBlockUpdateTickCounts[dimension] = 0;
     sBlockUpdateChunkCounts[dimension] = 0;
+    const int pollWidth = 2 * getChunkPollRange() + 1;
+    sBlockUpdateTickLimit[dimension] = std::max(256, 256 * pollWidth * pollWidth / 361);
+    sBlockUpdateCommonBlockLimit[dimension] = sBlockUpdateTickLimit[dimension] * 100 / 256;
+    sBlockUpdateTickX[dimension].resize(sBlockUpdateTickLimit[dimension]);
+    sBlockUpdateTickY[dimension].resize(sBlockUpdateTickLimit[dimension]);
+    sBlockUpdateTickZ[dimension].resize(sBlockUpdateTickLimit[dimension]);
     LeaveCriticalSection(&sBlockUpdateMutex[dimension]);
 
     PIXBeginNamedEvent(0.0f, "Level::tickBlocks");
@@ -731,6 +742,11 @@ void ServerLevel::tickBlocks()
         if (!hasChunk(chunkPos.x, chunkPos.z, true))
             continue;
         int queueIndex = sBlockUpdateChunkCounts[dimension]++;
+        if (queueIndex >= static_cast<int>(sBlockUpdateChunkX[dimension].size()))
+        {
+            sBlockUpdateChunkX[dimension].resize(queueIndex + 512);
+            sBlockUpdateChunkZ[dimension].resize(queueIndex + 512);
+        }
         sBlockUpdateChunkX[dimension][queueIndex] = chunkPos.x;
         sBlockUpdateChunkZ[dimension][queueIndex] = chunkPos.z;
         LevelChunk* chunk = getChunk(chunkPos.x, chunkPos.z);
@@ -1072,6 +1088,18 @@ void ServerLevel::tick(boost::shared_ptr<Entity> entity, bool updateChunk)
         entity->remove();
     if (!isNpcsAllowed() && boost::dynamic_pointer_cast<Npc>(entity))
         entity->remove();
+    if (updateChunk && !eTYPE_DERIVED_FROM(EntityType::PLAYER, entity->GetType())
+        && !isWithinSimulationDistance(entity))
+    {
+        if (eTYPE_DERIVED_FROM(EntityType::MOB, entity->GetType()))
+        {
+            boost::shared_ptr<Mob> mob = boost::static_pointer_cast<Mob>(entity);
+            mob->checkDespawn();
+            if (mob->mRemoved)
+                removeEntity(mob);
+        }
+        return;
+    }
     Level::tick(entity, updateChunk);
 }
 
@@ -1554,7 +1582,27 @@ void ServerLevel::tickWeather(bool blockEvents)
 
 int ServerLevel::getChunkPollRange()
 {
-    return serverPlayers()->getViewDistance();
+    return getSimulationDistance() - 1;
+}
+
+int ServerLevel::getSimulationDistance()
+{
+    return serverPlayers()->getSimulationDistance();
+}
+
+bool ServerLevel::isWithinSimulationDistance(boost::shared_ptr<Entity> entity)
+{
+    const int distance = getSimulationDistance();
+    const int chunkX = Mth::floor(entity->mX / 16.0);
+    const int chunkZ = Mth::floor(entity->mZ / 16.0);
+    for (unsigned int i = 0; i < mPlayers.size(); ++i)
+    {
+        const int playerChunkX = Mth::floor(mPlayers[i]->mX / 16.0);
+        const int playerChunkZ = Mth::floor(mPlayers[i]->mZ / 16.0);
+        if (std::abs(chunkX - playerChunkX) <= distance && std::abs(chunkZ - playerChunkZ) <= distance)
+            return true;
+    }
+    return false;
 }
 
 MinecraftServer* ServerLevel::getServer()

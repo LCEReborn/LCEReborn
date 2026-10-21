@@ -45,6 +45,7 @@ public:
     bool canReceiveAllPackets(const boost::shared_ptr<ServerPlayer>& player);
     bool isOp(boost::shared_ptr<ServerPlayer> player);
     int getViewDistance();
+    int getSimulationDistance();
     boost::shared_ptr<ServerPlayer> findAlivePlayerOnSystem(boost::shared_ptr<ServerPlayer> player);
     int removePlayerFromReceiving(boost::shared_ptr<ServerPlayer> player, bool usePlayerDimension, int dimension);
     int addPlayerToReceiving(boost::shared_ptr<ServerPlayer> player, bool force);
@@ -108,6 +109,7 @@ public:
     void setOverrideGameMode(GameType* gameMode);
     void setAllowCheatsForAllPlayers(bool allow);
     void setViewDistance(int distance);
+    void setSimulationDistance(int distance);
 
 private:
     friend class MinecraftServer;
@@ -131,6 +133,7 @@ private:
     GameType* mOverrideGameMode;
     bool mAllowCheatsForAllPlayers;
     int mViewDistance;
+    int mSimulationDistance;
     int mMaxRange;
     std::vector<boost::shared_ptr<ServerPlayer> > mReceivingPlayers[3];
 };

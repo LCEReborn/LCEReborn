@@ -26,10 +26,10 @@
 
 PlayerChunkMap::PlayerChunkMap(ServerLevel* level, int dimension, int viewDistance)
 {
-    mViewDistance = viewDistance;
+    mViewDistance = Mth::clamp(viewDistance, static_cast<int>(VideoSettings::RENDER_DISTANCE_MIN),
+                               static_cast<int>(VideoSettings::RENDER_DISTANCE_MAX));
     mPauseBlockUpdatePackets = false;
     mLevel = (Level*)level;
-    setViewDistance(level->getServer()->getPlayers()->getViewDistance());
     mDimension = dimension;
     mLastUpdate = 0;
     mTicksUntilNextUpdate = 0;
@@ -103,19 +103,26 @@ long long PlayerChunkMap::tickAddRequests(boost::shared_ptr<ServerPlayer> player
     return 0;
 }
 
-bool PlayerChunkMap::chunkInRange(int x, int z, int centerX, int centerZ)
+bool PlayerChunkMap::chunkInRange(int x, int z, int centerX, int centerZ, int distance)
 {
     int xd = x - centerX;
     int zd = z - centerZ;
-    if (xd < -mViewDistance || xd > mViewDistance)
+    if (xd < -distance || xd > distance)
     {
         return false;
     }
-    if (zd < -mViewDistance || zd > mViewDistance)
+    if (zd < -distance || zd > distance)
     {
         return false;
     }
     return true;
+}
+
+int PlayerChunkMap::viewDistanceFor(boost::shared_ptr<ServerPlayer> player)
+{
+    int requested = player->mConnection != NULL ? player->mConnection->getRequestedViewDistance()
+                                                : static_cast<int>(VideoSettings::RENDER_DISTANCE_DEFAULT);
+    return Mth::clamp(requested, static_cast<int>(VideoSettings::RENDER_DISTANCE_MIN), mViewDistance);
 }
 
 bool PlayerChunkMap::shouldActuallyDropChunks()
@@ -127,37 +134,39 @@ void PlayerChunkMap::setViewDistance(int distance)
 {
     int newDistance = Mth::clamp(distance, static_cast<int>(VideoSettings::RENDER_DISTANCE_MIN),
                                  static_cast<int>(VideoSettings::RENDER_DISTANCE_MAX));
-    if (newDistance != mViewDistance)
+    if (newDistance == mViewDistance)
+        return;
+    mViewDistance = newDistance;
+    PlayerVector players(mPlayers);
+    for (PlayerVector::iterator it = players.begin(); it != players.end(); ++it)
+        updatePlayerViewDistance(*it);
+}
+
+void PlayerChunkMap::updatePlayerViewDistance(boost::shared_ptr<ServerPlayer> player)
+{
+    if (std::find(mPlayers.begin(), mPlayers.end(), player) == mPlayers.end())
+        return;
+    const int oldDistance = player->mChunkViewDistance;
+    const int newDistance = viewDistanceFor(player);
+    if (newDistance == oldDistance)
+        return;
+
+    const int chunkX = static_cast<int>(player->mLastSentX) >> 4;
+    const int chunkZ = static_cast<int>(player->mLastSentZ) >> 4;
+    const int outer = std::max(oldDistance, newDistance);
+    for (int x = chunkX - outer; x <= chunkX + outer; ++x)
     {
-        int delta = newDistance - mViewDistance;
-        PlayerVector players(mPlayers);
-        for (PlayerVector::iterator it = players.begin(); it != players.end(); ++it)
+        for (int z = chunkZ - outer; z <= chunkZ + outer; ++z)
         {
-            boost::shared_ptr<ServerPlayer> player = *it;
-            const int chunkX = static_cast<int32_t>(player->mX) >> 4;
-            const int chunkZ = static_cast<int32_t>(player->mZ) >> 4;
-            if (delta > 0)
-            {
-                for (int x = chunkX - newDistance; x <= chunkX + newDistance; ++x)
-                {
-                    for (int z = chunkZ - newDistance; z <= chunkZ + newDistance; ++z)
-                    {
-                        PlayerChunkContainer* chunk = getOrCreateChunk(x, z);
-                        if (!chunk->hasPlayer(player))
-                            chunk->add(player, true);
-                    }
-                }
-            }
-            else
-            {
-                for (int x = chunkX - mViewDistance; x <= chunkX + mViewDistance; ++x)
-                    for (int z = chunkZ - mViewDistance; z <= chunkZ + mViewDistance; ++z)
-                        if (!chunkInRange(x, z, chunkX, chunkZ))
-                            getOrCreateChunk(x, z)->remove(player, true);
-            }
+            const bool wasIn = chunkInRange(x, z, chunkX, chunkZ, oldDistance);
+            const bool isIn = chunkInRange(x, z, chunkX, chunkZ, newDistance);
+            if (isIn && !wasIn)
+                getChunkAndAddPlayer(x, z, player, true);
+            else if (wasIn && !isIn)
+                getChunkAndRemovePlayer(x, z, player, true);
         }
-        mViewDistance = newDistance;
     }
+    player->mChunkViewDistance = newDistance;
 }
 
 void PlayerChunkMap::tick()
@@ -355,7 +364,8 @@ void PlayerChunkMap::add(boost::shared_ptr<ServerPlayer> player)
     player->mLastSentZ = player->mZ;
 
     int direction = 0;
-    const int viewDistance = mViewDistance;
+    const int viewDistance = viewDistanceFor(player);
+    player->mChunkViewDistance = viewDistance;
     int offsetX = 0;
     int offsetZ = 0;
     getOrCreateChunk(chunkX, chunkZ)->add(player, false);
@@ -427,9 +437,10 @@ void PlayerChunkMap::remove(boost::shared_ptr<ServerPlayer> player)
 {
     const int chunkX = static_cast<int>(player->mLastSentX) >> 4;
     const int chunkZ = static_cast<int>(player->mLastSentZ) >> 4;
-    for (int x = chunkX - mViewDistance; x <= chunkX + mViewDistance; ++x)
+    const int viewDistance = player->mChunkViewDistance;
+    for (int x = chunkX - viewDistance; x <= chunkX + viewDistance; ++x)
     {
-        for (int z = chunkZ - mViewDistance; z <= chunkZ + mViewDistance; ++z)
+        for (int z = chunkZ - viewDistance; z <= chunkZ + viewDistance; ++z)
         {
             PlayerChunkContainer* chunk = getChunkIfLoaded(x, z);
             if (chunk != NULL)
@@ -455,9 +466,10 @@ void PlayerChunkMap::removeOutsideArea(boost::shared_ptr<ServerPlayer> player, i
 {
     const int chunkX = static_cast<int>(player->mLastSentX) >> 4;
     const int chunkZ = static_cast<int>(player->mLastSentZ) >> 4;
-    for (int x = chunkX - mViewDistance; x <= chunkX + mViewDistance; ++x)
+    const int viewDistance = player->mChunkViewDistance;
+    for (int x = chunkX - viewDistance; x <= chunkX + viewDistance; ++x)
     {
-        for (int z = chunkZ - mViewDistance; z <= chunkZ + mViewDistance; ++z)
+        for (int z = chunkZ - viewDistance; z <= chunkZ + viewDistance; ++z)
         {
             if (x < minX || x > maxX || z < minZ || z > maxZ)
             {
@@ -502,12 +514,13 @@ void PlayerChunkMap::move(boost::shared_ptr<ServerPlayer> player)
         return;
 
     const bool inMiniGame = Minecraft::InMiniGame(eMiniGameId_Any, true);
+    const int viewDistance = player->mChunkViewDistance;
     std::vector<std::pair<int, int> > addedChunks;
-    for (int x = chunkX - mViewDistance; x <= chunkX + mViewDistance; ++x)
+    for (int x = chunkX - viewDistance; x <= chunkX + viewDistance; ++x)
     {
-        for (int z = chunkZ - mViewDistance; z <= chunkZ + mViewDistance; ++z)
+        for (int z = chunkZ - viewDistance; z <= chunkZ + viewDistance; ++z)
         {
-            if (!chunkInRange(x, z, lastChunkX, lastChunkZ))
+            if (!chunkInRange(x, z, lastChunkX, lastChunkZ, viewDistance))
             {
                 MasterGameMode* gameMode = gMinecraftServer->mMasterGameMode;
                 if (!Minecraft::InMiniGame(eMiniGameId_Any, true) || !gameMode->IsRoundPlaying()
@@ -518,7 +531,7 @@ void PlayerChunkMap::move(boost::shared_ptr<ServerPlayer> player)
                 }
             }
 
-            if (!chunkInRange(x - deltaX, z - deltaZ, chunkX, chunkZ) && !inMiniGame)
+            if (!chunkInRange(x - deltaX, z - deltaZ, chunkX, chunkZ, viewDistance) && !inMiniGame)
                 getChunkAndRemovePlayer(x - deltaX, z - deltaZ, player, true);
         }
     }
@@ -593,40 +606,7 @@ void PlayerChunkMap::setRadius(int radius)
 {
     if (radius <= mViewDistance)
         return;
-
-    static_cast<ServerLevel*>(mLevel)->getServer();
-    PlayerList* players = gMinecraftServer != NULL ? gMinecraftServer->mPlayers : NULL;
-    for (unsigned int i = 0; i < players->mPlayers.size(); ++i)
-    {
-        boost::shared_ptr<ServerPlayer> player = players->mPlayers[i];
-        if (player->mLevel != mLevel)
-            continue;
-
-        const int chunkX = static_cast<int>(player->mX) >> 4;
-        const int chunkZ = static_cast<int>(player->mZ) >> 4;
-        const int oldRadius = mViewDistance;
-        for (int x = chunkX - radius; x < chunkX - oldRadius; ++x)
-        {
-            for (int z = chunkZ - radius; z <= chunkZ + radius; ++z)
-                getChunkAndAddPlayer(x, z, player, true);
-        }
-        for (int x = chunkX + oldRadius; x <= chunkX + radius; ++x)
-        {
-            for (int z = chunkZ - radius; z <= chunkZ + radius; ++z)
-                getChunkAndAddPlayer(x, z, player, true);
-        }
-        for (int z = chunkZ - radius; z < chunkZ - oldRadius; ++z)
-        {
-            for (int x = chunkX - oldRadius; x < chunkX + oldRadius; ++x)
-                getChunkAndAddPlayer(x, z, player, true);
-        }
-        for (int z = chunkZ + oldRadius; z <= chunkZ + radius; ++z)
-        {
-            for (int x = chunkX - oldRadius; x < chunkX + oldRadius; ++x)
-                getChunkAndAddPlayer(x, z, player, true);
-        }
-    }
-    mViewDistance = radius;
+    setViewDistance(radius);
 }
 
 void PlayerChunkMap::removeOutsideAreaForAllPlayers(int minX, int minZ, int maxX, int maxZ)

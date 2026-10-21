@@ -603,7 +603,7 @@ void MultiPlayerLevel::tickWeather(bool)
 
 int MultiPlayerLevel::getChunkPollRange()
 {
-    return mMinecraft->mOptions->mViewDistance;
+    return 9;
 }
 
 void MultiPlayerLevel::tickClientSideBlocks(int x, int z, LevelChunk* chunk)

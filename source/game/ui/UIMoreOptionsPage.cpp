@@ -26,8 +26,15 @@ void UIMoreOptionsPage::Build(UIScene_CustomMenu& menu)
     menu.AddSlider(eItem_RenderDistance, RenderDistanceLabel(VideoSettings::GetRenderDistance()),
                    VideoSettings::RENDER_DISTANCE_MIN, VideoSettings::RENDER_DISTANCE_MAX,
                    VideoSettings::GetRenderDistance(),
-                   L"How many chunks around you are drawn. Lower it for a higher frame rate. When you host, the "
-                   L"world is also sent this far to every player. The original game draws 10.");
+                   L"How many chunks around you are drawn. Lower it for a higher frame rate. When you host, "
+                   L"players are sent the world this far at most, or as far as their own render distance. The "
+                   L"original game draws 10.");
+    menu.AddSlider(eItem_SimulationDistance, SimulationDistanceLabel(VideoSettings::GetSimulationDistance()),
+                   VideoSettings::SIMULATION_DISTANCE_MIN, VideoSettings::SIMULATION_DISTANCE_MAX,
+                   VideoSettings::GetSimulationDistance(),
+                   L"How many chunks around each player keep running when you host: mobs move and spawn, and "
+                   L"crops grow. Farther chunks are still shown but stay still. Lower it if the world slows "
+                   L"down. The original game runs 10.");
     menu.AddSlider(eItem_Fov, FovLabel(VideoSettings::GetFov()), VideoSettings::FOV_MIN, VideoSettings::FOV_MAX,
                    VideoSettings::GetFov(),
                    L"How wide the view is, in degrees. Normal is 70, as in the original game; Quake Pro is the "
@@ -88,6 +95,10 @@ void UIMoreOptionsPage::OnSlide(UIScene_CustomMenu& menu, int id, int value)
         VideoSettings::SetRenderDistance(value);
         menu.SetItemLabel(id, RenderDistanceLabel(VideoSettings::GetRenderDistance()));
         break;
+    case eItem_SimulationDistance:
+        VideoSettings::SetSimulationDistance(value);
+        menu.SetItemLabel(id, SimulationDistanceLabel(VideoSettings::GetSimulationDistance()));
+        break;
     case eItem_Fov:
         VideoSettings::SetFov(value);
         menu.SetItemLabel(id, FovLabel(VideoSettings::GetFov()));
@@ -109,6 +120,13 @@ std::wstring UIMoreOptionsPage::RenderDistanceLabel(int chunks)
 {
     wchar_t text[64];
     std::swprintf(text, sizeof(text) / sizeof(text[0]), L"Render Distance: %d chunks", chunks);
+    return text;
+}
+
+std::wstring UIMoreOptionsPage::SimulationDistanceLabel(int chunks)
+{
+    wchar_t text[64];
+    std::swprintf(text, sizeof(text) / sizeof(text[0]), L"Simulation Distance: %d chunks", chunks);
     return text;
 }
 

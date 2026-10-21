@@ -13,6 +13,7 @@ public:
         eItem_Fullscreen,
         eItem_VSync,
         eItem_RenderDistance,
+        eItem_SimulationDistance,
         eItem_Fov,
         eItem_FancyGraphics,
         eItem_SmoothLighting,
@@ -28,6 +29,7 @@ public:
 
 private:
     static std::wstring RenderDistanceLabel(int chunks);
+    static std::wstring SimulationDistanceLabel(int chunks);
     static std::wstring FovLabel(int fov);
     static std::wstring ParticlesLabel(int particles);
     static std::wstring BiomeBlendLabel(int radius);

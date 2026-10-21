@@ -860,6 +860,7 @@ void MinecraftServer::tick()
         for (unsigned int i = 0; i < mLevels.length; ++i)
             mLevels.data[i]->getChunkMap()->setViewDistance(VideoSettings::GetRenderDistance());
     }
+    mPlayers->setSimulationDistance(VideoSettings::GetSimulationDistance());
     for (unsigned int i = 0; i < mLevels.length; ++i)
     {
         ServerLevel* level = mLevels.data[i];

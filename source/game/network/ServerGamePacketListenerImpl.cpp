@@ -112,6 +112,9 @@
 #include "game/world/block/SignBlockEntity.hpp"
 #include "game/world/WorldBorder.hpp"
 #include "game/server/ServerLevel.hpp"
+#include "game/core/Mth.hpp"
+#include "game/core/VideoSettings.hpp"
+#include "game/world/chunk/PlayerChunkMap.hpp"
 
 ServerGamePacketListenerImpl::ServerGamePacketListenerImpl(MinecraftServer* server, Connection* connection,
                                                            boost::shared_ptr<ServerPlayer> player)
@@ -146,7 +149,8 @@ ServerGamePacketListenerImpl::ServerGamePacketListenerImpl(MinecraftServer* serv
       mClientVehicleIsFloating(false),
       mAboveGroundVehicleTickCount(0),
       mReceivedMovePacketCount(0),
-      mKnownMovePacketCount(0)
+      mKnownMovePacketCount(0),
+      mRequestedViewDistance(VideoSettings::RENDER_DISTANCE_DEFAULT)
 {
     connection->setListener(this);
     mPlayer = player;
@@ -1213,6 +1217,11 @@ void ServerGamePacketListenerImpl::handlePlayerAbilities(boost::shared_ptr<Serve
     mPlayer->mAbilities.mFlying = packet->isFlying() && (mPlayer->mAbilities.mMayfly || mPlayer->isAllowedToFly());
 }
 
+int ServerGamePacketListenerImpl::getRequestedViewDistance() const
+{
+    return mRequestedViewDistance;
+}
+
 void ServerGamePacketListenerImpl::handleCustomPayload(boost::shared_ptr<ServerboundCustomPayloadPacket> packet)
 {
     std::wstring identifier = packet->getIdentifier();
@@ -1350,6 +1359,17 @@ void ServerGamePacketListenerImpl::handleCustomPayload(boost::shared_ptr<Serverb
     else if (ServerboundCustomPayloadPacket::SET_RENAME_ITEM_PACKET == identifier)
     {
         NameItemOnAnvil(packet, true);
+    }
+    else if (ServerboundCustomPayloadPacket::VIEW_DISTANCE_PACKET == identifier)
+    {
+        ByteArrayInputStream bytes(packet->getData());
+        DataInputStream input(&bytes);
+        mRequestedViewDistance = Mth::clamp(input.readInt(), static_cast<int>(VideoSettings::RENDER_DISTANCE_MIN),
+                                            static_cast<int>(VideoSettings::RENDER_DISTANCE_MAX));
+        bytes.reset();
+        input.close();
+        if (mPlayer != NULL && mPlayer->getLevel() != NULL)
+            mPlayer->getLevel()->getChunkMap()->updatePlayerViewDistance(mPlayer);
     }
     else if (ServerboundCustomPayloadPacket::PICK_ITEM_PACKET == identifier)
     {

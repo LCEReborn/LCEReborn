@@ -120,6 +120,8 @@ public:
     virtual void blockEntityRemovedExtra(boost::shared_ptr<BlockEntity> blockEntity);
     virtual void tickWeather(bool blockEvents);
     virtual int getChunkPollRange();
+    int getSimulationDistance();
+    bool isWithinSimulationDistance(boost::shared_ptr<Entity> entity);
     virtual void tickBlocks();
     virtual bool tickPendingTicks(bool runAll);
     virtual std::vector<TickNextTickData>* fetchTicksInChunk(LevelChunk* chunk, bool removeTicks);

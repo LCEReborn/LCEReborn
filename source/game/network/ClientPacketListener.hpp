@@ -126,6 +126,7 @@ public:
     Socket* getSocket();
     uint8_t getAndSetClosed();
     void tick();
+    void sendViewDistance(int distance);
     INetworkPlayer* getNetworkPlayer();
     bool IsPrimaryPlayer();
     void displayPrivilegeChanges(boost::shared_ptr<MultiplayerLocalPlayer> player, uint32_t changes);
@@ -255,6 +256,7 @@ private:
     unsigned int m_destroyedBlockCount;
     int m_playerId;
     SavedDataMemoryStorage* m_savedDataStorage;
+    int m_sentViewDistance;
 };
 
 #endif

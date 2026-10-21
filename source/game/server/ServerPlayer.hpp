@@ -67,6 +67,7 @@ public:
     int32_t mState;
     Biome* mLastBiome;
     int64_t mChunkRequestTime;
+    int32_t mChunkViewDistance;
     double* mLevitationSourceY;
     float mLastRecordedHealth;
     int32_t mLastRecordedFood;

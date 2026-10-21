@@ -67,6 +67,7 @@
 #include "game/world/block/FallingBlockEntity.hpp"
 #include "game/world/generation/Player.hpp"
 #include "game/world/generation/PlayerList.hpp"
+#include "game/world/chunk/PlayerChunkMap.hpp"
 
 static int sSmallPosRotPacketCount = 0;
 static int sPosRotPacketCount = 0;
@@ -111,6 +112,16 @@ bool TrackedEntity::canBySeenBy(boost::shared_ptr<ServerPlayer> player)
     return true;
 }
 
+int TrackedEntity::rangeFor(const boost::shared_ptr<ServerPlayer>& player)
+{
+    int range = PlayerChunkMap::convertChunkRangeToBlock(player->mChunkViewDistance);
+    if (mRange < range)
+        range = mRange;
+    if (range > 4)
+        range -= player->getPlayerViewDistanceModifier();
+    return range;
+}
+
 int TrackedEntity::isVisibleTo(EntityTracker* tracker, const boost::shared_ptr<ServerPlayer>& player, bool force,
                                bool skipRangeCheck)
 {
@@ -125,11 +136,7 @@ int TrackedEntity::isVisibleTo(EntityTracker* tracker, const boost::shared_ptr<S
         zd = player->mZ - mZp / 32;
     }
 
-    int range = mMaxRange;
-    if (mRange < mMaxRange)
-        range = mRange;
-    if (range > 4)
-        range -= player->getPlayerViewDistanceModifier();
+    int range = rangeFor(player);
 
     bool inRange = false;
     if (!skipRangeCheck && xd >= -range && xd <= range && zd >= -range && zd <= range)
@@ -171,7 +178,10 @@ int TrackedEntity::isVisibleTo(EntityTracker* tracker, const boost::shared_ptr<S
                     continue;
                 double otherXd = other->mX - mXpu;
                 double otherZd = other->mZ - mZpu;
-                inRange = inRange | (otherXd >= -range && otherXd <= range && otherZd >= -range && otherZd <= range);
+                int otherRange = rangeFor(other);
+                inRange = inRange
+                          | (otherXd >= -otherRange && otherXd <= otherRange && otherZd >= -otherRange
+                             && otherZd <= otherRange);
                 canSee = canSee | canBySeenBy(other);
             }
         }

@@ -164,30 +164,31 @@ unsigned int NaturalMobSpawner::tick(ServerLevel* level, bool spawnEnemies, bool
         clear();
         PIXBeginNamedEvent(0.0f, "Setup chunks to poll");
 
-        int playerCount = (int)level->mPlayers.size();
-        int* playerChunkX = new int[playerCount];
-        int* playerChunkZ = new int[playerCount];
-        for (int i = 0; i < playerCount; ++i)
+        std::vector<int> playerChunkX;
+        std::vector<int> playerChunkZ;
+        for (unsigned int i = 0; i < level->mPlayers.size(); ++i)
         {
             boost::shared_ptr<Player> player = level->mPlayers[i];
             if (!player->isSpectator())
             {
-                playerChunkX[i] = Mth::floor(player->mX / 16.0);
-                playerChunkZ[i] = Mth::floor(player->mZ / 16.0);
-                addChunkPos(playerChunkX[i], playerChunkZ[i]);
+                playerChunkX.push_back(Mth::floor(player->mX / 16.0));
+                playerChunkZ.push_back(Mth::floor(player->mZ / 16.0));
+                addChunkPos(playerChunkX.back(), playerChunkZ.back());
             }
         }
+        const int playerCount = static_cast<int>(playerChunkX.size());
+        const int pollRadius = std::max(1, std::min<int>(MAX_CHUNK_POLL_RADIUS, level->getSimulationDistance() - 2));
 
         PIXEndNamedEvent();
         PIXBeginNamedEvent(0.0f, "Setup edges");
 
-        for (int distance = 1; distance <= CHUNK_POLL_RADIUS; ++distance)
+        for (int distance = 1; distance <= pollRadius; ++distance)
         {
             for (int i = 0; i < distance * 2; ++i)
             {
                 for (int p = 0; p < playerCount; ++p)
                 {
-                    bool edge = distance == CHUNK_POLL_RADIUS;
+                    bool edge = distance == pollRadius;
                     if (edge)
                     {
                         addEdgeChunkPos(playerChunkX[p] - distance + i, playerChunkZ[p] - distance);
@@ -206,8 +207,6 @@ unsigned int NaturalMobSpawner::tick(ServerLevel* level, bool spawnEnemies, bool
             }
         }
 
-        delete[] playerChunkX;
-        delete[] playerChunkZ;
         PIXEndNamedEvent();
     }
     MemSect(0);

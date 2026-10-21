@@ -22,6 +22,7 @@ public:
     TrackedEntity(boost::shared_ptr<Entity> entity, int range, int maxRange, int updateInterval, bool trackDelta);
 
     bool canBySeenBy(boost::shared_ptr<ServerPlayer> player);
+    int rangeFor(const boost::shared_ptr<ServerPlayer>& player);
     int isVisibleTo(EntityTracker* tracker, const boost::shared_ptr<ServerPlayer>& player, bool force,
                     bool skipRangeCheck);
     boost::shared_ptr<Packet> getAddEntityPacket();

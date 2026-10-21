@@ -63,11 +63,13 @@ public:
     virtual void reloadAllPlayers(int minX, int minZ, int maxX, int maxZ);
     virtual void onPlayerJoin(boost::shared_ptr<ServerPlayer> player);
     virtual void onPlayerLeave(boost::shared_ptr<ServerPlayer> player);
+    virtual void updatePlayerViewDistance(boost::shared_ptr<ServerPlayer> player);
 
     void flagEntitiesToBeRemoved(unsigned int* count, bool* removed);
     Level* getLevel();
     long long tickAddRequests(boost::shared_ptr<ServerPlayer> player, bool force);
-    bool chunkInRange(int x, int z, int centerX, int centerZ);
+    bool chunkInRange(int x, int z, int centerX, int centerZ, int distance);
+    int viewDistanceFor(boost::shared_ptr<ServerPlayer> player);
     bool shouldActuallyDropChunks();
     void setViewDistance(int distance);
     void tick();

@@ -81,11 +81,13 @@ private:
     struct UnloadedChunk
     {
         LevelChunk* chunk;
+        int x;
+        int z;
         long long unloadedAt;
     };
 
     bool freesUnloadedChunks();
-    bool isNearPlayer(LevelChunk* chunk);
+    bool isNearPlayer(int x, int z);
     void freeOldUnloadedChunks();
 
     std::deque<LevelChunk*> m_toDrop;

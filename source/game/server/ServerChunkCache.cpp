@@ -685,7 +685,7 @@ bool ServerChunkCache::tick()
             m_cache[idx] = NULL;
             if (freesUnloadedChunks())
             {
-                UnloadedChunk unloaded = {chunk, System::processTimeInMilliSecs()};
+                UnloadedChunk unloaded = {chunk, chunk->x, chunk->z, System::processTimeInMilliSecs()};
                 m_unloadedQueue.push_back(unloaded);
             }
         }
@@ -706,14 +706,14 @@ bool ServerChunkCache::freesUnloadedChunks()
     return m_xzSize > ClientChunkCache::RING_WIDTH;
 }
 
-bool ServerChunkCache::isNearPlayer(LevelChunk* chunk)
+bool ServerChunkCache::isNearPlayer(int x, int z)
 {
     static const int KEEP_DISTANCE = VideoSettings::RENDER_DISTANCE_MAX + 2;
     for (unsigned int i = 0; i < m_level->mPlayers.size(); ++i)
     {
         const int playerChunkX = Mth::floor(m_level->mPlayers[i]->mX / 16.0);
         const int playerChunkZ = Mth::floor(m_level->mPlayers[i]->mZ / 16.0);
-        if (Mth::abs(chunk->x - playerChunkX) <= KEEP_DISTANCE && Mth::abs(chunk->z - playerChunkZ) <= KEEP_DISTANCE)
+        if (Mth::abs(x - playerChunkX) <= KEEP_DISTANCE && Mth::abs(z - playerChunkZ) <= KEEP_DISTANCE)
         {
             return true;
         }
@@ -726,16 +726,18 @@ void ServerChunkCache::freeOldUnloadedChunks()
     static const long long UNLOADED_LIFETIME_MS = 60000;
     const long long now = System::processTimeInMilliSecs();
     const size_t pending = m_unloadedQueue.size();
+    EnterCriticalSection(&m_csLoadCreate);
     for (size_t i = 0; i < pending && now - m_unloadedQueue.front().unloadedAt > UNLOADED_LIFETIME_MS; ++i)
     {
         UnloadedChunk unloaded = m_unloadedQueue.front();
         m_unloadedQueue.pop_front();
-        const int idx = computeIdx(unloaded.chunk->x, unloaded.chunk->z);
+        // A chunk loaded again since it was queued may already be freed, so only the cache says it is still here.
+        const int idx = computeIdx(unloaded.x, unloaded.z);
         if (m_unloadedCache[idx] != unloaded.chunk)
         {
             continue;
         }
-        if (isNearPlayer(unloaded.chunk))
+        if (isNearPlayer(unloaded.x, unloaded.z))
         {
             unloaded.unloadedAt = now;
             m_unloadedQueue.push_back(unloaded);
@@ -744,6 +746,7 @@ void ServerChunkCache::freeOldUnloadedChunks()
         m_unloadedCache[idx] = NULL;
         delete unloaded.chunk;
     }
+    LeaveCriticalSection(&m_csLoadCreate);
 }
 
 bool ServerChunkCache::shouldSave()

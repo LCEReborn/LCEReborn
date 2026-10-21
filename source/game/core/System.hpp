@@ -46,7 +46,7 @@ public:
     static void ReverseULONG(unsigned long* value);
     static void ReverseINT(int* value);
     static void ReverseULONGLONG(long long* value);
-    static void ReverseCHAR16A(wchar_t* text, int count);
+    static void ReverseCHAR16A(char16_t* text, int count);
 };
 
 template <class T>

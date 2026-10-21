@@ -55,7 +55,7 @@ void SpellParticle::setBaseTex(int texture)
     baseTex = texture;
 }
 
-uint64_t SpellParticle::GetType()
+unsigned long long SpellParticle::GetType()
 {
     return ParticleKind::SPELL;
 }

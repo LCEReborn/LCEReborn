@@ -60,7 +60,7 @@ void HeartParticle::init(Level* level, double x, double y, double z, double xa, 
     setMiscTex(80);
 }
 
-uint64_t HeartParticle::GetType()
+unsigned long long HeartParticle::GetType()
 {
     return ParticleKind::HEART;
 }

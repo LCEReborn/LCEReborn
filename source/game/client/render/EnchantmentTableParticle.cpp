@@ -83,7 +83,7 @@ void EnchantmentTableParticle::tick()
         remove();
 }
 
-uint64_t EnchantmentTableParticle::GetType()
+unsigned long long EnchantmentTableParticle::GetType()
 {
     return ParticleKind::ENCHANTMENT_TABLE;
 }

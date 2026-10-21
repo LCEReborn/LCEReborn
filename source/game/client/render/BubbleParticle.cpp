@@ -111,7 +111,7 @@ int BubbleParticle::getLightColor(float partialTicks)
     return cachedLightColor;
 }
 
-uint64_t BubbleParticle::GetType()
+unsigned long long BubbleParticle::GetType()
 {
     return ParticleKind::BUBBLE;
 }

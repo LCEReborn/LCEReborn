@@ -51,7 +51,7 @@ void ChestRefillParticle::_init(Level* level, double x, double y, double z, doub
     setMiscTex(65);
 }
 
-uint64_t ChestRefillParticle::GetType()
+unsigned long long ChestRefillParticle::GetType()
 {
     const uint64_t type = ParticleKind::CHEST_REFILL;
     return type;

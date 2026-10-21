@@ -63,7 +63,7 @@ void SnowShovelParticle::init(Level* level, double x, double y, double z, double
     lifetime = (int)(lifetime * scale);
 }
 
-uint64_t SnowShovelParticle::GetType()
+unsigned long long SnowShovelParticle::GetType()
 {
     return ParticleKind::SNOW_SHOVEL;
 }

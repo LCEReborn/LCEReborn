@@ -45,7 +45,7 @@ void FireworksParticles::FireworksOverlayParticle::render(BufferBuilder* buffer,
     }
 }
 
-uint64_t FireworksParticles::FireworksOverlayParticle::GetType()
+unsigned long long FireworksParticles::FireworksOverlayParticle::GetType()
 {
     return ParticleKind::FIREWORKS_OVERLAY;
 }

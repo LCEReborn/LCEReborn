@@ -20,7 +20,7 @@ public:
 
     BubblePopParticle(Level* level, double x, double y, double z, double xa, double ya, double za);
     virtual void tick();
-    virtual uint64_t GetType();
+    virtual unsigned long long GetType();
 };
 
 #endif

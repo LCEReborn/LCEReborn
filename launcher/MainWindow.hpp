@@ -55,6 +55,7 @@ private:
     PlayButton* mPlay;
     ShadowLabel* mStatus;
     bool mHiddenForGame = false;
+    bool mCloseAfterGame = false;
 };
 
 #endif

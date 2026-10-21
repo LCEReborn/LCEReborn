@@ -17,7 +17,7 @@ ItemPickupParticle::ItemPickupParticle(Level* level, boost::shared_ptr<Entity> i
     this->yOffs = yOffs;
 }
 
-uint64_t ItemPickupParticle::GetType()
+unsigned long long ItemPickupParticle::GetType()
 {
     return ParticleKind::ITEM_PICKUP;
 }

@@ -23,7 +23,7 @@ class Particle : public boost::enable_shared_from_this<Particle>
 public:
     Particle(Level* level, double x, double y, double z, double xa, double ya, double za);
     Particle(Level* level, double x, double y, double z);
-    virtual uint64_t GetType() = 0;
+    virtual unsigned long long GetType() = 0;
     virtual ~Particle();
     virtual Particle* setPower(float power);
     virtual Particle* scale(float factor);

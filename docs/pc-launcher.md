@@ -17,9 +17,12 @@ skips it.
 
 ## Its folder
 
-The launcher is portable and keeps everything beside itself: `assets/` (the
-imported game), `resources/`, `license.cfg`, `launcher_profiles.json` and
-`launcher.ini`.
+On Windows the launcher is portable and keeps everything beside itself:
+`assets/` (the imported game), `license.cfg`, `launcher_profiles.json`,
+`launcher.ini` and the default game folder's saves and logs. On Linux these
+go in `~/.local/share/LCEReborn` (under `$XDG_DATA_HOME` when it is set),
+since an AppImage can't write beside itself. The programs and `resources/`
+stay where the launcher is (`launcher/LauncherPaths`).
 
 ## Setup
 
@@ -35,8 +38,8 @@ When there is no imported game, the launcher opens on setup:
 
 ## Licenses
 
-The game starts as the trial with no DLC until you edit `license.cfg`, beside
-the launcher; only unlock what you own. Setup's Licenses step opens it. Set `full_game = true` for the full
+The game starts as the trial with no DLC until you edit `license.cfg`, in the
+launcher's folder; only unlock what you own. Setup's Licenses step opens it. Set `full_game = true` for the full
 game and `dlc` to `all` or the names of your packs (see Licenses in
 `pc-platform.md`).
 

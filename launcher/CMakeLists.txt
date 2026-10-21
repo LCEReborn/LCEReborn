@@ -72,4 +72,7 @@ if(WIN32)
   add_custom_command(TARGET LCERebornLauncher POST_BUILD
     COMMAND "${LCE_QT_BIN}/windeployqt.exe" --no-translations --no-compiler-runtime --no-system-d3d-compiler
             --no-system-dxc-compiler --no-opengl-sw --no-quick-import --verbose 0 "$<TARGET_FILE:LCERebornLauncher>")
+elseif(NOT APPLE)
+  # The Linux package keeps Qt's libraries in lib/ beside the launcher (tools/package_pc.py).
+  set_target_properties(LCERebornLauncher PROPERTIES BUILD_RPATH "\$ORIGIN/lib")
 endif()

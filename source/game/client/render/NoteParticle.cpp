@@ -74,7 +74,7 @@ void NoteParticle::init(Level* level, double x, double y, double z, double xa, d
     setMiscTex(64);
 }
 
-uint64_t NoteParticle::GetType()
+unsigned long long NoteParticle::GetType()
 {
     return ParticleKind::NOTE;
 }

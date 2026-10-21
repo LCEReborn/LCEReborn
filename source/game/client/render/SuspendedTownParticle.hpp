@@ -10,7 +10,7 @@ public:
     SuspendedTownParticle(Level* level, double x, double y, double z, double xa, double ya, double za);
     virtual void tick();
     virtual void move(double xa, double ya, double za);
-    virtual uint64_t GetType();
+    virtual unsigned long long GetType();
 
     class Provider : public ParticleProvider
     {

@@ -2,6 +2,7 @@
 #define GAME_CORE_XMLPARSER_HPP
 
 #include <string>
+#include <vector>
 
 class DataOutputStream;
 class File;
@@ -62,6 +63,7 @@ private:
     unsigned int m_xmlSrcLength;
     rapidxml::xml_document<char> m_document;
     rapidxml::xml_document<wchar_t> m_wideDocument;
+    std::vector<wchar_t> m_wideSrc;
 };
 
 #endif

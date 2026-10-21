@@ -77,7 +77,7 @@ void SmokeParticle::tick()
     }
 }
 
-uint64_t SmokeParticle::GetType()
+unsigned long long SmokeParticle::GetType()
 {
     return ParticleKind::SMOKE;
 }

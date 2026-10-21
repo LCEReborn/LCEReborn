@@ -67,7 +67,7 @@ void WaterDropParticle::tick()
         remove();
 }
 
-uint64_t WaterDropParticle::GetType()
+unsigned long long WaterDropParticle::GetType()
 {
     return ParticleKind::WATER_DROP;
 }

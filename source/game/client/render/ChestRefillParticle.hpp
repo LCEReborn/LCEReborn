@@ -9,7 +9,7 @@ class ChestRefillParticle : public Particle
 public:
     ChestRefillParticle(Level* level, double x, double y, double z, double xa, double ya, double za);
     ChestRefillParticle(Level* level, double x, double y, double z, double xa, double ya, double za, float scale);
-    virtual uint64_t GetType();
+    virtual unsigned long long GetType();
     virtual void tick();
     virtual void render(BufferBuilder* buffer, const boost::shared_ptr<Entity>& camera, float partialTicks, float xa,
                         float ya, float za, float xa2, float za2);

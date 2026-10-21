@@ -4,7 +4,8 @@
     python tools/build/qt.py
 
 Reads tools/build/qt.json and installs that Qt version's base module
-(Core, Gui, Widgets, Network and their plugins) for this machine into
+(Core, Gui, Widgets, Network and their plugins) for this machine, with any
+archives its host entry adds (ICU, which Qt for Linux needs), into
 build/qt/<version>/<folder>, where CMake looks for it. The installer,
 aqtinstall, is pinned to a commit too (its last release predates the
 repository layout Qt 6.11 introduced) and lives in its own virtual
@@ -69,20 +70,28 @@ def main():
     with open(PINS, encoding="utf-8") as handle:
         pins = json.load(handle)
     host = host_pins(pins)
+    archives = pins["archives"] + host.get("archives", [])
     prefix = os.path.join(QT_ROOT, pins["version"], host["folder"])
     config = os.path.join(prefix, "lib", "cmake", "Qt6", "Qt6Config.cmake")
-    if os.path.isfile(config):
+    stamp = os.path.join(prefix, "archives.pin")
+    installed = pins["archives"]
+    if os.path.isfile(stamp):
+        with open(stamp, encoding="utf-8") as handle:
+            installed = handle.read().split()
+    if os.path.isfile(config) and installed == archives:
         print("Qt %s is already installed in %s" % (pins["version"], os.path.relpath(prefix, ROOT)))
         return 0
 
     python = ensure_installer(pins["aqtinstall"])
     command = [python, "-m", "aqt", "install-qt", host["aqt_host"], "desktop", pins["version"], host["arch"],
-               "--outputdir", QT_ROOT, "--archives"] + pins["archives"]
+               "--outputdir", QT_ROOT, "--archives"] + archives
     print("+ " + " ".join(command), flush=True)
     if subprocess.run(command).returncode != 0:
         raise QtError("aqtinstall could not install Qt %s for %s" % (pins["version"], host["arch"]))
     if not os.path.isfile(config):
         raise QtError("Qt was installed but %s is missing" % os.path.relpath(config, ROOT))
+    with open(stamp, "w", encoding="utf-8") as handle:
+        handle.write(" ".join(archives) + "\n")
     print("Qt %s installed in %s" % (pins["version"], os.path.relpath(prefix, ROOT)))
     return 0
 

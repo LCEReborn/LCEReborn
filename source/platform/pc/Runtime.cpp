@@ -1,7 +1,15 @@
 #include "platform/pc/Runtime.hpp"
 
 #include <chrono>
+#include <csignal>
 #include <ctime>
+
+#ifndef _MSC_VER
+void __debugbreak()
+{
+    std::raise(SIGTRAP);
+}
+#endif
 
 unsigned int FileTimeToSystemTime(const FILETIME*, SYSTEMTIME*)
 {

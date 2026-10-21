@@ -48,7 +48,7 @@ void BarrierParticle::render(BufferBuilder* buffer, const boost::shared_ptr<Enti
     buffer->vertexUV(px + xa * scale - xa2 * scale, py - ya * scale, pz + za * scale - za2 * scale, u0, v1);
 }
 
-uint64_t BarrierParticle::GetType()
+unsigned long long BarrierParticle::GetType()
 {
     return ParticleKind::BARRIER;
 }

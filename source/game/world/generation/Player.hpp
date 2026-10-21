@@ -487,7 +487,7 @@ public:
     void SetLastAteKelp(bool ate);
     void sendMessage(ClientboundChatPacket::EChatPacketMessage message, int32_t* intParams, uint32_t numIntParams,
                      std::wstring* stringParams, uint32_t numStringParams);
-    uint64_t GetType();
+    unsigned long long GetType();
     virtual uint64_t setCustomCape(uint32_t cape);
     virtual void handleCollectItem(not_null_ptr<ItemInstance> item);
     virtual void SetCamera(boost::shared_ptr<Entity> entity);

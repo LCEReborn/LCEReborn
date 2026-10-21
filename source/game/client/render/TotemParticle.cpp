@@ -24,7 +24,7 @@ TotemParticle::TotemParticle(Level* level, double x, double y, double z, double 
     }
 }
 
-uint64_t TotemParticle::GetType()
+unsigned long long TotemParticle::GetType()
 {
     return ParticleKind::TOTEM;
 }

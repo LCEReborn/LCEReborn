@@ -72,7 +72,7 @@ void FlameParticle::tick()
     zd *= 0.7f;
 }
 
-uint64_t FlameParticle::GetType()
+unsigned long long FlameParticle::GetType()
 {
     return ParticleKind::FLAME;
 }

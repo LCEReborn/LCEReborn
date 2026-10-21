@@ -10,7 +10,7 @@ class DripParticle : public Particle
 {
 public:
     DripParticle(Level* level, double x, double y, double z, Material* material);
-    virtual uint64_t GetType();
+    virtual unsigned long long GetType();
     virtual void tick();
     virtual int getLightColor(float partialTicks);
     virtual float getBrightness(float partialTicks);

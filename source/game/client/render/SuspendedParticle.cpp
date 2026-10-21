@@ -37,7 +37,7 @@ void SuspendedParticle::tick()
         remove();
 }
 
-uint64_t SuspendedParticle::GetType()
+unsigned long long SuspendedParticle::GetType()
 {
     return ParticleKind::SUSPENDED;
 }

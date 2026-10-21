@@ -15,7 +15,7 @@ class MobAppearanceParticle : public Particle
 {
 public:
     MobAppearanceParticle(Level* level, double x, double y, double z);
-    virtual uint64_t GetType();
+    virtual unsigned long long GetType();
     virtual void tick();
     bool isAffected();
     virtual void render(BufferBuilder* buffer, const boost::shared_ptr<Entity>& camera, float partialTicks, float xa,

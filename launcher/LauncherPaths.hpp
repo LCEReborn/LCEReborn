@@ -5,6 +5,7 @@
 
 namespace LauncherPaths
 {
+QString InstallDir();
 QString DataDir();
 QString AssetsDir();
 QString ResourcesDir();
@@ -15,6 +16,7 @@ QString SettingsFile();
 QString NewsCacheFile();
 QString PreparedManifest();
 QString ContentCheckFile();
+bool RunsFromAppImage();
 }
 
 #endif

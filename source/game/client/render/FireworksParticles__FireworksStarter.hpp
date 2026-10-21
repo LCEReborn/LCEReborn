@@ -29,7 +29,7 @@ public:
     void createParticleBurst(arrayWithLength<int> colors, arrayWithLength<int> fadeColors, bool trail, bool flicker);
     virtual void tick();
     virtual int getParticleTexture();
-    virtual uint64_t GetType();
+    virtual unsigned long long GetType();
 
 private:
     int life;

@@ -18,7 +18,7 @@ public:
 
     BubbleParticle(Level* level, double x, double y, double z, double xa, double ya, double za,
                    arrayWithLength<int> params);
-    virtual uint64_t GetType();
+    virtual unsigned long long GetType();
     virtual void tick();
     virtual int getLightColor(float partialTicks);
     virtual float getBrightness(float partialTicks);

@@ -64,7 +64,7 @@ void CritParticle::_init(Level* level, double x, double y, double z, double xa, 
     setMiscTex(65);
 }
 
-uint64_t CritParticle::GetType()
+unsigned long long CritParticle::GetType()
 {
     return ParticleKind::CRIT;
 }

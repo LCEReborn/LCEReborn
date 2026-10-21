@@ -13,7 +13,7 @@ TerrainDustParticle::TerrainDustParticle(Level* level, double x, double y, doubl
     zd = za;
 }
 
-uint64_t TerrainDustParticle::GetType()
+unsigned long long TerrainDustParticle::GetType()
 {
     return ParticleKind::TERRAIN_DUST;
 }

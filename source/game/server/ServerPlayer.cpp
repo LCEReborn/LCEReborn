@@ -2079,7 +2079,7 @@ bool ServerPlayer::checkTotemDeathProtection(const DamageSource* source)
     return true;
 }
 
-uint64_t ServerPlayer::GetType()
+unsigned long long ServerPlayer::GetType()
 {
     return EntityType::SERVER_PLAYER;
 }

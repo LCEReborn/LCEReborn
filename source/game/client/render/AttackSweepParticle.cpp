@@ -74,7 +74,7 @@ int AttackSweepParticle::getParticleTexture()
     return 3;
 }
 
-uint64_t AttackSweepParticle::GetType()
+unsigned long long AttackSweepParticle::GetType()
 {
     return ParticleKind::ATTACK_SWEEP;
 }

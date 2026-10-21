@@ -15,6 +15,7 @@
 #include "game/core/DataInputStream.hpp"
 #include "game/core/GameRulesSource.hpp"
 #include "game/core/L10N.hpp"
+#include "game/core/StringConversion.hpp"
 #include "game/data/GameRuleSaveInterface.hpp"
 #include "game/data/StringTable.hpp"
 #include "game/minigame/ApplySchematicRuleDefinition.hpp"
@@ -401,7 +402,8 @@ void LevelGenerationOptions::loadGameRulesHeaders(DLCPack* pack, StringTable* ta
             unsigned int bytesRead;
             if (ReadFile(handle, data, size, &bytesRead, NULL) == 0)
             {
-                gApp.FatalLoadError(L"<LevelGenerationOptions@%d> Failed to read %s", 1136, fileName);
+                gApp.FatalLoadError(L"<LevelGenerationOptions@%d> Failed to read %ls", 1136,
+                                    convStringToWstring(fileName).c_str());
             }
             CloseHandle(handle);
             header->setGrfData(data, size, table);
@@ -496,7 +498,8 @@ void LevelGenerationOptions::setBaseSaveData(File file)
         unsigned int bytesRead;
         if (ReadFile(handle, data, size, &bytesRead, NULL) == 0)
         {
-            gApp.FatalLoadError(L"<LevelGenerationOptions@%d> Failed to read %s", 1193, path);
+            gApp.FatalLoadError(L"<LevelGenerationOptions@%d> Failed to read %ls", 1193,
+                                convStringToWstring(path).c_str());
         }
         CloseHandle(handle);
         setBaseSaveData(data, size);

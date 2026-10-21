@@ -73,7 +73,7 @@ void BreakingItemParticle::_init(Item* item, int meta)
     uvs = TextureUVCoordinateSet(u, v, u + 0.015609375f, v + 0.015609375f, 1, 1);
 }
 
-uint64_t BreakingItemParticle::GetType()
+unsigned long long BreakingItemParticle::GetType()
 {
     return ParticleKind::BREAKING_ITEM;
 }

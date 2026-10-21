@@ -27,7 +27,7 @@ public:
     TerrainParticle(Level* level, double x, double y, double z, double xa, double ya, double za,
                     const BlockState* state);
 
-    virtual uint64_t GetType();
+    virtual unsigned long long GetType();
     virtual ~TerrainParticle();
     virtual void render(BufferBuilder* buffer, const boost::shared_ptr<Entity>& camera, float partialTicks, float xa,
                         float ya, float za, float xa2, float za2);

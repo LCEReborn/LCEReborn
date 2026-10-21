@@ -83,7 +83,7 @@ void EnderParticle::move(double xa, double ya, double za)
     setBoundingBox(getBoundingBox()->move(xa, ya, za));
     setLocationFromBoundingbox();
 }
-uint64_t EnderParticle::GetType()
+unsigned long long EnderParticle::GetType()
 {
     return ParticleKind::ENDER;
 }

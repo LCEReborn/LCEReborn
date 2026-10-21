@@ -84,7 +84,7 @@ int WaterCurrentDownParticle::getLightColor(float partialTicks)
     return cachedLightColor;
 }
 
-uint64_t WaterCurrentDownParticle::GetType()
+unsigned long long WaterCurrentDownParticle::GetType()
 {
     return PARTICLE_TYPE_CURRENT_DOWN;
 }

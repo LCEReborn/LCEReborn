@@ -2,12 +2,23 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QStandardPaths>
 
 namespace LauncherPaths
 {
-QString DataDir()
+QString InstallDir()
 {
     return QDir(QCoreApplication::applicationDirPath()).absolutePath();
+}
+
+QString DataDir()
+{
+#if defined(Q_OS_WIN)
+    return InstallDir();
+#else
+    // The Linux install folder can be read-only (an AppImage), so the data lives in the user's data folder.
+    return QDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/LCEReborn").absolutePath();
+#endif
 }
 
 QString AssetsDir()
@@ -17,7 +28,7 @@ QString AssetsDir()
 
 QString ResourcesDir()
 {
-    return DataDir() + "/resources";
+    return InstallDir() + "/resources";
 }
 
 QString LicenseFile()
@@ -28,9 +39,9 @@ QString LicenseFile()
 QString GameExecutable()
 {
 #if defined(Q_OS_WIN)
-    return DataDir() + "/LCEReborn.exe";
+    return InstallDir() + "/LCEReborn.exe";
 #else
-    return DataDir() + "/LCEReborn";
+    return InstallDir() + "/LCEReborn";
 #endif
 }
 
@@ -57,5 +68,10 @@ QString PreparedManifest()
 QString ContentCheckFile()
 {
     return AssetsDir() + "/Common/Media/MediaWiiU.arc";
+}
+
+bool RunsFromAppImage()
+{
+    return qEnvironmentVariableIsSet("APPIMAGE");
 }
 }

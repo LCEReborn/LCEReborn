@@ -92,7 +92,7 @@ void MobAppearanceParticle::render(BufferBuilder*, const boost::shared_ptr<Entit
     GlStateManager::enableDepthTest();
 }
 
-uint64_t MobAppearanceParticle::GetType()
+unsigned long long MobAppearanceParticle::GetType()
 {
     return ParticleKind::MOB_APPEARANCE;
 }

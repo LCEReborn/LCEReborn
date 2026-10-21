@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.24)
 
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+
 project(LCEReborn LANGUAGES C CXX)
 
 set(LCE_THIRD_PARTY "${CMAKE_SOURCE_DIR}/build/third_party" CACHE PATH
@@ -49,6 +53,8 @@ endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   target_compile_options(lce_common INTERFACE -Wno-c++11-narrowing)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  target_compile_options(lce_common INTERFACE -Wno-narrowing)
 endif()
 
 # SDL3, for the window, input and audio of the PC layer.
@@ -164,6 +170,11 @@ if(WIN32)
   file(WRITE "${CMAKE_BINARY_DIR}/LCEReborn.rc" "1 ICON \"${LCE_ICON}\"\n")
   target_sources(LCEReborn PRIVATE "${CMAKE_BINARY_DIR}/LCEReborn.rc")
   set_source_files_properties("${CMAKE_BINARY_DIR}/LCEReborn.rc" PROPERTIES OBJECT_DEPENDS "${LCE_ICON}")
+else()
+  find_package(Threads REQUIRED)
+  target_link_libraries(LCEReborn PRIVATE Threads::Threads ${CMAKE_DL_LIBS})
+  # Function names in crash report stacks.
+  set_target_properties(LCEReborn PROPERTIES ENABLE_EXPORTS ON)
 endif()
 # The PC interface art (tools/pcart) is read from resources/ in the working folder unless --resource-dir is given.
 add_custom_command(TARGET LCEReborn POST_BUILD

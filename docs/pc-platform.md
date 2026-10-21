@@ -195,9 +195,10 @@ same logger.
 A fatal renderer error or an unhandled crash writes a folder to
 `crash-reports/` beside the logs folder (`platform/pc/PcCrashReport`). Its
 `report.txt` has the reason, the failing thread's stack, every thread by name
-and a section from each subsystem that registers one; `minidump.dmp` holds
-every thread's stack, for Visual Studio or WinDbg with `LCEReborn.pdb`. The
-renderer's section gives the command buffers' capacity, use and peak, and the
+and a section from each subsystem that registers one. On Windows,
+`minidump.dmp` holds every thread's stack, for Visual Studio or WinDbg with
+`LCEReborn.pdb`; Linux has no minidump, and a crash there is caught as a
+signal. The renderer's section gives the command buffers' capacity, use and peak, and the
 log warns once when they pass 75% of capacity. The capacity fits the largest
 render distance.
 
@@ -250,20 +251,36 @@ cmake -S . -B build/pc -G Ninja -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER
 cmake --build build/pc
 ```
 
-Run CMake from a Visual Studio x64 developer prompt. The game core is
-compiled as C++14, the dialect it was written in; the PC layer as C++17.
-`tools/build/qt.py` installs the Qt the launcher needs (`pc-launcher.md`);
+On Windows, run CMake from a Visual Studio x64 developer prompt. On Linux,
+leave out the compiler options to build with the system's clang or GCC; the
+build needs CMake 3.24 or newer, Ninja and the development packages SDL uses
+for X11, Wayland and sound (`tools/build/Dockerfile.linux` lists them for
+Debian and Ubuntu). The game core is compiled as C++14, the dialect it was
+written in; the PC layer as C++17. `tools/build/qt.py` installs the Qt the
+launcher needs (`pc-launcher.md`), with ICU on Linux;
 `-DLCE_BUILD_LAUNCHER=OFF` builds the game without it.
+
+```
+python tools/build_linux.py
+```
+
+builds and packages the Linux version in Docker from any system. It builds on
+Ubuntu 22.04 so the result also runs on older distributions; the package's
+README names the glibc it needs.
 
 ```
 python tools/package_pc.py
 ```
 
-packages the build for players as `build/LCEReborn-pc-<commit>.zip`: the
-game, the launcher with its Qt libraries, `resources/`, a README and the
-license and notices of everything in it. It copies only those files, never
-the game files, saves or logs in `build/pc`, and refuses a tree with
-uncommitted changes, since the zip names its commit as its source. License
+packages the build for players as `build/LCEReborn-pc-<commit>.zip` on
+Windows or `build/LCEReborn-linux-<commit>.tar.gz` on Linux: the game, the
+launcher with its Qt libraries, `resources/`, a README and the license and
+notices of everything in it. On Linux it also packs the same files as
+`build/LCEReborn-linux-<commit>.AppImage`, which starts the launcher; that
+needs `appimagetool` and the AppImage runtime, which the Docker image has
+(`--no-appimage` skips it). It copies only those files, never the game
+files, saves or logs in `build/pc`, and refuses a tree with uncommitted
+changes, since the package names its commit as its source. License
 texts not found in the dependencies themselves are kept in
 `tools/package/licenses/`, taken from qtbase and the SPDX license list.
 
@@ -276,11 +293,14 @@ local file that is not committed. To publish a release, run
 python tools/release_pc.py
 ```
 
-from the same developer prompt, on a clean tree whose commit is pushed. It
+where the PC build is made, on a clean tree whose commit is pushed. It
 builds, packages, and after asking, publishes a GitHub release named after
 the commit and the date it was built (`9b3a482d - 2026-10-19`, tag
-`build-9b3a482d`), with the Unreleased notes and the zip. It then files those
-notes under the release's name.
+`build-9b3a482d`), with the Unreleased notes and the package. It then files
+those notes under the release's name. A package of the same commit for the
+other system already in `build/` is published with it, so on Windows, run
+`tools/build_linux.py` first to release both. When the commit already has a
+release, the script only adds its package to it.
 An `@name` in the notes, such as the selector `@e`, is published as code so
 GitHub doesn't mention that account.
 `--dry-run` shows the release without publishing it, and `--prerelease`

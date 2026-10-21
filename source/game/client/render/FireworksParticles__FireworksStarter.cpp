@@ -291,7 +291,7 @@ int FireworksParticles::FireworksStarter::getParticleTexture()
     return 0;
 }
 
-uint64_t FireworksParticles::FireworksStarter::GetType()
+unsigned long long FireworksParticles::FireworksStarter::GetType()
 {
     return ParticleKind::FIREWORKS_STARTER;
 }

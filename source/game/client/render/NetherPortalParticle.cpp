@@ -90,7 +90,7 @@ void NetherPortalParticle::move(double xa, double ya, double za)
     setLocationFromBoundingbox();
 }
 
-uint64_t NetherPortalParticle::GetType()
+unsigned long long NetherPortalParticle::GetType()
 {
     return ParticleKind::NETHER_PORTAL;
 }

@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QDir>
 #include <QIcon>
 #include <QMessageBox>
 
@@ -16,8 +17,15 @@ int main(int argc, char** argv)
     QApplication::setWindowIcon(QIcon(":/launcher/icon.png"));
     ApplyTheme(application);
 
-    ProfileStore store(LauncherPaths::ProfilesFile());
     QString error;
+    if (!QDir().mkpath(LauncherPaths::DataDir()))
+    {
+        QMessageBox::critical(nullptr, "LCEReborn Launcher",
+                              QString("The launcher's folder %1 could not be created.")
+                                  .arg(QDir::toNativeSeparators(LauncherPaths::DataDir())));
+        return 1;
+    }
+    ProfileStore store(LauncherPaths::ProfilesFile());
     if (!store.Load(&error))
     {
         QMessageBox::critical(nullptr, "LCEReborn Launcher",

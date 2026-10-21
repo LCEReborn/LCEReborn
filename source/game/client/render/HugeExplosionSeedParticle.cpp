@@ -45,7 +45,7 @@ int HugeExplosionSeedParticle::getParticleTexture()
     return 1;
 }
 
-uint64_t HugeExplosionSeedParticle::GetType()
+unsigned long long HugeExplosionSeedParticle::GetType()
 {
     return ParticleKind::HUGE_EXPLOSION_SEED;
 }

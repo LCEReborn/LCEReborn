@@ -96,7 +96,7 @@ float DragonBreathParticle::getBrightness(float partialTicks)
     return 0.5f / value + 0.5f;
 }
 
-uint64_t DragonBreathParticle::GetType()
+unsigned long long DragonBreathParticle::GetType()
 {
     return ParticleKind::DRAGON_BREATH;
 }

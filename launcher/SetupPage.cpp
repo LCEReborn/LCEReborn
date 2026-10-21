@@ -194,7 +194,8 @@ QWidget* SetupPage::MakeStep(int number, const QString& title, const QString& hi
     hintLabel->setObjectName("StepHint");
     hintLabel->setWordWrap(true);
     step->field = new QLineEdit(widget);
-    step->field->setPlaceholderText(isUpdate ? "...\\Minecraft Wii U Edition [Update]" : "...\\Minecraft Wii U Edition [Game]");
+    step->field->setPlaceholderText(QDir::toNativeSeparators(isUpdate ? ".../Minecraft Wii U Edition [Update]"
+                                                                      : ".../Minecraft Wii U Edition [Game]"));
     step->check = new QLabel(widget);
     step->check->setWordWrap(true);
     step->valid = false;

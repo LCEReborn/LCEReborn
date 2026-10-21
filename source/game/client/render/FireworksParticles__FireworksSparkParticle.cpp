@@ -74,7 +74,7 @@ void FireworksParticles::FireworksSparkParticle::tick()
     }
 }
 
-uint64_t FireworksParticles::FireworksSparkParticle::GetType()
+unsigned long long FireworksParticles::FireworksSparkParticle::GetType()
 {
     return ParticleKind::FIREWORKS_SPARK;
 }

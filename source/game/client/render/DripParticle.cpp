@@ -136,7 +136,7 @@ void DripParticle::tick()
     }
 }
 
-uint64_t DripParticle::GetType()
+unsigned long long DripParticle::GetType()
 {
     return ParticleKind::DRIP;
 }

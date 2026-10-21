@@ -8,7 +8,7 @@ class LargeSmokeParticle : public SmokeParticle
 {
 public:
     LargeSmokeParticle(Level* level, double x, double y, double z, double xa, double ya, double za);
-    virtual uint64_t GetType();
+    virtual unsigned long long GetType();
 
     class Provider : public ParticleProvider
     {

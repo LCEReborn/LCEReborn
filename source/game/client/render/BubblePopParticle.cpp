@@ -42,7 +42,7 @@ void BubblePopParticle::tick()
     }
 }
 
-uint64_t BubblePopParticle::GetType()
+unsigned long long BubblePopParticle::GetType()
 {
     return PARTICLE_TYPE_BUBBLE_POP;
 }

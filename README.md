@@ -16,13 +16,16 @@ hand class families to Luna and Opus 5 workers. See `docs/overview.md`.
 
 ## Playing on PC
 
-1. Download the zip from the latest
-   [release](https://github.com/LCEReborn/LCEReborn/releases/latest) and
-   extract it anywhere. It needs 64-bit Windows and the Microsoft Visual C++
-   Redistributable, which most PCs already have.
-2. Run `LCERebornLauncher.exe` and point its setup at your own dumps of the
-   base game and update 688. It imports the game's content beside itself;
-   nothing is downloaded.
+1. Download the package for your system from the latest
+   [release](https://github.com/LCEReborn/LCEReborn/releases/latest). On
+   64-bit Windows, extract the zip anywhere; it needs the Microsoft Visual
+   C++ Redistributable most PCs already have. On 64-bit Linux, make the
+   AppImage executable and run it, or extract the tar.gz (its README lists
+   what Linux needs).
+2. Run `LCERebornLauncher` and point its setup at your own dumps of the
+   base game and update 688. It imports the game's content beside itself on
+   Windows and into `~/.local/share/LCEReborn` on Linux; nothing is
+   downloaded.
 3. The game starts as the trial with no DLC. Setup's Licenses step opens
    `license.cfg`, where you unlock the full game and your packs. Only
    unlock what you own.
@@ -50,8 +53,9 @@ python tools/package.py --update <update v688 dump>
 Cemu -g build/title/code/Minecraft.Client.rpx
 ```
 
-See `docs/building.md`. The PC build uses CMake with clang-cl from a Visual
-Studio x64 developer prompt; see Building on PC in `docs/pc-platform.md`.
+See `docs/building.md`. The PC build uses CMake, with clang-cl from a Visual
+Studio x64 developer prompt on Windows and clang or GCC on Linux; see Building
+on PC in `docs/pc-platform.md`.
 
 The game files come from your own dumps of the base game and update 688.
 
@@ -59,7 +63,7 @@ The game files come from your own dumps of the base game and update 688.
 
 The Wii U build runs in a stock Cemu 2.6: it boots to the menus, creates and
 loads worlds, and its server has run at the full 20 ticks per second in
-testing. The PC version plays on Windows, and the two builds can play
+testing. The PC version plays on Windows and Linux, and the two builds can play
 together. Both are still being refined toward the original function by
 function.
 

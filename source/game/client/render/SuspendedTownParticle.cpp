@@ -37,7 +37,7 @@ void SuspendedTownParticle::move(double xa, double ya, double za)
     setLocationFromBoundingbox();
 }
 
-uint64_t SuspendedTownParticle::GetType()
+unsigned long long SuspendedTownParticle::GetType()
 {
     return ParticleKind::SUSPENDED_TOWN;
 }

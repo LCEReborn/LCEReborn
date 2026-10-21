@@ -11,7 +11,7 @@ hand-authored text; no decompiler output, disassembly or game data is
 committed. See `provenance.md`.
 
 The same source also builds a native PC version, LCEReborn, which runs the
-game on Windows from your own copy of it (`pc-platform.md`).
+game on Windows and Linux from your own copy of it (`pc-platform.md`).
 
 ## Who is writing it
 
@@ -75,9 +75,9 @@ the full 20 ticks per second in testing. It has not been tried on a Wii U
 console. Nintendo ended the Wii U's online services in April 2024; this
 build's multiplayer uses LCEReborn's own network manager instead.
 
-The PC version builds with CMake and plays on Windows: worlds, mini games,
-split screen and multiplayer with other PCs and the Wii U build. Its
-releases are on GitHub, and `pc-platform.md` describes it.
+The PC version builds with CMake and plays on Windows and Linux: worlds,
+mini games, split screen and multiplayer with other PCs and the Wii U build.
+Its releases are on GitHub, and `pc-platform.md` describes it.
 
 The reconstruction is still being refined toward the original function by
 function, and a behaviour difference you find is a bug worth reporting.

@@ -7,13 +7,6 @@
 
 #include <algorithm>
 
-wchar_t* wstringtochar16(const std::wstring& string);
-
-wchar_t* wstringtochar16(const std::wstring& string)
-{
-    return const_cast<wchar_t*>(string.c_str());
-}
-
 static const unsigned int SAVE_HEADER_SIZE = 12;
 static const unsigned int FILE_ENTRY_DATA_SIZE = 144;
 static const unsigned int FILE_ENTRY_DATA_SIZE_V1 = 136;
@@ -68,11 +61,13 @@ unsigned int FileHeader::GetStartOfNextData()
 
 FileEntry* FileHeader::AddFile(const std::wstring& fileName, unsigned int fileSize)
 {
-    wchar_t name[64];
+    char16_t name[64];
 
     memset(name, 0, sizeof(name));
 
-    memcpy(name, wstringtochar16(fileName), std::min(sizeof(name), sizeof(wchar_t) * fileName.length()));
+    const size_t length = std::min<size_t>(64, fileName.length());
+    for (size_t i = 0; i < length; i++)
+        name[i] = static_cast<char16_t>(fileName[i]);
 
     for (unsigned int i = 0; i < m_fileEntries.size(); i++)
     {
@@ -237,7 +232,7 @@ void FileHeader::ReadHeader(void* pData, ESavePlatform platform)
                 System::ReverseULONGLONG(&pEntry->m_data.m_timestamp);
             }
 
-            pEntry->m_fileName = char16towstring(pEntry->m_data.m_name);
+            pEntry->m_fileName = char16towstring(pEntry->m_data.m_name, 64);
 
             pEntry->m_filePointer = pEntry->m_data.m_startOffset;
             m_currentFile = pEntry;

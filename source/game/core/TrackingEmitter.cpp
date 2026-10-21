@@ -51,7 +51,7 @@ int TrackingEmitter::getParticleTexture()
     return 3;
 }
 
-uint64_t TrackingEmitter::GetType()
+unsigned long long TrackingEmitter::GetType()
 {
     return ParticleKind::TRACKING_EMITTER;
 }

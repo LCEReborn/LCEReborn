@@ -65,7 +65,7 @@ void LavaParticle::tick()
     }
 }
 
-uint64_t LavaParticle::GetType()
+unsigned long long LavaParticle::GetType()
 {
     return ParticleKind::LAVA;
 }

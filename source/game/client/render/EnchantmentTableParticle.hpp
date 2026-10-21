@@ -12,7 +12,7 @@ public:
     virtual float getBrightness(float partialTicks);
     virtual void move(double xa, double ya, double za);
     virtual void tick();
-    virtual uint64_t GetType();
+    virtual unsigned long long GetType();
 
     class Provider : public ParticleProvider
     {

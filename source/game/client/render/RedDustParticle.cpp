@@ -68,7 +68,7 @@ void RedDustParticle::tick()
     }
 }
 
-uint64_t RedDustParticle::GetType()
+unsigned long long RedDustParticle::GetType()
 {
     return ParticleKind::RED_DUST;
 }

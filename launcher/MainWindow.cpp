@@ -234,7 +234,8 @@ void MainWindow::Play()
     mLog->AddLauncherMessage(LogLevel::Info, QString("Starting the game as %1 with the profile %2.")
                                                  .arg(profile->username, profile->name));
     QString error;
-    if (profile->afterLaunch == AfterLaunch::Close)
+    // An AppImage's files go away when the launcher exits, so there the launcher waits hidden for the game instead.
+    if (profile->afterLaunch == AfterLaunch::Close && !LauncherPaths::RunsFromAppImage())
     {
         if (!mRunner->StartDetached(*profile, &error))
         {
@@ -258,9 +259,10 @@ void MainWindow::OnGameStarted()
 {
     RefreshStatus();
     const Profile* profile = mStore.Selected();
-    if (profile != nullptr && profile->afterLaunch == AfterLaunch::Hide)
+    if (profile != nullptr && (profile->afterLaunch == AfterLaunch::Hide || profile->afterLaunch == AfterLaunch::Close))
     {
         mHiddenForGame = true;
+        mCloseAfterGame = profile->afterLaunch == AfterLaunch::Close;
         hide();
     }
 }
@@ -272,6 +274,12 @@ void MainWindow::OnGameFinished(int exitCode, bool crashed)
                                                           : QString("The game exited with code %1.").arg(exitCode));
     else
         mLog->AddLauncherMessage(LogLevel::Info, "The game closed.");
+    if (mCloseAfterGame && !crashed && exitCode == 0)
+    {
+        QApplication::quit();
+        return;
+    }
+    mCloseAfterGame = false;
     if (mHiddenForGame)
     {
         mHiddenForGame = false;

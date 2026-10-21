@@ -8,7 +8,7 @@ class WaterDropParticle : public Particle
 {
 public:
     WaterDropParticle(Level* level, double x, double y, double z);
-    virtual uint64_t GetType();
+    virtual unsigned long long GetType();
     virtual ~WaterDropParticle() {}
     virtual void tick();
 

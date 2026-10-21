@@ -67,7 +67,7 @@ void PlayerCloudParticle::tick()
     }
 }
 
-uint64_t PlayerCloudParticle::GetType()
+unsigned long long PlayerCloudParticle::GetType()
 {
     return ParticleKind::PLAYER_CLOUD;
 }

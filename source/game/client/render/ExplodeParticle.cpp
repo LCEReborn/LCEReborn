@@ -26,7 +26,7 @@ ExplodeParticle::ExplodeParticle(Level* level, double x, double y, double z, dou
     lifetime = (int)(16.0f / (random.nextFloat() * 0.8f + 0.2f)) + 2;
 }
 
-uint64_t ExplodeParticle::GetType()
+unsigned long long ExplodeParticle::GetType()
 {
     return ParticleKind::EXPLODE;
 }

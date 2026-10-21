@@ -69,7 +69,7 @@ void InkParticle::tick()
         remove();
 }
 
-uint64_t InkParticle::GetType()
+unsigned long long InkParticle::GetType()
 {
     return ParticleKind::INK;
 }

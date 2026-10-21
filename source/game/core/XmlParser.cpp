@@ -53,7 +53,19 @@ void XmlParser::_parse()
         break;
     case eFileFormatUtf16BigEndian:
     case eFileFormatUtf16LittleEndian:
-        m_wideDocument.parse<16>((wchar_t*)(m_xmlSrc + 2));
+        if (sizeof(wchar_t) == 2)
+        {
+            m_wideDocument.parse<16>((wchar_t*)(m_xmlSrc + 2));
+            break;
+        }
+        m_wideSrc.assign(m_xmlSrcLength / 2, 0);
+        for (unsigned int index = 1; index < m_xmlSrcLength / 2; ++index)
+        {
+            unsigned short unit;
+            std::memcpy(&unit, m_xmlSrc + index * 2, sizeof(unit));
+            m_wideSrc[index - 1] = static_cast<wchar_t>(unit);
+        }
+        m_wideDocument.parse<16>(m_wideSrc.data());
         break;
     }
 }

@@ -19,6 +19,8 @@
 #else
 #include <execinfo.h>
 #include <pthread.h>
+#include <signal.h>
+#include <cstring>
 #include <unistd.h>
 #endif
 
@@ -236,6 +238,61 @@ bool WriteMinidump(const fs::path& path, EXCEPTION_POINTERS* exception)
 }
 #endif
 
+#if !defined(_WIN32)
+std::string ReadSmallFile(const fs::path& path)
+{
+    std::string text;
+    FILE* file = std::fopen(path.c_str(), "rb");
+    if (file == nullptr)
+        return text;
+    char buffer[256];
+    const size_t length = std::fread(buffer, 1, sizeof(buffer), file);
+    std::fclose(file);
+    text.assign(buffer, length);
+    while (!text.empty() && (text.back() == '\n' || text.back() == '\r'))
+        text.pop_back();
+    return text;
+}
+
+long CurrentThreadId()
+{
+#if defined(__linux__)
+    return static_cast<long>(gettid());
+#else
+    return 0;
+#endif
+}
+
+std::string CurrentThreadName()
+{
+    char name[64] = {};
+    if (pthread_getname_np(pthread_self(), name, sizeof(name)) != 0)
+        return std::string();
+    return name;
+}
+
+void AppendThreads(std::string& out, long failingThread)
+{
+    std::error_code error;
+    fs::directory_iterator tasks("/proc/self/task", error);
+    if (error)
+    {
+        out += "The thread list could not be read.\n";
+        return;
+    }
+    int count = 0;
+    for (const fs::directory_entry& task : tasks)
+    {
+        const std::string id = task.path().filename().string();
+        const std::string name = ReadSmallFile(task.path() / "comm");
+        out += Format("%6s  %s%s\n", id.c_str(), name.empty() ? "(unnamed)" : name.c_str(),
+                      std::atol(id.c_str()) == failingThread ? "  <- failed here" : "");
+        ++count;
+    }
+    out += Format("%d threads.\n", count);
+}
+#endif
+
 #if defined(_WIN32)
 std::string WriteReport(const char* reason, EXCEPTION_POINTERS* exception)
 #else
@@ -268,6 +325,10 @@ std::string WriteReport(const char* reason)
         CloseHandle(current);
     report += Format("Thread: %s (%lu)\n", threadName.empty() ? "(unnamed)" : threadName.c_str(),
                      static_cast<unsigned long>(failingThread));
+#else
+    const long failingThread = CurrentThreadId();
+    const std::string threadName = CurrentThreadName();
+    report += Format("Thread: %s (%ld)\n", threadName.empty() ? "(unnamed)" : threadName.c_str(), failingThread);
 #endif
 
     for (const Section& section : Sections())
@@ -291,6 +352,8 @@ std::string WriteReport(const char* reason)
     for (int index = 0; index < captured; ++index)
         report += Format("%3d  %s\n", index, symbols != nullptr ? symbols[index] : "?");
     free(symbols);
+    report += "\n-- Threads --\n";
+    AppendThreads(report, failingThread);
 #endif
 
     if (!WriteFile(folder / "report.txt", report))
@@ -310,6 +373,37 @@ LONG WINAPI UnhandledException(EXCEPTION_POINTERS* exception)
     Log::Stop();
     return EXCEPTION_CONTINUE_SEARCH;
 }
+#else
+const int kCrashSignals[] = {SIGSEGV, SIGBUS, SIGFPE, SIGILL, SIGABRT, SIGTRAP};
+
+void CrashSignal(int signal, siginfo_t* info, void*)
+{
+    const std::string reason =
+        Format("Signal %d (%s) at %p", signal, strsignal(signal), info != nullptr ? info->si_addr : nullptr);
+    LOG_FATAL(sLog, "%s", reason.c_str());
+    WriteReport(reason.c_str());
+    Log::Stop();
+    struct sigaction fallback = {};
+    fallback.sa_handler = SIG_DFL;
+    sigemptyset(&fallback.sa_mask);
+    sigaction(signal, &fallback, nullptr);
+    raise(signal);
+}
+
+void InstallSignalHandlers()
+{
+    static std::vector<char> alternateStack(1 << 16);
+    stack_t stack = {};
+    stack.ss_sp = alternateStack.data();
+    stack.ss_size = alternateStack.size();
+    sigaltstack(&stack, nullptr);
+    struct sigaction action = {};
+    action.sa_sigaction = CrashSignal;
+    action.sa_flags = SA_SIGINFO | SA_ONSTACK;
+    sigemptyset(&action.sa_mask);
+    for (int signal : kCrashSignals)
+        sigaction(signal, &action, nullptr);
+}
 #endif
 }
 
@@ -318,6 +412,8 @@ void PcCrashReport::Install(const std::string& logDirectory)
     ReportRoot() = fs::absolute(fs::u8path(logDirectory)).parent_path() / "crash-reports";
 #if defined(_WIN32)
     SetUnhandledExceptionFilter(UnhandledException);
+#else
+    InstallSignalHandlers();
 #endif
 }
 

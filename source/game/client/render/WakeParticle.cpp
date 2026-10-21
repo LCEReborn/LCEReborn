@@ -41,7 +41,7 @@ void WakeParticle::tick()
     }
 }
 
-uint64_t WakeParticle::GetType()
+unsigned long long WakeParticle::GetType()
 {
     return ParticleKind::WAKE;
 }

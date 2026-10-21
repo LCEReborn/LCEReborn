@@ -3,8 +3,9 @@
 
     python tools/release_pc.py
 
-Run it from the same Visual Studio x64 developer prompt as the PC build
-(docs/pc-platform.md), on a clean tree whose commit is pushed. It:
+Run it where the PC build is made (docs/pc-platform.md: on Windows, the
+same Visual Studio x64 developer prompt), on a clean tree whose commit is
+pushed. It:
 
   1. builds everything in the PC build folder, so the game and the launcher
      match the commit;
@@ -12,11 +13,16 @@ Run it from the same Visual Studio x64 developer prompt as the PC build
   3. shows the release it is about to publish and asks before publishing:
      the name is the commit and the date it was built ("9b3a482d -
      2026-10-19"), the tag build-<commit>, the notes the Unreleased section
-     of release/CHANGELOG.md and the zip attached;
+     of release/CHANGELOG.md and the packages attached, with any packages
+     of the same commit for the other system already in build/ (on
+     Windows, run tools/build_linux.py first to publish the Linux ones too);
   4. publishes it to the origin repository with the GitHub CLI (gh), which
      must be signed in;
   5. files the Unreleased notes under the release's name, leaving Unreleased
      empty.
+
+When the commit already has a release, made from the other system, it only
+adds this system's packages to it, leaving the notes and the changelog alone.
 
 release/ is not committed: the changelog is only where the notes are
 written. The script creates it the first time it runs.
@@ -31,6 +37,7 @@ Options:
   --allow-dirty   with --dry-run, go on with uncommitted changes
 """
 import argparse
+import glob
 import os
 import re
 import subprocess
@@ -74,7 +81,8 @@ def run(command, what):
 
 def build(folder):
     print("Building %s" % os.path.relpath(folder, ROOT))
-    run(["cmake", "--build", folder], "The build (run this from a Visual Studio x64 developer prompt)")
+    what = "The build (run this from a Visual Studio x64 developer prompt)" if os.name == "nt" else "The build"
+    run(["cmake", "--build", folder], what)
 
 
 def build_info(folder):
@@ -139,6 +147,27 @@ def tag_exists(tag, repository):
     raise PackageError("gh could not look up %s: %s" % (tag, result.stderr.strip()))
 
 
+def other_packages(commit, outputs):
+    """Packages of the same commit for the other system, such as tools/build_linux.py's, to publish too."""
+    pattern = os.path.join(package_pc.OUTPUT_DIR, "LCEReborn-*-%s.*" % commit[:12])
+    made = set(os.path.abspath(path) for path in outputs)
+    return sorted(path for path in glob.glob(pattern) if os.path.abspath(path) not in made)
+
+
+def add_to_release(tag, repository, outputs, dry_run):
+    print("\nRelease  %s exists already\nRepo     %s\nAdding   %s\n"
+          % (tag, repository, "\n         ".join(os.path.relpath(path, ROOT) for path in outputs)))
+    if dry_run:
+        print("Dry run: nothing was published.")
+        return 0
+    if input("Add these packages to the release on GitHub? [y/N] ").strip().lower() != "y":
+        print("Not published.")
+        return 1
+    run(["gh", "release", "upload", tag] + outputs + ["--repo", repository], "Adding the packages to the release")
+    print("Added %s to %s." % (", ".join(os.path.basename(path) for path in outputs), tag))
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description="Build, package and publish a PC release on GitHub.")
     parser.add_argument("--build", default=package_pc.DEFAULT_BUILD, help="the PC build folder (default build/pc)")
@@ -151,13 +180,11 @@ def main():
     folder = os.path.abspath(args.build)
 
     try:
-        changelog = read_changelog()
-        notes, body_start, body_end = unreleased_notes(changelog)
         package_pc.source_info(args.allow_dirty)
 
         build(folder)
         info = build_info(folder)
-        output, source = package_pc.package(folder, args.allow_dirty)
+        outputs, source = package_pc.package(folder, args.allow_dirty)
         commit = source["commit"]
         if info["COMMIT"] != commit[:len(info["COMMIT"])]:
             raise PackageError("The build is of %s, not of HEAD %s" % (info["COMMIT"], commit[:12]))
@@ -171,16 +198,19 @@ def main():
         tag = "build-%s" % short
         repository = source["repository"][len("https://github.com/"):]
         if tag_exists(tag, repository):
-            raise PackageError("There is already a release %s" % tag)
-        command = ["gh", "release", "create", tag, output, "--repo", repository, "--target", commit,
-                   "--title", title]
+            return add_to_release(tag, repository, outputs, args.dry_run)
+        changelog = read_changelog()
+        notes, body_start, body_end = unreleased_notes(changelog)
+        packages = outputs + other_packages(commit, outputs)
+        command = ["gh", "release", "create", tag] + packages + ["--repo", repository, "--target", commit,
+                                                                 "--title", title]
         if args.prerelease:
             command.append("--prerelease")
         command.append("--notes-file")
 
-        print("\nRelease  %s%s\nRepo     %s\nTag      %s\nCommit   %s\nZip      %s\n\nNotes:\n\n%s\n"
+        print("\nRelease  %s%s\nRepo     %s\nTag      %s\nCommit   %s\nPackages %s\n\nNotes:\n\n%s\n"
               % (title, " (pre-release)" if args.prerelease else "", repository, tag, commit,
-                 os.path.relpath(output, ROOT), release_notes(notes)))
+                 "\n         ".join(os.path.relpath(path, ROOT) for path in packages), release_notes(notes)))
         if args.dry_run:
             print("Dry run: nothing was published and the changelog is unchanged.")
             return 0

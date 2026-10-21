@@ -18,7 +18,7 @@ void EndRodParticle::move(double xa, double ya, double za)
     setLocationFromBoundingbox();
 }
 
-uint64_t EndRodParticle::GetType()
+unsigned long long EndRodParticle::GetType()
 {
     return ParticleKind::END_ROD;
 }

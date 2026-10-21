@@ -19,7 +19,7 @@ public:
     ConduitParticle(Level* level, double x, double y, double z, double xa, double ya, double za,
                     arrayWithLength<int> params);
     virtual void tick();
-    virtual uint64_t GetType();
+    virtual unsigned long long GetType();
 
 private:
     float m_conduitParticleValue;

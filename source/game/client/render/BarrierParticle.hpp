@@ -13,7 +13,7 @@ public:
     virtual int getParticleTexture();
     virtual void render(BufferBuilder* buffer, const boost::shared_ptr<Entity>& camera, float partialTicks, float xa,
                         float ya, float za, float xa2, float za2);
-    virtual uint64_t GetType();
+    virtual unsigned long long GetType();
 
     class Provider : public ParticleProvider
     {

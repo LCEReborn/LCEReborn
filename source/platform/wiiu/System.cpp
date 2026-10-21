@@ -178,7 +178,7 @@ void System::ReverseULONGLONG(long long* value)
     destination[7] = source[0];
 }
 
-void System::ReverseCHAR16A(wchar_t* text, int count)
+void System::ReverseCHAR16A(char16_t* text, int count)
 {
     for (int i = 0; i < count; i++)
     {

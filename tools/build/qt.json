@@ -13,7 +13,10 @@
     "linux": {
       "aqt_host": "linux",
       "arch": "linux_gcc_64",
-      "folder": "gcc_64"
+      "folder": "gcc_64",
+      "archives": [
+        "icu"
+      ]
     },
     "darwin": {
       "aqt_host": "mac",

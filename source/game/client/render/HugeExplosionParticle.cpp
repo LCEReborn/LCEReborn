@@ -91,7 +91,7 @@ int HugeExplosionParticle::getParticleTexture()
     return 3;
 }
 
-uint64_t HugeExplosionParticle::GetType()
+unsigned long long HugeExplosionParticle::GetType()
 {
     return ParticleKind::HUGE_EXPLOSION;
 }

@@ -73,7 +73,7 @@ int FootstepParticle::getParticleTexture()
     return 3;
 }
 
-uint64_t FootstepParticle::GetType()
+unsigned long long FootstepParticle::GetType()
 {
     return ParticleKind::FOOTSTEP;
 }

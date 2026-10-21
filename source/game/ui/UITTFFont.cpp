@@ -1,6 +1,7 @@
 #include "game/ui/UITTFFont.hpp"
 
 #include "game/core/CConsoleMinecraftApp.hpp"
+#include "game/core/StringConversion.hpp"
 #include "game/ui/fui.hpp"
 #include "platform/FileSystem.hpp"
 #include "platform/FileApi.hpp"
@@ -46,7 +47,8 @@ void UITTFFont::init(const std::string& fontName, std::vector<std::string> fontF
             unsigned int bytesRead;
             if (ReadFile(file, data, fileSize, &bytesRead, NULL) == 0)
             {
-                gApp.FatalLoadError(L"<UITTFFont@%d> Failed to load font %s", 72, fontFiles[fontIndex].c_str());
+                gApp.FatalLoadError(L"<UITTFFont@%d> Failed to load font %ls", 72,
+                                    convStringToWstring(fontFiles[fontIndex]).c_str());
             }
             CloseHandle(file);
         }

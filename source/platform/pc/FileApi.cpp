@@ -4,6 +4,7 @@
 #include "platform/pc/PcVirtualMemory.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <climits>
 #include <cstdint>
 #include <cstdio>
@@ -273,6 +274,65 @@ static fs::path UnderRoot(const std::string& root, const std::string& rest)
     return fs::path(root) / GamePath(rest.substr(start));
 }
 
+#if defined(_WIN32)
+static fs::path ContentPath(const fs::path& path)
+{
+    return path;
+}
+#else
+static bool SameNameIgnoringCase(const std::string& first, const std::string& second)
+{
+    if (first.size() != second.size())
+        return false;
+    for (std::string::size_type index = 0; index < first.size(); ++index)
+    {
+        if (std::tolower(static_cast<unsigned char>(first[index]))
+            != std::tolower(static_cast<unsigned char>(second[index])))
+            return false;
+    }
+    return true;
+}
+
+// The game names its content files with the case-insensitive Wii U file system in mind.
+static fs::path ContentPath(const fs::path& path)
+{
+    std::error_code error;
+    if (fs::exists(path, error))
+        return path;
+
+    static std::mutex mutex;
+    static std::unordered_map<std::string, fs::path> matches;
+    std::lock_guard<std::mutex> lock(mutex);
+    std::unordered_map<std::string, fs::path>::const_iterator known = matches.find(path.native());
+    if (known != matches.end())
+        return known->second;
+
+    const fs::path root(PcContentRoot());
+    fs::path resolved = root;
+    bool found = true;
+    for (const fs::path& part : path.lexically_relative(root))
+    {
+        fs::path next = resolved / part;
+        if (found && !fs::exists(next, error))
+        {
+            found = false;
+            for (fs::directory_iterator entry(resolved, error), end; !error && entry != end; entry.increment(error))
+            {
+                if (SameNameIgnoringCase(entry->path().filename().native(), part.native()))
+                {
+                    next = entry->path();
+                    found = true;
+                    break;
+                }
+            }
+        }
+        resolved = next;
+    }
+    matches.emplace(path.native(), found ? resolved : path);
+    return found ? resolved : path;
+}
+#endif
+
 static fs::path ResolvePath(const char* fileName)
 {
     std::string path;
@@ -284,14 +344,14 @@ static fs::path ResolvePath(const char* fileName)
 
     std::string rest;
     if (MatchMount(path, "/vol/content", rest))
-        return UnderRoot(PcContentRoot(), rest);
+        return ContentPath(UnderRoot(PcContentRoot(), rest));
     if (MatchMount(path, "/vol/save", rest))
         return UnderRoot(PcSaveRoot(), rest);
 
     const fs::path nativePath = GamePath(path);
     if ((!path.empty() && path[0] == '/') || nativePath.is_absolute())
         return nativePath;
-    return UnderRoot(PcContentRoot(), path);
+    return ContentPath(UnderRoot(PcContentRoot(), path));
 }
 
 static std::FILE* OpenStream(const fs::path& path, FileOpenMode mode)

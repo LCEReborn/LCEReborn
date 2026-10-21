@@ -47,9 +47,12 @@ static void Utf8ToWideChar(const char* source, wchar_t* destination, unsigned in
     }
 }
 
-std::wstring char16towstring(wchar_t* text)
+std::wstring char16towstring(const char16_t* text, size_t capacity)
 {
-    return std::wstring(text);
+    std::wstring result;
+    for (size_t index = 0; index < capacity && text[index] != 0; ++index)
+        result += static_cast<wchar_t>(text[index]);
+    return result;
 }
 
 void charTowchar_tArray(const char* text, wchar_t* destination, unsigned int capacity)

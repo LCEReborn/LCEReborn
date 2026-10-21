@@ -18,7 +18,7 @@ SplashParticle::SplashParticle(Level* level, double x, double y, double z, doubl
     }
 }
 
-uint64_t SplashParticle::GetType()
+unsigned long long SplashParticle::GetType()
 {
     return ParticleKind::SPLASH;
 }

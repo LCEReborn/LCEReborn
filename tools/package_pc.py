@@ -1,34 +1,44 @@
 #!/usr/bin/env python3
-"""Package the PC build as a zip to give to players.
+"""Package the PC build to give to players.
 
     python tools/package_pc.py
 
-Build the game and the launcher first (docs/pc-platform.md). This writes
-build/LCEReborn-pc-<commit>.zip holding the two programs, the Qt libraries
-the launcher uses, resources/, a README, the project's license and, in
-third_party/, the notices and licenses of every library in the programs.
+Build the game and the launcher first (docs/pc-platform.md). On Windows this
+writes build/LCEReborn-pc-<commit>.zip, on Linux
+build/LCEReborn-linux-<commit>.tar.gz, holding the two programs, the Qt
+libraries the launcher uses, resources/, a README, the project's license and,
+in third_party/, the notices and licenses of every library in the programs.
+On Linux it also writes the same files as build/LCEReborn-linux-<commit>.AppImage,
+which needs appimagetool and the AppImage runtime (tools/build/Dockerfile.linux
+installs both).
 
 Only those files are taken from the build folder, so the game files, saves,
 logs and settings that playing from it leaves there stay out.
 
-The zip names the commit it was built from as its source, so the tree must
-have no uncommitted changes and the commit should be pushed before the zip is
-given out.
+The package names the commit it was built from as its source, so the tree
+must have no uncommitted changes and the commit should be pushed before the
+package is given out.
 
 Options:
   --build DIR     the PC build folder (default build/pc)
   --allow-dirty   package a tree with uncommitted changes, for testing; the
-                  zip is named ...-dirty and must not be given out, since its
-                  source is not published
+                  package is named ...-dirty and must not be given out, since
+                  its source is not published
+  --no-appimage   on Linux, write only the tar.gz
 """
 import argparse
 import datetime
 import glob
+import io
 import json
 import os
 import re
+import shutil
+import stat
 import subprocess
 import sys
+import tarfile
+import tempfile
 import textwrap
 import zipfile
 
@@ -38,11 +48,25 @@ DEFAULT_BUILD = os.path.join(ROOT, "build", "pc")
 OUTPUT_DIR = os.path.join(ROOT, "build")
 THIRD_PARTY = os.path.join(ROOT, "build", "third_party")
 LICENSE_TEXTS = os.path.join(TOOLS, "package", "licenses")
+NOTICE_TEXTS = os.path.join(TOOLS, "package", "notices")
+# The licenses of the AppImage runtime and the libraries in it (package/notices/AppImageRuntime.txt).
+APPIMAGE_RUNTIME_LICENSES = ("MIT", "LGPL-2.1-only", "BSD-2-Clause", "BSD-3-Clause", "GPL-2.0-only")
 TOP = "LCEReborn"
 
-PROGRAMS = ("LCEReborn.exe", "LCERebornLauncher.exe")
-QT_PLUGIN_DIRS = ("generic", "imageformats", "networkinformation", "platforms", "styles", "tls")
-ALLOWED_EXTENSIONS = (".exe", ".dll", ".png", ".ico", ".txt")
+LINUX = sys.platform.startswith("linux")
+if LINUX:
+    SYSTEM = "linux"
+    PROGRAMS = ("LCEReborn", "LCERebornLauncher")
+    QT_PLUGIN_DIRS = ("imageformats", "networkinformation", "platforminputcontexts", "platformthemes",
+                      "tls", "wayland-decoration-client", "wayland-graphics-integration-client",
+                      "wayland-shell-integration", "xcbglintegrations")
+    QT_PLATFORMS = ("libqxcb.so", "libqwayland.so")
+    ALLOWED_NAME = re.compile(r"(^[^.]+$|\.so(\.\d+)*$|\.(png|ico|txt)$)")
+else:
+    SYSTEM = "pc"
+    PROGRAMS = ("LCEReborn.exe", "LCERebornLauncher.exe")
+    QT_PLUGIN_DIRS = ("generic", "imageformats", "networkinformation", "platforms", "styles", "tls")
+    ALLOWED_NAME = re.compile(r"\.(exe|dll|png|ico|txt)$", re.I)
 REDIST_URL = "https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist"
 
 
@@ -64,7 +88,7 @@ def source_info(allow_dirty):
         raise PackageError("The tree has uncommitted changes, so no published source matches the build. "
                            "Commit them first, or pass --allow-dirty for a test package.")
     if not git("branch", "-r", "--contains", commit):
-        print("warning: %s is not on any remote branch; push it before giving out the zip" % commit[:12])
+        print("warning: %s is not on any remote branch; push it before giving out the package" % commit[:12])
     url = git("remote", "get-url", "origin")
     match = re.match(r"(?:https://|git@)github\.com[/:](.+?)(?:\.git)?$", url)
     if not match:
@@ -107,27 +131,86 @@ def cache_value(build, name):
     return match.group(1).strip()
 
 
+def qt_prefix(build):
+    return os.path.normpath(os.path.join(cache_value(build, "Qt6_DIR"), "..", "..", ".."))
+
+
+def windows_qt_files(build):
+    """The Qt files windeployqt put in the build folder, with their names in Qt's SBOM."""
+    files = []
+    qt_libraries = sorted(glob.glob(os.path.join(build, "Qt6*.dll")))
+    if not qt_libraries:
+        raise PackageError("No Qt libraries in %s. Build the launcher, which deploys them." % build)
+    for path in qt_libraries:
+        files.append((path, os.path.basename(path), "./bin/" + os.path.basename(path)))
+    for folder in QT_PLUGIN_DIRS:
+        for path in sorted(glob.glob(os.path.join(build, folder, "*.dll"))):
+            arcname = folder + "/" + os.path.basename(path)
+            files.append((path, arcname, "./plugins/" + arcname))
+    return files
+
+
+def linked_libraries(binary, library_dir):
+    """The libraries from library_dir that binary loads, by the name it asks for."""
+    environment = dict(os.environ, LD_LIBRARY_PATH=library_dir)
+    result = subprocess.run(["ldd", binary], capture_output=True, text=True, env=environment)
+    if result.returncode != 0:
+        raise PackageError("ldd %s failed: %s" % (binary, result.stderr.strip()))
+    found = []
+    for name, path in re.findall(r"^\s*(\S+) => (/\S+)", result.stdout, re.M):
+        if os.path.dirname(os.path.realpath(path)) == os.path.realpath(library_dir):
+            found.append((name, os.path.realpath(path)))
+    return found
+
+
+def linux_qt_files(build):
+    """The Qt plugins the launcher needs and every library from Qt's lib/ that it and they load, under the
+    names they are loaded by. Qt's own files are paired with their names in Qt's SBOM; the rest (ICU) with None."""
+    prefix = qt_prefix(build)
+    library_dir = os.path.join(prefix, "lib")
+    files = []
+    for folder in QT_PLUGIN_DIRS:
+        for path in sorted(glob.glob(os.path.join(prefix, "plugins", folder, "*.so"))):
+            arcname = "plugins/%s/%s" % (folder, os.path.basename(path))
+            files.append((path, arcname, "./" + arcname))
+    for name in QT_PLATFORMS:
+        path = os.path.join(prefix, "plugins", "platforms", name)
+        if not os.path.isfile(path):
+            raise PackageError("%s is missing from Qt" % os.path.relpath(path, ROOT))
+        files.append((path, "plugins/platforms/" + name, "./plugins/platforms/" + name))
+
+    loaded = {}
+    pending = [os.path.join(build, PROGRAMS[1])] + [path for path, _, _ in files]
+    while pending:
+        for name, path in linked_libraries(pending.pop(0), library_dir):
+            if name not in loaded:
+                loaded[name] = path
+                pending.append(path)
+    for name in sorted(loaded):
+        path = loaded[name]
+        sbom_name = None if name.startswith("libicu") else "./lib/" + os.path.basename(path)
+        files.append((path, "lib/" + name, sbom_name))
+    return files
+
+
 def program_files(build):
+    """The files to package, as (path, name in the package), and the Qt files among them as
+    (name in the package, name in Qt's SBOM or None)."""
     files = []
     for name in PROGRAMS:
         path = os.path.join(build, name)
         if not os.path.isfile(path):
             raise PackageError("%s is missing. Build the game and the launcher first." % os.path.relpath(path, ROOT))
         files.append((path, name))
-    qt_libraries = sorted(glob.glob(os.path.join(build, "Qt6*.dll")))
-    if not qt_libraries:
-        raise PackageError("No Qt libraries in %s. Build the launcher, which deploys them." % build)
-    for path in qt_libraries:
-        files.append((path, os.path.basename(path)))
-    for folder in QT_PLUGIN_DIRS:
-        for path in sorted(glob.glob(os.path.join(build, folder, "*.dll"))):
-            files.append((path, folder + "/" + os.path.basename(path)))
+    qt_files = linux_qt_files(build) if LINUX else windows_qt_files(build)
+    for path, arcname, _ in qt_files:
+        files.append((path, arcname))
     resources = os.path.join(ROOT, "resources", "pc")
     for folder, _, names in os.walk(resources):
         for name in sorted(names):
             path = os.path.join(folder, name)
             files.append((path, "resources/" + os.path.relpath(path, resources).replace(os.sep, "/")))
-    return files
+    return files, [(arcname, sbom_name) for _, arcname, sbom_name in qt_files]
 
 
 def license_ids(expression):
@@ -135,8 +218,8 @@ def license_ids(expression):
     return [token for token in tokens if token not in ("AND", "OR", "WITH")]
 
 
-def qt_notices(build, shipped):
-    qt_root = os.path.normpath(os.path.join(cache_value(build, "Qt6_DIR"), "..", "..", ".."))
+def qt_notices(build, qt_files):
+    qt_root = qt_prefix(build)
     sboms = glob.glob(os.path.join(qt_root, "sbom", "qtbase-*.spdx.json"))
     if len(sboms) != 1:
         raise PackageError("Expected one qtbase SBOM in %s/sbom" % qt_root)
@@ -155,10 +238,9 @@ def qt_notices(build, shipped):
             depends.setdefault(relation["spdxElementId"], []).append(relation["relatedSpdxElement"])
 
     modules = []
-    for arcname in shipped:
-        if not arcname.lower().endswith(".dll"):
+    for arcname, sbom_name in qt_files:
+        if sbom_name is None:
             continue
-        sbom_name = "./bin/" + arcname if "/" not in arcname else "./plugins/" + arcname
         if sbom_name not in owner:
             raise PackageError("%s is not described by Qt's SBOM, so its notices are unknown" % arcname)
         if owner[sbom_name] not in modules:
@@ -283,30 +365,50 @@ def game_components(build):
     ]
 
 
+def launcher_components(qt_files):
+    """The libraries beside the launcher that are not part of Qt: ICU, which Qt for Linux uses."""
+    icu = sorted(arcname for arcname, sbom_name in qt_files if sbom_name is None and "/libicu" in arcname)
+    if not icu:
+        return []
+    return [{
+        "name": "ICU",
+        "version": "%s (%s)" % (match(r"\.so\.(\d+)", icu[0], icu[0]),
+                                ", ".join(os.path.basename(name) for name in icu)),
+        "source": "https://github.com/unicode-org/icu",
+        "license": ["Unicode-DFS-2016"],
+        "notice": read(os.path.join(NOTICE_TEXTS, "ICU.txt")).strip(),
+    }]
+
+
 def rule(title):
     return "%s\n%s\n" % (title, "=" * len(title))
 
 
-def notices_text(source, game, qt):
+def component_text(component):
+    return "%s %s\n%s\nLicense: %s\n\n%s\n" % (component["name"], component["version"], component["source"],
+                                             ", ".join(component["license"]), component["notice"])
+
+
+def notices_text(source, game, qt, launcher, appimage=False):
     out = [rule("Third-party notices")]
     out.append("LCEReborn is licensed under the GNU General Public License, version 3\n"
                "or later (LICENSE.txt). It contains the libraries below. The texts of\n"
                "the licenses named here are in licenses/.\n")
 
-    out.append(rule("In LCEReborn.exe"))
+    out.append(rule("In " + PROGRAMS[0]))
     for component in game:
-        out.append("%s %s\n%s\nLicense: %s\n\n%s\n" % (component["name"], component["version"], component["source"],
-                                                     ", ".join(component["license"]), component["notice"]))
+        out.append(component_text(component))
         out.append("-" * 72 + "\n")
 
-    out.append(rule("Qt, in LCERebornLauncher.exe"))
+    out.append(rule("Qt, in " + PROGRAMS[1]))
     archive = "https://download.qt.io/archive/qt/%s/%s/submodules/qtbase-everywhere-src-%s.tar.xz" % (
         ".".join(qt["version"].split(".")[:2]), qt["version"], qt["version"])
-    out.append("The launcher uses Qt %s (qtbase): the Qt6*.dll libraries and the plugin\n"
-               "folders beside it. Copyright (C) The Qt Company Ltd. and other\n"
-               "contributors. Qt is used under the GNU Lesser General Public License,\n"
-               "version 3 (licenses/LGPL-3.0-only.txt, which adds to\n"
-               "licenses/GPL-3.0-only.txt).\n\n"
+    files = ("the libQt6*.so libraries in lib/ and the plugins in plugins/." if LINUX
+             else "the Qt6*.dll libraries and the plugin folders beside it.")
+    out.append(textwrap.fill("The launcher uses Qt %s (qtbase): %s Copyright (C) The Qt Company Ltd. and other "
+                             "contributors. Qt is used under the GNU Lesser General Public License, version 3 "
+                             "(licenses/LGPL-3.0-only.txt, which adds to licenses/GPL-3.0-only.txt)."
+                             % (qt["version"], files), 72) + "\n\n"
                "The Qt libraries are unmodified and loaded at run time, so you can\n"
                "replace them with your own build of Qt %s. Their source code is at\n"
                "%s\n"
@@ -314,7 +416,7 @@ def notices_text(source, game, qt):
                "%s.\n\n"
                "%s\n\n"
                "The Qt libraries contain the following third-party code.\n\n"
-               % (qt["version"], qt["version"], archive, qt["commit"],
+               % (qt["version"], archive, qt["commit"],
                   textwrap.fill("Modules shipped: %s." % ", ".join(qt["modules"]), 72)))
     for package in qt["attributions"]:
         details = re.search(r"Name: (.*)", package.get("comment", ""))
@@ -327,14 +429,22 @@ def notices_text(source, game, qt):
         if package.get("copyrightText", "NOASSERTION") != "NOASSERTION":
             lines.append(package["copyrightText"].strip())
         out.append("\n".join(lines) + "\n")
+    for component in launcher:
+        out.append(rule("%s, in lib/, used by Qt" % component["name"]))
+        out.append(component_text(component))
+    if appimage:
+        out.append(rule("The AppImage runtime"))
+        out.append(read(os.path.join(NOTICE_TEXTS, "AppImageRuntime.txt")).strip() + "\n")
     out.append(rule("Source"))
     out.append("The source of this build is at\n%s/tree/%s\n" % (source["repository"], source["commit"]))
     return "\n".join(out)
 
 
-def license_files(game, qt):
+def license_files(game, qt, launcher, appimage=False):
     needed = set(["GPL-3.0-only", "LGPL-3.0-only"])
-    for component in game:
+    if appimage:
+        needed.update(APPIMAGE_RUNTIME_LICENSES)
+    for component in game + launcher:
         needed.update(identifier for identifier in component["license"] if identifier != "public domain")
     for package in qt["attributions"]:
         needed.update(license_ids(package["licenseConcluded"]))
@@ -353,22 +463,46 @@ def license_files(game, qt):
     return files
 
 
-def readme_text(source):
+def glibc_requirement(paths):
+    """The newest glibc symbol version the programs and libraries ask for."""
+    versions = set()
+    for path in paths:
+        with open(path, "rb") as handle:
+            versions.update(re.findall(rb"GLIBC_(\d+\.\d+(?:\.\d+)?)\x00", handle.read()))
+    if not versions:
+        raise PackageError("No glibc version found in the programs")
+    return max((version.decode() for version in versions), key=lambda text: [int(part) for part in text.split(".")])
+
+
+def requirements_text(glibc):
+    if not LINUX:
+        return ("It needs the Microsoft Visual C++ Redistributable for Visual Studio\n"
+                "2015-2022 (x64), which most Windows PCs already have:\n"
+                "%s\n" % REDIST_URL)
+    return ("It needs 64-bit Linux with glibc %s or newer, an X11 or Wayland\n"
+            "desktop and OpenGL 3.3. The launcher's X11 support also needs\n"
+            "libxcb-cursor0 (xcb-util-cursor), which some systems do not install by\n"
+            "default.\n" % glibc)
+
+
+def readme_text(source, glibc):
     readme = read(os.path.join(ROOT, "README.md"))
     disclaimers = block(readme, "## Disclaimers", "\n## ", os.path.join(ROOT, "README.md"))
     disclaimers = disclaimers[len("## Disclaimers"):-len("\n## ")].strip()
     build = source["commit"][:12] + (" with uncommitted changes" if source["dirty"] else "")
-    return ("LCEReborn for PC\n"
-            "================\n\n"
+    title = "LCEReborn for Linux" if LINUX else "LCEReborn for PC"
+    folder = ("~/.local/share/LCEReborn. Everything the launcher\n"
+              "and the game keep, including saves, stays in that folder.\n\n" if LINUX
+              else "the folder beside it. Everything the launcher\n"
+                   "and the game keep, including saves, stays in this folder.\n\n")
+    return ("%s\n"
+            "%s\n\n"
             "A PC build of LCEReborn, the reconstructed source of Minecraft: Wii U\n"
             "Edition. Build %s.\n\n"
-            "This download contains no game content. Start LCERebornLauncher.exe:\n"
+            "This download contains no game content. Start %s:\n"
             "the first time, it asks for your own dumps of the base game and update\n"
-            "688 and imports them into the folder beside it. Everything the launcher\n"
-            "and the game keep, including saves, stays in this folder.\n\n"
-            "It needs the Microsoft Visual C++ Redistributable for Visual Studio\n"
-            "2015-2022 (x64), which most Windows PCs already have:\n"
-            "%s\n\n"
+            "688 and imports them into %s"
+            "%s\n"
             "Source and license\n"
             "------------------\n\n"
             "LCEReborn is free software under the GNU General Public License,\n"
@@ -377,12 +511,13 @@ def readme_text(source):
             "third_party/NOTICES.txt lists the libraries in it and their licenses.\n\n"
             "Disclaimers\n"
             "-----------\n\n"
-            "%s\n" % (build, REDIST_URL, source["repository"], source["commit"], disclaimers))
+            "%s\n" % (title, "=" * len(title), build, PROGRAMS[1], folder, requirements_text(glibc),
+                      source["repository"], source["commit"], disclaimers))
 
 
 def check_names(entries):
     for arcname, _ in entries:
-        if os.path.splitext(arcname)[1].lower() not in ALLOWED_EXTENSIONS:
+        if not ALLOWED_NAME.search(os.path.basename(arcname)):
             raise PackageError("Refusing to package %s: not a program, library, image or text file" % arcname)
 
 
@@ -398,39 +533,120 @@ def write_zip(path, entries, date):
             archive.writestr(info, content)
 
 
-def package(build, allow_dirty):
-    """Writes the zip and returns its path and source_info()."""
+def write_tar(path, entries, date):
+    stamp = int(date.timestamp())
+    with tarfile.open(path, "w:gz", compresslevel=9, format=tarfile.PAX_FORMAT) as archive:
+        folders = sorted(set(os.path.dirname(arcname) for arcname, _ in entries) - {""})
+        for folder in [""] + folders:
+            info = tarfile.TarInfo((TOP + "/" + folder).rstrip("/"))
+            info.type = tarfile.DIRTYPE
+            info.mode = 0o755
+            info.mtime = stamp
+            archive.addfile(info)
+        for arcname, content in entries:
+            if isinstance(content, str):
+                content = content.replace("\r\n", "\n").encode("utf-8")
+            info = tarfile.TarInfo(TOP + "/" + arcname)
+            info.size = len(content)
+            info.mode = 0o755 if arcname in PROGRAMS else 0o644
+            info.mtime = stamp
+            archive.addfile(info, io.BytesIO(content))
+
+
+def appimage_tools():
+    tool = shutil.which("appimagetool")
+    runtime = os.environ.get("APPIMAGE_RUNTIME", "")
+    if tool is None or not os.path.isfile(runtime):
+        raise PackageError("The AppImage needs appimagetool on PATH and APPIMAGE_RUNTIME set to the AppImage type 2 "
+                           "runtime, as tools/build/Dockerfile.linux installs them; --no-appimage skips it")
+    return tool, runtime
+
+
+def write_appimage(path, entries, date, tools):
+    """Lays the package out as an AppDir that starts the launcher and packs it with appimagetool."""
+    tool, runtime = tools
+    with open(os.path.join(ROOT, "resources", "launcher", "icon.png"), "rb") as handle:
+        icon = handle.read()
+    extra = [
+        ("AppRun", '#!/bin/sh\nhere="$(dirname "$(readlink -f "$0")")"\nexec "$here/LCERebornLauncher" "$@"\n'),
+        ("lcereborn.desktop", "[Desktop Entry]\nType=Application\nName=LCEReborn\n"
+                              "Comment=Minecraft: Wii U Edition from your own copy of the game\n"
+                              "Exec=LCERebornLauncher\nIcon=lcereborn\nCategories=Game;\nTerminal=false\n"),
+        ("lcereborn.png", icon),
+        (".DirIcon", icon),
+    ]
+    with tempfile.TemporaryDirectory() as temp:
+        app_dir = os.path.join(temp, "LCEReborn.AppDir")
+        for arcname, content in entries + extra:
+            target = os.path.join(app_dir, arcname)
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            if isinstance(content, str):
+                content = content.replace("\r\n", "\n").encode("utf-8")
+            with open(target, "wb") as handle:
+                handle.write(content)
+            os.chmod(target, 0o755 if arcname in PROGRAMS + ("AppRun",) else 0o644)
+        environment = dict(os.environ, ARCH="x86_64", SOURCE_DATE_EPOCH=str(int(date.timestamp())))
+        result = subprocess.run([tool, "--no-appstream", "--runtime-file", runtime, app_dir, path], env=environment,
+                                capture_output=True, text=True)
+        if result.returncode != 0:
+            raise PackageError("appimagetool failed:\n%s%s" % (result.stdout, result.stderr))
+    os.chmod(path, os.stat(path).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+
+def package(build, allow_dirty, appimage=True):
+    """Writes the packages and returns their paths and source_info()."""
     source = source_info(allow_dirty)
-    files = program_files(build)
-    qt = qt_notices(build, [arcname for _, arcname in files])
+    appimage = appimage and LINUX
+    tools = appimage_tools() if appimage else None
+    files, qt_files = program_files(build)
+    qt = qt_notices(build, qt_files)
     game = game_components(build)
+    launcher = launcher_components(qt_files)
+    glibc = glibc_requirement([path for path, arcname in files if arcname in PROGRAMS or ".so" in arcname]) \
+        if LINUX else None
 
     entries = []
     for path, arcname in files:
         with open(path, "rb") as handle:
             entries.append((arcname, handle.read()))
-    entries.append(("README.txt", readme_text(source)))
+    entries.append(("README.txt", readme_text(source, glibc)))
     entries.append(("LICENSE.txt", read(os.path.join(ROOT, "LICENSE"))))
-    entries.append(("third_party/NOTICES.txt", notices_text(source, game, qt)))
-    entries.extend(license_files(game, qt))
+    common = list(entries)
+    entries.append(("third_party/NOTICES.txt", notices_text(source, game, qt, launcher)))
+    entries.extend(license_files(game, qt, launcher))
     check_names(entries)
 
-    name = "LCEReborn-pc-%s%s.zip" % (source["commit"][:12], "-dirty" if source["dirty"] else "")
-    output = os.path.join(OUTPUT_DIR, name)
-    write_zip(output, entries, source["date"])
-    print("Wrote %s (%d files)" % (os.path.relpath(output, ROOT), len(entries)))
-    return output, source
+    stem = os.path.join(OUTPUT_DIR, "LCEReborn-%s-%s%s" % (SYSTEM, source["commit"][:12],
+                                                          "-dirty" if source["dirty"] else ""))
+    outputs = []
+    if LINUX:
+        outputs.append(stem + ".tar.gz")
+        write_tar(outputs[-1], entries, source["date"])
+    else:
+        outputs.append(stem + ".zip")
+        write_zip(outputs[-1], entries, source["date"])
+    print("Wrote %s (%d files)" % (os.path.relpath(outputs[-1], ROOT), len(entries)))
+
+    if appimage:
+        entries = common + [("third_party/NOTICES.txt", notices_text(source, game, qt, launcher, appimage=True))]
+        entries.extend(license_files(game, qt, launcher, appimage=True))
+        check_names(entries)
+        outputs.append(stem + ".AppImage")
+        write_appimage(outputs[-1], entries, source["date"], tools)
+        print("Wrote %s" % os.path.relpath(outputs[-1], ROOT))
+    return outputs, source
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Package the PC build as a zip to give to players.")
+    parser = argparse.ArgumentParser(description="Package the PC build to give to players.")
     parser.add_argument("--build", default=DEFAULT_BUILD, help="the PC build folder (default build/pc)")
     parser.add_argument("--allow-dirty", action="store_true",
                         help="package a tree with uncommitted changes, for testing only")
+    parser.add_argument("--no-appimage", action="store_true", help="on Linux, write only the tar.gz")
     args = parser.parse_args()
 
     try:
-        package(os.path.abspath(args.build), args.allow_dirty)
+        package(os.path.abspath(args.build), args.allow_dirty, not args.no_appimage)
     except PackageError as error:
         print("error: %s" % error, file=sys.stderr)
         return 1

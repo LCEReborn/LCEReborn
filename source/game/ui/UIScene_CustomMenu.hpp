@@ -30,6 +30,7 @@ public:
     virtual void handleSliderElementMove(int controlId, int childId, int value);
     virtual void handleFocusChange(int focus, int childFocus);
     virtual void handleInitFocus(int focus, int childFocus);
+    virtual void handleGainFocus(bool hadFocus);
 
     void AddButton(int id, const std::wstring& label, const std::wstring& description);
     void AddCheckbox(int id, const std::wstring& label, bool checked, const std::wstring& description);
@@ -41,6 +42,11 @@ public:
     void SetItemValue(int id, const std::wstring& value);
     bool GetCheckboxValue(int id);
     int GetSliderValue(int id);
+    void SetCheckboxValue(int id, bool checked);
+    void SetSliderValue(int id, int value);
+    void SetDescription(int id, const std::wstring& description);
+    int GetFocusId() const;
+    void Rebuild();
     void OpenPage(UICustomMenuPage* page);
     int GetPlayer() const;
 

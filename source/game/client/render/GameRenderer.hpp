@@ -140,6 +140,12 @@ public:
     static void AddForDelete(CompressedBlockStorage*);
     static void AddForDelete(SparseDataStorage*);
     bool IsUpdateThreadEnabled();
+    void getFogColor(float* rgb) const
+    {
+        rgb[0] = mFogRed;
+        rgb[1] = mFogGreen;
+        rgb[2] = mFogBlue;
+    }
 
 private:
     C4JCriticalSection mUpdateThreadMutex;

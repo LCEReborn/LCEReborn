@@ -10,6 +10,7 @@
 #include "game/ui/FJ_Factory.hpp"
 #include "game/ui/FJ_FuiNode.hpp"
 #include "game/ui/FJ_ListButtonController.hpp"
+#include "game/ui/FJ_ListButtonIconLeft.hpp"
 #include "game/ui/fuiRenderNode.hpp"
 
 
@@ -81,6 +82,19 @@ void FJ_List_MultiList::addNewItem_ControllerButton(const std::wstring& label, c
     addNewListItem(item, label, id);
     item->Init(label, id);
     item->SetSecondaryText(secondaryLabel, true, html);
+}
+
+void FJ_List_MultiList::addNewItem_IconButton(const std::wstring& html, const std::wstring& textureName, int id)
+{
+    FJ_ListButtonIconLeft* item = static_cast<FJ_ListButtonIconLeft*>(
+        m_checkboxTick ? FJ_Factory::createObject("fourj.Buttons.FJ_ListButtonIconLeft_Small", m_pRenderNode, true, NULL)
+                       : FJ_Factory::createObject("fourj.Buttons.FJ_ListButtonIconLeft_Normal", m_pRenderNode, true,
+                                                  NULL));
+    addNewListItem(item, html, id);
+    item->UseHtmlText();
+    item->Init(html, id);
+    item->SetSlotID(m_id, false);
+    item->SetTextureName(textureName, L"");
 }
 
 void FJ_List_MultiList::addNewItem_CheckBox(const std::wstring& label, int id, bool checked)

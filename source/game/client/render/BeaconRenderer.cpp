@@ -1,6 +1,7 @@
 #include "game/client/render/BeaconRenderer.hpp"
 
 #include "game/client/render/BlockEntityRenderer.hpp"
+#include "game/client/render/ShaderPackBridge.hpp"
 #include "game/client/render/Tesselator.hpp"
 #include "game/core/BufferBuilder.hpp"
 #include "game/core/GlStateManager.hpp"
@@ -78,7 +79,11 @@ void BeaconRenderer::renderBeaconBeam(double x, double y, double z, double parti
 
     GlStateManager::enableBlend();
     GlStateManager::blendFunc(4, 5);
-    GlStateManager::depthMask(false);
+    bool beamDepth = false;
+#if LCE_PLATFORM_PC
+    beamDepth = ShaderPackBridge::BeaconBeamDepth();
+#endif
+    GlStateManager::depthMask(beamDepth);
     double glowMin = 0.2;
     double glowMax = 0.8;
     double glowV0 = -1.0 + offset;

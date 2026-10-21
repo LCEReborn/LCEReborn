@@ -88,6 +88,23 @@
 #include "game/world/block/WallBlock.hpp"
 #include "game/util/Random.hpp"
 
+static float shadeDown = 0.5f;
+static float shadeNorthSouth = 0.8f;
+static float shadeWestEast = 0.6f;
+static bool separateAo = false;
+
+bool BlockRenderer::SetShaderLighting(bool oldLighting, bool separate)
+{
+    float down = oldLighting ? 0.5f : 1.0f;
+    bool changed = down != shadeDown || separate != separateAo;
+    shadeDown = down;
+    shadeNorthSouth = oldLighting ? 0.8f : 1.0f;
+    shadeWestEast = oldLighting ? 0.6f : 1.0f;
+    separateAo = separate;
+    BufferBuilder::SetAoInLight(separate);
+    return changed;
+}
+
 BlockRenderer::BlockRenderer(BlockColors* blockColors) : mBrightnessCache()
 {
     mLevelSource = NULL;
@@ -326,7 +343,7 @@ void BlockRenderer::AOCalculate(Block* block, LevelSource* levelSource, const Bl
 {
     MutableBlockPos neighbours[8];
     BlockPos facePos(0, 0, 0);
-    const float faceShades[6] = {0.5f, 1.0f, 0.8f, 0.8f, 0.6f, 0.6f};
+    const float faceShades[6] = {shadeDown, 1.0f, shadeNorthSouth, shadeNorthSouth, shadeWestEast, shadeWestEast};
     const int neighbourOffsets[12][8][3] = {
         {{0, 0, 1}, {-1, 0, 1}, {-1, 0, 0}, {-1, 0, -1}, {0, 0, -1}, {1, 0, -1}, {1, 0, 0}, {1, 0, 1}},
         {{0, 0, 1}, {1, 0, 1}, {1, 0, 0}, {1, 0, -1}, {0, 0, -1}, {-1, 0, -1}, {-1, 0, 0}, {-1, 0, 1}},
@@ -545,34 +562,33 @@ void BlockRenderer::AOCalculate(Block* block, LevelSource* levelSource, const Bl
     float shade = faceShades[direction];
     if (!useColor)
     {
-        mColorRedTopLeft = outputShade[0] * shade;
-        mColorGreenTopLeft = outputShade[0] * shade;
-        mColorBlueTopLeft = outputShade[0] * shade;
-        mColorRedBottomLeft = outputShade[1] * shade;
-        mColorGreenBottomLeft = outputShade[1] * shade;
-        mColorBlueBottomLeft = outputShade[1] * shade;
-        mColorRedBottomRight = outputShade[2] * shade;
-        mColorGreenBottomRight = outputShade[2] * shade;
-        mColorBlueBottomRight = outputShade[2] * shade;
-        mColorRedTopRight = outputShade[3] * shade;
-        mColorGreenTopRight = outputShade[3] * shade;
-        mColorBlueTopRight = outputShade[3] * shade;
+        red = 1.0f;
+        green = 1.0f;
+        blue = 1.0f;
     }
-    else
+    float colourShade[4];
+    float alpha[4];
+    for (int i = 0; i < 4; ++i)
     {
-        mColorRedTopLeft = outputShade[0] * red * shade;
-        mColorRedBottomLeft = outputShade[1] * red * shade;
-        mColorRedBottomRight = outputShade[2] * red * shade;
-        mColorRedTopRight = outputShade[3] * red * shade;
-        mColorGreenTopLeft = outputShade[0] * green * shade;
-        mColorGreenBottomLeft = outputShade[1] * green * shade;
-        mColorGreenBottomRight = outputShade[2] * green * shade;
-        mColorGreenTopRight = outputShade[3] * green * shade;
-        mColorBlueTopLeft = outputShade[0] * blue * shade;
-        mColorBlueBottomLeft = outputShade[1] * blue * shade;
-        mColorBlueBottomRight = outputShade[2] * blue * shade;
-        mColorBlueTopRight = outputShade[3] * blue * shade;
+        colourShade[i] = separateAo ? shade : outputShade[i] * shade;
+        alpha[i] = separateAo ? outputShade[i] : 1.0f;
     }
+    mColorRedTopLeft = colourShade[0] * red;
+    mColorRedBottomLeft = colourShade[1] * red;
+    mColorRedBottomRight = colourShade[2] * red;
+    mColorRedTopRight = colourShade[3] * red;
+    mColorGreenTopLeft = colourShade[0] * green;
+    mColorGreenBottomLeft = colourShade[1] * green;
+    mColorGreenBottomRight = colourShade[2] * green;
+    mColorGreenTopRight = colourShade[3] * green;
+    mColorBlueTopLeft = colourShade[0] * blue;
+    mColorBlueBottomLeft = colourShade[1] * blue;
+    mColorBlueBottomRight = colourShade[2] * blue;
+    mColorBlueTopRight = colourShade[3] * blue;
+    mColorAlphaTopLeft = alpha[0];
+    mColorAlphaBottomLeft = alpha[1];
+    mColorAlphaBottomRight = alpha[2];
+    mColorAlphaTopRight = alpha[3];
 }
 
 void BlockRenderer::renderFaceDown(const BlockState* state, double x, double y, double z, TextureAtlasSprite* texture)
@@ -695,16 +711,16 @@ void BlockRenderer::renderFaceDown(const BlockState*, double x, double y, double
         builder->vertexUV(x1, yy, z1, faceU[3], faceV[3]);
         return;
     }
-    builder->color(mColorRedTopLeft, mColorGreenTopLeft, mColorBlueTopLeft);
+    builder->color(mColorRedTopLeft, mColorGreenTopLeft, mColorBlueTopLeft, mColorAlphaTopLeft);
     builder->tex2(mAoBrightnessTopLeft);
     builder->vertexUV(x0, yy, z1, faceU[0], faceV[0]);
-    builder->color(mColorRedBottomLeft, mColorGreenBottomLeft, mColorBlueBottomLeft);
+    builder->color(mColorRedBottomLeft, mColorGreenBottomLeft, mColorBlueBottomLeft, mColorAlphaBottomLeft);
     builder->tex2(mAoBrightnessBottomLeft);
     builder->vertexUV(x0, yy, z0, faceU[1], faceV[1]);
-    builder->color(mColorRedBottomRight, mColorGreenBottomRight, mColorBlueBottomRight);
+    builder->color(mColorRedBottomRight, mColorGreenBottomRight, mColorBlueBottomRight, mColorAlphaBottomRight);
     builder->tex2(mAoBrightnessBottomRight);
     builder->vertexUV(x1, yy, z0, faceU[2], faceV[2]);
-    builder->color(mColorRedTopRight, mColorGreenTopRight, mColorBlueTopRight);
+    builder->color(mColorRedTopRight, mColorGreenTopRight, mColorBlueTopRight, mColorAlphaTopRight);
     builder->tex2(mAoBrightnessTopRight);
     builder->vertexUV(x1, yy, z1, faceU[3], faceV[3]);
 }
@@ -829,16 +845,16 @@ void BlockRenderer::renderFaceUp(const BlockState*, double x, double y, double z
         builder->vertexUV(x0, yy, z1, faceU[3], faceV[3]);
         return;
     }
-    builder->color(mColorRedTopLeft, mColorGreenTopLeft, mColorBlueTopLeft);
+    builder->color(mColorRedTopLeft, mColorGreenTopLeft, mColorBlueTopLeft, mColorAlphaTopLeft);
     builder->tex2(mAoBrightnessTopLeft);
     builder->vertexUV(x1, yy, z1, faceU[0], faceV[0]);
-    builder->color(mColorRedBottomLeft, mColorGreenBottomLeft, mColorBlueBottomLeft);
+    builder->color(mColorRedBottomLeft, mColorGreenBottomLeft, mColorBlueBottomLeft, mColorAlphaBottomLeft);
     builder->tex2(mAoBrightnessBottomLeft);
     builder->vertexUV(x1, yy, z0, faceU[1], faceV[1]);
-    builder->color(mColorRedBottomRight, mColorGreenBottomRight, mColorBlueBottomRight);
+    builder->color(mColorRedBottomRight, mColorGreenBottomRight, mColorBlueBottomRight, mColorAlphaBottomRight);
     builder->tex2(mAoBrightnessBottomRight);
     builder->vertexUV(x0, yy, z0, faceU[2], faceV[2]);
-    builder->color(mColorRedTopRight, mColorGreenTopRight, mColorBlueTopRight);
+    builder->color(mColorRedTopRight, mColorGreenTopRight, mColorBlueTopRight, mColorAlphaTopRight);
     builder->tex2(mAoBrightnessTopRight);
     builder->vertexUV(x0, yy, z1, faceU[3], faceV[3]);
 }
@@ -969,16 +985,16 @@ void BlockRenderer::renderNorth(const BlockState*, double x, double y, double z,
         builder->vertexUV(x0, y0, zz, faceU[3], faceV[3]);
         return;
     }
-    builder->color(mColorRedTopLeft, mColorGreenTopLeft, mColorBlueTopLeft);
+    builder->color(mColorRedTopLeft, mColorGreenTopLeft, mColorBlueTopLeft, mColorAlphaTopLeft);
     builder->tex2(mAoBrightnessTopLeft);
     builder->vertexUV(x0, y1, zz, faceU[0], faceV[0]);
-    builder->color(mColorRedBottomLeft, mColorGreenBottomLeft, mColorBlueBottomLeft);
+    builder->color(mColorRedBottomLeft, mColorGreenBottomLeft, mColorBlueBottomLeft, mColorAlphaBottomLeft);
     builder->tex2(mAoBrightnessBottomLeft);
     builder->vertexUV(x1, y1, zz, faceU[1], faceV[1]);
-    builder->color(mColorRedBottomRight, mColorGreenBottomRight, mColorBlueBottomRight);
+    builder->color(mColorRedBottomRight, mColorGreenBottomRight, mColorBlueBottomRight, mColorAlphaBottomRight);
     builder->tex2(mAoBrightnessBottomRight);
     builder->vertexUV(x1, y0, zz, faceU[2], faceV[2]);
-    builder->color(mColorRedTopRight, mColorGreenTopRight, mColorBlueTopRight);
+    builder->color(mColorRedTopRight, mColorGreenTopRight, mColorBlueTopRight, mColorAlphaTopRight);
     builder->tex2(mAoBrightnessTopRight);
     builder->vertexUV(x0, y0, zz, faceU[3], faceV[3]);
 }
@@ -1109,16 +1125,16 @@ void BlockRenderer::renderSouth(const BlockState*, double x, double y, double z,
         builder->vertexUV(x1, y1, zz, faceU[3], faceV[3]);
         return;
     }
-    builder->color(mColorRedTopLeft, mColorGreenTopLeft, mColorBlueTopLeft);
+    builder->color(mColorRedTopLeft, mColorGreenTopLeft, mColorBlueTopLeft, mColorAlphaTopLeft);
     builder->tex2(mAoBrightnessTopLeft);
     builder->vertexUV(x0, y1, zz, faceU[0], faceV[0]);
-    builder->color(mColorRedBottomLeft, mColorGreenBottomLeft, mColorBlueBottomLeft);
+    builder->color(mColorRedBottomLeft, mColorGreenBottomLeft, mColorBlueBottomLeft, mColorAlphaBottomLeft);
     builder->tex2(mAoBrightnessBottomLeft);
     builder->vertexUV(x0, y0, zz, faceU[1], faceV[1]);
-    builder->color(mColorRedBottomRight, mColorGreenBottomRight, mColorBlueBottomRight);
+    builder->color(mColorRedBottomRight, mColorGreenBottomRight, mColorBlueBottomRight, mColorAlphaBottomRight);
     builder->tex2(mAoBrightnessBottomRight);
     builder->vertexUV(x1, y0, zz, faceU[2], faceV[2]);
-    builder->color(mColorRedTopRight, mColorGreenTopRight, mColorBlueTopRight);
+    builder->color(mColorRedTopRight, mColorGreenTopRight, mColorBlueTopRight, mColorAlphaTopRight);
     builder->tex2(mAoBrightnessTopRight);
     builder->vertexUV(x1, y1, zz, faceU[3], faceV[3]);
 }
@@ -1249,16 +1265,16 @@ void BlockRenderer::renderWest(const BlockState*, double x, double y, double z, 
         builder->vertexUV(xx, y0, z1, faceU[3], faceV[3]);
         return;
     }
-    builder->color(mColorRedTopLeft, mColorGreenTopLeft, mColorBlueTopLeft);
+    builder->color(mColorRedTopLeft, mColorGreenTopLeft, mColorBlueTopLeft, mColorAlphaTopLeft);
     builder->tex2(mAoBrightnessTopLeft);
     builder->vertexUV(xx, y1, z1, faceU[0], faceV[0]);
-    builder->color(mColorRedBottomLeft, mColorGreenBottomLeft, mColorBlueBottomLeft);
+    builder->color(mColorRedBottomLeft, mColorGreenBottomLeft, mColorBlueBottomLeft, mColorAlphaBottomLeft);
     builder->tex2(mAoBrightnessBottomLeft);
     builder->vertexUV(xx, y1, z0, faceU[1], faceV[1]);
-    builder->color(mColorRedBottomRight, mColorGreenBottomRight, mColorBlueBottomRight);
+    builder->color(mColorRedBottomRight, mColorGreenBottomRight, mColorBlueBottomRight, mColorAlphaBottomRight);
     builder->tex2(mAoBrightnessBottomRight);
     builder->vertexUV(xx, y0, z0, faceU[2], faceV[2]);
-    builder->color(mColorRedTopRight, mColorGreenTopRight, mColorBlueTopRight);
+    builder->color(mColorRedTopRight, mColorGreenTopRight, mColorBlueTopRight, mColorAlphaTopRight);
     builder->tex2(mAoBrightnessTopRight);
     builder->vertexUV(xx, y0, z1, faceU[3], faceV[3]);
 }
@@ -1389,16 +1405,16 @@ void BlockRenderer::renderEast(const BlockState*, double x, double y, double z, 
         builder->vertexUV(xx, y1, z1, faceU[3], faceV[3]);
         return;
     }
-    builder->color(mColorRedTopLeft, mColorGreenTopLeft, mColorBlueTopLeft);
+    builder->color(mColorRedTopLeft, mColorGreenTopLeft, mColorBlueTopLeft, mColorAlphaTopLeft);
     builder->tex2(mAoBrightnessTopLeft);
     builder->vertexUV(xx, y0, z1, faceU[0], faceV[0]);
-    builder->color(mColorRedBottomLeft, mColorGreenBottomLeft, mColorBlueBottomLeft);
+    builder->color(mColorRedBottomLeft, mColorGreenBottomLeft, mColorBlueBottomLeft, mColorAlphaBottomLeft);
     builder->tex2(mAoBrightnessBottomLeft);
     builder->vertexUV(xx, y0, z0, faceU[1], faceV[1]);
-    builder->color(mColorRedBottomRight, mColorGreenBottomRight, mColorBlueBottomRight);
+    builder->color(mColorRedBottomRight, mColorGreenBottomRight, mColorBlueBottomRight, mColorAlphaBottomRight);
     builder->tex2(mAoBrightnessBottomRight);
     builder->vertexUV(xx, y1, z0, faceU[2], faceV[2]);
-    builder->color(mColorRedTopRight, mColorGreenTopRight, mColorBlueTopRight);
+    builder->color(mColorRedTopRight, mColorGreenTopRight, mColorBlueTopRight, mColorAlphaTopRight);
     builder->tex2(mAoBrightnessTopRight);
     builder->vertexUV(xx, y1, z1, faceU[3], faceV[3]);
 }
@@ -1614,10 +1630,10 @@ bool BlockRenderer::tesselateBlockInWorld(const BlockState* state, const BlockPo
     bool rendered = false;
     mEnableAO = false;
     BufferBuilder* builder = Tesselator::getInstance()->getBuilder();
-    float downShade = 0.5f;
+    float downShade = shadeDown;
     float upShade = 1.0f;
-    float northShade = 0.8f;
-    float westShade = 0.6f;
+    float northShade = shadeNorthSouth;
+    float westShade = shadeWestEast;
     float upRed = upShade * red;
     float upGreen = upShade * green;
     float upBlue = upShade * blue;
@@ -4080,7 +4096,7 @@ bool BlockRenderer::tesselateWaterInWorld(const BlockState* state, const BlockPo
     if (bottom || mRenderAllFaces)
     {
         builder->tex2(getLightColor(block, mLevelSource, pos.below()));
-        builder->color(red * 0.5f, green * 0.5f, blue * 0.5f, (float)(alpha * 0.75));
+        builder->color(red * shadeDown, green * shadeDown, blue * shadeDown, (float)(alpha * 0.75));
         renderFaceDown(state, pos.x, y + inset, pos.z, getTexture(block, Direction::DOWN));
         rendered = true;
     }
@@ -4144,7 +4160,7 @@ bool BlockRenderer::tesselateWaterInWorld(const BlockState* state, const BlockPo
         vBottom -= vInset;
 
         builder->tex2(getLightColor(block, mLevelSource, neighbour));
-        float shade = i < 2 ? 0.8f : 0.6f;
+        float shade = i < 2 ? shadeNorthSouth : shadeWestEast;
         builder->bucket(buckets[i]);
         builder->color(red * shade, green * shade, blue * shade, sideAlpha);
         builder->vertexUV(x0, y + height[first], z0, u0, vFirst + vInset);
@@ -4183,7 +4199,7 @@ bool BlockRenderer::tesselateCactusInWorld(const BlockState* state, const BlockP
         {
             builder->tex2(lightAtPos);
         }
-        builder->color(red * 0.5f, green * 0.5f, blue * 0.5f);
+        builder->color(red * shadeDown, green * shadeDown, blue * shadeDown);
         renderFaceDown(state, pos.x, pos.y, pos.z, getTexture(state, mLevelSource, pos, Direction::DOWN));
     }
 
@@ -4203,7 +4219,7 @@ bool BlockRenderer::tesselateCactusInWorld(const BlockState* state, const BlockP
     }
 
     builder->tex2(lightAtPos);
-    builder->color(red * 0.8f, green * 0.8f, blue * 0.8f);
+    builder->color(red * shadeNorthSouth, green * shadeNorthSouth, blue * shadeNorthSouth);
     builder->addOffset(0.0f, 0.0f, 0.0625f);
     renderNorth(state, pos.x, pos.y, pos.z, getTexture(state, mLevelSource, pos, Direction::NORTH));
     builder->addOffset(0.0f, 0.0f, -0.0625f);
@@ -4211,7 +4227,7 @@ bool BlockRenderer::tesselateCactusInWorld(const BlockState* state, const BlockP
     renderSouth(state, pos.x, pos.y, pos.z, getTexture(state, mLevelSource, pos, Direction::SOUTH));
     builder->addOffset(0.0f, 0.0f, 0.0625f);
 
-    builder->color(red * 0.6f, green * 0.6f, blue * 0.6f);
+    builder->color(red * shadeWestEast, green * shadeWestEast, blue * shadeWestEast);
     builder->addOffset(0.0625f, 0.0f, 0.0f);
     renderWest(state, pos.x, pos.y, pos.z, getTexture(state, mLevelSource, pos, Direction::WEST));
     builder->addOffset(-0.0625f, 0.0f, 0.0f);
@@ -6337,10 +6353,10 @@ bool BlockRenderer::tesselateBedInWorld(const BlockState* state, const BlockPos&
     const Direction* facing = state->getValue(HorizontalDirectionalBlock::FACING_PROPERTY);
     bool isHead = state->getValue(BedBlock::PART) == &gBedHead;
 
-    float bottomBrightness = 0.5f;
+    float bottomBrightness = shadeDown;
     float topBrightness = 1.0f;
-    float northSouthBrightness = 0.8f;
-    float westEastBrightness = 0.6f;
+    float northSouthBrightness = shadeNorthSouth;
+    float westEastBrightness = shadeWestEast;
 
     int lightColor = getLightColor(block, mLevelSource, pos);
     builder->tex2(lightColor);
@@ -8216,15 +8232,15 @@ void BlockRenderer::tesselateTurtleEgg(const BlockState* state, const BlockPos& 
 {
     BufferBuilder* builder = Tesselator::getInstance()->getBuilder();
     TextureAtlasSprite* texture = getTexture(state, Direction::DOWN);
-    float zRed = 0.8f * red;
-    float zGreen = 0.8f * green;
-    float zBlue = 0.8f * blue;
-    float xRed = 0.6f * red;
-    float xGreen = 0.6f * green;
-    float xBlue = 0.6f * blue;
-    float bottomRed = 0.5f * red;
-    float bottomGreen = 0.5f * green;
-    float bottomBlue = 0.5f * blue;
+    float zRed = shadeNorthSouth * red;
+    float zGreen = shadeNorthSouth * green;
+    float zBlue = shadeNorthSouth * blue;
+    float xRed = shadeWestEast * red;
+    float xGreen = shadeWestEast * green;
+    float xBlue = shadeWestEast * blue;
+    float bottomRed = shadeDown * red;
+    float bottomGreen = shadeDown * green;
+    float bottomBlue = shadeDown * blue;
 
     int eggCount = state->getValue(TurtleEggBlock::EGG_COUNT);
     if (eggCount >= 0)

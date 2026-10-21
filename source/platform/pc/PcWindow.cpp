@@ -127,8 +127,6 @@ bool PcWindowCreate(int width, int height)
         return false;
     }
 
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
@@ -149,7 +147,15 @@ bool PcWindowCreate(int width, int height)
     }
     SetWindowIcon();
 
-    sContext = SDL_GL_CreateContext(sWindow);
+    static const int kVersions[][2] = {{4, 6}, {4, 5}, {4, 3}, {4, 2}, {4, 1}, {4, 0}, {3, 3}};
+    for (const int* version : kVersions)
+    {
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, version[0]);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, version[1]);
+        sContext = SDL_GL_CreateContext(sWindow);
+        if (sContext != NULL)
+            break;
+    }
     if (sContext == NULL)
     {
         LOG_FATAL(sLog, "SDL_GL_CreateContext failed: %s", SDL_GetError());

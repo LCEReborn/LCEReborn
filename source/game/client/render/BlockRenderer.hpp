@@ -51,6 +51,7 @@ public:
     ~BlockRenderer();
 
     static bool canRender(int renderShape);
+    static bool SetShaderLighting(bool oldLighting, bool separateAo);
 
     TextureAtlasSprite* getTextureOrMissing(TextureAtlasSprite* texture);
     TextureAtlasSprite* getTexture(const BlockState* state, const Direction* direction);
@@ -260,6 +261,10 @@ private:
     float mColorBlueBottomLeft;
     float mColorBlueBottomRight;
     float mColorBlueTopRight;
+    float mColorAlphaTopLeft;
+    float mColorAlphaBottomLeft;
+    float mColorAlphaBottomRight;
+    float mColorAlphaTopRight;
 };
 
 #endif

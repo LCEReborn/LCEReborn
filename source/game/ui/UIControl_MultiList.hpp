@@ -76,6 +76,7 @@ public:
     void AddNewLabel(const std::wstring& label, int id);
     void AddNewCheckbox(const std::wstring& label, int id, bool checked);
     void AddNewControllerButton(const std::wstring& label, const std::wstring& secondaryLabel, bool html, int id);
+    void AddNewIconButton(const std::wstring& html, const std::wstring& textureName, int id);
     void AddNewSlider(const std::wstring& label, int id, int minValue, int maxValue, int value, bool repeat,
                       int repeatDelay, int repeatStep);
     void SetCheckboxValue(int id, bool checked, bool immediate);

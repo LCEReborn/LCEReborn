@@ -55,6 +55,11 @@ void UIMoreOptionsPage::Build(UIScene_CustomMenu& menu)
                    L"Choose what the debug overlay shows down the left of the screen: each line is always shown, "
                    L"shown while it is open, or off. F3 opens it on a keyboard, and both sticks pressed together "
                    L"on a controller.");
+#if LCE_PLATFORM_PC
+    menu.AddButton(eItem_Shaders, L"Shaders",
+                   L"Choose a shader pack and change its settings. Shader packs made for OptiFine and Iris are "
+                   L"supported; put them in the shaderpacks folder.");
+#endif
 }
 
 void UIMoreOptionsPage::OnPress(UIScene_CustomMenu& menu, int id)
@@ -62,6 +67,11 @@ void UIMoreOptionsPage::OnPress(UIScene_CustomMenu& menu, int id)
     if (id == eItem_DebugOverlay)
         gConsoleUIController.NavigateToScene(menu.GetPlayer(), EUIScene_DebugOverlayMenu, NULL, EUILayer_Scene,
                                              EUIGroup_PlayerDefault);
+#if LCE_PLATFORM_PC
+    if (id == eItem_Shaders)
+        gConsoleUIController.NavigateToScene(menu.GetPlayer(), EUIScene_ShaderMenu, NULL, EUILayer_Scene,
+                                             EUIGroup_PlayerDefault);
+#endif
 }
 
 void UIMoreOptionsPage::OnToggle(UIScene_CustomMenu&, int id, bool checked)

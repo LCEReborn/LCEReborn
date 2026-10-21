@@ -149,6 +149,147 @@ const GLuint INVALID_INDEX = 0xFFFFFFFFu;
 const GLenum VENDOR = 0x1F00;
 const GLenum RENDERER = 0x1F01;
 const GLenum VERSION = 0x1F02;
+const GLenum SHADING_LANGUAGE_VERSION = 0x8B8C;
+const GLenum EXTENSIONS = 0x1F03;
+const GLenum NUM_EXTENSIONS = 0x821D;
+
+const GLenum TEXTURE_1D = 0x0DE0;
+const GLenum TEXTURE_3D = 0x806F;
+const GLenum TEXTURE_BUFFER = 0x8C2A;
+const GLenum TEXTURE_WRAP_R = 0x8072;
+const GLenum CLAMP_TO_BORDER = 0x812D;
+const GLenum MIRRORED_REPEAT = 0x8370;
+const GLenum TEXTURE_COMPARE_MODE = 0x884C;
+const GLenum TEXTURE_COMPARE_FUNC = 0x884D;
+const GLenum COMPARE_REF_TO_TEXTURE = 0x884E;
+
+const GLenum RG = 0x8227;
+const GLenum RGB = 0x1907;
+const GLenum RED_INTEGER = 0x8D94;
+const GLenum RG_INTEGER = 0x8228;
+const GLenum RGB_INTEGER = 0x8D98;
+const GLenum RGBA_INTEGER = 0x8D99;
+const GLenum DEPTH_COMPONENT = 0x1902;
+const GLenum DEPTH_COMPONENT24 = 0x81A6;
+const GLenum DEPTH_COMPONENT32F = 0x8CAC;
+const GLenum R8 = 0x8229;
+const GLenum R16 = 0x822A;
+const GLenum RG8 = 0x822B;
+const GLenum RG16 = 0x822C;
+const GLenum R32F = 0x822E;
+const GLenum RG16F = 0x822F;
+const GLenum RG32F = 0x8230;
+const GLenum R8I = 0x8231;
+const GLenum R8UI = 0x8232;
+const GLenum R16I = 0x8233;
+const GLenum R16UI = 0x8234;
+const GLenum R32I = 0x8235;
+const GLenum R32UI = 0x8236;
+const GLenum RG8I = 0x8237;
+const GLenum RG8UI = 0x8238;
+const GLenum RG16I = 0x8239;
+const GLenum RG16UI = 0x823A;
+const GLenum RG32I = 0x823B;
+const GLenum RG32UI = 0x823C;
+const GLenum RGB8 = 0x8051;
+const GLenum RGB16 = 0x8054;
+const GLenum RGB10_A2 = 0x8059;
+const GLenum RGBA16 = 0x805B;
+const GLenum RGBA32F = 0x8814;
+const GLenum RGB32F = 0x8815;
+const GLenum RGB16F = 0x881B;
+const GLenum R11F_G11F_B10F = 0x8C3A;
+const GLenum RGB9_E5 = 0x8C3D;
+const GLenum RGBA32UI = 0x8D70;
+const GLenum RGB32UI = 0x8D71;
+const GLenum RGBA16UI = 0x8D76;
+const GLenum RGB16UI = 0x8D77;
+const GLenum RGBA8UI = 0x8D7C;
+const GLenum RGB8UI = 0x8D7D;
+const GLenum RGBA32I = 0x8D82;
+const GLenum RGB32I = 0x8D83;
+const GLenum RGBA16I = 0x8D88;
+const GLenum RGB16I = 0x8D89;
+const GLenum RGBA8I = 0x8D8E;
+const GLenum RGB8I = 0x8D8F;
+const GLenum R8_SNORM = 0x8F94;
+const GLenum RG8_SNORM = 0x8F95;
+const GLenum RGB8_SNORM = 0x8F96;
+const GLenum RGBA8_SNORM = 0x8F97;
+const GLenum R16_SNORM = 0x8F98;
+const GLenum RG16_SNORM = 0x8F99;
+const GLenum RGB16_SNORM = 0x8F9A;
+const GLenum RGBA16_SNORM = 0x8F9B;
+const GLenum RGB10_A2UI = 0x906F;
+const GLenum R3_G3_B2 = 0x2A10;
+const GLenum RGB5_A1 = 0x8057;
+const GLenum RGBA2 = 0x8055;
+const GLenum RGBA4 = 0x8056;
+const GLenum RGB4 = 0x804F;
+const GLenum RGB5 = 0x8050;
+const GLenum RGB10 = 0x8052;
+const GLenum RGB12 = 0x8053;
+const GLenum RGBA12 = 0x805A;
+
+const GLenum COLOR = 0x1800;
+const GLenum DEPTH = 0x1801;
+const GLenum DEPTH_ATTACHMENT = 0x8D00;
+const GLenum MAX_DRAW_BUFFERS = 0x8824;
+const GLenum MAX_COLOR_ATTACHMENTS = 0x8CDF;
+const GLenum MAX_COMBINED_TEXTURE_IMAGE_UNITS = 0x8B4D;
+const GLenum MAX_TEXTURE_IMAGE_UNITS = 0x8872;
+const GLenum MAJOR_VERSION = 0x821B;
+const GLenum MINOR_VERSION = 0x821C;
+
+const GLenum GEOMETRY_SHADER = 0x8DD9;
+const GLenum ACTIVE_UNIFORMS = 0x8B86;
+const GLenum ACTIVE_UNIFORM_MAX_LENGTH = 0x8B87;
+const GLenum SAMPLER_1D = 0x8B5D;
+const GLenum SAMPLER_2D = 0x8B5E;
+const GLenum SAMPLER_3D = 0x8B5F;
+const GLenum SAMPLER_1D_SHADOW = 0x8B61;
+const GLenum SAMPLER_2D_SHADOW = 0x8B62;
+const GLenum SAMPLER_BUFFER = 0x8DC2;
+const GLenum INT_SAMPLER_2D = 0x8DCA;
+const GLenum INT_SAMPLER_BUFFER = 0x8DD0;
+const GLenum UNSIGNED_INT_SAMPLER_2D = 0x8DD2;
+const GLenum UNSIGNED_INT_SAMPLER_BUFFER = 0x8DD8;
+const GLenum SAMPLER_2D_ARRAY = 0x8DC1;
+const GLenum INT_SAMPLER_1D = 0x8DC9;
+const GLenum INT_SAMPLER_3D = 0x8DCB;
+const GLenum UNSIGNED_INT_SAMPLER_1D = 0x8DD1;
+const GLenum UNSIGNED_INT_SAMPLER_3D = 0x8DD3;
+const GLenum IMAGE_1D = 0x904C;
+const GLenum IMAGE_2D = 0x904D;
+const GLenum IMAGE_3D = 0x904E;
+const GLenum INT_IMAGE_1D = 0x9057;
+const GLenum INT_IMAGE_2D = 0x9058;
+const GLenum INT_IMAGE_3D = 0x9059;
+const GLenum UNSIGNED_INT_IMAGE_1D = 0x9062;
+const GLenum UNSIGNED_INT_IMAGE_2D = 0x9063;
+const GLenum UNSIGNED_INT_IMAGE_3D = 0x9064;
+const GLenum COMPUTE_SHADER = 0x91B9;
+const GLenum COMPUTE_WORK_GROUP_SIZE = 0x8267;
+const GLenum SHADER_STORAGE_BUFFER = 0x90D2;
+const GLenum DYNAMIC_COPY = 0x88EA;
+const GLenum READ_WRITE = 0x88BA;
+const GLenum MAX_IMAGE_UNITS = 0x8F38;
+const GLbitfield ALL_BARRIER_BITS = 0xFFFFFFFF;
+const GLenum FLOAT_VEC2 = 0x8B50;
+const GLenum FLOAT_VEC3 = 0x8B51;
+const GLenum FLOAT_VEC4 = 0x8B52;
+const GLenum INT_VEC2 = 0x8B53;
+const GLenum INT_VEC3 = 0x8B54;
+const GLenum INT_VEC4 = 0x8B55;
+const GLenum BOOL_TYPE = 0x8B56;
+const GLenum FLOAT_MAT3 = 0x8B5B;
+const GLenum FLOAT_MAT4 = 0x8B5C;
+
+const GLenum DEPTH_STENCIL = 0x84F9;
+const GLenum UNSIGNED_INT_24_8 = 0x84FA;
+const GLenum PIXEL_PACK_BUFFER = 0x88EB;
+const GLenum STREAM_READ = 0x88E1;
+const GLbitfield MAP_READ_BIT = 0x0001;
 }
 
 #define LCE_GL_FUNCTIONS(X)                                                                                            \
@@ -237,11 +378,46 @@ const GLenum VERSION = 0x1F02;
     X(void, FramebufferRenderbuffer, (GLenum target, GLenum attachment, GLenum renderbuffertarget,                     \
                                       GLuint renderbuffer))                                                            \
     X(GLenum, CheckFramebufferStatus, (GLenum target))                                                                 \
+    X(GLenum, GetError, (void))                                                                                        \
     X(void, GenRenderbuffers, (GLsizei n, GLuint * renderbuffers))                                                     \
     X(void, DeleteRenderbuffers, (GLsizei n, const GLuint* renderbuffers))                                             \
     X(void, BindRenderbuffer, (GLenum target, GLuint renderbuffer))                                                    \
     X(void, RenderbufferStorage, (GLenum target, GLenum internalformat, GLsizei width, GLsizei height))               \
-    X(void, DrawBuffers, (GLsizei n, const GLenum* bufs))
+    X(void, DrawBuffers, (GLsizei n, const GLenum* bufs))                                                              \
+    X(void, ReadBuffer, (GLenum src))                                                                                  \
+    X(void, BlitFramebuffer, (GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0,            \
+                              GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter))                               \
+    X(void, ClearBufferfv, (GLenum buffer, GLint drawbuffer, const GLfloat* value))                                    \
+    X(void, ClearBufferiv, (GLenum buffer, GLint drawbuffer, const GLint* value))                                      \
+    X(void, ClearBufferuiv, (GLenum buffer, GLint drawbuffer, const GLuint* value))                                    \
+    X(void, ClearBufferfi, (GLenum buffer, GLint drawbuffer, GLfloat depth, GLint stencil))                            \
+    X(void, GenerateMipmap, (GLenum target))                                                                           \
+    X(void, TexBuffer, (GLenum target, GLenum internalformat, GLuint buffer))                                          \
+    X(void, TexImage3D, (GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height,              \
+                         GLsizei depth, GLint border, GLenum format, GLenum type, const void* pixels))                 \
+    X(void, TexImage1D, (GLenum target, GLint level, GLint internalformat, GLsizei width, GLint border,                \
+                         GLenum format, GLenum type, const void* pixels))                                              \
+    X(void, GetActiveUniform, (GLuint program, GLuint index, GLsizei bufSize, GLsizei * length, GLint * size,          \
+                               GLenum * type, GLchar * name))                                                          \
+    X(void, Uniform2i, (GLint location, GLint v0, GLint v1))                                                           \
+    X(void, Uniform3i, (GLint location, GLint v0, GLint v1, GLint v2))                                                 \
+    X(void, Uniform4i, (GLint location, GLint v0, GLint v1, GLint v2, GLint v3))                                       \
+    X(void, Uniform3f, (GLint location, GLfloat v0, GLfloat v1, GLfloat v2))                                           \
+    X(void, UniformMatrix3fv, (GLint location, GLsizei count, GLboolean transpose, const GLfloat* value))              \
+    X(void, UniformMatrix4fv, (GLint location, GLsizei count, GLboolean transpose, const GLfloat* value))              \
+    X(void, Enablei, (GLenum target, GLuint index))                                                                    \
+    X(void, Disablei, (GLenum target, GLuint index))
+
+#define LCE_GL_OPTIONAL_FUNCTIONS(X)                                                                                   \
+    X(void, BlendFuncSeparatei, (GLuint buf, GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha, GLenum dstAlpha))         \
+    X(void, DispatchCompute, (GLuint numGroupsX, GLuint numGroupsY, GLuint numGroupsZ))                               \
+    X(void, MemoryBarrier, (GLbitfield barriers))                                                                     \
+    X(void, BindImageTexture, (GLuint unit, GLuint texture, GLint level, GLboolean layered, GLint layer,              \
+                               GLenum access, GLenum format))                                                         \
+    X(void, BindBufferBase, (GLenum target, GLuint index, GLuint buffer))                                             \
+    X(void, ClearBufferData, (GLenum target, GLenum internalformat, GLenum format, GLenum type, const void* data))    \
+    X(void, ClearTexImage, (GLuint texture, GLint level, GLenum format, GLenum type, const void* data))              \
+    X(const GLubyte*, GetStringi, (GLenum name, GLuint index))
 
 namespace Gl
 {
@@ -249,6 +425,7 @@ namespace Gl
     typedef returnType(LCE_GL_APIENTRY* name##Function) parameters;                                                    \
     extern name##Function name;
 LCE_GL_FUNCTIONS(LCE_GL_DECLARE)
+LCE_GL_OPTIONAL_FUNCTIONS(LCE_GL_DECLARE)
 #undef LCE_GL_DECLARE
 
 bool LoadFunctions(void* (*getProcAddress)(const char* name));

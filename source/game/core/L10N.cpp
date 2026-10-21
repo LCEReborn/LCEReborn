@@ -48,6 +48,18 @@ const wchar_t* ExtraString(int id)
         return L"Reset";
     case IDS_LCE_HOLD_TO_SNEAK:
         return L"Hold to Sneak";
+    case IDS_LCE_SHADER_PACKS:
+        return L"Shader Packs";
+    case IDS_LCE_SHADER_SETTINGS:
+        return L"Shader Settings";
+    case IDS_LCE_SHADER_PACK_SETTINGS:
+        return L"Shader Pack Settings";
+    case IDS_LCE_SHADER_REFRESH:
+        return L"Refresh";
+    case IDS_LCE_SHADER_RESET_DEFAULTS:
+        return L"Reset to Defaults";
+    case IDS_LCE_SHADER_APPLY:
+        return L"Apply";
     default:
         return NULL;
     }

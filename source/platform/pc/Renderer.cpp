@@ -19,6 +19,7 @@
 #include "platform/pc/PcKeyboardOverlay.hpp"
 #include "platform/pc/PcWindow.hpp"
 #include "platform/pc/RenderShaders.hpp"
+#include "platform/pc/shaderpack/ShaderPipeline.hpp"
 
 struct D3DXIMAGE_INFO
 {
@@ -435,6 +436,7 @@ struct Renderer::Texture
     RenderSamplerState mSampler;
     GLuint mName;
     unsigned int mGeneration;
+    unsigned int mContentVersion;
 };
 
 struct Renderer::GpuState
@@ -527,6 +529,7 @@ struct Renderer::Context
     bool mDeferredMode;
     std::vector<DeferredCBuff> mDeferredBuffers;
     float mLastQuadUniform[4];
+    const unsigned short* mPendingQuadData;
     float mViewportScale[4];
     float mLayeredColour[16][4];
     unsigned int mScissorRect[4];
@@ -629,6 +632,7 @@ public:
 
     int getNumVertices();
     bool EnsureUploaded(Device* device, int layout);
+    bool EnsureTerrainTextures();
 
     unsigned char* mVertices;
     unsigned int mVerticesUsed;
@@ -640,6 +644,10 @@ public:
     GLuint mBuffer;
     GLuint mVertexArray;
     int mVertexArrayLayout;
+    std::vector<unsigned short> mQuadData;
+    GLuint mQuadBuffer;
+    GLuint mQuadTexture;
+    GLuint mVertexTexture;
 };
 
 class Renderer::Device
@@ -706,6 +714,10 @@ public:
     void Invalidate();
     void FlushPending(Renderer& renderer);
     void QueueBufferDelete(GLuint buffer, GLuint vertexArray);
+    void QueueTextureDelete(GLuint texture);
+    const ShaderLinkedProgram* PreparePackDraw(Renderer& renderer, Context& context, ShaderDrawTarget& target);
+    GLuint ResolvePackAlbedo(Renderer& renderer, Context& context, float* colourScale, bool& bDiscardZeroAlpha);
+    GLuint StreamVertexTexture();
     void ExecuteTextureStorage(Texture& texture, const void* pixels);
     void ExecuteTextureLevel(Texture& texture, int level, int width, int height, const void* pixels);
     bool PrepareDraw(Renderer& renderer, Context& context);
@@ -752,6 +764,13 @@ public:
     std::vector<TextureOperation> mTextureOperations;
     std::vector<GLuint> mDeletedBuffers;
     std::vector<GLuint> mDeletedVertexArrays;
+    std::vector<GLuint> mDeletedTextures;
+    GLuint mStreamVertexTexture;
+    bool mPackDraw;
+    bool mPendingTerrainQuadData;
+    ShaderAdapter mPackAdapter;
+    unsigned int mTextureContentCounter;
+    int mPendingPrimitive;
 };
 
 namespace
@@ -860,6 +879,12 @@ Renderer::Device::Device()
     mBoundVertexConstantCount = 0;
     mPixelConstantsBound = false;
     mBoundConstantContext = NULL;
+    mStreamVertexTexture = 0;
+    mPackDraw = false;
+    mPendingTerrainQuadData = false;
+    mTextureContentCounter = 0;
+    mPendingPrimitive = -1;
+    mPackAdapter = ShaderAdapter_Count;
     InitializeCriticalSection(&mPendingMutex);
     Invalidate();
 }
@@ -976,6 +1001,11 @@ void Renderer::Device::Destroy()
         }
     }
 
+    if (mStreamVertexTexture != 0)
+    {
+        Gl::DeleteTextures(1, &mStreamVertexTexture);
+        mStreamVertexTexture = 0;
+    }
     Gl::DeleteVertexArrays(VertexLayout_Count, mStreamVertexArrays);
     Gl::DeleteVertexArrays(1, &mEmptyVertexArray);
     Gl::DeleteBuffers(1, &mQuadIndexBuffer);
@@ -1361,6 +1391,31 @@ void Renderer::Device::QueueBufferDelete(GLuint buffer, GLuint vertexArray)
     LeaveCriticalSection(&mPendingMutex);
 }
 
+void Renderer::Device::QueueTextureDelete(GLuint texture)
+{
+    if (texture == 0)
+    {
+        return;
+    }
+
+    EnterCriticalSection(&mPendingMutex);
+    mDeletedTextures.push_back(texture);
+    LeaveCriticalSection(&mPendingMutex);
+}
+
+GLuint Renderer::Device::StreamVertexTexture()
+{
+    if (mStreamVertexTexture == 0)
+    {
+        Gl::GenTextures(1, &mStreamVertexTexture);
+        Gl::BindTexture(Gl::TEXTURE_BUFFER, mStreamVertexTexture);
+        Gl::TexBuffer(Gl::TEXTURE_BUFFER, Gl::RGBA16I, mVertexStream.mBuffer);
+        Gl::BindTexture(Gl::TEXTURE_BUFFER, 0);
+    }
+
+    return mStreamVertexTexture;
+}
+
 void Renderer::Device::ExecuteTextureStorage(Texture& texture, const void* pixels)
 {
     if (texture.mName == 0)
@@ -1384,6 +1439,7 @@ void Renderer::Device::ExecuteTextureStorage(Texture& texture, const void* pixel
 
     Gl::TexParameteri(Gl::TEXTURE_2D, Gl::TEXTURE_BASE_LEVEL, 0);
     Gl::TexParameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MAX_LEVEL, texture.mStorageLevels - 1);
+    texture.mContentVersion = ++mTextureContentCounter;
 }
 
 void Renderer::Device::ExecuteTextureLevel(Texture& texture, int level, int width, int height, const void* pixels)
@@ -1397,6 +1453,7 @@ void Renderer::Device::ExecuteTextureLevel(Texture& texture, int level, int widt
     Gl::BindTexture(Gl::TEXTURE_2D, texture.mName);
     mCurrentTexture[0] = texture.mName;
     Gl::TexSubImage2D(Gl::TEXTURE_2D, level, 0, 0, width, height, Gl::RGBA, Gl::UNSIGNED_BYTE, pixels);
+    texture.mContentVersion = ++mTextureContentCounter;
 }
 
 void Renderer::Device::FlushPending(Renderer& renderer)
@@ -1421,6 +1478,12 @@ void Renderer::Device::FlushPending(Renderer& renderer)
 
         Gl::DeleteVertexArrays((GLsizei)mDeletedVertexArrays.size(), &mDeletedVertexArrays[0]);
         mDeletedVertexArrays.clear();
+    }
+
+    if (!mDeletedTextures.empty())
+    {
+        Gl::DeleteTextures((GLsizei)mDeletedTextures.size(), &mDeletedTextures[0]);
+        mDeletedTextures.clear();
     }
 
     LeaveCriticalSection(&mPendingMutex);
@@ -1469,6 +1532,159 @@ void Renderer::Device::FlushPending(Renderer& renderer)
     LeaveCriticalSection(&renderer.mTextureMutex);
 }
 
+GLuint Renderer::Device::ResolvePackAlbedo(Renderer& renderer, Context& context, float* colourScale,
+                                           bool& bDiscardZeroAlpha)
+{
+    const GpuState& gpu = context.mGpu;
+    const float* diffuse = context.mPixelConstants[0];
+    const float* layerColour = context.mPixelConstants[4];
+    colourScale[0] = diffuse[0] * layerColour[0];
+    colourScale[1] = diffuse[1] * layerColour[1];
+    colourScale[2] = diffuse[2] * layerColour[2];
+    colourScale[3] = diffuse[3];
+    bDiscardZeroAlpha = false;
+
+    switch (gpu.mVertexShader)
+    {
+    case RenderVertexShader_Standard:
+    case RenderVertexShader_StandardLit:
+    case RenderVertexShader_TexGen:
+    case RenderVertexShader_Entity:
+    case RenderVertexShader_EntityLit:
+        break;
+    default:
+        return 0;
+    }
+
+    ShaderAlbedoRequest request;
+    int textures = 1;
+    switch (gpu.mPixelShader)
+    {
+    case RenderPixelShader_DefaultTwoLayers:
+    case RenderPixelShader_DefaultThreeLayers:
+    case RenderPixelShader_DefaultFourLayers:
+        request.mode = ShaderAlbedoMode_Layered;
+        request.layers = 2 + (gpu.mPixelShader - RenderPixelShader_DefaultTwoLayers);
+        textures = request.layers;
+        break;
+    case RenderPixelShader_LayeredColourMask:
+        request.mode = ShaderAlbedoMode_ColourMask;
+        textures = 2;
+        break;
+    case RenderPixelShader_EntityChangeColour:
+        request.mode = ShaderAlbedoMode_ChangeColour;
+        break;
+    case RenderPixelShader_EntityEmissiveAlpha:
+        request.mode = ShaderAlbedoMode_EmissiveAlpha;
+        break;
+    case RenderPixelShader_EntityEmissiveAlphaOnly:
+        request.mode = ShaderAlbedoMode_EmissiveAlphaOnly;
+        break;
+    default:
+        return 0;
+    }
+
+    const Texture& defaultTexture = renderer.mTextures[renderer.mDefaultTexture];
+    for (int layer = 0; layer < textures; ++layer)
+    {
+        const Texture& texture = renderer.mTextures[gpu.mPixelTexture[layer]];
+        const Texture& source = texture.mName != 0 ? texture : defaultTexture;
+        request.textures[layer] = source.mName;
+        request.versions[layer] = source.mContentVersion;
+        request.sizes[layer][0] = source.mWidth;
+        request.sizes[layer][1] = source.mHeight;
+    }
+
+    switch (request.mode)
+    {
+    case ShaderAlbedoMode_Layered:
+        for (int layer = 0; layer < request.layers; ++layer)
+        {
+            memcpy(request.colours[layer], context.mPixelConstants[4 + layer], sizeof(request.colours[layer]));
+        }
+        break;
+    case ShaderAlbedoMode_ColourMask:
+        memcpy(request.mask, context.mPixelConstants[9], sizeof(request.mask));
+        break;
+    case ShaderAlbedoMode_ChangeColour:
+        memcpy(request.colours[0], layerColour, sizeof(request.colours[0]));
+        memcpy(request.diffuse, diffuse, sizeof(request.diffuse));
+        break;
+    default:
+        memcpy(request.colours[0], layerColour, sizeof(request.colours[0]));
+        break;
+    }
+
+    bool bStateChanged = false;
+    GLuint albedo = ShaderPipeline::Get().ResolveAlbedo(request, bStateChanged);
+    if (bStateChanged)
+    {
+        Invalidate();
+    }
+
+    if (albedo == 0)
+    {
+        return 0;
+    }
+
+    switch (request.mode)
+    {
+    case ShaderAlbedoMode_Layered:
+    case ShaderAlbedoMode_ColourMask:
+        memcpy(colourScale, diffuse, sizeof(float) * 4);
+        break;
+    case ShaderAlbedoMode_ChangeColour:
+        colourScale[0] = colourScale[1] = colourScale[2] = 1.0f;
+        colourScale[3] = diffuse[3];
+        bDiscardZeroAlpha = true;
+        break;
+    default:
+        colourScale[0] = colourScale[1] = colourScale[2] = colourScale[3] = 1.0f;
+        bDiscardZeroAlpha = true;
+        break;
+    }
+
+    return albedo;
+}
+
+const ShaderLinkedProgram* Renderer::Device::PreparePackDraw(Renderer& renderer, Context& context,
+                                                             ShaderDrawTarget& target)
+{
+    ShaderPipeline& pipeline = ShaderPipeline::Get();
+    if (!pipeline.InWorld() || renderer.mScreen != 0)
+    {
+        return NULL;
+    }
+
+    switch (context.mGpu.mVertexShader)
+    {
+    case RenderVertexShader_Terrain:
+        mPackAdapter = ShaderAdapter_Terrain;
+        break;
+    case RenderVertexShader_Standard:
+    case RenderVertexShader_StandardLit:
+        mPackAdapter = ShaderAdapter_Standard;
+        break;
+    case RenderVertexShader_TexGen:
+        mPackAdapter = ShaderAdapter_TexGen;
+        break;
+    case RenderVertexShader_Entity:
+    case RenderVertexShader_EntityLit:
+        mPackAdapter = ShaderAdapter_Entity;
+        break;
+    default:
+        return NULL;
+    }
+
+    const ShaderLinkedProgram* program = pipeline.SelectProgram(mPackAdapter, context.mGpu.mPixelShader);
+    if (program == NULL || !pipeline.PrepareTargets(program, target))
+    {
+        return NULL;
+    }
+
+    return program;
+}
+
 bool Renderer::Device::PrepareDraw(Renderer& renderer, Context& context)
 {
     if (!IsGlThread() || renderer.mScreen != 0)
@@ -1484,13 +1700,52 @@ bool Renderer::Device::PrepareDraw(Renderer& renderer, Context& context)
 
     FlushPending(renderer);
 
-    bool bAlphaTarget = mTarget == RenderTarget_OrderIndependentAlpha;
-    BindFramebuffer(bAlphaTarget ? mAlphaFramebuffer : mMainFramebuffer);
+    float colourScale[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    bool bDiscardZeroAlpha = false;
+    GLuint packAlbedo = 0;
+    if (ShaderPipeline::Get().InWorld() && renderer.mScreen == 0)
+    {
+        packAlbedo = ResolvePackAlbedo(renderer, context, colourScale, bDiscardZeroAlpha);
+    }
 
-    Gl::Viewport((GLint)floorf(gpu.mViewport[0] + 0.5f), (GLint)floorf(gpu.mViewport[1] + 0.5f),
-                 (GLsizei)floorf(gpu.mViewport[2] + 0.5f), (GLsizei)floorf(gpu.mViewport[3] + 0.5f));
-    SetCapability(Capability_Scissor, Gl::SCISSOR_TEST, true);
-    Gl::Scissor(gpu.mScissor[0], gpu.mScissor[1], gpu.mScissor[2], gpu.mScissor[3]);
+    ShaderDrawTarget packTarget;
+    const ShaderLinkedProgram* packProgram = PreparePackDraw(renderer, context, packTarget);
+    mPackDraw = packProgram != NULL;
+    bool bShadowDraw = mPackDraw && ShaderPipeline::Get().InShadow();
+
+    bool bAlphaTarget = !mPackDraw && mTarget == RenderTarget_OrderIndependentAlpha;
+    if (mPackDraw)
+    {
+        mCurrentFramebuffer = packTarget.framebuffer;
+
+        if (bShadowDraw)
+        {
+            Gl::Viewport(0, 0, packTarget.width, packTarget.height);
+            SetCapability(Capability_Scissor, Gl::SCISSOR_TEST, false);
+        }
+        else
+        {
+            float scaleX = (float)packTarget.width / (float)(mWidth > 0 ? mWidth : 1);
+            float scaleY = (float)packTarget.height / (float)(mHeight > 0 ? mHeight : 1);
+            float flippedY = (float)mHeight - (gpu.mViewport[1] + gpu.mViewport[3]);
+            Gl::Viewport((GLint)floorf(gpu.mViewport[0] * scaleX + 0.5f), (GLint)floorf(flippedY * scaleY + 0.5f),
+                         (GLsizei)floorf(gpu.mViewport[2] * scaleX + 0.5f),
+                         (GLsizei)floorf(gpu.mViewport[3] * scaleY + 0.5f));
+            int scissorY = mHeight - (gpu.mScissor[1] + gpu.mScissor[3]);
+            SetCapability(Capability_Scissor, Gl::SCISSOR_TEST, true);
+            Gl::Scissor((GLint)floorf((float)gpu.mScissor[0] * scaleX), (GLint)floorf((float)scissorY * scaleY),
+                        (GLsizei)ceilf((float)gpu.mScissor[2] * scaleX), (GLsizei)ceilf((float)gpu.mScissor[3] * scaleY));
+        }
+    }
+    else
+    {
+        BindFramebuffer(bAlphaTarget ? mAlphaFramebuffer : mMainFramebuffer);
+
+        Gl::Viewport((GLint)floorf(gpu.mViewport[0] + 0.5f), (GLint)floorf(gpu.mViewport[1] + 0.5f),
+                     (GLsizei)floorf(gpu.mViewport[2] + 0.5f), (GLsizei)floorf(gpu.mViewport[3] + 0.5f));
+        SetCapability(Capability_Scissor, Gl::SCISSOR_TEST, true);
+        Gl::Scissor(gpu.mScissor[0], gpu.mScissor[1], gpu.mScissor[2], gpu.mScissor[3]);
+    }
 
     SetCapability(Capability_DepthTest, Gl::DEPTH_TEST, gpu.mDepthTest);
     Gl::DepthFunc(CompareFunction(gpu.mDepthFunc));
@@ -1501,9 +1756,16 @@ bool Renderer::Device::PrepareDraw(Renderer& renderer, Context& context)
     Gl::StencilOp(Gl::KEEP, Gl::KEEP, Gl::REPLACE);
     Gl::StencilMask(gpu.mStencilWriteMask);
 
-    SetCapability(Capability_CullFace, Gl::CULL_FACE, gpu.mCullBack);
+    SetCapability(Capability_CullFace, Gl::CULL_FACE, gpu.mCullBack && !bShadowDraw);
     Gl::CullFace(Gl::BACK);
-    Gl::FrontFace(gpu.mFrontFaceCCW ? Gl::CW : Gl::CCW);
+    if (mPackDraw)
+    {
+        Gl::FrontFace(gpu.mFrontFaceCCW ? Gl::CCW : Gl::CW);
+    }
+    else
+    {
+        Gl::FrontFace(gpu.mFrontFaceCCW ? Gl::CW : Gl::CCW);
+    }
 
     SetCapability(Capability_PolygonOffset, Gl::POLYGON_OFFSET_FILL, true);
     Gl::PolygonOffset(gpu.mPolygonOffsetScale, gpu.mPolygonOffsetBias);
@@ -1514,6 +1776,35 @@ bool Renderer::Device::PrepareDraw(Renderer& renderer, Context& context)
         Gl::BlendFuncSeparate(Gl::ONE, Gl::ONE, Gl::ZERO, Gl::ONE_MINUS_SRC_ALPHA);
         SetColourMaskMode(ColourMaskMode_OrderIndependentAlpha, CHANNEL_MASK_RGBA);
     }
+    else if (mPackDraw)
+    {
+        if (packTarget.blendOverride)
+        {
+            SetCapability(Capability_Blend, Gl::BLEND, packTarget.blendEnable);
+            Gl::BlendFuncSeparate(packTarget.blend[0], packTarget.blend[1], packTarget.blend[2], packTarget.blend[3]);
+        }
+        else
+        {
+            SetCapability(Capability_Blend, Gl::BLEND, gpu.mBlendEnable);
+            Gl::BlendFunc(BlendFunction(gpu.mBlendSource), BlendFunction(gpu.mBlendDestination));
+        }
+
+        if (packTarget.bufferBlendOff != 0)
+        {
+            for (GLuint buffer = 0; buffer < 8; ++buffer)
+            {
+                if ((packTarget.bufferBlendOff & (1u << buffer)) != 0)
+                {
+                    Gl::Disablei(Gl::BLEND, buffer);
+                }
+            }
+
+            mCapabilities[Capability_Blend] = -1;
+        }
+
+        unsigned char mask = (gpu.mColourMask & 7) != 0 ? CHANNEL_MASK_RGBA : gpu.mColourMask;
+        SetColourMaskMode(ColourMaskMode_Main, mask);
+    }
     else
     {
         SetCapability(Capability_Blend, Gl::BLEND, gpu.mBlendEnable);
@@ -1523,10 +1814,43 @@ bool Renderer::Device::PrepareDraw(Renderer& renderer, Context& context)
 
     Gl::BlendColor(gpu.mBlendColour[0], gpu.mBlendColour[1], gpu.mBlendColour[2], gpu.mBlendColour[3]);
 
-    const Program& program = GetProgram(gpu.mVertexShader, gpu.mPixelShader);
-    UseProgram(program.mName);
+    if (mPackDraw)
+    {
+        UseProgram(packProgram->name);
+
+        ShaderDrawValues values;
+        const float* fog = context.mVertexConstants[17];
+        int fogMode = (int)fog[2];
+        values.fogMode = fogMode == 1 ? 9729 : fogMode == 2 ? 2048 : fogMode == 3 ? 2049 : 0;
+        values.fogStart = fabsf(fog[1]);
+        values.fogEnd = fabsf(fog[0]);
+        values.fogDensity = fabsf(fog[0]);
+        values.fogColor[0] = context.mPixelConstants[1][0];
+        values.fogColor[1] = context.mPixelConstants[1][1];
+        values.fogColor[2] = context.mPixelConstants[1][2];
+        values.alphaRef = gpu.mAlphaTestOn ? gpu.mAlphaReference : 0.0f;
+        memcpy(values.entityColor, context.mPixelConstants[2], sizeof(values.entityColor));
+        values.blendFunc[0] = (int)(gpu.mBlendEnable ? BlendFunction(gpu.mBlendSource) : Gl::ONE);
+        values.blendFunc[1] = (int)(gpu.mBlendEnable ? BlendFunction(gpu.mBlendDestination) : Gl::ZERO);
+        values.blendFunc[2] = values.blendFunc[0];
+        values.blendFunc[3] = values.blendFunc[1];
+        memcpy(values.lights, context.mLightState, sizeof(values.lights));
+        values.quadData = mPendingTerrainQuadData && mPackAdapter == ShaderAdapter_Terrain;
+        memcpy(values.colourScale, colourScale, sizeof(values.colourScale));
+        values.quadVertices = mPendingPrimitive == C4JRender::ePrimitiveType_Quads;
+        ShaderPipeline::Get().ApplyProgram(packProgram, values);
+    }
+    else
+    {
+        const Program& program = GetProgram(gpu.mVertexShader, gpu.mPixelShader);
+        UseProgram(program.mName);
+    }
 
     float alphaReference = gpu.mAlphaTestOn ? gpu.mAlphaReference : -3.4028235e38f;
+    if (mPackDraw && bDiscardZeroAlpha && alphaReference < 1.0f / 512.0f)
+    {
+        alphaReference = 1.0f / 512.0f;
+    }
     if (context.mPixelConstants[RENDER_PIXEL_CONSTANT_ALPHA_REFERENCE][0] != alphaReference)
     {
         context.mPixelConstants[RENDER_PIXEL_CONSTANT_ALPHA_REFERENCE][0] = alphaReference;
@@ -1589,6 +1913,10 @@ bool Renderer::Device::PrepareDraw(Renderer& renderer, Context& context)
     for (int stage = 0; stage < TEXTURE_STAGE_COUNT; ++stage)
     {
         GLuint name = renderer.mTextures[gpu.mPixelTexture[stage]].mName;
+        if (stage == 0 && mPackDraw && packAlbedo != 0)
+        {
+            name = packAlbedo;
+        }
         BindTextureUnit(stage, name != 0 ? name : defaultName,
                         GetSampler(stage == 0 ? baseSampler : gpu.mPixelSampler[stage]));
     }
@@ -1602,6 +1930,11 @@ bool Renderer::Device::PrepareDraw(Renderer& renderer, Context& context)
 
 void Renderer::Device::DrawRange(int primitiveType, unsigned int firstVertex, unsigned int count)
 {
+    if (mPackDraw)
+    {
+        ShaderPipeline::Get().SetFirstVertex((int)firstVertex);
+    }
+
     if (primitiveType == C4JRender::ePrimitiveType_Quads)
     {
         unsigned int quads = count / 4;
@@ -1631,13 +1964,25 @@ void Renderer::Device::DrawRange(int primitiveType, unsigned int firstVertex, un
 void Renderer::Device::DrawStream(Renderer& renderer, Context& context, const void* vertices, unsigned int size,
                                   unsigned int stride, int layout, int primitiveType, unsigned int count)
 {
-    if (size == 0 || !PrepareDraw(renderer, context))
+    if (size == 0)
+    {
+        return;
+    }
+
+    mPendingPrimitive = layout == VertexLayout_Standard ? primitiveType : -1;
+    bool bPrepared = PrepareDraw(renderer, context);
+    mPendingPrimitive = -1;
+    if (!bPrepared)
     {
         return;
     }
 
     size_t offset = mVertexStream.Write(vertices, size, stride);
     BindVertexArray(mStreamVertexArrays[layout]);
+    if (mPackDraw && (layout == VertexLayout_Terrain || layout == VertexLayout_Standard))
+    {
+        ShaderPipeline::Get().BindTerrainData(StreamVertexTexture(), 0);
+    }
     DrawRange(primitiveType, (unsigned int)(offset / stride), count);
 }
 
@@ -1736,6 +2081,7 @@ Renderer::Context::Context(Renderer* renderer)
     mViewportScale[0] = 1.0f;
     mOrderIndependentAlpha = false;
     mDynamicVertexOffset = 0;
+    mPendingQuadData = NULL;
 
     memset(&mGpu, 0, sizeof(mGpu));
     mGpu.mDepthTest = true;
@@ -1838,6 +2184,138 @@ Renderer::~Renderer()
 void Renderer::Tick()
 {
     CBuffTick();
+}
+
+void Renderer::ShaderSetQuadData(const unsigned short* data)
+{
+    getContext().mPendingQuadData = data;
+}
+
+bool Renderer::ShaderBeginWorld(ShaderWorldState& state)
+{
+    if (!IsGlThread() || mScreen != 0 || mCurrentViewport != C4JRender::eViewportType_FullScreen
+        || mLayout != ELayout_Screen)
+    {
+        return false;
+    }
+
+    memcpy(state.view, MatrixGet(0), sizeof(state.view));
+    memcpy(state.projection, MatrixGet(1), sizeof(state.projection));
+    mDevice->FlushPending(*this);
+    bool bActive = ShaderPipeline::Get().BeginWorld(state, mScreenWidth[0], mScreenHeight[0]);
+    mDevice->Invalidate();
+    return bActive;
+}
+
+void Renderer::ShaderEndWorld()
+{
+    ShaderPipeline& pipeline = ShaderPipeline::Get();
+    if (!pipeline.InWorld())
+    {
+        return;
+    }
+
+    if (IsGlThread())
+    {
+        pipeline.EndWorld(mDevice->mMainFramebuffer, mScreenWidth[0], mScreenHeight[0]);
+        mDevice->Invalidate();
+    }
+    else
+    {
+        pipeline.AbortWorld();
+    }
+}
+
+void Renderer::ShaderSetStage(int stage)
+{
+    ShaderPipeline& pipeline = ShaderPipeline::Get();
+    if (!pipeline.InWorld() || !IsGlThread())
+    {
+        return;
+    }
+
+    pipeline.SetStage(stage);
+    mDevice->Invalidate();
+}
+
+void Renderer::ShaderBeginTranslucent()
+{
+    ShaderPipeline& pipeline = ShaderPipeline::Get();
+    if (!pipeline.InWorld() || !IsGlThread())
+    {
+        return;
+    }
+
+    pipeline.BeginTranslucent();
+    mDevice->Invalidate();
+}
+
+void Renderer::ShaderBeginHand()
+{
+    ShaderPipeline& pipeline = ShaderPipeline::Get();
+    if (!pipeline.InWorld() || !IsGlThread())
+    {
+        return;
+    }
+
+    pipeline.BeginHand();
+    mDevice->Invalidate();
+}
+
+void Renderer::ShaderEndHand()
+{
+    ShaderPipeline::Get().EndHand();
+}
+
+bool Renderer::ShaderBeginShadow()
+{
+    ShaderPipeline& pipeline = ShaderPipeline::Get();
+    if (!IsGlThread() || !pipeline.BeginShadow())
+    {
+        return false;
+    }
+
+    mDevice->Invalidate();
+    float view[16];
+    float projection[16];
+    pipeline.ShadowMatrices(view, projection);
+    MatrixMode(1);
+    MatrixPush();
+    MatrixSetIdentity();
+    MatrixMult(projection);
+    MatrixMode(0);
+    MatrixPush();
+    MatrixSetIdentity();
+    MatrixMult(view);
+    return true;
+}
+
+void Renderer::ShaderEndShadowOpaque()
+{
+    ShaderPipeline& pipeline = ShaderPipeline::Get();
+    if (!pipeline.InShadow() || !IsGlThread())
+    {
+        return;
+    }
+
+    pipeline.EndShadowOpaque();
+    mDevice->Invalidate();
+}
+
+void Renderer::ShaderEndShadow()
+{
+    ShaderPipeline& pipeline = ShaderPipeline::Get();
+    if (!pipeline.InShadow())
+    {
+        return;
+    }
+
+    MatrixMode(1);
+    MatrixPop();
+    MatrixMode(0);
+    MatrixPop();
+    pipeline.EndShadow();
+    mDevice->Invalidate();
 }
 
 void Renderer::UpdateGamma(unsigned short gamma)
@@ -2354,7 +2832,13 @@ void Renderer::Clear(int flags)
     Context& context = getContext();
     GpuState& gpu = context.mGpu;
 
-    if (IsGlThread() && mScreen == 0 && (flags & 3) != 0)
+    if (IsGlThread() && mScreen == 0 && (flags & 3) != 0 && ShaderPipeline::Get().InWorld())
+    {
+        mDevice->FlushPending(*this);
+        ShaderPipeline::Get().ClearTargets((flags & 2) != 0, (flags & 1) != 0);
+        mDevice->Invalidate();
+    }
+    else if (IsGlThread() && mScreen == 0 && (flags & 3) != 0)
     {
         mDevice->FlushPending(*this);
         bool bAlphaTarget = mDevice->mTarget == RenderTarget_OrderIndependentAlpha;
@@ -2578,6 +3062,11 @@ void Renderer::EndConditionalRendering()
 
 void Renderer::BeginOrderIndependentAlpha()
 {
+    if (ShaderPipeline::Get().InWorld())
+    {
+        return;
+    }
+
     Context& context = getContext();
     GpuState& gpu = context.mGpu;
 
@@ -2623,6 +3112,11 @@ void Renderer::BeginOrderIndependentAlpha()
 
 void Renderer::EndOrderIndependentAlpha()
 {
+    if (ShaderPipeline::Get().InWorld())
+    {
+        return;
+    }
+
     Context& context = getContext();
     GpuState& gpu = context.mGpu;
 
@@ -3740,6 +4234,7 @@ int Renderer::TextureCreate()
             slot.mLevels = 1;
             slot.mFormat = C4JRender::eTextureFormat_RGBA8;
             slot.mSampler = MakeSampler(false, false, MIP_FILTER_POINT);
+            slot.mContentVersion = 0;
             ++slot.mGeneration;
             LeaveCriticalSection(&mTextureMutex);
             return texture;
@@ -4167,6 +4662,13 @@ int Renderer::SaveTextureDataToMemory(void* destination, int destinationSize, in
     return 0;
 }
 
+unsigned int Renderer::TextureGlName(int texture) const
+{
+    if (mTextures == nullptr || texture <= 0 || texture >= TEXTURE_COUNT)
+        return 0;
+    return mTextures[texture].mName;
+}
+
 void Renderer::TextureGetStats()
 {
 }
@@ -4288,6 +4790,11 @@ void Renderer::DrawVertices(C4JRender::ePrimitiveType primitiveType, int numVert
                             unsigned char* layers)
 {
     Context& context = getContext();
+
+    if (context.mRecordingBuffer == NULL)
+    {
+        context.mPendingQuadData = NULL;
+    }
 
     if (context.mRecordingBuffer != NULL)
     {
@@ -4783,6 +5290,9 @@ Renderer::CommandBuffer::CommandBuffer(bool bRecordState)
     mBuffer = 0;
     mVertexArray = 0;
     mVertexArrayLayout = -1;
+    mQuadBuffer = 0;
+    mQuadTexture = 0;
+    mVertexTexture = 0;
 
     EnterCriticalSection(&sTotalAllocMutex);
     sTotalCommandBufferBytes += mVerticesCapacity;
@@ -4796,6 +5306,33 @@ Renderer::CommandBuffer::~CommandBuffer()
     free(mVertices);
 
     Device* device = gRendererInstance->mDevice;
+    if (device != NULL)
+    {
+        if (device->IsGlThread())
+        {
+            if (mVertexTexture != 0)
+            {
+                Gl::DeleteTextures(1, &mVertexTexture);
+            }
+
+            if (mQuadTexture != 0)
+            {
+                Gl::DeleteTextures(1, &mQuadTexture);
+            }
+
+            if (mQuadBuffer != 0)
+            {
+                Gl::DeleteBuffers(1, &mQuadBuffer);
+            }
+        }
+        else
+        {
+            device->QueueTextureDelete(mVertexTexture);
+            device->QueueTextureDelete(mQuadTexture);
+            device->QueueBufferDelete(mQuadBuffer, 0);
+        }
+    }
+
     if (device != NULL && (mBuffer != 0 || mVertexArray != 0))
     {
         if (device->IsGlThread())
@@ -4931,14 +5468,23 @@ void Renderer::CommandBuffer::Render(C4JRender::eVertexType vertexType, Context&
             }
             else
             {
-                if (device != NULL && device->PrepareDraw(*renderer, context))
+                int layout = LayoutForVertexType(shaderVertexType);
+                bool bPrepared = false;
+                if (device != NULL)
                 {
-                    int layout = LayoutForVertexType(shaderVertexType);
-                    if (EnsureUploaded(device, layout))
+                    device->mPendingPrimitive = layout == VertexLayout_Standard ? primitiveType : -1;
+                    bPrepared = device->PrepareDraw(*renderer, context);
+                    device->mPendingPrimitive = -1;
+                }
+
+                if (bPrepared && EnsureUploaded(device, layout))
+                {
+                    device->BindVertexArray(mVertexArray);
+                    if (device->mPackDraw && layout == VertexLayout_Standard && EnsureTerrainTextures())
                     {
-                        device->BindVertexArray(mVertexArray);
-                        device->DrawRange(primitiveType, command.mVertices.mOffset / stride, command.mVertices.mCount);
+                        ShaderPipeline::Get().BindTerrainData(mVertexTexture, 0);
                     }
+                    device->DrawRange(primitiveType, command.mVertices.mOffset / stride, command.mVertices.mCount);
                 }
 
                 renderer->mCommandBufferVertsDrawn += command.mVertices.mCount;
@@ -4949,12 +5495,26 @@ void Renderer::CommandBuffer::Render(C4JRender::eVertexType vertexType, Context&
     if (!batchOffset.empty())
     {
         unsigned int stride = VERTEX_STRIDES[shaderVertexType];
+        if (device != NULL)
+        {
+            device->mPendingTerrainQuadData = !mQuadData.empty() || mQuadTexture != 0;
+        }
+
         bool bDraw = device != NULL && device->PrepareDraw(*renderer, context)
                      && EnsureUploaded(device, LayoutForVertexType(shaderVertexType));
+
+        if (device != NULL)
+        {
+            device->mPendingTerrainQuadData = false;
+        }
 
         if (bDraw)
         {
             device->BindVertexArray(mVertexArray);
+            if (device->mPackDraw && EnsureTerrainTextures())
+            {
+                ShaderPipeline::Get().BindTerrainData(mVertexTexture, mQuadTexture);
+            }
         }
 
         for (size_t batch = 0; batch < batchOffset.size(); ++batch)
@@ -5009,6 +5569,38 @@ bool Renderer::CommandBuffer::EnsureUploaded(Device* device, int layout)
     return true;
 }
 
+bool Renderer::CommandBuffer::EnsureTerrainTextures()
+{
+    if (mBuffer == 0)
+    {
+        return false;
+    }
+
+    if (mVertexTexture == 0)
+    {
+        Gl::GenTextures(1, &mVertexTexture);
+        Gl::BindTexture(Gl::TEXTURE_BUFFER, mVertexTexture);
+        Gl::TexBuffer(Gl::TEXTURE_BUFFER, Gl::RGBA16I, mBuffer);
+        Gl::BindTexture(Gl::TEXTURE_BUFFER, 0);
+    }
+
+    if (mQuadTexture == 0 && !mQuadData.empty())
+    {
+        Gl::GenBuffers(1, &mQuadBuffer);
+        Gl::BindBuffer(Gl::TEXTURE_BUFFER, mQuadBuffer);
+        Gl::BufferData(Gl::TEXTURE_BUFFER, (GLsizeiptr)(mQuadData.size() * sizeof(unsigned short)), &mQuadData[0],
+                       Gl::STATIC_DRAW);
+        Gl::BindBuffer(Gl::TEXTURE_BUFFER, 0);
+        Gl::GenTextures(1, &mQuadTexture);
+        Gl::BindTexture(Gl::TEXTURE_BUFFER, mQuadTexture);
+        Gl::TexBuffer(Gl::TEXTURE_BUFFER, Gl::R16UI, mQuadBuffer);
+        Gl::BindTexture(Gl::TEXTURE_BUFFER, 0);
+        std::vector<unsigned short>().swap(mQuadData);
+    }
+
+    return true;
+}
+
 bool Renderer::CommandBuffer::IsBusy()
 {
     return mLastRenderedFrame >= gRendererInstance->mFrameCount - 3;
@@ -5031,10 +5623,20 @@ void Renderer::CommandBuffer::AddVertices(unsigned int vertexStride, unsigned in
         context.mMatrixDirty[3] = false;
     }
 
+    const unsigned short* quadData = context.mPendingQuadData;
+    context.mPendingQuadData = NULL;
+
     Command command;
     unsigned int offset = mVerticesUsed;
     command.mType = eCommandType_Vertices;
     mVerticesUsed = offset + numVertices * vertexStride;
+
+    bool bTrackQuads = vertexStride == VERTEX_STRIDES[C4JRender::eVertexType_Terrain]
+                       && (quadData != NULL || !mQuadData.empty());
+    if (bTrackQuads)
+    {
+        mQuadData.resize(offset / (vertexStride * 4), 0);
+    }
     command.mVertices.mOffset = offset;
     command.mVertices.mCount = numVertices;
 
@@ -5055,6 +5657,13 @@ void Renderer::CommandBuffer::AddVertices(unsigned int vertexStride, unsigned in
     if (layers == NULL)
     {
         memcpy(mVertices + offset, vertices, numVertices * vertexStride);
+        if (bTrackQuads)
+        {
+            for (unsigned int quad = 0; quad < numVertices / 4; ++quad)
+            {
+                mQuadData.push_back(quadData != NULL ? quadData[quad] : 0);
+            }
+        }
         command.mVertices.mLayer = 0;
         mCommands.push_back(command);
         return;
@@ -5072,6 +5681,10 @@ void Renderer::CommandBuffer::AddVertices(unsigned int vertexStride, unsigned in
             if (layers[quad] == layer)
             {
                 memcpy(mVertices + destination, static_cast<unsigned char*>(vertices) + quad * quadSize, quadSize);
+                if (bTrackQuads)
+                {
+                    mQuadData.push_back(quadData != NULL ? quadData[quad] : 0);
+                }
                 count += 4;
                 destination += quadSize;
             }

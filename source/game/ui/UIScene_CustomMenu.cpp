@@ -51,6 +51,30 @@ void UICustomMenuPage::OnClose(UIScene_CustomMenu&)
 {
 }
 
+void UICustomMenuPage::OnGainFocus(UIScene_CustomMenu&)
+{
+}
+
+bool UICustomMenuPage::OnAction(UIScene_CustomMenu&, int)
+{
+    return false;
+}
+
+bool UICustomMenuPage::KeepDescriptionOpen() const
+{
+    return false;
+}
+
+bool UICustomMenuPage::GetTooltips(int&, int&) const
+{
+    return false;
+}
+
+bool UICustomMenuPage::ShowLogo() const
+{
+    return true;
+}
+
 UIScene_CustomMenu::UIScene_CustomMenu(int playerId, void* data, UILayer* layer)
     : UIScene(playerId, layer),
       m_page(static_cast<UICustomMenuPage*>(data)),
@@ -119,13 +143,37 @@ void UIScene_CustomMenu::Build()
         m_closedX[panel] = m_panels[panel] != NULL ? m_panels[panel]->getX() : 0.0f;
     m_closedX[ePanel_Description] = m_closedX[ePanel_List];
     m_closedX[ePanel_DescriptionBackground] = m_closedX[ePanel_ListBackground];
-    if (m_descriptions.empty())
+    if (m_page != NULL && m_page->KeepDescriptionOpen())
+    {
+        m_descriptionOpen = true;
+        m_descriptionAmount = 1.0f;
+    }
+    else if (m_descriptions.empty())
     {
         m_descriptionOpen = false;
         m_descriptionAmount = 0.0f;
     }
     ApplyDescriptionPanel();
     gConsoleUIController.TouchBoxRebuild(this);
+}
+
+void UIScene_CustomMenu::Rebuild()
+{
+    int focusId = m_focusId;
+    m_list.clearList();
+    m_descriptions.clear();
+    if (m_page != NULL)
+        m_page->Build(*this);
+    FJ_MultilistMenu* menu = static_cast<FJ_MultilistMenu*>(m_movie->getRootNode()->getFuiNode());
+    menu->DoVerticalResizeCheck();
+    ApplyDescriptionPanel();
+    gConsoleUIController.TouchBoxRebuild(this);
+    int index = m_list.getListIndex(focusId);
+    if (index >= 0)
+        m_list.setCurrentSelection(index, false, true);
+    m_focusId = focusId;
+    ShowDescription(focusId);
+    updateTooltips();
 }
 
 void UIScene_CustomMenu::PlaceDescriptionBehindList(FJ_FuiNode* menu)
@@ -170,6 +218,8 @@ void UIScene_CustomMenu::tick()
 
 void UIScene_CustomMenu::ToggleDescriptionPanel()
 {
+    if (m_page != NULL && m_page->KeepDescriptionOpen())
+        return;
     if (!m_descriptionOpen && !HasDescription(m_focusId))
         return;
     m_descriptionOpen = !m_descriptionOpen;
@@ -210,23 +260,29 @@ bool UIScene_CustomMenu::HasDescription(int id) const
 
 void UIScene_CustomMenu::updateTooltips()
 {
-    int showDescription =
+    int tooltipX =
         m_descriptionOpen || HasDescription(m_focusId) ? static_cast<int>(IDS_TOOLTIPS_SHOW_DESCRIPTION) : -1;
-    gConsoleUIController.SetTooltips(m_playerId, IDS_TOOLTIPS_SELECT, IDS_TOOLTIPS_BACK, showDescription, -1, -1, -1,
+    int tooltipY = -1;
+    if (m_page != NULL && m_page->KeepDescriptionOpen())
+        tooltipX = -1;
+    if (m_page != NULL)
+        m_page->GetTooltips(tooltipX, tooltipY);
+    gConsoleUIController.SetTooltips(m_playerId, IDS_TOOLTIPS_SELECT, IDS_TOOLTIPS_BACK, tooltipX, tooltipY, -1, -1,
                                      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, false, false);
 }
 
 void UIScene_CustomMenu::updateComponents()
 {
+    bool showLogo = m_page == NULL || m_page->ShowLogo();
     if (Minecraft::GetInstance()->mLevel == NULL)
     {
         m_layer->showComponent(m_playerId, EUIScene_Panorama, true);
-        m_layer->showComponent(m_playerId, EUIScene_Logo, true);
+        m_layer->showComponent(m_playerId, EUIScene_Logo, showLogo);
     }
     else
     {
         m_layer->showComponent(m_playerId, EUIScene_Panorama, false);
-        m_layer->showComponent(m_playerId, EUIScene_Logo, gApp.GetLocalPlayerCount() == 1);
+        m_layer->showComponent(m_playerId, EUIScene_Logo, showLogo && gApp.GetLocalPlayerCount() == 1);
     }
 }
 
@@ -234,6 +290,14 @@ void UIScene_CustomMenu::handleInput(int playerId, int action, bool repeat, bool
                                      bool& handled)
 {
     gConsoleUIController.AnimateKeyPress(playerId, action, repeat, pressed, released);
+    if (pressed && m_page != NULL
+        && (action == EControllerActions_MenuX || action == EControllerActions_MenuY
+            || action == EControllerActions_MenuLeftScroll || action == EControllerActions_MenuRightScroll)
+        && m_page->OnAction(*this, action))
+    {
+        handled = true;
+        return;
+    }
     switch (action)
     {
     case EControllerActions_MenuCancel:
@@ -302,6 +366,13 @@ void UIScene_CustomMenu::handleFocusChange(int, int childFocus)
 void UIScene_CustomMenu::handleInitFocus(int focus, int childFocus)
 {
     handleFocusChange(focus, childFocus);
+}
+
+void UIScene_CustomMenu::handleGainFocus(bool hadFocus)
+{
+    UIScene::handleGainFocus(hadFocus);
+    if (hadFocus && m_page != NULL)
+        m_page->OnGainFocus(*this);
 }
 
 void UIScene_CustomMenu::ShowDescription(int id)
@@ -384,6 +455,28 @@ bool UIScene_CustomMenu::GetCheckboxValue(int id)
 int UIScene_CustomMenu::GetSliderValue(int id)
 {
     return static_cast<int>(m_list.GetSliderValue(id));
+}
+
+void UIScene_CustomMenu::SetCheckboxValue(int id, bool checked)
+{
+    m_list.SetCheckboxValue(id, checked, true);
+}
+
+void UIScene_CustomMenu::SetSliderValue(int id, int value)
+{
+    m_list.SetSliderValue(id, value, true);
+}
+
+void UIScene_CustomMenu::SetDescription(int id, const std::wstring& description)
+{
+    m_descriptions[id] = description;
+    if (id == m_focusId)
+        ShowDescription(id);
+}
+
+int UIScene_CustomMenu::GetFocusId() const
+{
+    return m_focusId;
 }
 
 void UIScene_CustomMenu::OpenPage(UICustomMenuPage* page)

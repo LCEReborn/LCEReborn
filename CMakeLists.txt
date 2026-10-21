@@ -117,7 +117,7 @@ list(APPEND LCE_PLATFORM_SOURCES
   "${LCE_SOURCE}/platform/wiiu/System.cpp"
   "${LCE_SOURCE}/platform/wiiu/WiiULeaderboardManager.cpp")
 add_library(lce_platform OBJECT ${LCE_PLATFORM_SOURCES})
-target_link_libraries(lce_platform PRIVATE lce_common SDL3::SDL3-static)
+target_link_libraries(lce_platform PRIVATE lce_common lce_zlib SDL3::SDL3-static)
 set_target_properties(lce_platform PROPERTIES CXX_STANDARD 17)
 add_custom_target(lce_build_info
   COMMAND "${CMAKE_COMMAND}" -DSOURCE_DIR="${CMAKE_SOURCE_DIR}" -DOUTPUT="${CMAKE_BINARY_DIR}/generated/BuildInfo.hpp"

@@ -5,6 +5,7 @@
 #include "game/client/render/GameRenderer.hpp"
 #include "game/client/render/ItemRenderer.hpp"
 #include "game/client/render/MapRenderer.hpp"
+#include "game/client/render/ShaderPackBridge.hpp"
 #include "game/client/render/PlayerRenderer.hpp"
 #include "game/client/render/Renderer.hpp"
 #include "game/client/render/Tesselator.hpp"
@@ -925,7 +926,11 @@ void ItemInHandRenderer::renderScreenEffect(float partialTick)
     }
     if (!mMinecraft->mPlayer->isSpectator())
     {
-        if (mMinecraft->mPlayer->isUnderLiquid(Material::WATER))
+        bool underwaterOverlay = true;
+#if LCE_PLATFORM_PC
+        underwaterOverlay = ShaderPackBridge::UnderwaterOverlay();
+#endif
+        if (underwaterOverlay && mMinecraft->mPlayer->isUnderLiquid(Material::WATER))
         {
             renderWater(partialTick);
         }

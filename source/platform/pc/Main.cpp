@@ -28,6 +28,7 @@
 #include "game/item/FireworksRecipe.hpp"
 #include "game/client/render/Textures.hpp"
 #include "game/client/audio/SoundEngine.hpp"
+#include "platform/pc/shaderpack/ShaderPackManager.hpp"
 #include "game/core/LeaderboardManager.hpp"
 #include "game/client/render/Renderer.hpp"
 #include "game/core/CriticalSection.hpp"
@@ -179,6 +180,7 @@ int main(int argc, char** argv)
     g_pLeaderboardManager->OpenSession();
     CGameNetworkManager::sInstance.Initialise();
     CGameNetworkManager::sInstance.SetLocalGame(true);
+    ShaderPackManager::Get().Initialise();
 
     float timingColour = 0.0f;
     while (!PcExitRequested())

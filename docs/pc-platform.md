@@ -324,3 +324,17 @@ menus. When the highlighted row has a description, the Show Description
 prompt (the game's X/Square action, X on the keyboard) slides the list to the
 left and the description panel out from behind it, sized to its text; the
 same button tucks it away again. The panel follows the highlight while open.
+
+## Shader packs
+
+OptiFine and Iris shader packs (OpenGL, as `.zip` files or folders) go in
+`shaderpacks/` in the save folder. Settings > More Options > Shaders
+(`platform/pc/PcShaderMenu`) picks the pack, changes the global shader
+settings and opens the pack's own option screens. The choice and global
+settings are saved to `optionsshaders.txt`, and each pack's options to
+`shaderpacks/<pack>.txt`, the same files OptiFine uses.
+
+The pack is loaded and run by `platform/pc/shaderpack`; the game reaches it
+through `game/client/render/ShaderPackBridge`. Packs see the 1.12 block,
+item and entity ids from their `block.properties`, `item.properties` and
+`entity.properties`.

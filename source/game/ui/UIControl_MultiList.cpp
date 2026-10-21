@@ -25,6 +25,13 @@ void UIControl_MultiList::AddNewLabel(const std::wstring& label, int id)
     addElement(type, id);
 }
 
+void UIControl_MultiList::AddNewIconButton(const std::wstring& html, const std::wstring& textureName, int id)
+{
+    FJ_List_MultiList* list = static_cast<FJ_List_MultiList*>(m_fuiRenderNode->getFuiNode());
+    list->addNewItem_IconButton(html, textureName, id);
+    addElement(UIControl::eUIControlType_Button, id);
+}
+
 void UIControl_MultiList::AddNewCheckbox(const std::wstring& label, int id, bool checked)
 {
     FJ_List_MultiList* list = static_cast<FJ_List_MultiList*>(m_fuiRenderNode->getFuiNode());

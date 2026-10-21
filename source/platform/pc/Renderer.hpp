@@ -6,6 +6,8 @@
 
 #include <string>
 
+struct ShaderWorldState;
+
 class Renderer : public C4JRender
 {
 public:
@@ -84,6 +86,7 @@ public:
     virtual int SaveTextureDataToMemory(void* destination, int destinationSize, int* bytesWritten, int width,
                                         int height, int* data);
     virtual void TextureGetStats();
+    unsigned int TextureGlName(int texture) const;
     virtual void StateSetColour(float red, float green, float blue, float alpha);
     virtual void StateSetColourAdd(float red, float green, float blue, float alpha);
     virtual void StateSetTexColour(int stage, float red, float green, float blue, float alpha);
@@ -154,6 +157,17 @@ public:
     ELayout GetLayout() const { return mLayout; }
     float GetScreenAspect();
     void GetInterfaceArea(float* left, float* top, float* width, float* height);
+
+    void ShaderSetQuadData(const unsigned short* data);
+    bool ShaderBeginWorld(ShaderWorldState& state);
+    void ShaderEndWorld();
+    void ShaderSetStage(int stage);
+    void ShaderBeginTranslucent();
+    void ShaderBeginHand();
+    void ShaderEndHand();
+    bool ShaderBeginShadow();
+    void ShaderEndShadowOpaque();
+    void ShaderEndShadow();
 
 private:
     struct Texture;

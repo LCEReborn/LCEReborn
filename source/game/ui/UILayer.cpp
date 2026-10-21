@@ -88,6 +88,9 @@
 #include "game/ui/UIScene_TrialExitUpsell.hpp"
 #include "game/ui/UIScene_WritableBookMenu.hpp"
 #include "platform/wiiu/UIComponent_WiiUDRC.hpp"
+#if LCE_PLATFORM_PC
+#include "platform/pc/PcShaderMenu.hpp"
+#endif
 
 UILayer::UILayer(UIGroup* group)
     : m_hasFocus(false),
@@ -460,6 +463,11 @@ bool UILayer::NavigateToScene(int player, EUIScene scene, void* data)
     case EUIScene_DebugOverlayMenu:
         created = new UIScene_DebugOverlayMenu(player, data, this);
         break;
+#if LCE_PLATFORM_PC
+    case EUIScene_ShaderMenu:
+        created = new UIScene_ShaderMenu(player, data, this);
+        break;
+#endif
     case EUIScene_SkinSelectMenu:
         created = new UIScene_SkinSelectMenu(player, data, this);
         break;

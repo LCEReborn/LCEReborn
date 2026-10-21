@@ -8,6 +8,7 @@
 #include "game/client/render/GameRenderer.hpp"
 #include "game/client/render/Model.hpp"
 #include "game/client/render/Renderer.hpp"
+#include "game/client/render/ShaderPackBridge.hpp"
 #include "game/client/render/Tesselator.hpp"
 #include "game/client/render/TextureAtlasSprite.hpp"
 #include "game/client/render/TexturePack.hpp"
@@ -322,8 +323,13 @@ void EntityRenderer::postRender(boost::shared_ptr<Entity>& entity, double x, dou
 {
     if (mDispatcher->mOptions != NULL)
     {
-        if (!mDispatcher->mRenderingGuiPlayer && renderShadowFlag && mDispatcher->mOptions->mFancyGraphics
-            && mShadowRadius > 0.0F && !entity->isInvisible() && mDispatcher->shouldRenderShadow())
+        bool vanillaShadow = true;
+#if LCE_PLATFORM_PC
+        vanillaShadow = !ShaderPackBridge::SkipVanillaShadows();
+#endif
+        if (vanillaShadow && !mDispatcher->mRenderingGuiPlayer && renderShadowFlag
+            && mDispatcher->mOptions->mFancyGraphics && mShadowRadius > 0.0F && !entity->isInvisible()
+            && mDispatcher->shouldRenderShadow())
         {
             double distance = mDispatcher->distanceToSqr(entity->mX, entity->mY, entity->mZ);
             float alpha = (float)((1.0 - distance / 256.0) * mShadowStrength);
@@ -348,6 +354,10 @@ Font* EntityRenderer::getFont()
 void EntityRenderer::renderNameTag(boost::shared_ptr<Entity>& entity, const std::wstring& name, double x, double y,
                                    double z, int maxDistance, int color)
 {
+#if LCE_PLATFORM_PC
+    if (ShaderPackBridge::InShadow())
+        return;
+#endif
     double distance = entity->distanceToSqr(mDispatcher->mCamera);
     if (distance > (double)(maxDistance * maxDistance))
         return;

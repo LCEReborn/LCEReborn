@@ -13,6 +13,11 @@ public:
     virtual void OnToggle(UIScene_CustomMenu& menu, int id, bool checked);
     virtual void OnSlide(UIScene_CustomMenu& menu, int id, int value);
     virtual void OnClose(UIScene_CustomMenu& menu);
+    virtual void OnGainFocus(UIScene_CustomMenu& menu);
+    virtual bool OnAction(UIScene_CustomMenu& menu, int action);
+    virtual bool KeepDescriptionOpen() const;
+    virtual bool GetTooltips(int& tooltipX, int& tooltipY) const;
+    virtual bool ShowLogo() const;
 };
 
 #endif

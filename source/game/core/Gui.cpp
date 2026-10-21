@@ -8,6 +8,7 @@
 
 #include "game/client/render/EntityRenderDispatcher.hpp"
 #include "game/client/render/GameRenderer.hpp"
+#include "game/client/render/ShaderPackBridge.hpp"
 #include "game/client/render/Tesselator.hpp"
 #include "game/client/render/TextureAtlasSprite.hpp"
 #include "game/client/render/Textures.hpp"
@@ -338,7 +339,11 @@ void Gui::render(float partialTick, bool hideGui, int width, int height)
     GlStateManager::enableBlend();
     GlStateManager::blendFunc(4, 5);
 
-    if (Minecraft::useFancyGraphics())
+    bool vignette = Minecraft::useFancyGraphics();
+#if LCE_PLATFORM_PC
+    vignette = vignette && ShaderPackBridge::Vignette();
+#endif
+    if (vignette)
     {
         renderVignette(mMinecraft->mPlayer->getBrightness(), screenWidth, screenHeight);
     }

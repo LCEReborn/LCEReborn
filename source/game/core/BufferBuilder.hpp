@@ -52,6 +52,7 @@ public:
     void normal(float x, float y, float z);
     void boneIndex(int index);
     void bucket(int index);
+    void quadElement(int element);
 
     void vertex(float x, float y, float z);
     void vertexNoBounds(float x, float y, float z);
@@ -71,6 +72,7 @@ public:
     void putColor(int red, int green, int blue, int alpha);
 
     void useCompactVertices(bool enabled);
+    static void SetAoInLight(bool enabled);
     bool getCompactVertices();
     void useProjectedTexture(bool enabled);
     bool setMipmapEnable(bool enabled);
@@ -97,6 +99,8 @@ private:
 
     arrayWithLength<int>* mRawBuffer;
     arrayWithLength<unsigned char>* mBuckets;
+    arrayWithLength<unsigned short>* mQuadElements;
+    unsigned short mQuadElement;
     int mVertexCount;
     float mU;
     float mV;

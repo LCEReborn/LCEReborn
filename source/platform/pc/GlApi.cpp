@@ -10,6 +10,7 @@ namespace Gl
 {
 #define LCE_GL_DEFINE(returnType, name, parameters) name##Function name = NULL;
 LCE_GL_FUNCTIONS(LCE_GL_DEFINE)
+LCE_GL_OPTIONAL_FUNCTIONS(LCE_GL_DEFINE)
 #undef LCE_GL_DEFINE
 
 bool LoadFunctions(void* (*getProcAddress)(const char* name))
@@ -25,6 +26,11 @@ bool LoadFunctions(void* (*getProcAddress)(const char* name))
     }
     LCE_GL_FUNCTIONS(LCE_GL_LOAD)
 #undef LCE_GL_LOAD
+
+#define LCE_GL_LOAD_OPTIONAL(returnType, name, parameters)                                                             \
+    name = reinterpret_cast<name##Function>(getProcAddress("gl" #name));
+    LCE_GL_OPTIONAL_FUNCTIONS(LCE_GL_LOAD_OPTIONAL)
+#undef LCE_GL_LOAD_OPTIONAL
 
     return bComplete;
 }

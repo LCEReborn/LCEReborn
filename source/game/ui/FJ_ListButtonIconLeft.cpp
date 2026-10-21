@@ -24,6 +24,11 @@ void FJ_ListButtonIconLeft::Init(const std::wstring& name, int id)
     FJ_Button::Init(name, id);
 }
 
+void FJ_ListButtonIconLeft::UseHtmlText()
+{
+    m_htmlText = true;
+}
+
 void FJ_ListButtonIconLeft::SetSlotID(int slotId, bool hasSlot)
 {
     FJ_FuiNode* slotControl = FJ_FuiNode::asMovieClip(getChildByName("SlotControl"));

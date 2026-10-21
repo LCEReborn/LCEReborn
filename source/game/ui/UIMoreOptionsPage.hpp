@@ -19,7 +19,8 @@ public:
         eItem_SmoothLighting,
         eItem_Particles,
         eItem_BiomeBlend,
-        eItem_DebugOverlay
+        eItem_DebugOverlay,
+        eItem_Shaders
     };
 
     virtual void Build(UIScene_CustomMenu& menu);

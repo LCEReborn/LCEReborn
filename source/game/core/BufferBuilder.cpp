@@ -12,6 +12,7 @@
 
 static bool convertQuadsToTriangles = false;
 static bool tryVBO = false;
+static bool aoInLight = false;
 
 BufferBuilder::BufferBuilder(int bufferSize)
 {
@@ -50,6 +51,8 @@ BufferBuilder::BufferBuilder(int bufferSize)
 
     mRawBuffer = new arrayWithLength<int>(bufferSize, true);
     mBuckets = new arrayWithLength<unsigned char>(bufferSize / 8, true);
+    mQuadElements = new arrayWithLength<unsigned short>(bufferSize / 8, true);
+    mQuadElement = 0;
 
     mUseVBO = tryVBO;
     if (mUseVBO)
@@ -170,6 +173,9 @@ void BufferBuilder::end()
         }
         else if (mUseCompactVertices)
         {
+#if LCE_PLATFORM_PC
+            gRenderer->ShaderSetQuadData(mQuadElements->data);
+#endif
             gRenderer->DrawVertices((C4JRender::ePrimitiveType)mDrawMode, mVertexCount, rawBuffer, mVertexType,
                                     mPixelShaderType, mBuckets->data);
         }
@@ -309,6 +315,11 @@ void BufferBuilder::bucket(int index)
     mBucket = index;
 }
 
+void BufferBuilder::quadElement(int element)
+{
+    mQuadElement = (unsigned short)element;
+}
+
 void BufferBuilder::offset(float x, float y, float z)
 {
     mXOffset = x;
@@ -346,6 +357,13 @@ void BufferBuilder::vertexNoBounds(float x, float y, float z)
         {
             packedColor = (unsigned short)(packedColor | 0x8000);
         }
+        unsigned short packedLight = (unsigned short)((mBrightness << 8) | ((unsigned int)mBrightness >> 16));
+        if (aoInLight)
+        {
+            unsigned int ao = ((mColor & 0xFF) * 15 + 127) / 255;
+            packedLight = (unsigned short)((packedLight & 0xFCFC) | ((ao & 0xC) << 6) | (ao & 0x3));
+            packedColor = (unsigned short)(packedColor | 0x8000);
+        }
 
         short* compactVertex = (short*)(rawBuffer + mRawBufferIndex);
         compactVertex[0] = (short)(int)((x + mXOffset) * 1024.0f);
@@ -354,7 +372,7 @@ void BufferBuilder::vertexNoBounds(float x, float y, float z)
         compactVertex[3] = (short)packedColor;
         compactVertex[4] = (short)(int)(texU * 8192.0f);
         compactVertex[5] = (short)(int)(mV * 8192.0f);
-        compactVertex[6] = (short)((mBrightness << 8) | ((unsigned int)mBrightness >> 16));
+        compactVertex[6] = (short)packedLight;
         compactVertex[7] = (short)(int)(-mBaseXOffset);
 
         mVertexCount++;
@@ -374,6 +392,7 @@ void BufferBuilder::vertexNoBounds(float x, float y, float z)
             }
 
             mBuckets->data[mVertexCount / 4 - 1] = (unsigned char)mBucket;
+            mQuadElements->data[mVertexCount / 4 - 1] = mQuadElement;
             mBucket = 0;
         }
 
@@ -419,10 +438,7 @@ void BufferBuilder::vertexNoBounds(float x, float y, float z)
         rawBuffer[mRawBufferIndex + 5] = mColor;
     }
 
-    if (mHasNormal)
-    {
-        rawBuffer[mRawBufferIndex + 6] = mNormal;
-    }
+    rawBuffer[mRawBufferIndex + 6] = mHasNormal ? mNormal : 0;
 
     if (mHasBoneIndex)
     {
@@ -539,6 +555,11 @@ void BufferBuilder::blockRainQuad(float x0, float y0, float z0, float u0, float 
         end();
         mIsDrawing = true;
     }
+}
+
+void BufferBuilder::SetAoInLight(bool enabled)
+{
+    aoInLight = enabled;
 }
 
 void BufferBuilder::useCompactVertices(bool enabled)

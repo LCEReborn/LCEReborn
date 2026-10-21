@@ -21,6 +21,7 @@ public:
     void addNewItem_MenuButton(const std::wstring& label, int id);
     void addNewItem_ControllerButton(const std::wstring& label, const std::wstring& secondaryLabel, bool html, int id);
     void addNewItem_CheckBox(const std::wstring& label, int id, bool checked);
+    void addNewItem_IconButton(const std::wstring& html, const std::wstring& textureName, int id);
     void addNewItem_Slider(const std::wstring& label, int id, int minValue, int maxValue, int value, bool repeat,
                            int repeatDelay, int repeatStep);
     void addNewItem_TextInput(const std::wstring& label, int id, int charLimit);

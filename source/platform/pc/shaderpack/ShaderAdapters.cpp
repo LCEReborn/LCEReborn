@@ -479,11 +479,13 @@ std::string ShaderAdapterHeader(ShaderAdapter adapter, ShaderStage stage, const 
     else
     {
         header += kGameConstants;
+        header += "mat3 lce_NormalMatrixOf(mat3 modelView)\n{\n"
+                  "    return transpose(inverse(modelView)) * pow(abs(determinant(modelView)), 1.0 / 3.0);\n}\n";
         if (adapter == ShaderAdapter_Terrain)
         {
             header += "#define lce_ModelViewMatrix lce_MAT_WV\n";
             header += "#define lce_ModelViewMatrixInverse inverse(lce_ModelViewMatrix)\n";
-            header += "#define lce_NormalMatrix transpose(inverse(mat3(lce_ModelViewMatrix)))\n";
+            header += "#define lce_NormalMatrix lce_NormalMatrixOf(mat3(lce_ModelViewMatrix))\n";
         }
         else if (adapter == ShaderAdapter_Entity)
         {
@@ -495,7 +497,7 @@ std::string ShaderAdapterHeader(ShaderAdapter adapter, ShaderStage stage, const 
         {
             header += "#define lce_ModelViewMatrix (lce_MAT_WV * lce_MAT_WV2)\n";
             header += "#define lce_ModelViewMatrixInverse inverse(lce_ModelViewMatrix)\n";
-            header += "#define lce_NormalMatrix transpose(inverse(mat3(lce_ModelViewMatrix)))\n";
+            header += "#define lce_NormalMatrix lce_NormalMatrixOf(mat3(lce_ModelViewMatrix))\n";
         }
         header += "mat4[8] lce_TextureMatrixArray()\n{\n    mat4 matrices[8];\n"
                   "    for (int index = 0; index < 8; ++index)\n        matrices[index] = mat4(1.0);\n";

@@ -71,6 +71,8 @@ private:
     bool RewriteDirective(Token& token, std::string& error);
     size_t NextSignificant(const std::vector<Token>& tokens, size_t index) const;
     size_t PreviousSignificant(const std::vector<Token>& tokens, size_t index) const;
+    int LayoutLocation(const std::vector<Token>& tokens, size_t close) const;
+    static bool IsOutputQualifier(const std::string& text);
     void Use(const std::string& name) { mUsage.builtins.insert(name); }
 
     ShaderStage mStage = ShaderStage_Vertex;
@@ -80,6 +82,7 @@ private:
     bool mGpuShader4 = false;
     bool mUsesDoubles = false;
     int mUserOutputs = 0;
+    std::set<int> mExplicitOutputs;
     std::vector<std::string> mLeadingExtensions;
     std::vector<Token> mTokens;
     GlslUsage mUsage;

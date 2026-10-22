@@ -320,7 +320,49 @@ bool GlslTranslator::Parse(ShaderStage stage, const std::string& source, std::st
     }
     mGpuShader4 = gpuShader4;
 
+    mExplicitOutputs.clear();
+    if (stage == ShaderStage_Fragment)
+    {
+        for (size_t index = 0; index < mTokens.size(); ++index)
+        {
+            if (mTokens[index].type != Token::Identifier || mTokens[index].text != "out")
+                continue;
+            size_t scan = PreviousSignificant(mTokens, index);
+            while (scan != std::string::npos && IsOutputQualifier(mTokens[scan].text))
+                scan = PreviousSignificant(mTokens, scan);
+            if (scan == std::string::npos || mTokens[scan].text != ")")
+                continue;
+            int location = LayoutLocation(mTokens, scan);
+            if (location >= 0)
+                mExplicitOutputs.insert(location);
+        }
+    }
+
     return Rewrite(mTokens, false, error);
+}
+
+bool GlslTranslator::IsOutputQualifier(const std::string& text)
+{
+    return text == "flat" || text == "smooth" || text == "centroid" || text == "invariant" || text == "highp"
+           || text == "mediump" || text == "lowp" || text == "precise";
+}
+
+int GlslTranslator::LayoutLocation(const std::vector<Token>& tokens, size_t close) const
+{
+    size_t open = close;
+    while (open != std::string::npos && tokens[open].text != "(")
+        open = PreviousSignificant(tokens, open);
+    int location = -1;
+    for (size_t inner = open == std::string::npos ? close : open; inner < close; ++inner)
+    {
+        if (tokens[inner].text != "location")
+            continue;
+        size_t equals = NextSignificant(tokens, inner);
+        size_t value = equals == std::string::npos ? equals : NextSignificant(tokens, equals);
+        if (value != std::string::npos && tokens[equals].text == "=" && tokens[value].type == Token::Number)
+            location = std::atoi(tokens[value].text.c_str());
+    }
+    return location;
 }
 
 bool GlslTranslator::RewriteDirective(Token& token, std::string& error)
@@ -611,27 +653,12 @@ bool GlslTranslator::Rewrite(std::vector<Token>& tokens, bool macroBody, std::st
             if (name == "out" && !macroBody)
             {
                 size_t scan = previous;
-                while (scan != std::string::npos
-                       && (tokens[scan].text == "flat" || tokens[scan].text == "smooth"
-                           || tokens[scan].text == "centroid" || tokens[scan].text == "invariant"
-                           || tokens[scan].text == "highp" || tokens[scan].text == "mediump"
-                           || tokens[scan].text == "lowp" || tokens[scan].text == "precise"))
+                while (scan != std::string::npos && IsOutputQualifier(tokens[scan].text))
                     scan = PreviousSignificant(tokens, scan);
                 int location = -1;
                 if (scan != std::string::npos && tokens[scan].text == ")")
                 {
-                    size_t open = scan;
-                    while (open != std::string::npos && tokens[open].text != "(")
-                        open = PreviousSignificant(tokens, open);
-                    for (size_t inner = open == std::string::npos ? scan : open; inner < scan; ++inner)
-                    {
-                        if (tokens[inner].text != "location")
-                            continue;
-                        size_t equals = NextSignificant(tokens, inner);
-                        size_t value = equals == std::string::npos ? equals : NextSignificant(tokens, equals);
-                        if (value != std::string::npos && tokens[equals].text == "=" && tokens[value].type == Token::Number)
-                            location = std::atoi(tokens[value].text.c_str());
-                    }
+                    location = LayoutLocation(tokens, scan);
                     if (location < 0)
                         continue;
                 }
@@ -641,6 +668,8 @@ bool GlslTranslator::Rewrite(std::vector<Token>& tokens, bool macroBody, std::st
                                           || tokens[scan].text == "}" || tokens[scan].type == Token::Directive;
                     if (!statementStart)
                         continue;
+                    while (mExplicitOutputs.count(mUserOutputs) != 0)
+                        ++mUserOutputs;
                     location = mUserOutputs++;
                     token.text = "layout(location = " + std::to_string(location) + ") out";
                 }

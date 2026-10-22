@@ -8,9 +8,12 @@ writes build/LCEReborn-pc-<commit>.zip, on Linux
 build/LCEReborn-linux-<commit>.tar.gz, holding the two programs, the Qt
 libraries the launcher uses, resources/, a README, the project's license and,
 in third_party/, the notices and licenses of every library in the programs.
-On Linux it also writes the same files as build/LCEReborn-linux-<commit>.AppImage,
-which needs appimagetool and the AppImage runtime (tools/build/Dockerfile.linux
-installs both).
+On Linux the tar.gz also holds the desktop entry the launcher and the game
+share (resources/linux) and install-desktop-entry, which lists it in the
+player's applications menu. On Linux it also writes the same files as
+build/LCEReborn-linux-<commit>.AppImage, with the desktop entry at its top
+for AppImage integration, which needs appimagetool and the AppImage runtime
+(tools/build/Dockerfile.linux installs both).
 
 Only those files are taken from the build folder, so the game files, saves,
 logs and settings that playing from it leaves there stay out.
@@ -52,19 +55,24 @@ NOTICE_TEXTS = os.path.join(TOOLS, "package", "notices")
 # The licenses of the AppImage runtime and the libraries in it (package/notices/AppImageRuntime.txt).
 APPIMAGE_RUNTIME_LICENSES = ("MIT", "LGPL-2.1-only", "BSD-2-Clause", "BSD-3-Clause", "GPL-2.0-only")
 TOP = "LCEReborn"
+# The desktop entry's name and the app ID of the launcher's and the game's windows, which match it.
+DESKTOP_ID = "org.lcereborn.LCEReborn"
+DESKTOP_SCRIPT = "install-desktop-entry"
 
 LINUX = sys.platform.startswith("linux")
 if LINUX:
     SYSTEM = "linux"
     PROGRAMS = ("LCEReborn", "LCERebornLauncher")
+    EXECUTABLES = PROGRAMS + (DESKTOP_SCRIPT, "AppRun")
     QT_PLUGIN_DIRS = ("imageformats", "networkinformation", "platforminputcontexts", "platformthemes",
                       "tls", "wayland-decoration-client", "wayland-graphics-integration-client",
                       "wayland-shell-integration", "xcbglintegrations")
     QT_PLATFORMS = ("libqxcb.so", "libqwayland.so")
-    ALLOWED_NAME = re.compile(r"(^[^.]+$|\.so(\.\d+)*$|\.(png|ico|txt)$)")
+    ALLOWED_NAME = re.compile(r"(^[^.]+$|\.so(\.\d+)*$|\.(png|ico|txt|desktop)$)")
 else:
     SYSTEM = "pc"
     PROGRAMS = ("LCEReborn.exe", "LCERebornLauncher.exe")
+    EXECUTABLES = PROGRAMS
     QT_PLUGIN_DIRS = ("generic", "imageformats", "networkinformation", "platforms", "styles", "tls")
     ALLOWED_NAME = re.compile(r"\.(exe|dll|png|ico|txt)$", re.I)
 REDIST_URL = "https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist"
@@ -485,7 +493,7 @@ def requirements_text(glibc):
             "default.\n" % glibc)
 
 
-def readme_text(source, glibc):
+def readme_text(source, glibc, desktop_script=False):
     readme = read(os.path.join(ROOT, "README.md"))
     disclaimers = block(readme, "## Disclaimers", "\n## ", os.path.join(ROOT, "README.md"))
     disclaimers = disclaimers[len("## Disclaimers"):-len("\n## ")].strip()
@@ -495,6 +503,9 @@ def readme_text(source, glibc):
               "and the game keep, including saves, stays in that folder.\n\n" if LINUX
               else "the folder beside it. Everything the launcher\n"
                    "and the game keep, including saves, stays in this folder.\n\n")
+    if desktop_script:
+        folder += ("To list LCEReborn in your applications menu, run ./%s\n"
+                   "in this folder, again after moving the folder; --remove takes it out.\n\n" % DESKTOP_SCRIPT)
     return ("%s\n"
             "%s\n\n"
             "A PC build of LCEReborn, the reconstructed source of Minecraft: Wii U\n"
@@ -548,7 +559,7 @@ def write_tar(path, entries, date):
                 content = content.replace("\r\n", "\n").encode("utf-8")
             info = tarfile.TarInfo(TOP + "/" + arcname)
             info.size = len(content)
-            info.mode = 0o755 if arcname in PROGRAMS else 0o644
+            info.mode = 0o755 if arcname in EXECUTABLES else 0o644
             info.mtime = stamp
             archive.addfile(info, io.BytesIO(content))
 
@@ -562,17 +573,32 @@ def appimage_tools():
     return tool, runtime
 
 
+def desktop_files():
+    """The desktop entry the launcher and the game share and its icon, the launcher's."""
+    entry = read(os.path.join(ROOT, "resources", "linux", DESKTOP_ID + ".desktop"))
+    with open(os.path.join(ROOT, "resources", "launcher", "icon.png"), "rb") as handle:
+        icon = handle.read()
+    return entry, icon
+
+
+def desktop_entries():
+    """The tar.gz's desktop entry and icon, laid out as in a data folder for install-desktop-entry."""
+    entry, icon = desktop_files()
+    with open(os.path.join(ROOT, "resources", "linux", DESKTOP_SCRIPT), "rb") as handle:
+        script = handle.read()
+    return [("share/applications/%s.desktop" % DESKTOP_ID, entry),
+            ("share/icons/hicolor/256x256/apps/%s.png" % DESKTOP_ID, icon),
+            (DESKTOP_SCRIPT, script)]
+
+
 def write_appimage(path, entries, date, tools):
     """Lays the package out as an AppDir that starts the launcher and packs it with appimagetool."""
     tool, runtime = tools
-    with open(os.path.join(ROOT, "resources", "launcher", "icon.png"), "rb") as handle:
-        icon = handle.read()
+    entry, icon = desktop_files()
     extra = [
         ("AppRun", '#!/bin/sh\nhere="$(dirname "$(readlink -f "$0")")"\nexec "$here/LCERebornLauncher" "$@"\n'),
-        ("lcereborn.desktop", "[Desktop Entry]\nType=Application\nName=LCEReborn\n"
-                              "Comment=Minecraft: Wii U Edition from your own copy of the game\n"
-                              "Exec=LCERebornLauncher\nIcon=lcereborn\nCategories=Game;\nTerminal=false\n"),
-        ("lcereborn.png", icon),
+        (DESKTOP_ID + ".desktop", entry),
+        (DESKTOP_ID + ".png", icon),
         (".DirIcon", icon),
     ]
     with tempfile.TemporaryDirectory() as temp:
@@ -584,7 +610,7 @@ def write_appimage(path, entries, date, tools):
                 content = content.replace("\r\n", "\n").encode("utf-8")
             with open(target, "wb") as handle:
                 handle.write(content)
-            os.chmod(target, 0o755 if arcname in PROGRAMS + ("AppRun",) else 0o644)
+            os.chmod(target, 0o755 if arcname in EXECUTABLES else 0o644)
         environment = dict(os.environ, ARCH="x86_64", SOURCE_DATE_EPOCH=str(int(date.timestamp())))
         result = subprocess.run([tool, "--no-appstream", "--runtime-file", runtime, app_dir, path], env=environment,
                                 capture_output=True, text=True)
@@ -609,9 +635,11 @@ def package(build, allow_dirty, appimage=True):
     for path, arcname in files:
         with open(path, "rb") as handle:
             entries.append((arcname, handle.read()))
-    entries.append(("README.txt", readme_text(source, glibc)))
     entries.append(("LICENSE.txt", read(os.path.join(ROOT, "LICENSE"))))
     common = list(entries)
+    entries.append(("README.txt", readme_text(source, glibc, desktop_script=LINUX)))
+    if LINUX:
+        entries.extend(desktop_entries())
     entries.append(("third_party/NOTICES.txt", notices_text(source, game, qt, launcher)))
     entries.extend(license_files(game, qt, launcher))
     check_names(entries)
@@ -628,7 +656,8 @@ def package(build, allow_dirty, appimage=True):
     print("Wrote %s (%d files)" % (os.path.relpath(outputs[-1], ROOT), len(entries)))
 
     if appimage:
-        entries = common + [("third_party/NOTICES.txt", notices_text(source, game, qt, launcher, appimage=True))]
+        entries = common + [("README.txt", readme_text(source, glibc)),
+                            ("third_party/NOTICES.txt", notices_text(source, game, qt, launcher, appimage=True))]
         entries.extend(license_files(game, qt, launcher, appimage=True))
         check_names(entries)
         outputs.append(stem + ".AppImage")

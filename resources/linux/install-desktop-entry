@@ -1,0 +1,47 @@
+#!/bin/sh
+# Lists LCEReborn in the applications menu, starting the launcher in this folder.
+#
+#   ./install-desktop-entry            add it, or update it after moving the folder
+#   ./install-desktop-entry --remove   take it out again
+#
+# Only your own menu is changed (~/.local/share/applications and icons).
+set -e
+
+here=$(dirname "$(readlink -f "$0")")
+data=${XDG_DATA_HOME:-$HOME/.local/share}
+entry=$data/applications/org.lcereborn.LCEReborn.desktop
+icon=$data/icons/hicolor/256x256/apps/org.lcereborn.LCEReborn.png
+
+case $1 in
+--remove)
+    rm -f "$entry" "$icon"
+    echo "Removed LCEReborn from the applications menu"
+    exit 0
+    ;;
+"") ;;
+*)
+    echo "usage: $0 [--remove]" >&2
+    exit 1
+    ;;
+esac
+
+if [ ! -x "$here/LCERebornLauncher" ]; then
+    echo "$here/LCERebornLauncher is missing; run this from the extracted LCEReborn folder" >&2
+    exit 1
+fi
+
+# Keep the executable name fixed: GLib checks it before expanding %% in paths.
+# env changes to the install folder without interpreting it as a shell command.
+# Escape both the desktop entry string and its quoted Exec argument.
+folder=$(printf '%s' "$here" | sed -e 's/\\/\\\\\\\\/g' -e 's/["`$]/\\\\&/g' -e 's/%/%%/g')
+
+mkdir -p "$(dirname "$entry")" "$(dirname "$icon")"
+cp "$here/share/icons/hicolor/256x256/apps/org.lcereborn.LCEReborn.png" "$icon"
+while IFS= read -r line; do
+    case $line in
+    Exec=*) printf 'Exec=env -C "%s" ./LCERebornLauncher\n' "$folder" ;;
+    *) printf '%s\n' "$line" ;;
+    esac
+done < "$here/share/applications/org.lcereborn.LCEReborn.desktop" > "$entry.new"
+mv "$entry.new" "$entry"
+echo "Added LCEReborn to the applications menu ($entry)"

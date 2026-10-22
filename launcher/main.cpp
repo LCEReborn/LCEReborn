@@ -11,8 +11,15 @@
 
 int main(int argc, char** argv)
 {
-    QApplication application(argc, argv);
+#if defined(Q_OS_LINUX)
+    // Set the X11 class and Wayland/portal app ID before Qt initializes desktop services.
+    QApplication::setApplicationName("org.lcereborn.LCEReborn");
+    QApplication::setDesktopFileName("org.lcereborn.LCEReborn");
+#else
     QApplication::setApplicationName("LCEReborn Launcher");
+#endif
+    QApplication application(argc, argv);
+    QApplication::setApplicationDisplayName("LCEReborn Launcher");
     QApplication::setApplicationVersion(BuildVersion());
     QApplication::setWindowIcon(QIcon(":/launcher/icon.png"));
     ApplyTheme(application);

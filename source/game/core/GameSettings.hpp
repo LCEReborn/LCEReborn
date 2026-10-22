@@ -183,7 +183,8 @@ class GameSettings
     unsigned short mDebugOverlayHigh;
     unsigned int mGameModeOptions;
     unsigned char mHostOptionVersion;
-    unsigned char mReserved4[3];
+    unsigned char mFov;
+    unsigned char mReserved4[2];
     unsigned int mBattleMiniGameMap;
     unsigned int mLoggingMask;
     unsigned char mActionMappings[25];
@@ -243,6 +244,8 @@ public:
     static void SetPlayerSkin(int, const std::wstring&);
     static std::wstring GetPlayerSkinName(int);
     static uint32_t GetPlayerSkinId(int);
+    static int GetPlayerFov(int);
+    static void SetPlayerFov(int, int);
     static void SetPlayerFavoriteSkin(int, int, unsigned int);
     static uint32_t GetPlayerFavoriteSkin(int, int);
     static uint8_t GetPlayerFavoriteSkinsPos(int);

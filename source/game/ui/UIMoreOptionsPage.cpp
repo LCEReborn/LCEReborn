@@ -4,6 +4,7 @@
 #include <string>
 
 #include "game/core/ConsoleUIController.hpp"
+#include "game/core/GameSettings.hpp"
 #include "game/core/VideoSettings.hpp"
 #include "game/ui/UILayer.hpp"
 #include "game/ui/UIScene_CustomMenu.hpp"
@@ -12,6 +13,12 @@
 #endif
 
 extern ConsoleUIController gConsoleUIController;
+
+int UIMoreOptionsPage::SettingsPlayer(UIScene_CustomMenu& menu)
+{
+    const int player = menu.GetPlayer();
+    return player >= 0 && player < 4 ? player : 0;
+}
 
 void UIMoreOptionsPage::Build(UIScene_CustomMenu& menu)
 {
@@ -35,10 +42,10 @@ void UIMoreOptionsPage::Build(UIScene_CustomMenu& menu)
                    L"How many chunks around each player keep running when you host: mobs move and spawn, and "
                    L"crops grow. Farther chunks are still shown but stay still. Lower it if the world slows "
                    L"down. The original game runs 10.");
-    menu.AddSlider(eItem_Fov, FovLabel(VideoSettings::GetFov()), VideoSettings::FOV_MIN, VideoSettings::FOV_MAX,
-                   VideoSettings::GetFov(),
-                   L"How wide the view is, in degrees. Normal is 70, as in the original game; Quake Pro is the "
-                   L"widest.");
+    const int fov = GameSettings::GetPlayerFov(SettingsPlayer(menu));
+    menu.AddSlider(eItem_Fov, FovLabel(fov), VideoSettings::FOV_MIN, VideoSettings::FOV_MAX, fov,
+                   L"How wide your view is, in degrees; each player in split screen sets their own. Normal is 70, "
+                   L"as in the original game; Quake Pro is the widest.");
     menu.AddCheckbox(eItem_FancyGraphics, L"Fancy Graphics", VideoSettings::GetFancyGraphics(),
                      L"Draws see-through leaves, entity shadows and other detail. Turn it off for a higher frame "
                      L"rate.");
@@ -110,8 +117,8 @@ void UIMoreOptionsPage::OnSlide(UIScene_CustomMenu& menu, int id, int value)
         menu.SetItemLabel(id, SimulationDistanceLabel(VideoSettings::GetSimulationDistance()));
         break;
     case eItem_Fov:
-        VideoSettings::SetFov(value);
-        menu.SetItemLabel(id, FovLabel(VideoSettings::GetFov()));
+        GameSettings::SetPlayerFov(SettingsPlayer(menu), value);
+        menu.SetItemLabel(id, FovLabel(GameSettings::GetPlayerFov(SettingsPlayer(menu))));
         break;
     case eItem_Particles:
         VideoSettings::SetParticles(value);

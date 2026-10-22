@@ -14,6 +14,7 @@
 #include "platform/C4JProfile.hpp"
 
 class C4JThread;
+struct PcPlayerProfile;
 
 class CProfile : public C_4JProfile
 {
@@ -86,6 +87,9 @@ public:
     virtual int RequestSignInUI(bool, bool, bool, bool, bool, SignInUIHandler, void*, int);
     int RequestSignInUI(bool, bool, bool, bool, bool, bool, SignInUIHandler, void*, int);
     int SignInUser(int);
+    int SignInAs(int pad, const PcPlayerProfile* chosen);
+    std::vector<PcPlayerProfile> UnusedLauncherProfiles();
+    static ACTUuid UuidFromHex(const std::string& hex);
     virtual void SignOutUser(int);
     virtual void SetUserSigningIn(int, bool);
     virtual int DisplayOfflineProfile(OfflineProfileHandler, void*, int);
@@ -197,6 +201,7 @@ public:
     void AwardManagerOnDestroy();
     int CreateAvatarTexture(int);
     static std::wstring LocalPlayerName();
+    void ProfilePickerClosed(int pad, const PcPlayerProfile* chosen);
     static ACTUuid LocalPlayerUuid(const std::wstring&);
 
 private:
@@ -217,6 +222,7 @@ private:
     int mLockedProfile;
     std::deque<int> mSignOutQueue;
     SignInUIHandler mSignInUIHandler;
+    int mPickerPad = -1;
     SignInChoicesHandler mSignInChoicesHandler;
     void* mSignInUIContext;
     bool mSignInChoicesPending;

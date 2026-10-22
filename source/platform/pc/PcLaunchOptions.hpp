@@ -18,6 +18,7 @@ struct PcLaunchOptions
     std::string licenseFile;
     std::string world;
     std::string discordApp;
+    std::string profiles;
 #if LCE_DEBUG_BUILD
     std::vector<double> position;
     std::vector<double> rotation;

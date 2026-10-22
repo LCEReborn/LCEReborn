@@ -126,6 +126,7 @@ public:
     void setFullscreenMenuDisplayed(bool displayed);
     void handleKeyPress(unsigned int key, unsigned int character);
     bool handleInput();
+    void SetRawPadMenuOpen(int pad, bool open);
     void tickInput();
     static int reloadSkinThreadProc(void* context);
     void ReloadSkin();
@@ -295,6 +296,7 @@ private:
     fuiBitmapFont* m_bitmapFont;
     fuiBitmapFont* m_bitmapFontAlt;
     unsigned int m_resolutionDisableFlags;
+    unsigned int m_rawPadMenus;
     std::vector<UIELEMENT*> m_touchBoxes[EUIGroup_Count][EUILayer_Count][EUIScene_None];
     int m_touchHoldPad;
     bool m_touchHeld;

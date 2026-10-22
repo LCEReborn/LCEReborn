@@ -70,6 +70,11 @@ bool UICustomMenuPage::GetTooltips(int&, int&) const
     return false;
 }
 
+bool UICustomMenuPage::IsOverlay() const
+{
+    return false;
+}
+
 bool UICustomMenuPage::ShowLogo() const
 {
     return true;
@@ -274,6 +279,8 @@ void UIScene_CustomMenu::updateTooltips()
 void UIScene_CustomMenu::updateComponents()
 {
     bool showLogo = m_page == NULL || m_page->ShowLogo();
+    if (m_page != NULL && m_page->IsOverlay() && Minecraft::GetInstance()->mLevel != NULL)
+        return;
     if (Minecraft::GetInstance()->mLevel == NULL)
     {
         m_layer->showComponent(m_playerId, EUIScene_Panorama, true);
@@ -284,6 +291,16 @@ void UIScene_CustomMenu::updateComponents()
         m_layer->showComponent(m_playerId, EUIScene_Panorama, false);
         m_layer->showComponent(m_playerId, EUIScene_Logo, showLogo && gApp.GetLocalPlayerCount() == 1);
     }
+}
+
+bool UIScene_CustomMenu::hidesLowerScenes()
+{
+    return m_page != NULL && m_page->IsOverlay() ? false : UIScene::hidesLowerScenes();
+}
+
+bool UIScene_CustomMenu::blocksInput()
+{
+    return m_page != NULL && m_page->IsOverlay() ? false : UIScene::blocksInput();
 }
 
 void UIScene_CustomMenu::handleInput(int playerId, int action, bool repeat, bool pressed, bool released,

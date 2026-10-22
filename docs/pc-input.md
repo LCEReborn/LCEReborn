@@ -92,6 +92,9 @@ no one else can join, the player-select screen before a world is skipped, and
 player 1 moves to whichever connected keyboard or controller was used last.
 The prompt that asks other connected devices to join as a world loads is off
 unless `--join-prompt on` is given, since the keyboard always counts as one.
+With `--profiles` (the launcher passes its own), a player who joins first
+picks which unused launcher profile to play as, with its name and identity.
+Each player sets their own field of view in More Options.
 
 A gamepad's face buttons follow the controller's own edition of the game: the
 button labelled A or Cross (the button in the confirm position on a Nintendo

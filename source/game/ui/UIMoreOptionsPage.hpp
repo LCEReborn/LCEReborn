@@ -29,6 +29,7 @@ public:
     virtual void OnSlide(UIScene_CustomMenu& menu, int id, int value);
 
 private:
+    static int SettingsPlayer(UIScene_CustomMenu& menu);
     static std::wstring RenderDistanceLabel(int chunks);
     static std::wstring SimulationDistanceLabel(int chunks);
     static std::wstring FovLabel(int fov);

@@ -578,7 +578,8 @@ void GameRenderer::onResourceManagerReload(ResourceManager*)
 
 float GameRenderer::GetFovVal()
 {
-    return static_cast<float>(VideoSettings::GetFov());
+    boost::shared_ptr<MultiplayerLocalPlayer> player = Minecraft::GetInstance()->mPlayer;
+    return static_cast<float>(GameSettings::GetPlayerFov(player != NULL ? player->mUserIndex : 0));
 }
 
 void GameRenderer::UpdateElementStorageDeleteTicks()
@@ -963,7 +964,7 @@ float GameRenderer::getFov(float amount, bool useSmoothing)
     float fov = static_cast<float>(VideoSettings::FOV_NORMAL);
     if (useSmoothing)
     {
-        fov = (static_cast<float>(VideoSettings::GetFov()) + mMinecraft->mOptions->mFov)
+        fov = (static_cast<float>(GameSettings::GetPlayerFov(playerIndex)) + mMinecraft->mOptions->mFov)
               * ((mFov[playerIndex] - mFovO[playerIndex]) * amount + mFovO[playerIndex]);
     }
 

@@ -25,6 +25,7 @@
 #include "platform/pc/C4JThreadImpl.hpp"
 #include "platform/pc/Log.hpp"
 #include "platform/pc/PcAvatar.hpp"
+#include "platform/pc/PcDiscord.hpp"
 #include "platform/pc/PcLaunchOptions.hpp"
 #include "platform/pc/PcPaths.hpp"
 #include "platform/pc/PcUnlockPage.hpp"
@@ -889,6 +890,7 @@ void CProfile::SetPresenceString(int presence)
     {
         DebugPrintf("Rich presence - %ls\n", text.c_str());
         mCurrentPresenceString = text;
+        PcDiscordSetPresence(text);
     }
 }
 

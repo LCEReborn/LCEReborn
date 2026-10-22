@@ -40,6 +40,7 @@
 #include "platform/FileApi.hpp"
 #include "platform/pc/PcApplication.hpp"
 #include "platform/pc/PcCrashReport.hpp"
+#include "platform/pc/PcDiscord.hpp"
 #include "platform/pc/Log.hpp"
 #include "platform/pc/PcLaunchOptions.hpp"
 #include "platform/pc/PcLicenses.hpp"
@@ -78,6 +79,8 @@ int main(int argc, char** argv)
     LOG_INFO(sLog, "Content: %s", PcContentRoot().c_str());
     LOG_INFO(sLog, "Saves: %s", PcSaveRoot().c_str());
     LOG_INFO(sLog, "Resources: %s", PcResourceRoot().c_str());
+    const std::string& discordApp = PcGetLaunchOptions().discordApp;
+    PcDiscordStart(discordApp.empty() ? std::string(LCE_DISCORD_APP_ID) : discordApp);
 
     ShutdownManager::Initialise();
     if (gProfile == 0)

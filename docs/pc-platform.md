@@ -96,6 +96,14 @@ folder; the Wii U keeps them in its save data. The Mini Games menu's Join
 tab lists the same saved servers but only the mini games found on the local
 network.
 
+## Discord
+
+With a Discord application ID, the game shows what the player is doing (the
+same text as the console's rich presence) in the Discord app running on the
+same computer. The ID comes from `--discord-app <id>`, or from the CMake
+setting `LCE_DISCORD_APP_ID` when the option is not given. Without either,
+nothing is sent.
+
 ## Chat
 
 Chat is drawn by the game itself (`game/core/ChatScreen`), so it works the

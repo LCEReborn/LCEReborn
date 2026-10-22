@@ -131,6 +131,8 @@ add_custom_target(lce_build_info
           -P "${CMAKE_SOURCE_DIR}/launcher/BuildInfo.cmake"
   BYPRODUCTS "${CMAKE_BINARY_DIR}/generated/BuildInfo.hpp")
 add_dependencies(lce_platform lce_build_info)
+set(LCE_DISCORD_APP_ID "" CACHE STRING "Discord application used for Rich Presence when --discord-app is not given")
+target_compile_definitions(lce_platform PRIVATE LCE_DISCORD_APP_ID="${LCE_DISCORD_APP_ID}")
 target_include_directories(lce_platform PRIVATE "${CMAKE_BINARY_DIR}/generated")
 if(MSVC)
   # Boost 1.53 still uses std::auto_ptr and std::unary_function, which C++17 removes.

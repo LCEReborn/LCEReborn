@@ -51,7 +51,8 @@ static void PrintUsage(std::FILE* stream)
                "  --license-file <file>       what is unlocked (default: license.cfg in the working folder)\n"
                "  --split-screen <on|off>     other controllers can join as more players (default: on)\n"
                "  --join-prompt <on|off>      prompt other controllers to join when a world loads (default: off)\n"
-               "  --world <folder>            load this save from the saves folder's games folder at start\n",
+               "  --world <folder>            load this save from the saves folder's games folder at start\n"
+               "  --discord-app <id>          show what you are doing in Discord, through this Discord application\n",
                stream);
 #if LCE_DEBUG_BUILD
     std::fputs("  --position <x,y,z>          move the player here once a world has loaded\n"
@@ -120,6 +121,8 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
             target = &sOptions.licenseFile;
         else if (name == "--world")
             target = &sOptions.world;
+        else if (name == "--discord-app")
+            target = &sOptions.discordApp;
 #if LCE_DEBUG_BUILD
         else if (name == "--position")
         {

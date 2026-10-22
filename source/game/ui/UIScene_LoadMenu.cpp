@@ -18,6 +18,7 @@
 #include "game/core/MasterGameMode.hpp"
 #include "game/core/Minecraft.hpp"
 #include "game/core/StringConversion.hpp"
+#include "game/network/CGameNetworkManager.hpp"
 #include "platform/CStorage.hpp"
 #include "vendor/_SaveListDetails.hpp"
 #include "game/minigame/MiniGameDef.hpp"
@@ -558,8 +559,8 @@ unsigned int UIScene_LoadMenu::mapElementsAndNames()
 
 void UIScene_LoadMenu::updateTooltips()
 {
-    gConsoleUIController.SetTooltips(0, IDS_TOOLTIPS_SELECT, IDS_TOOLTIPS_BACK, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                                     -1, -1, -1, -1, false, false);
+    gConsoleUIController.SetTooltips(0, IDS_TOOLTIPS_SELECT, IDS_TOOLTIPS_BACK, OnlineSettingsTooltip(), -1, -1, -1,
+                                     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, false, false);
 }
 
 void UIScene_LoadMenu::updateComponents()
@@ -613,6 +614,7 @@ void UIScene_LoadMenu::tick()
     m_thumbnailLoaded = false;
     m_levelIcon.setTextureName(m_thumbnailName.c_str(), true);
 
+    CGameNetworkManager::sInstance.SetWorldThumbnail(m_thumbnailData, m_thumbnailSize);
     CMinecraftApp::PngTagData tagData;
     gApp.GetImageTextData(m_thumbnailData, m_thumbnailSize, &tagData);
     tagData.flags |= CMinecraftApp::PngTagData::eFlag_NumLoads;
@@ -734,6 +736,11 @@ void UIScene_LoadMenu::handleInput(int, int action, bool repeat, bool pressed, b
     if (m_actionPending)
         return;
     gConsoleUIController.AnimateKeyPress(m_playerId, action, repeat, pressed, released);
+    if (OpenOnlineSettings(action, pressed))
+    {
+        handled = true;
+        return;
+    }
     switch (action)
     {
     case EControllerActions_MenuCancel:
@@ -1001,6 +1008,7 @@ void UIScene_LoadMenu::handleGainFocus(bool hadFocus)
 {
     if (hadFocus && !m_launchData.mHostMiniGame)
         m_onlineGameCheckBox.setChecked(m_launchData.mOnlineGame);
+    RefreshOnlineSummary();
     if (!m_launchData.mHostMiniGame && !m_launchData.mJoinMiniGame)
         return;
     UpdateIfPublicGamesAllowed();
@@ -1024,6 +1032,7 @@ void UIScene_LoadMenu::handleFocusChange(int focus, int childFocus)
 {
     m_focus = static_cast<double>(focus);
     m_childFocus = static_cast<double>(childFocus);
+    UpdateOnlineFocus(focus);
     if (m_launchData.mHostMiniGame || m_launchData.mJoinMiniGame)
         UpdateDescriptionText();
     if (focus == 7)

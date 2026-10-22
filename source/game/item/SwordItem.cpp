@@ -47,7 +47,8 @@ float SwordItem::getDestroySpeed(not_null_ptr<ItemInstance> itemInstance, const 
     if (material == Material::PLANT || material == Material::REPLACEABLE_PLANT || material == Material::BAMBOO
         || material == Material::CORAL || material == Material::LEAVES || material == Material::VEGETABLE)
     {
-        if (((GameMode*)Minecraft::GetInstance()->mGameMode)->isAdventure()
+        GameMode* gameMode = (GameMode*)Minecraft::GetInstance()->mGameMode;
+        if (gameMode != NULL && gameMode->isAdventure()
             && (state->getBlock() == Blocks::chorus_flower || state->getBlock() == Blocks::chorus_plant))
         {
             return 1.0f;

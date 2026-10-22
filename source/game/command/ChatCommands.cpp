@@ -14,6 +14,7 @@
 #include "game/command/CommandArguments.hpp"
 #include "game/command/CommandDispatcher.hpp"
 #include "game/command/CommandSource.hpp"
+#include "game/command/ConsoleCommandSender.hpp"
 #include "game/command/DefaultGameModeCommand.hpp"
 #include "game/command/GameDifficultyCommand.hpp"
 #include "game/command/GameModeCommand.hpp"
@@ -21,6 +22,7 @@
 #include "game/command/TeleportCommand.hpp"
 #include "game/command/TimeCommand.hpp"
 #include "game/command/WeatherCommand.hpp"
+#include "game/core/CMinecraftApp.hpp"
 #include "game/core/Difficulty.hpp"
 #include "game/core/EntityType.hpp"
 #include "game/core/GameType.hpp"
@@ -116,20 +118,28 @@ std::wstring Count(int count, const wchar_t* one, const wchar_t* many)
     return Number(count) + L" " + (count == 1 ? one : many);
 }
 
+void (*sConsoleOutput)(const std::wstring& text) = NULL;
+
 void Tell(const CommandSource& source, const std::wstring& text)
 {
     if (source.output)
         ChatCommands::Reply(source.output, text);
+    else if (source.console && sConsoleOutput != NULL)
+        sConsoleOutput(text);
 }
 
 void Fail(const CommandSource& source, const std::wstring& text)
 {
     if (source.output)
         ChatCommands::Error(source.output, text);
+    else if (source.console && sConsoleOutput != NULL)
+        sConsoleOutput(L"§c" + text);
 }
 
 std::wstring SourceName(const CommandSource& source)
 {
+    if (!source.entity)
+        return L"Server";
     return TargetSelector::DisplayName(source.entity);
 }
 
@@ -146,7 +156,10 @@ bool InOverworld(const CommandSource& source)
 
 void Perform(const CommandSource& source, boost::shared_ptr<GameCommandPacket> packet)
 {
-    gMinecraftServer->getCommandDispatcher()->performCommand(source.player, packet->command, packet->data);
+    boost::shared_ptr<CommandSender> sender = source.player;
+    if (!sender)
+        sender = ConsoleCommandSender::Get();
+    gMinecraftServer->getCommandDispatcher()->performCommand(sender, packet->command, packet->data);
 }
 
 void Broadcast(const std::wstring& text)
@@ -154,6 +167,7 @@ void Broadcast(const std::wstring& text)
     std::wstring strings[2] = {std::wstring(), text};
     gMinecraftServer->getPlayers()->broadcastAll(boost::shared_ptr<Packet>(
         new ClientboundChatPacket(ClientboundChatPacket::eChatPacketMessage_PlayerChat, NULL, 0, strings, 2)));
+    ChatCommands::Echo(text);
 }
 
 bool ResolvePlayers(const CommandSource& source, const Words& words, size_t index, PlayerVector& players)
@@ -194,9 +208,9 @@ bool ResolveLiving(const CommandSource& source, const Words& words, size_t index
 {
     living.clear();
     EntityList entities;
-    if (index >= words.size())
+    if (index >= words.size() && source.entity)
         entities.push_back(source.entity);
-    else if (!ResolveEntities(source, words[index], entities))
+    else if (index < words.size() && !ResolveEntities(source, words[index], entities))
         return false;
     for (size_t entity = 0; entity < entities.size(); ++entity)
     {
@@ -424,8 +438,13 @@ bool Teleport(const CommandSource& source, const Words& words)
             return true;
         next = 2;
     }
-    else
+    else if (source.entity)
         moved.push_back(source.entity);
+    else
+    {
+        Fail(source, L"No entity was found.");
+        return true;
+    }
 
     EntityPtr destination;
     if (words.size() - next == 1)
@@ -487,8 +506,13 @@ bool Kill(const CommandSource& source, const Words& words)
         if (!ResolveEntities(source, words[1], targets))
             return true;
     }
-    else
+    else if (source.entity)
         targets.push_back(source.entity);
+    else
+    {
+        Fail(source, L"No entity was found.");
+        return true;
+    }
     for (size_t index = 0; index < targets.size(); ++index)
         targets[index]->kill();
     if (targets.size() == 1)
@@ -1274,8 +1298,10 @@ bool List(const CommandSource& source, const Words& words)
     if (words.size() != 1)
         return false;
     std::vector<PlayerPtr>* players = gMinecraftServer->getPlayers()->getPlayers();
-    Tell(source, L"There are §e" + Number(static_cast<int>(players->size())) + L"§r/§e"
-                     + Number(static_cast<int>(CGameNetworkManager::sInstance.GetMaxPlayers()))
+    int maxPlayers = static_cast<int>(CGameNetworkManager::sInstance.GetMaxPlayers());
+    if (CMinecraftApp::IsDedicatedServer())
+        --maxPlayers;
+    Tell(source, L"There are §e" + Number(static_cast<int>(players->size())) + L"§r/§e" + Number(maxPlayers)
                      + L"§r players online:");
     Tell(source, TargetSelector::Names(*players));
     return true;
@@ -1648,8 +1674,46 @@ void Run(boost::shared_ptr<ServerPlayer> player, const std::wstring& line)
     source.z = player->mZ;
     source.yRot = player->mYRot;
     source.xRot = player->mXRot;
+    source.console = false;
     if (!entry->run(source, words))
         Error(player, UsageError(*entry));
+}
+
+void RunConsole(const std::wstring& line)
+{
+    CommandSource source;
+    source.level = gMinecraftServer->getLevel(0);
+    const BlockPos spawn = source.level->getSharedSpawnPos();
+    source.x = spawn.x + 0.5;
+    source.y = spawn.y;
+    source.z = spawn.z + 0.5;
+    source.yRot = 0.0f;
+    source.xRot = 0.0f;
+    source.console = true;
+
+    const Words words = CommandArguments::Split(line.size() > 0 && line[0] == L'/' ? line.substr(1) : line);
+    if (words.empty())
+        return;
+    const std::wstring name = Lower(words[0]);
+    const Entry* entry = FindEntry(name);
+    if (entry == NULL)
+    {
+        Fail(source, L"Unknown command " + name + L". Type help for the commands.");
+        return;
+    }
+    if (!entry->run(source, words))
+        Fail(source, UsageError(*entry));
+}
+
+void SetConsoleOutput(void (*output)(const std::wstring& text))
+{
+    sConsoleOutput = output;
+}
+
+void Echo(const std::wstring& text)
+{
+    if (sConsoleOutput != NULL)
+        sConsoleOutput(text);
 }
 
 const CommandUsage* Usages(size_t* count)

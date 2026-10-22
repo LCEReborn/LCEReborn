@@ -32,6 +32,15 @@ struct FriendSessionSearchResult
 
 struct FriendSessionInfo
 {
+    enum EServerStatus
+    {
+        eServerStatus_Pinging,
+        eServerStatus_Online,
+        eServerStatus_Offline,
+        eServerStatus_ClientOutdated,
+        eServerStatus_ServerOutdated
+    };
+
     unsigned int m_sessionId;
     FriendSessionSearchResult m_searchResult;
     wchar_t* m_displayName;
@@ -40,12 +49,22 @@ struct FriendSessionInfo
     GameSessionData m_gameSessionData;
     bool m_statusFlag;
     int m_savedServer;
-    bool m_savedServerAnswered;
+    std::wstring m_motd;
+    unsigned char m_maxPlayers;
+    bool m_dedicated;
+    int m_serverStatus;
+    int m_pingMs;
+    unsigned int m_iconHash;
+    std::vector<unsigned char> m_icon;
 
     FriendSessionInfo() : m_gameSessionData()
     {
+        m_serverStatus = eServerStatus_Pinging;
+        m_pingMs = -1;
+        m_iconHash = 0;
+        m_maxPlayers = 0;
+        m_dedicated = false;
         m_savedServer = -1;
-        m_savedServerAnswered = false;
         m_displayNameLength = 0;
         m_statusFlag = false;
         m_displayName = 0;
@@ -107,6 +126,12 @@ public:
     virtual bool SetLocalGame(bool bLocalGame) = 0;
     virtual bool IsLocalGame() = 0;
     virtual unsigned short GetListenPort() = 0;
+    virtual void SetListenPort(unsigned short port) = 0;
+    virtual void SetMotd(const std::wstring& motd) = 0;
+    virtual void SetServerIcon(const std::vector<unsigned char>& icon, bool fixed) = 0;
+    virtual bool OpenToNetwork() = 0;
+    virtual void CloseToNetwork() = 0;
+    virtual void SetVisibleOnNetwork(bool visible) = 0;
     virtual void SetPrivateGame(bool bPrivateGame) = 0;
     virtual bool IsPrivateGame() = 0;
     virtual bool IsLeavingGame() = 0;
@@ -137,6 +162,7 @@ public:
     virtual std::vector<FriendSessionInfo*>* GetSessionList(int iUserIndex, int iMaxSessions, bool bFriendsOnly) = 0;
     virtual bool GetGameSessionInfo(int iUserIndex, unsigned int uiSessionId, FriendSessionInfo* pSessionInfo) = 0;
     virtual void SetSessionsUpdatedCallback(void (*pCallback)(void*), void* pCallbackData) = 0;
+    virtual unsigned int RememberServerAddress(const std::string& address) = 0;
     virtual void GetFullFriendSessionInfo(FriendSessionInfo* pSessionInfo, void (*pCallback)(bool, void*),
                                           void* pCallbackData) = 0;
     virtual void ForceFriendsSessionRefresh() = 0;

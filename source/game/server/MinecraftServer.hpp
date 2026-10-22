@@ -97,6 +97,7 @@ public:
     void broadcastStopSavingPacket();
     static unsigned long long main(long long seed, void* argument);
     static void HaltServer(bool primaryPlayerSignedOut);
+    static void SetConsoleCommandSource(bool (*nextCommand)(std::wstring& line));
     virtual void info(const std::wstring& message);
     virtual void warn(const std::wstring& message);
     virtual std::wstring getConsoleName();
@@ -145,6 +146,7 @@ private:
     static bool s_chunkPacketBudgetSpent;
     static std::vector<INetworkPlayer*> s_chunkPacketRecipients;
     static boost::unordered_map<std::wstring, int> s_countdownTimers;
+    static bool (*s_nextConsoleCommand)(std::wstring& line);
 
     ConsoleSchematicFile* schematicFiles[8];
     FillTool* fillTools[8];

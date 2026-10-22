@@ -60,6 +60,33 @@ const wchar_t* ExtraString(int id)
         return L"Reset to Defaults";
     case IDS_LCE_SHADER_APPLY:
         return L"Apply";
+    case IDS_LCE_ONLINE_SETTINGS:
+        return L"Online Settings";
+    case IDS_LCE_HOST_PRIVILEGES_WARNING:
+        return L"Turning on Host Privileges disables achievements for this world, even if you turn it off again "
+               L"later. Are you sure you want to continue?";
+    case IDS_LCE_TURN_ON:
+        return L"Turn On";
+    case IDS_LCE_GAME_MODE:
+        return L"Game Mode";
+    case IDS_LCE_CREATIVE_WARNING:
+        return L"Setting this world to Creative Mode disables achievements for it, even if you set it back to "
+               L"Survival Mode later. Are you sure you want to continue?";
+    case IDS_LCE_SET_TO_CREATIVE:
+        return L"Set to Creative";
+    case IDS_LCE_STOP_LAN_WORLD:
+        return L"Stop LAN World";
+    case IDS_LCE_STOP_LAN_WARNING:
+        return L"Players who joined over the network will be disconnected. Players on this console keep playing, "
+               L"and you can open the world to LAN again from the pause menu.";
+    case IDS_LCE_SERVER_PINGING:
+        return L"Pinging...";
+    case IDS_LCE_SERVER_CANT_CONNECT:
+        return L"Can't connect to server";
+    case IDS_LCE_CLIENT_OUT_OF_DATE:
+        return L"Client out of date!";
+    case IDS_LCE_SERVER_OUT_OF_DATE:
+        return L"Server out of date!";
     default:
         return NULL;
     }

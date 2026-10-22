@@ -31,10 +31,11 @@ public:
 
 struct Frame
 {
-    Frame() : channel(0) {}
+    Frame() : channel(0), receivedAt(0) {}
 
     unsigned char channel;
     std::vector<unsigned char> payload;
+    int64_t receivedAt;
 };
 
 int64_t NowMs();
@@ -60,6 +61,7 @@ public:
     unsigned int SystemId() const { return m_systemId; }
     Address Peer();
     int64_t OpenedAt() const { return m_openedAt; }
+    int64_t ConnectedAt();
     size_t QueuedFrames();
     size_t QueuedBytes();
 
@@ -93,6 +95,7 @@ private:
     bool m_closed;
     bool m_flushThenClose;
     int64_t m_openedAt;
+    int64_t m_connectedAt;
     size_t m_queuedBytes;
     std::deque<std::vector<unsigned char> > m_outbox;
     std::deque<Frame> m_inbox;

@@ -18,7 +18,11 @@ public:
         SIMULATION_DISTANCE_DEFAULT = 10,
         SIMULATION_DISTANCE_MAX = 32,
         BIOME_BLEND_DEFAULT = 1,
-        BIOME_BLEND_MAX = 7
+        BIOME_BLEND_MAX = 7,
+        HOST_PORT_MIN = 1024,
+        HOST_PORT_DEFAULT = 25570,
+        HOST_PORT_MAX = 65535,
+        HOST_MESSAGE_MAX = 64
     };
 
     enum EParticles
@@ -30,7 +34,6 @@ public:
     };
 
     static int GetFov();
-    static void SetFov(int fov);
     static int GetRenderDistance();
     static void SetRenderDistance(int chunks);
     static int GetViewDistanceForPlayers(int players);
@@ -44,6 +47,12 @@ public:
     static void SetParticles(int particles);
     static int GetBiomeBlend();
     static void SetBiomeBlend(int radius);
+    static int GetHostPort();
+    static void SetHostPort(int port);
+    static std::wstring GetHostMessage();
+    static void SetHostMessage(const std::wstring& message);
+    static bool GetHostVisible();
+    static void SetHostVisible(bool visible);
 
     static void Load(const std::string& path);
     static void Apply();
@@ -59,6 +68,9 @@ private:
     static bool sSmoothLighting;
     static int sParticles;
     static int sBiomeBlend;
+    static int sHostPort;
+    static std::wstring sHostMessage;
+    static bool sHostVisible;
     static std::string sPath;
 };
 

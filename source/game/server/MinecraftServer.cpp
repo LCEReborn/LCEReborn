@@ -7,6 +7,7 @@
 
 #include "game/client/render/GameRenderer.hpp"
 #include "game/client/render/ProgressRenderer.hpp"
+#include "game/command/ChatCommands.hpp"
 #include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/core/CMinecraftApp.hpp"
 #include "game/core/CTelemetryManager.hpp"
@@ -97,6 +98,7 @@ long long MinecraftServer::s_chunkPacketTickStart = 0;
 bool MinecraftServer::s_chunkPacketBudgetSpent = false;
 std::vector<INetworkPlayer*> MinecraftServer::s_chunkPacketRecipients;
 boost::unordered_map<std::wstring, int> MinecraftServer::s_countdownTimers;
+bool (*MinecraftServer::s_nextConsoleCommand)(std::wstring& line) = 0;
 
 MinecraftServer::MinecraftServer()
 {
@@ -675,7 +677,8 @@ void MinecraftServer::saveAllChunks()
 
 void MinecraftServer::stopServer(bool didInit)
 {
-    Minecraft::GetInstance()->mGameRenderer->DisableUpdateThread(0);
+    if (Minecraft::GetInstance()->mGameRenderer != 0)
+        Minecraft::GetInstance()->mGameRenderer->DisableUpdateThread(0);
     mConnection->stop();
 
     if (!s_primaryPlayerSignedOut && gProfile->IsSignedIn(gProfile->GetPrimaryPad()) && saveOnExit
@@ -1117,11 +1120,27 @@ void MinecraftServer::run(long long seed, void* argument)
                     mPlayers->broadcastAll(boost::shared_ptr<ServerSettingsChangedPacket>(
                         new ServerSettingsChangedPacket(0, gApp.GetGameHostOption(eGameHostOption_Gamertags))));
                     break;
+                case eXuiServerAction_CloseToNetwork:
+                {
+                    CGameNetworkManager::sInstance.CloseToNetwork();
+                    std::vector<boost::shared_ptr<ServerPlayer> > players = mPlayers->mPlayers;
+                    for (unsigned int i = 0; i < players.size(); ++i)
+                    {
+                        boost::shared_ptr<ServerGamePacketListenerImpl> connection = players[i]->mConnection;
+                        if (connection != NULL && !connection->isLocal())
+                            connection->send(boost::shared_ptr<Packet>(
+                                new DisconnectPacket(DisconnectPacket::eDisconnectReason_Quit)));
+                    }
+                    break;
+                }
                 default:
                     break;
                 }
                 gApp.SetXuiServerAction(pad, eXuiServerAction_Idle, 0);
             }
+            std::wstring consoleCommand;
+            while (s_nextConsoleCommand != 0 && s_nextConsoleCommand(consoleCommand))
+                ChatCommands::RunConsole(consoleCommand);
             Sleep(1);
         }
     }
@@ -1152,6 +1171,11 @@ unsigned long long MinecraftServer::main(long long seed, void* argument)
     gMinecraftServer = 0;
     ShutdownManager::HasFinished(ShutdownManager::eThreadId_ServerMain);
     return 0;
+}
+
+void MinecraftServer::SetConsoleCommandSource(bool (*nextCommand)(std::wstring& line))
+{
+    s_nextConsoleCommand = nextCommand;
 }
 
 void MinecraftServer::HaltServer(bool primaryPlayerSignedOut)

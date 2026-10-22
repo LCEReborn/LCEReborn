@@ -4,5 +4,6 @@
 class BufferedImage;
 
 BufferedImage* PcRenderAvatarHead(int quadrant, int size);
+BufferedImage* PcRenderSkinHead(unsigned int skinId, int defaultIndex, int size);
 
 #endif

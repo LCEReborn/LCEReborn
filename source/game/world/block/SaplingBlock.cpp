@@ -64,7 +64,8 @@ bool SaplingBlock::isValidBonemealTarget(Level*, const BlockPos&, const BlockSta
 bool SaplingBlock::isBonemealSuccess(Level* level, Random*, const BlockPos&, const BlockState*)
 {
     bool success = true;
-    if (!((GameMode*)Minecraft::GetInstance()->mGameMode)->isCreative())
+    GameMode* gameMode = (GameMode*)Minecraft::GetInstance()->mGameMode;
+    if (gameMode == NULL || !gameMode->isCreative())
         success = (double)level->mRandom->nextFloat() < 0.45;
     return success;
 }
@@ -249,7 +250,8 @@ void SaplingBlock::growTree(Level* level, const BlockPos& pos, const BlockState*
 
 void SaplingBlock::performBonemeal(Level* level, Random* random, const BlockPos& pos, const BlockState* state)
 {
-    if (((GameMode*)Minecraft::GetInstance()->mGameMode)->isCreative())
+    GameMode* gameMode = (GameMode*)Minecraft::GetInstance()->mGameMode;
+    if (gameMode != NULL && gameMode->isCreative())
         growTree(level, pos, state, random, false);
     else
         advanceTree(level, pos, state, random);

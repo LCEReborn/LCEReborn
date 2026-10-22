@@ -359,7 +359,6 @@ Minecraft::Minecraft(Component* parent, Canvas* canvas, MinecraftApplet* applet,
     mTutorialPlayers = 0;
     mAnimateTickLevel = NULL;
     mReloadTextures = false;
-    mSoundEngine->init(NULL);
 
     mClientMasterGameMode = new ClientMasterGameMode();
     mGhostController = NULL;
@@ -489,6 +488,7 @@ void Minecraft::setScreen(Screen* screen)
 
 void Minecraft::init()
 {
+    mSoundEngine->init(NULL);
     mWorkingDirectory = File(L"");
     mLevelSource = new McRegionLevelStorageSource(File(mWorkingDirectory, L"saves"), getFixerUpper());
     mOptions = new Options(this, mWorkingDirectory);
@@ -558,6 +558,17 @@ void Minecraft::init()
 
     mProgressRenderer = new ProgressRenderer(this);
     gRenderer->CBuffLockStaticCreations();
+}
+
+void Minecraft::initHeadless()
+{
+    mWorkingDirectory = File(L"");
+    mTexturePackRepository = new TexturePackRepository(mWorkingDirectory, this);
+    mStats[0] = new StatsCounter();
+    mStats[1] = new StatsCounter();
+    mStats[2] = new StatsCounter();
+    mStats[3] = new StatsCounter();
+    mProgressRenderer = new ProgressRenderer(this);
 }
 
 void Minecraft::run()
@@ -3099,6 +3110,31 @@ void Minecraft::main()
     MiniGameDef::StaticCtor();
 
     GetInstance()->mMiniGame = MiniGameDef::GetCustomGameModeById(eMiniGameId_Any, true);
+    ClientPacketListener::staticCtor();
+}
+
+void Minecraft::mainHeadless()
+{
+    sStaticsInitialised = true;
+
+    MinecraftWorld_RunStaticCtors();
+    User::staticCtor();
+    Tutorial::staticCtor();
+    ColourTable::staticCtor();
+    StructureManager::staticCtor();
+    gApp.loadDefaultGameRules();
+
+    Minecraft* minecraft = new Minecraft(NULL, NULL, NULL, 0x500, 0x2d0, false);
+    minecraft->mUser = new User(L"Server", L"");
+    minecraft->initHeadless();
+
+    ParticleType::staticCtor();
+    MasterGameMode::StaticCtor();
+    MiniGameMedals::staticCtor();
+    CMinecraftApp::StaticCtor();
+    MiniGameDef::StaticCtor();
+
+    minecraft->mMiniGame = MiniGameDef::GetCustomGameModeById(eMiniGameId_Any, true);
     ClientPacketListener::staticCtor();
 }
 

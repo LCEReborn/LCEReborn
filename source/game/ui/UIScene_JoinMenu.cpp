@@ -17,8 +17,98 @@
 #include "game/ui/UILayer.hpp"
 #include "game/ui/fuiFile.hpp"
 #include "game/core/GameSettings.hpp"
+#include <cwctype>
 #include "game/core/IUIScene_LoadCreateJoin.hpp"
 #include "game/core/StringFormat.hpp"
+#include "game/core/StringUtils.hpp"
+
+namespace
+{
+std::wstring MotdHtml(const std::wstring& motd)
+{
+    std::wstring html;
+    std::wstring run;
+    eMinecraftColour colour = eMinecraftColour_NOTSET;
+    int hexColour = -1;
+    for (size_t index = 0; index <= motd.size(); ++index)
+    {
+        const wchar_t character = index < motd.size() ? motd[index] : L'\n';
+        const bool code = character == 0xA7 && index + 1 < motd.size();
+        if ((code || character == L'\n') && !run.empty())
+        {
+            if (hexColour >= 0)
+                html += formatwstr(L"<font color=\"#%06x\">", hexColour) + escapeXML(run) + L"</font>";
+            else
+                html += HtmlString(run, colour, false, false, 0).ToString();
+            run.clear();
+        }
+        if (code)
+        {
+            const wchar_t value = static_cast<wchar_t>(towlower(motd[++index]));
+            if (value == L'x' && index + 12 < motd.size())
+            {
+                int rgb = 0;
+                bool valid = true;
+                for (size_t digit = 0; digit < 6 && valid; ++digit)
+                {
+                    const wchar_t hex = static_cast<wchar_t>(towlower(motd[index + 2 + digit * 2]));
+                    valid = motd[index + 1 + digit * 2] == 0xA7 && iswxdigit(hex);
+                    rgb = (rgb << 4) | (hex <= L'9' ? hex - L'0' : hex - L'a' + 10);
+                }
+                if (valid)
+                {
+                    hexColour = rgb;
+                    index += 12;
+                }
+            }
+            else if (value >= L'0' && value <= L'9')
+            {
+                colour = static_cast<eMinecraftColour>(eMinecraftColour_HTMLColor_0 + (value - L'0'));
+                hexColour = -1;
+            }
+            else if (value >= L'a' && value <= L'f')
+            {
+                colour = static_cast<eMinecraftColour>(eMinecraftColour_HTMLColor_a + (value - L'a'));
+                hexColour = -1;
+            }
+            else if (value == L'r')
+            {
+                colour = eMinecraftColour_NOTSET;
+                hexColour = -1;
+            }
+        }
+        else if (character == L'\n')
+        {
+            if (index < motd.size())
+                html += L"<br>";
+        }
+        else if (character != 0xA7)
+        {
+            run.push_back(character);
+        }
+    }
+    return html;
+}
+
+std::wstring SessionInfoHtml(const FriendSessionInfo* info, std::vector<HtmlString>& descriptions)
+{
+    int players = info->m_gameSessionData.m_numPlayers;
+    int maxPlayers = info->m_maxPlayers;
+    if (info->m_dedicated)
+    {
+        players = players > 0 ? players - 1 : 0;
+        maxPlayers = maxPlayers > 0 ? maxPlayers - 1 : 0;
+    }
+    std::wstring count = maxPlayers > 0 ? formatwstr(L"%d/%d", players, maxPlayers) : formatwstr(L"%d", players);
+    descriptions.insert(descriptions.begin(),
+                        HtmlString(formatwstr(L"%ls: %ls", L10N::GetString(IDS_PLAYERS), count.c_str()),
+                                   eMinecraftColour_NOTSET, false, false, 0));
+    std::wstring html = MotdHtml(info->m_motd);
+    if (!html.empty())
+        html += L"<br><br>";
+    return html + HtmlString::Compose(&descriptions);
+}
+}
 
 UIScene_JoinMenu::UIScene_JoinMenu(int sceneType, void* data, UILayer* layer) : UIScene(sceneType, layer)
 {
@@ -154,6 +244,8 @@ void UIScene_JoinMenu::tick()
             if (m_friendSessionInfo->m_gameSessionData.m_playerGamertags[i] != GameSessionData::Gamertag())
             {
                 const char* playerName = m_friendSessionInfo->m_gameSessionData.m_playerGamertags[i].m_name;
+                if (m_friendSessionInfo->m_dedicated && i == 0)
+                    continue;
                 wchar_t displayName[32];
                 char gamertag[32];
                 if (strcmp(playerName, m_friendSessionInfo->m_gameSessionData.m_hostGamertag.m_name) == 0)
@@ -184,7 +276,7 @@ void UIScene_JoinMenu::tick()
             MiniGameDef* miniGame = MiniGameDef::GetCustomGameModeById(miniGameId, true);
             miniGame->GetGameSettingsDescription(descriptions,
                                                  m_friendSessionInfo->m_gameSessionData.m_customGameModeHostOptions);
-            m_gameInfo.setLabel(UIString(HtmlString::Compose(&descriptions)), false, false);
+            m_gameInfo.setLabel(UIString(SessionInfoHtml(m_friendSessionInfo, descriptions)), false, false);
         }
         else
         {
@@ -208,7 +300,7 @@ void UIScene_JoinMenu::tick()
             AddDescriptionForOption(descriptions, eGameHostOption_TrustPlayers, hostOptions);
             AddDescriptionForOption(descriptions, eGameHostOption_TNT, hostOptions);
             AddDescriptionForOption(descriptions, eGameHostOption_FireSpreads, hostOptions);
-            m_gameInfo.setLabel(UIString(HtmlString::Compose(&descriptions)), false, false);
+            m_gameInfo.setLabel(UIString(SessionInfoHtml(m_friendSessionInfo, descriptions)), false, false);
         }
         m_joining = false;
         gApp.SetLiveLinkRequired(true);

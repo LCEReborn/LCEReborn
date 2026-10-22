@@ -4849,7 +4849,8 @@ std::vector<AABB*>* Level::getCollisionAABBs(boost::shared_ptr<Entity> entity, c
     mCollisionBoxes.reserve(8);
     internalGetCollisionAABBs(entity, box, false, &mCollisionBoxes, noEntities, includePlayerConstraints, forParticles);
     PIXBeginNamedEvent(0.0f, "Update level renderer");
-    Minecraft::GetInstance()->mLevelRenderer->mDestroyedBlocks->addAABBs(this, box, &mCollisionBoxes);
+    if (mIsClientSide)
+        Minecraft::GetInstance()->mLevelRenderer->mDestroyedBlocks->addAABBs(this, box, &mCollisionBoxes);
     PIXEndNamedEvent();
     if (!noEntities)
     {

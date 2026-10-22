@@ -60,7 +60,7 @@ static const Logger sLog("Main");
 int main(int argc, char** argv)
 {
     int exitCode;
-    if (!PcParseLaunchOptions(argc, argv, exitCode))
+    if (!PcParseLaunchOptions(argc, argv, exitCode, PcProgram::Game))
         return exitCode;
 
     C4JThreadImpl::SetMainThreadID();

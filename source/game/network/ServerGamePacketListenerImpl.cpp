@@ -104,6 +104,8 @@
 #include "game/ui/MerchantMenu.hpp"
 #include "game/world/Level.hpp"
 #include "game/world/LevelData.hpp"
+#include "game/command/DefaultGameModeCommand.hpp"
+#include "game/core/GameType.hpp"
 #include "game/world/block/Blocks.hpp"
 #include "game/world/block/Material.hpp"
 #include "game/world/DimensionType.hpp"
@@ -778,6 +780,7 @@ void ServerGamePacketListenerImpl::handleChat(boost::shared_ptr<ServerboundChatP
     std::wstring strings[2] = {mPlayer->getName(), formatted};
     mServer->getPlayers()->broadcastAll(boost::shared_ptr<Packet>(
         new ClientboundChatPacket(ClientboundChatPacket::eChatPacketMessage_PlayerChat, NULL, 0, strings, 2)));
+    ChatCommands::Echo(L"<" + mPlayer->getName() + L"> " + formatted);
 }
 void ServerGamePacketListenerImpl::handleAnimate(boost::shared_ptr<ServerboundSwingPacket> packet)
 {
@@ -1583,7 +1586,56 @@ void ServerGamePacketListenerImpl::handleServerSettingsChanged(boost::shared_ptr
             mServer->getPlayers()->broadcastAll(boost::shared_ptr<Packet>(new ServerSettingsChangedPacket(1, value)));
             CGameNetworkManager::sInstance.UpdateAndSetGameSessionData(0);
         }
+        return;
     }
+
+    INetworkPlayer* networkPlayer = getNetworkPlayer();
+    if (networkPlayer == 0 || !networkPlayer->IsHost())
+        return;
+    if (packet->mSetting == ServerSettingsChangedPacket::eSetting_HostPrivileges)
+    {
+        const unsigned int enabled = packet->mValue != 0 ? 1 : 0;
+        gApp.SetGameHostOption(eGameHostOption_CheatsEnabled, enabled);
+        gApp.SetGameHostOption(eGameHostOption_HostCanFly, enabled);
+        gApp.SetGameHostOption(eGameHostOption_HostCanChangeHunger, enabled);
+        gApp.SetGameHostOption(eGameHostOption_HostCanBeInvisible, enabled);
+        if (enabled != 0)
+        {
+            DisableAchievements();
+        }
+        else
+        {
+            gApp.SetGameHostOption(eGameHostOption_KeepInventory, 0);
+            gApp.SetGameHostOption(eGameHostOption_MobGriefing, 1);
+            gApp.SetGameHostOption(eGameHostOption_DoMobSpawning, 1);
+            gApp.SetGameHostOption(eGameHostOption_DoDaylightCycle, 1);
+        }
+    }
+    else if (packet->mSetting == ServerSettingsChangedPacket::eSetting_DefaultGameMode)
+    {
+        const GameType* gameType = GameType::byId(static_cast<int>(packet->mValue));
+        if (gameType == NULL || gameType->getId() > GameType::ADVENTURE->getId())
+            return;
+        DefaultGameModeCommand::doSetGameType(gameType);
+        gApp.SetGameHostOption(eGameHostOption_GameType, gameType->getId());
+        if (gameType == GameType::CREATIVE)
+            DisableAchievements();
+    }
+    else
+    {
+        return;
+    }
+    mServer->getPlayers()->broadcastAll(boost::shared_ptr<Packet>(new ServerSettingsChangedPacket(
+        ServerSettingsChangedPacket::eSetting_HostOptions, gApp.GetGameHostOption(eGameHostOption_All))));
+    CGameNetworkManager::sInstance.UpdateAndSetGameSessionData(0);
+}
+
+void ServerGamePacketListenerImpl::DisableAchievements()
+{
+    gApp.SetGameHostOption(eGameHostOption_HasBeenInCreative, 1);
+    for (unsigned int index = 0; index < mServer->mLevels.length; ++index)
+        if (mServer->mLevels.data[index] != NULL)
+            mServer->mLevels.data[index]->getLevelData()->setHasBeenInCreative(true);
 }
 void ServerGamePacketListenerImpl::handleKickPlayer(boost::shared_ptr<KickPlayerPacket> packet)
 {

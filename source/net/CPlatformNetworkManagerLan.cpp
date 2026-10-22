@@ -49,6 +49,48 @@ void CopyGamertag(GameSessionData::Gamertag& gamertag, const wchar_t* name)
     for (unsigned int index = 0; index + 1 < sizeof(gamertag.m_name) && name[index] != 0; ++index)
         gamertag.m_name[index] = name[index] < 0x80 ? (char)name[index] : '?';
 }
+
+void CopySessionDetails(FriendSessionInfo* info, const lcenet::SessionDescription& session)
+{
+    info->m_gameSessionData = session.data;
+    info->m_motd = session.motd;
+    info->m_icon = session.icon;
+    info->m_iconHash = session.icon.empty() ? 0 : lcenet::DetailsHash(std::wstring(), session.icon);
+    info->m_maxPlayers = session.maxPlayers;
+    info->m_dedicated = session.dedicated;
+}
+
+void MergeBeaconSession(lcenet::SessionDescription& known, const lcenet::SessionDescription& beacon)
+{
+    const bool keepDetails = known.hasDetails && known.detailsHash == beacon.detailsHash;
+    std::wstring motd;
+    std::vector<unsigned char> icon;
+    if (keepDetails)
+    {
+        motd.swap(known.motd);
+        icon.swap(known.icon);
+    }
+    known = beacon;
+    if (keepDetails)
+    {
+        known.motd.swap(motd);
+        known.icon.swap(icon);
+        known.hasDetails = true;
+    }
+}
+
+int PingLevel(int pingMs)
+{
+    if (pingMs < 0)
+        return -1;
+    if (pingMs < 150)
+        return 0;
+    if (pingMs < 300)
+        return 1;
+    if (pingMs < 600)
+        return 2;
+    return pingMs < 1000 ? 3 : 4;
+}
 }
 
 CPlatformNetworkManagerLan::CPlatformNetworkManagerLan()
@@ -75,6 +117,7 @@ CPlatformNetworkManagerLan::CPlatformNetworkManagerLan()
       m_acceptThread(0),
       m_acceptStop(false),
       m_listening(false),
+      m_listenPort(lcenet::kDefaultPort),
       m_nextSystemId(1),
       m_sessionNonce(0),
       m_hostLink(0),
@@ -84,7 +127,8 @@ CPlatformNetworkManagerLan::CPlatformNetworkManagerLan()
       m_beaconUpdated(0),
       m_scannerRevision(0),
       m_probeRevision(0),
-      m_reportedProbeRevision(0)
+      m_reportedProbeRevision(0),
+      m_serverIconFixed(false)
 {
     InitializeCriticalSection(&m_lock);
     InitializeCriticalSection(&m_acceptLock);
@@ -113,7 +157,7 @@ void CPlatformNetworkManagerLan::Initialise(CGameNetworkManager* manager, int)
     LeaveCriticalSection(&m_lock);
     gProfile->SetNetworkStatusWithoutSigninChange(true);
     lcenet::Startup();
-    NET_LOG_INFO("LAN and internet play ready (port %u)", (unsigned int)lcenet::kDefaultPort);
+    NET_LOG_INFO("LAN and internet play ready (port %u)", (unsigned int)m_listenPort);
 }
 
 void CPlatformNetworkManagerLan::Terminate()
@@ -532,7 +576,69 @@ bool CPlatformNetworkManagerLan::IsLocalGame()
 
 unsigned short CPlatformNetworkManagerLan::GetListenPort()
 {
-    return m_listening ? lcenet::kDefaultPort : 0;
+    return m_listening ? m_listenPort : 0;
+}
+
+void CPlatformNetworkManagerLan::SetListenPort(unsigned short port)
+{
+    EnterCriticalSection(&m_lock);
+    if (!m_listening)
+        m_listenPort = port;
+    LeaveCriticalSection(&m_lock);
+}
+
+bool CPlatformNetworkManagerLan::OpenToNetwork()
+{
+    EnterCriticalSection(&m_lock);
+    if (m_host && m_localGame && m_internalState == eState_Playing)
+    {
+        StartListening();
+        if (m_listening)
+        {
+            m_localGame = false;
+            m_sessionData.m_bPublicGame = !m_privateGame;
+        }
+    }
+    const bool open = m_host && !m_localGame && m_listening;
+    LeaveCriticalSection(&m_lock);
+    return open;
+}
+
+void CPlatformNetworkManagerLan::CloseToNetwork()
+{
+    EnterCriticalSection(&m_lock);
+    if (m_host && !m_localGame)
+    {
+        StopListening();
+        m_localGame = true;
+    }
+    LeaveCriticalSection(&m_lock);
+}
+
+void CPlatformNetworkManagerLan::SetVisibleOnNetwork(bool visible)
+{
+    EnterCriticalSection(&m_lock);
+    m_privateGame = !visible;
+    m_sessionData.m_bPublicGame = visible;
+    LeaveCriticalSection(&m_lock);
+}
+
+void CPlatformNetworkManagerLan::SetMotd(const std::wstring& motd)
+{
+    EnterCriticalSection(&m_lock);
+    m_motd = motd;
+    LeaveCriticalSection(&m_lock);
+}
+
+void CPlatformNetworkManagerLan::SetServerIcon(const std::vector<unsigned char>& icon, bool fixed)
+{
+    EnterCriticalSection(&m_lock);
+    if (fixed || !m_serverIconFixed)
+    {
+        m_serverIcon = icon.size() <= lcenet::kMaxIconSize ? icon : std::vector<unsigned char>();
+        m_serverIconFixed = fixed && !m_serverIcon.empty();
+    }
+    LeaveCriticalSection(&m_lock);
 }
 
 void CPlatformNetworkManagerLan::SetPrivateGame(bool privateGame)
@@ -774,10 +880,11 @@ std::vector<FriendSessionInfo*>* CPlatformNetworkManagerLan::GetSessionList(int,
         info->m_searchResult.m_sessionId = id;
         info->m_savedServer = (int)index;
         KnownSession* known = FindKnownSession(id);
-        if (known != 0 && known->answered)
+        if (known != 0)
         {
-            info->m_gameSessionData = known->session.data;
-            info->m_savedServerAnswered = true;
+            info->m_serverStatus = known->status;
+            info->m_pingMs = known->pingMs;
+            CopySessionDetails(info, known->session);
         }
         sessions->push_back(info);
     }
@@ -798,7 +905,10 @@ std::vector<FriendSessionInfo*>* CPlatformNetworkManagerLan::GetSessionList(int,
         info->m_searchResult.m_sessionId = id;
         std::string ownerName = Narrow(name);
         ownerName.copy(info->m_searchResult.m_ownerName, sizeof(info->m_searchResult.m_ownerName) - 1);
-        info->m_gameSessionData = data;
+        KnownSession* known = FindKnownSession(id);
+        CopySessionDetails(info, known != 0 ? known->session : found[index].session);
+        info->m_serverStatus = FriendSessionInfo::eServerStatus_Online;
+        info->m_pingMs = known != 0 ? known->pingMs : -1;
         sessions->push_back(info);
     }
     LeaveCriticalSection(&m_lock);
@@ -843,8 +953,8 @@ void CPlatformNetworkManagerLan::GetFullFriendSessionInfo(FriendSessionInfo* inf
         for (unsigned int index = 0; index < found.size(); ++index)
             if (found[index].session.nonce == known->session.nonce
                 && found[index].address.port == known->address.port)
-                known->session = found[index].session;
-        info->m_gameSessionData = known->session.data;
+                MergeBeaconSession(known->session, found[index].session);
+        CopySessionDetails(info, known->session);
         query.found = true;
     }
     else if (known != 0)
@@ -880,12 +990,24 @@ void CPlatformNetworkManagerLan::StartSessionQuery(KnownSession& known, FriendSe
 void CPlatformNetworkManagerLan::ProbeSavedServers()
 {
     const std::vector<lcenet::SavedServer>& servers = lcenet::SavedServers().Servers();
+    std::vector<lcenet::LanSession> found = m_scanner.Sessions();
     int64_t now = lcenet::NowMs();
     EnterCriticalSection(&m_lock);
     for (unsigned int index = 0; index < servers.size(); ++index)
     {
         KnownSession* known = FindKnownSession(RememberServer(lcenet::NarrowAddress(servers[index].address)));
         if (known == 0 || known->probing)
+            continue;
+        if (known->lastProbe != 0 && now - known->lastProbe < cServerProbeIntervalMs)
+            continue;
+        StartSessionQuery(*known, 0, 0, 0);
+    }
+    for (unsigned int index = 0; index < found.size(); ++index)
+    {
+        KnownSession* known = FindKnownSession(RememberLanSession(found[index]));
+        if (known == 0 || known->probing)
+            continue;
+        if (known->session.hasDetails && known->session.detailsHash == found[index].session.detailsHash)
             continue;
         if (known->lastProbe != 0 && now - known->lastProbe < cServerProbeIntervalMs)
             continue;
@@ -1521,7 +1643,7 @@ void CPlatformNetworkManagerLan::StartListening()
     if (m_listening)
         return;
     std::string error;
-    if (!m_listenSocket.Listen(lcenet::kDefaultPort, error))
+    if (!m_listenSocket.Listen(m_listenPort, error))
     {
         NET_LOG_WARN("Other players can't join this game: %s", error.c_str());
         return;
@@ -1530,7 +1652,7 @@ void CPlatformNetworkManagerLan::StartListening()
     m_acceptStop = false;
     m_acceptThread = new C4JThreadImpl(&CPlatformNetworkManagerLan::AcceptEntry, this, "NetAccept", 0x10000);
     m_acceptThread->Run();
-    NET_LOG_INFO("Accepting players on port %u", (unsigned int)lcenet::kDefaultPort);
+    NET_LOG_INFO("Accepting players on port %u", (unsigned int)m_listenPort);
 }
 
 void CPlatformNetworkManagerLan::StopListening()
@@ -1814,7 +1936,7 @@ void CPlatformNetworkManagerLan::HostHandleLeave(lcenet::Link* link, const std::
 void CPlatformNetworkManagerLan::HostHandleQuery(lcenet::Link* link)
 {
     lcenet::ByteWriter writer;
-    lcenet::WriteSession(writer, DescribeSession());
+    lcenet::WriteSession(writer, DescribeSession(), true);
     link->SendControl(lcenet::kChannelSessionInfo, writer.Data());
     for (unsigned int index = 0; index < m_systems.size(); ++index)
     {
@@ -2140,23 +2262,42 @@ void CPlatformNetworkManagerLan::UpdateSessionQueries()
                     continue;
                 lcenet::ByteReader reader(frame.payload);
                 lcenet::SessionDescription session;
-                if (lcenet::ReadSession(reader, session))
+                unsigned int version = 0;
+                KnownSession* known = FindKnownSession(query.knownId);
+                if (lcenet::ReadSession(reader, session, &version))
                 {
                     if (query.info != 0)
-                        query.info->m_gameSessionData = session.data;
-                    KnownSession* known = FindKnownSession(query.knownId);
+                        CopySessionDetails(query.info, session);
                     if (known != 0)
                     {
                         lcenet::ByteWriter before;
                         lcenet::ByteWriter after;
-                        lcenet::WriteSession(before, known->session);
-                        lcenet::WriteSession(after, session);
-                        if (!known->answered || before.Data() != after.Data())
+                        lcenet::WriteSession(before, known->session, true);
+                        lcenet::WriteSession(after, session, true);
+                        const int64_t connectedAt = query.link->ConnectedAt();
+                        const int pingMs = connectedAt != 0 && frame.receivedAt >= connectedAt
+                                               ? static_cast<int>(frame.receivedAt - connectedAt)
+                                               : -1;
+                        if (!known->answered || before.Data() != after.Data()
+                            || known->status != FriendSessionInfo::eServerStatus_Online
+                            || PingLevel(known->pingMs) != PingLevel(pingMs))
                             ++m_probeRevision;
                         known->session = session;
                         known->answered = true;
+                        known->status = FriendSessionInfo::eServerStatus_Online;
+                        known->pingMs = pingMs;
                     }
                     query.found = true;
+                }
+                else if (known != 0 && version != 0)
+                {
+                    const int status = version > lcenet::kProtocolVersion
+                                           ? FriendSessionInfo::eServerStatus_ClientOutdated
+                                           : FriendSessionInfo::eServerStatus_ServerOutdated;
+                    if (known->status != status)
+                        ++m_probeRevision;
+                    known->status = status;
+                    known->pingMs = -1;
                 }
                 query.finished = true;
             }
@@ -2166,12 +2307,20 @@ void CPlatformNetworkManagerLan::UpdateSessionQueries()
         if (query.finished)
         {
             KnownSession* known = query.link != 0 ? FindKnownSession(query.knownId) : 0;
-            if (known != 0 && !known->lan)
+            if (known != 0)
             {
-                if (!query.found && known->answered)
+                if (!known->lan && !query.found)
                 {
+                    const bool incompatible = known->status == FriendSessionInfo::eServerStatus_ClientOutdated
+                                              || known->status == FriendSessionInfo::eServerStatus_ServerOutdated;
+                    if (known->answered || (!incompatible && known->status != FriendSessionInfo::eServerStatus_Offline))
+                        ++m_probeRevision;
                     known->answered = false;
-                    ++m_probeRevision;
+                    if (!incompatible)
+                    {
+                        known->status = FriendSessionInfo::eServerStatus_Offline;
+                        known->pingMs = -1;
+                    }
                 }
                 known->probing = false;
                 known->lastProbe = now;
@@ -2211,12 +2360,18 @@ void CPlatformNetworkManagerLan::UpdateLanSessions()
 lcenet::SessionDescription CPlatformNetworkManagerLan::DescribeSession()
 {
     lcenet::SessionDescription session;
-    session.port = lcenet::kDefaultPort;
+    session.port = m_listenPort;
     session.nonce = m_sessionNonce;
     if (!m_roomPlayers.empty())
         session.hostName = m_roomPlayers[0]->GetOnlineName();
     session.data = m_sessionData;
     CopyGamertag(session.data.m_hostGamertag, session.hostName.c_str());
+    session.motd = m_motd;
+    session.icon = m_serverIcon;
+    session.detailsHash = lcenet::DetailsHash(session.motd, session.icon);
+    session.hasDetails = true;
+    session.maxPlayers = static_cast<unsigned char>(CGameNetworkManager::sInstance.GetMaxPlayers());
+    session.dedicated = CMinecraftApp::IsDedicatedServer();
     return session;
 }
 
@@ -2236,7 +2391,8 @@ unsigned int CPlatformNetworkManagerLan::RememberLanSession(const lcenet::LanSes
         if (known.lan && known.session.nonce == session.session.nonce && known.address.port == session.address.port)
         {
             known.address = session.address;
-            known.session = session.session;
+            known.addressText = session.address.Text();
+            MergeBeaconSession(known.session, session.session);
             return known.id;
         }
     }
@@ -2246,8 +2402,17 @@ unsigned int CPlatformNetworkManagerLan::RememberLanSession(const lcenet::LanSes
     known.address = session.address;
     known.addressText = session.address.Text();
     known.session = session.session;
+    known.status = FriendSessionInfo::eServerStatus_Online;
     m_knownSessions.push_back(known);
     return known.id;
+}
+
+unsigned int CPlatformNetworkManagerLan::RememberServerAddress(const std::string& address)
+{
+    EnterCriticalSection(&m_lock);
+    unsigned int id = RememberServer(address);
+    LeaveCriticalSection(&m_lock);
+    return id;
 }
 
 unsigned int CPlatformNetworkManagerLan::RememberServer(const std::string& address)

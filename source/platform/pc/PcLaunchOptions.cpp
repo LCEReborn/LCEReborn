@@ -38,8 +38,19 @@ static std::vector<std::string> CommandLineArguments(int argc, char** argv)
     return arguments;
 }
 
-static void PrintUsage(std::FILE* stream)
+static void PrintUsage(std::FILE* stream, PcProgram program)
 {
+    if (program == PcProgram::Server)
+    {
+        std::fputs("Usage: LCERebornServer [options]\n"
+                   "  --content-dir <dir>         game content (default: assets in the working folder)\n"
+                   "  --save-dir <dir>            worlds, server.properties and server-icon.png (default: saves in the\n"
+                   "                              working folder)\n"
+                   "  --log-dir <dir>             logs (default: logs in the working folder)\n"
+                   "  --help                      show this message\n",
+                   stream);
+        return;
+    }
     std::fputs("Usage: LCEReborn [options]\n"
                "  --username <name>           player name\n"
                "  --uuid <uuid>               player identity, 32 hex digits (default: made from the name)\n"
@@ -52,6 +63,7 @@ static void PrintUsage(std::FILE* stream)
                "  --split-screen <on|off>     other controllers can join as more players (default: on)\n"
                "  --join-prompt <on|off>      prompt other controllers to join when a world loads (default: off)\n"
                "  --world <folder>            load this save from the saves folder's games folder at start\n"
+               "  --join <address>            join the game at this address (host or host:port) at start\n"
                "  --discord-app <id>          show what you are doing in Discord, through this Discord application\n"
                "  --profiles <file>           the launcher's profiles, offered to split-screen players who join\n",
                stream);
@@ -66,7 +78,7 @@ static void PrintUsage(std::FILE* stream)
     std::fputs("  --help                      show this message\n", stream);
 }
 
-bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
+bool PcParseLaunchOptions(int argc, char** argv, int& exitCode, PcProgram program)
 {
     exitCode = 1;
     const std::vector<std::string> arguments = CommandLineArguments(argc, argv);
@@ -87,8 +99,15 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
 
         if (name == "--help" || name == "-h")
         {
-            PrintUsage(stdout);
+            PrintUsage(stdout, program);
             exitCode = 0;
+            return false;
+        }
+
+        if (program == PcProgram::Server && name != "--content-dir" && name != "--save-dir" && name != "--log-dir")
+        {
+            std::fprintf(stderr, "Unknown option: %s\n", arguments[index].c_str());
+            PrintUsage(stderr, program);
             return false;
         }
 
@@ -122,6 +141,8 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
             target = &sOptions.licenseFile;
         else if (name == "--world")
             target = &sOptions.world;
+        else if (name == "--join")
+            target = &sOptions.join;
         else if (name == "--discord-app")
             target = &sOptions.discordApp;
         else if (name == "--profiles")
@@ -147,7 +168,7 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
         else
         {
             std::fprintf(stderr, "Unknown option: %s\n", arguments[index].c_str());
-            PrintUsage(stderr);
+            PrintUsage(stderr, program);
             return false;
         }
 
@@ -156,7 +177,7 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
             if (index + 1 >= arguments.size())
             {
                 std::fprintf(stderr, "Missing value for %s\n", name.c_str());
-                PrintUsage(stderr);
+                PrintUsage(stderr, program);
                 return false;
             }
             value = arguments[++index];

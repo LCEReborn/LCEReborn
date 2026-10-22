@@ -114,8 +114,8 @@ unsigned int UIScene_CreateWorldMenu::mapElementsAndNames()
 
 void UIScene_CreateWorldMenu::updateTooltips()
 {
-    gConsoleUIController.SetTooltips(0, IDS_TOOLTIPS_SELECT, IDS_TOOLTIPS_BACK, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                                     -1, -1, -1, -1, false, false);
+    gConsoleUIController.SetTooltips(0, IDS_TOOLTIPS_SELECT, IDS_TOOLTIPS_BACK, OnlineSettingsTooltip(), -1, -1, -1,
+                                     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, false, false);
 }
 
 void UIScene_CreateWorldMenu::updateComponents()
@@ -148,6 +148,12 @@ void UIScene_CreateWorldMenu::handleGainFocus(bool hadFocus)
 {
     if (hadFocus)
         m_onlineGameCheckBox.setChecked(m_launchData.mOnlineGame);
+    RefreshOnlineSummary();
+}
+
+void UIScene_CreateWorldMenu::handleFocusChange(int focus, int)
+{
+    UpdateOnlineFocus(focus);
 }
 
 void UIScene_CreateWorldMenu::handleInput(int playerId, int action, bool repeat, bool pressed, bool released,
@@ -156,6 +162,11 @@ void UIScene_CreateWorldMenu::handleInput(int playerId, int action, bool repeat,
     if (m_actionPending)
         return;
     gConsoleUIController.AnimateKeyPress(m_playerId, action, repeat, pressed, released);
+    if (OpenOnlineSettings(action, pressed))
+    {
+        handled = true;
+        return;
+    }
     switch (action)
     {
     case EControllerActions_MenuCancel:

@@ -13,6 +13,14 @@ class PacketListener;
 class ServerSettingsChangedPacket : public Packet, public boost::enable_shared_from_this<ServerSettingsChangedPacket>
 {
 public:
+    enum
+    {
+        eSetting_Gamertags = 0,
+        eSetting_HostOptions = 1,
+        eSetting_HostPrivileges = 2,
+        eSetting_DefaultGameMode = 3
+    };
+
     ServerSettingsChangedPacket();
     ServerSettingsChangedPacket(char setting, unsigned int value);
     virtual ~ServerSettingsChangedPacket();

@@ -64,6 +64,10 @@ public:
     static int CheckCreativeReturned(void* context, int userIndex, C4JStorage::EMessageResult result);
     void LaunchGame();
     int getCurrentTextureSelectorIndex(int packId);
+    void UpdateOnlineFocus(int focus);
+    void RefreshOnlineSummary();
+    bool OpenOnlineSettings(int action, bool pressed);
+    int OnlineSettingsTooltip() const;
     static int TrophyDialogReturned(void* context, int userIndex, C4JStorage::EMessageResult result);
 
     virtual void checkStateAndStartGame() = 0;
@@ -101,6 +105,9 @@ protected:
     bool m_state62B;
     bool m_state62C;
     int m_pendingSlot;
+    bool m_onlineFocused;
+    static const int kPreviewCount = 5;
+    bool m_previewShown[kPreviewCount];
     long long m_seed;
 };
 

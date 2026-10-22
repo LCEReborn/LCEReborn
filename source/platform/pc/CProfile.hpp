@@ -201,6 +201,7 @@ public:
     void AwardManagerOnDestroy();
     int CreateAvatarTexture(int);
     static std::wstring LocalPlayerName();
+    void SetPlayerName(const std::wstring& name);
     void ProfilePickerClosed(int pad, const PcPlayerProfile* chosen);
     static ACTUuid LocalPlayerUuid(const std::wstring&);
 

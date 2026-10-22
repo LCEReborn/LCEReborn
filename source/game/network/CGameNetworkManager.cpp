@@ -1,4 +1,6 @@
 #include "game/network/CGameNetworkManager.hpp"
+#include <cstring>
+#include <cwchar>
 #include "game/core/StringIds.hpp"
 #include "game/core/UnityClient6.hpp"
 #include "game/core/CTelemetryManager.hpp"
@@ -13,6 +15,9 @@
 #include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/minigame/MiniGameDef.hpp"
 #include "game/core/GameSessionData.hpp"
+#include "game/core/VideoSettings.hpp"
+#include "game/core/Motd.hpp"
+#include "net/NetSocket.hpp"
 #include "game/client/render/LevelRenderer.hpp"
 #include "game/client/render/Renderer.hpp"
 #include "game/core/ClientMasterGameMode.hpp"
@@ -74,6 +79,33 @@ void closeSocketForLockedProfile();
 CPlatformNetworkManager* g_pPlatformNetworkManager;
 CGameNetworkManager CGameNetworkManager::sInstance;
 
+namespace
+{
+std::vector<unsigned char> PngWithoutText(const unsigned char* png, unsigned int size)
+{
+    static const unsigned char kSignature[8] = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
+    std::vector<unsigned char> result;
+    if (png == NULL || size < 8 || memcmp(png, kSignature, 8) != 0)
+        return result;
+    result.assign(png, png + 8);
+    size_t offset = 8;
+    while (offset + 12 <= size)
+    {
+        const size_t length = (static_cast<size_t>(png[offset]) << 24) | (static_cast<size_t>(png[offset + 1]) << 16)
+                              | (static_cast<size_t>(png[offset + 2]) << 8) | png[offset + 3];
+        if (length > size - offset - 12)
+            break;
+        const unsigned char* type = png + offset + 4;
+        if (memcmp(type, "tEXt", 4) != 0 && memcmp(type, "zTXt", 4) != 0 && memcmp(type, "iTXt", 4) != 0)
+            result.insert(result.end(), png + offset, png + offset + 12 + length);
+        offset += 12 + length;
+        if (memcmp(type, "IEND", 4) == 0)
+            return result;
+    }
+    return std::vector<unsigned char>();
+}
+}
+
 CGameNetworkManager::CGameNetworkManager()
     : m_initialised(false),
       m_pendingInviteUserIndex(0),
@@ -88,9 +120,11 @@ CGameNetworkManager::CGameNetworkManager()
       m_joiningMiniGameId(eMiniGameId_Lobby)
 {
     InitializeCriticalSection(&m_connectionsMutex);
+    InitializeCriticalSection(&m_worldThumbnailLock);
 }
 CGameNetworkManager::~CGameNetworkManager()
 {
+    DeleteCriticalSection(&m_worldThumbnailLock);
     DeleteCriticalSection(&m_connectionsMutex);
 }
 
@@ -405,6 +439,63 @@ bool CGameNetworkManager::IsLocalGame()
 unsigned short CGameNetworkManager::GetListenPort()
 {
     return g_pPlatformNetworkManager->GetListenPort();
+}
+void CGameNetworkManager::SetListenPort(unsigned short port)
+{
+    g_pPlatformNetworkManager->SetListenPort(port);
+}
+bool CGameNetworkManager::OpenToNetwork()
+{
+    ApplyHostSettings();
+    return g_pPlatformNetworkManager->OpenToNetwork();
+}
+void CGameNetworkManager::CloseToNetwork()
+{
+    g_pPlatformNetworkManager->CloseToNetwork();
+}
+void CGameNetworkManager::ApplyHostSettings()
+{
+    g_pPlatformNetworkManager->SetListenPort(static_cast<unsigned short>(VideoSettings::GetHostPort()));
+    g_pPlatformNetworkManager->SetMotd(Motd::Parse(Motd::Unescape(VideoSettings::GetHostMessage())));
+    g_pPlatformNetworkManager->SetVisibleOnNetwork(VideoSettings::GetHostVisible());
+}
+std::wstring CGameNetworkManager::LocalAddressText()
+{
+    uint32_t ip = 0;
+    if (!lcenet::LocalAddress(ip))
+        return std::wstring();
+    wchar_t text[16];
+    std::swprintf(text, 16, L"%u.%u.%u.%u", (ip >> 24) & 0xff, (ip >> 16) & 0xff, (ip >> 8) & 0xff, ip & 0xff);
+    return text;
+}
+void CGameNetworkManager::SetMotd(const std::wstring& motd)
+{
+    g_pPlatformNetworkManager->SetMotd(motd);
+}
+void CGameNetworkManager::SetServerIcon(const std::vector<unsigned char>& icon, bool fixed)
+{
+    g_pPlatformNetworkManager->SetServerIcon(icon, fixed);
+}
+void CGameNetworkManager::SetWorldThumbnail(const unsigned char* png, unsigned int size)
+{
+    std::vector<unsigned char> thumbnail = PngWithoutText(png, size);
+    unsigned char* fallback = NULL;
+    unsigned int fallbackSize = 0;
+    gStorage->GetDefaultSaveThumbnail(&fallback, &fallbackSize);
+    if (!thumbnail.empty() && PngWithoutText(fallback, fallbackSize) == thumbnail)
+        thumbnail.clear();
+    EnterCriticalSection(&m_worldThumbnailLock);
+    m_worldThumbnail = thumbnail;
+    LeaveCriticalSection(&m_worldThumbnailLock);
+    if (g_pPlatformNetworkManager != NULL)
+        g_pPlatformNetworkManager->SetServerIcon(thumbnail, false);
+}
+bool CGameNetworkManager::GetWorldThumbnail(std::vector<unsigned char>& png)
+{
+    EnterCriticalSection(&m_worldThumbnailLock);
+    png = m_worldThumbnail;
+    LeaveCriticalSection(&m_worldThumbnailLock);
+    return !png.empty();
 }
 bool CGameNetworkManager::StartNetworkGame(Minecraft* minecraft, void* data)
 {
@@ -740,6 +831,32 @@ bool CGameNetworkManager::_RunNetworkGame(void* data)
     }
     return result;
 }
+bool CGameNetworkManager::RunDedicatedServer(void* data)
+{
+    _NetworkGameInitData* initData = static_cast<_NetworkGameInitData*>(data);
+    gApp.setLevelGenerationOptions(initData->m_levelGenerationOptions);
+
+    ServerStoppedCreate(true);
+    ServerReadyCreate(true);
+    C4JThreadImpl* serverThread = new C4JThreadImpl(ServerThreadProc, initData, "Server", 0x100000);
+    serverThread->SetProcessor(0);
+    serverThread->Run();
+    serverThread->SetDeleteOnExit(true);
+    ServerReadyWait();
+    ServerReadyDestroy();
+    if (MinecraftServer::s_haltRequested)
+        return false;
+
+    while (!IsReadyToPlayOrIdle())
+        Sleep(10);
+    if (!IsInSession() || !g_pPlatformNetworkManager->_RunNetworkGame())
+    {
+        MinecraftServer::HaltServer(false);
+        return false;
+    }
+    gApp.SetGameStarted(true);
+    return true;
+}
 int CGameNetworkManager::GetOnlinePlayerCount()
 {
     return g_pPlatformNetworkManager->GetOnlinePlayerCount();
@@ -804,6 +921,12 @@ void CGameNetworkManager::HostGame(int a, bool b, bool c, unsigned char d, EMini
                                    unsigned int* g)
 {
     Minecraft::GetInstance()->clearConnectionFailed();
+    if (!CMinecraftApp::IsDedicatedServer())
+    {
+        g_pPlatformNetworkManager->SetListenPort(static_cast<unsigned short>(VideoSettings::GetHostPort()));
+        g_pPlatformNetworkManager->SetMotd(Motd::Parse(Motd::Unescape(VideoSettings::GetHostMessage())));
+        c = c || !VideoSettings::GetHostVisible();
+    }
     g_pPlatformNetworkManager->HostGame(a, b, c, d, e, f, g);
 }
 bool CGameNetworkManager::IsInStatsEnabledSession()
@@ -874,6 +997,14 @@ int CGameNetworkManager::JoinGame(FriendSessionInfo* info, int userIndex, bool m
     unsigned int localMask = GetLocalPlayerMask(gProfile->GetPrimaryPad());
     return g_pPlatformNetworkManager->JoinGame(info, userIndex | localMask, lockedProfile, matchmaking);
 }
+int CGameNetworkManager::JoinServerAddress(const std::string& address)
+{
+    FriendSessionInfo info;
+    info.m_sessionId = g_pPlatformNetworkManager->RememberServerAddress(address);
+    gProfile->SetLockedProfile(gProfile->GetPrimaryPad());
+    m_joiningMiniGameId = eMiniGameId_Any;
+    return JoinGame(&info, GetLocalPlayerMask(gProfile->GetPrimaryPad()), false);
+}
 int CGameNetworkManager::FindAndJoinGame(int userIndexMask, EMiniGameId miniGameId, unsigned int attributeCount,
                                          unsigned int* attributeValues, unsigned int* attributeIds)
 {
@@ -895,7 +1026,8 @@ void CGameNetworkManager::CancelJoinGame(void*)
 }
 bool CGameNetworkManager::LeaveGame(bool e)
 {
-    Minecraft::GetInstance()->mGui->clearMessages(-1);
+    if (Minecraft::GetInstance()->mGui != NULL)
+        Minecraft::GetInstance()->mGui->clearMessages(-1);
     return g_pPlatformNetworkManager->LeaveGame(e);
 }
 void CGameNetworkManager::UpdateAndSetGameSessionData(INetworkPlayer* player)
@@ -1179,6 +1311,16 @@ void CGameNetworkManager::ServerStoppedWait()
         return;
     }
     unsigned int result;
+    if (CMinecraftApp::IsDedicatedServer())
+    {
+        do
+        {
+            result = m_serverStoppedEvent->WaitForSignal(20);
+            gProfile->Tick();
+            gStorage->Tick();
+        } while (result == C4JEvent::WaitTimeout);
+        return;
+    }
     do
     {
         gRenderer->StartFrame();
@@ -1328,7 +1470,8 @@ void CGameNetworkManager::StateChange_AnyToEnding(bool wasPlaying, bool)
             }
         }
     }
-    Minecraft::GetInstance()->mGui->clearMessages(-1);
+    if (Minecraft::GetInstance()->mGui != NULL)
+        Minecraft::GetInstance()->mGui->clearMessages(-1);
     if (!sInstance.IsHost() && !sInstance.IsLeavingGame())
     {
         if (gApp.GetDisconnectReason() == 0)

@@ -25,6 +25,9 @@ std::wstring FormatMessage(const std::wstring& message);
 void Reply(boost::shared_ptr<ServerPlayer> player, const std::wstring& text);
 void Error(boost::shared_ptr<ServerPlayer> player, const std::wstring& text);
 void Run(boost::shared_ptr<ServerPlayer> player, const std::wstring& line);
+void RunConsole(const std::wstring& line);
+void SetConsoleOutput(void (*output)(const std::wstring& text));
+void Echo(const std::wstring& text);
 const CommandUsage* Usages(size_t* count);
 }
 

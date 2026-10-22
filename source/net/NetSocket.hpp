@@ -33,6 +33,7 @@ void Startup();
 bool EnsureConnected();
 bool Resolve(const std::string& text, Address& address, std::string& error);
 std::vector<uint32_t> BroadcastAddresses();
+bool LocalAddress(uint32_t& ip);
 
 class TcpSocket
 {

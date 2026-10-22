@@ -6,6 +6,12 @@
 #include <vector>
 #endif
 
+enum class PcProgram
+{
+    Game,
+    Server
+};
+
 struct PcLaunchOptions
 {
     std::string username;
@@ -17,6 +23,7 @@ struct PcLaunchOptions
     std::string uuid;
     std::string licenseFile;
     std::string world;
+    std::string join;
     std::string discordApp;
     std::string profiles;
 #if LCE_DEBUG_BUILD
@@ -30,7 +37,7 @@ struct PcLaunchOptions
     bool joinPrompt = false;
 };
 
-bool PcParseLaunchOptions(int argc, char** argv, int& exitCode);
+bool PcParseLaunchOptions(int argc, char** argv, int& exitCode, PcProgram program);
 const PcLaunchOptions& PcGetLaunchOptions();
 
 #endif

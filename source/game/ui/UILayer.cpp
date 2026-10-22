@@ -84,6 +84,7 @@
 #include "game/ui/UIScene_TradingMenu.hpp"
 #include "game/ui/UIScene_CustomMenu.hpp"
 #include "game/ui/UIScene_DebugOverlayMenu.hpp"
+#include "game/ui/UIScene_OnlineSettingsMenu.hpp"
 #include "game/ui/UIScene_EditServerMenu.hpp"
 #include "game/ui/UIScene_TrialExitUpsell.hpp"
 #include "game/ui/UIScene_WritableBookMenu.hpp"
@@ -462,6 +463,9 @@ bool UILayer::NavigateToScene(int player, EUIScene scene, void* data)
         break;
     case EUIScene_DebugOverlayMenu:
         created = new UIScene_DebugOverlayMenu(player, data, this);
+        break;
+    case EUIScene_OnlineSettingsMenu:
+        created = new UIScene_OnlineSettingsMenu(player, data, this);
         break;
 #if LCE_PLATFORM_PC
     case EUIScene_ShaderMenu:

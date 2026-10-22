@@ -91,6 +91,7 @@ public:
     virtual int GetPromptImages(int pad, const int* actions, int actionCount, unsigned int buttons, int* images,
                                 int maxImages);
     virtual bool UsesKeyboard(int pad);
+    int LastInputPad();
     virtual void BeginKeyCapture();
     virtual void CancelKeyCapture();
     virtual int ConsumeCapturedKey();

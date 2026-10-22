@@ -565,6 +565,8 @@ uint32_t GameSettings::GetActionVal(unsigned char value)
 }
 void GameSettings::ActionGameSettings(int profile, eGameSetting setting)
 {
+    if (CMinecraftApp::IsDedicatedServer())
+        return;
     Minecraft* minecraft = Minecraft::GetInstance();
     switch (setting)
     {

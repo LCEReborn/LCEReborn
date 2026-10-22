@@ -115,7 +115,8 @@ enum eXuiServerAction
     eXuiServerAction_PauseServer = 5,
     eXuiServerAction_ToggleRain = 6,
     eXuiServerAction_ToggleThunder = 7,
-    eXuiServerAction_ServerSettingChanged = 8
+    eXuiServerAction_ServerSettingChanged = 8,
+    eXuiServerAction_CloseToNetwork = 9
 };
 enum eXuiAction
 {
@@ -398,6 +399,8 @@ public:
     void EnterSaveNotificationSection();
     void LeaveSaveNotificationSection();
     bool GetGameStarted();
+    static bool IsDedicatedServer();
+    static void SetDedicatedServer(bool dedicated);
     void SetDefaultHostOptions();
     void InitGameSettings();
     static int UpsellReturnedCallback(void* context, eUpsellType type, eUpsellResponse response, int userIndex);

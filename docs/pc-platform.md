@@ -85,16 +85,50 @@ own. `full_game = true` unlocks the full game, otherwise it runs as the trial.
 ## Multiplayer
 
 The PC and Wii U builds share one network manager (`source/net/`), so they
-can play together. An online game is hosted on port 25570 (TCP for players,
-UDP for finding games on the local network), and the host is told the port
-in chat on joining. The Join tab lists worlds and mini games found on the
-local network, and Add Server saves a name and an address (`host` or
-`host:port`) for anything else. While the list is open, each saved server is
-asked every few seconds what it is hosting, and its row shows that world or
-mini game. The PC keeps the saved servers in `servers.dat` in the save
-folder; the Wii U keeps them in its save data. The Mini Games menu's Join
-tab lists the same saved servers but only the mini games found on the local
-network.
+can play together. An online game is hosted on the port set in Online
+Settings (25570 unless changed; TCP for players, UDP for finding games on
+the local network), and the host is told the port in chat on joining. Online
+Settings opens with X on the Create and Load screens while Online Game is
+focused. It also sets whether the world shows on the local network and the
+message shown under it in the Join tab (written like a dedicated server's
+`motd`); these are saved in `video.txt`. A world started offline can be
+opened from the pause menu with Open to LAN. Once open, the same button is
+LAN World Settings: it lists the players, changes the message, visibility,
+game mode and Host Privileges, and Stop LAN World disconnects the players
+who joined over the network. Turning on Host Privileges or Creative asks
+first when the world still has achievements. The Join tab lists worlds and
+mini games found on the local network, and Add Server saves a name and an
+address (`host` or `host:port`) for anything else. Each row shows the game's
+icon, its message and the player count, as Java's server list does; a hosted
+world's icon is the thumbnail it was last saved with. While the list is
+open, each saved server is asked every few seconds for these, and its row
+also shows the ping, or that the server can't be reached or runs another
+version. The PC keeps the saved servers in `servers.dat` in the save folder;
+the Wii U keeps them in its save data. The Mini Games menu's Join tab lists
+the same saved servers but only the mini games found on the local network.
+
+`--join <address>` joins a game at start, the same as picking a saved
+server.
+
+## Dedicated server
+
+`LCERebornServer` runs a world with no window, sound or local player, on
+Windows and Linux. It needs the same content folder as the game and takes
+`--content-dir`, `--save-dir` and `--log-dir`. The first start writes
+`server.properties` to the saves folder; edit it and restart to apply
+changes. `world` names the folder in `games` to load, and a new world is made
+there if it is missing. Players named in `ops` may use commands when cheats
+are allowed.
+
+`motd` is the message under the server in the Join tab. It takes what Java
+servers take: `§`, `\u00A7` or `&` formatting codes, `&#RRGGBB` or
+`§x§R§R§G§G§B§B` colours, `\n` for a second line, or a JSON text component.
+A 64x64 `server-icon.png` beside `server.properties` is the server's icon;
+without one, the world's thumbnail is used.
+
+The server reads commands from its standard input: any chat command without
+the `/`, plus `save-all` and `stop`. Ctrl+C also saves and stops. The world
+is saved every `autosave-minutes`.
 
 ## Discord
 

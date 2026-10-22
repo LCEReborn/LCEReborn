@@ -69,7 +69,7 @@ static std::string DisplayPath(const std::string& path)
     return std::filesystem::path(path).make_preferred().u8string();
 }
 
-bool PcCheckGameFolders(std::string& message)
+bool PcCheckGameFolders(std::string& message, bool needInterfaceArt)
 {
     std::error_code error;
     const PcLaunchOptions& options = PcGetLaunchOptions();
@@ -98,7 +98,7 @@ bool PcCheckGameFolders(std::string& message)
     }
 
     const std::filesystem::path interfaceArt = std::filesystem::path(PcResourceRoot()) / "ui";
-    if (!std::filesystem::is_directory(interfaceArt, error))
+    if (needInterfaceArt && !std::filesystem::is_directory(interfaceArt, error))
     {
         message = "The PC interface art was not found:\n" + DisplayPath(interfaceArt.generic_string()) + "\n\n";
         if (options.resourceDir.empty())

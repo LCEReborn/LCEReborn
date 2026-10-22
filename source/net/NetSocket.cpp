@@ -598,6 +598,107 @@ std::vector<uint32_t> BroadcastAddresses()
     return unique;
 }
 
+namespace
+{
+bool IsPrivateAddress(uint32_t ip)
+{
+    return (ip >> 24) == 10 || (ip >> 20) == 0xAC1 || (ip >> 16) == 0xC0A8;
+}
+
+#if !LCE_PLATFORM_WIIU
+uint32_t RoutedAddress()
+{
+    uint32_t ip = 0;
+#if defined(_WIN32)
+    SOCKET probe = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (probe == INVALID_SOCKET)
+        return 0;
+#else
+    int probe = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (probe < 0)
+        return 0;
+#endif
+    sockaddr_in target;
+    memset(&target, 0, sizeof(target));
+    target.sin_family = AF_INET;
+    target.sin_port = htons(53);
+    target.sin_addr.s_addr = htonl(0x01010101u);
+    if (connect(probe, reinterpret_cast<sockaddr*>(&target), sizeof(target)) == 0)
+    {
+        sockaddr_in local;
+        memset(&local, 0, sizeof(local));
+        socklen_t length = sizeof(local);
+        if (getsockname(probe, reinterpret_cast<sockaddr*>(&local), &length) == 0)
+            ip = ntohl(local.sin_addr.s_addr);
+    }
+#if defined(_WIN32)
+    closesocket(probe);
+#else
+    close(probe);
+#endif
+    return ip;
+}
+
+uint32_t FirstPrivateInterface()
+{
+#if defined(_WIN32)
+    uint32_t found = 0;
+    SOCKET probe = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (probe == INVALID_SOCKET)
+        return 0;
+    INTERFACE_INFO interfaces[32];
+    DWORD bytes = 0;
+    if (WSAIoctl(probe, SIO_GET_INTERFACE_LIST, 0, 0, interfaces, sizeof(interfaces), &bytes, 0, 0) == 0)
+    {
+        for (DWORD index = 0; index < bytes / sizeof(INTERFACE_INFO) && found == 0; ++index)
+        {
+            const INTERFACE_INFO& entry = interfaces[index];
+            uint32_t ip = ntohl(entry.iiAddress.AddressIn.sin_addr.s_addr);
+            if ((entry.iiFlags & IFF_UP) != 0 && (entry.iiFlags & IFF_LOOPBACK) == 0 && IsPrivateAddress(ip))
+                found = ip;
+        }
+    }
+    closesocket(probe);
+    return found;
+#else
+    uint32_t found = 0;
+    ifaddrs* list = 0;
+    if (getifaddrs(&list) != 0)
+        return 0;
+    for (ifaddrs* entry = list; entry != 0 && found == 0; entry = entry->ifa_next)
+    {
+        if (entry->ifa_addr == 0 || entry->ifa_addr->sa_family != AF_INET || (entry->ifa_flags & IFF_UP) == 0
+            || (entry->ifa_flags & IFF_LOOPBACK) != 0)
+            continue;
+        uint32_t ip = ntohl(reinterpret_cast<sockaddr_in*>(entry->ifa_addr)->sin_addr.s_addr);
+        if (IsPrivateAddress(ip))
+            found = ip;
+    }
+    freeifaddrs(list);
+    return found;
+#endif
+}
+#endif
+}
+
+bool LocalAddress(uint32_t& ip)
+{
+    ip = 0;
+#if LCE_PLATFORM_WIIU
+    uint32_t assigned = 0;
+    if (nn::ac::GetAssignedAddress(&assigned).IsSuccess())
+        ip = assigned;
+#else
+    if (!gStarted)
+        return false;
+    uint32_t routed = RoutedAddress();
+    ip = IsPrivateAddress(routed) ? routed : FirstPrivateInterface();
+    if (ip == 0 && routed != 0 && (routed >> 24) != 127)
+        ip = routed;
+#endif
+    return ip != 0;
+}
+
 TcpSocket::TcpSocket() : m_handle(kInvalid)
 {
 }

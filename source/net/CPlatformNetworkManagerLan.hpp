@@ -78,6 +78,12 @@ public:
     virtual bool SetLocalGame(bool localGame);
     virtual bool IsLocalGame();
     virtual unsigned short GetListenPort();
+    virtual void SetListenPort(unsigned short port);
+    virtual void SetMotd(const std::wstring& motd);
+    virtual void SetServerIcon(const std::vector<unsigned char>& icon, bool fixed);
+    virtual bool OpenToNetwork();
+    virtual void CloseToNetwork();
+    virtual void SetVisibleOnNetwork(bool visible);
     virtual void SetPrivateGame(bool privateGame);
     virtual bool IsPrivateGame();
     virtual bool IsLeavingGame();
@@ -108,6 +114,7 @@ public:
     virtual std::vector<FriendSessionInfo*>* GetSessionList(int userIndex, int maxSessions, bool friendsOnly);
     virtual bool GetGameSessionInfo(int userIndex, unsigned int sessionId, FriendSessionInfo* info);
     virtual void SetSessionsUpdatedCallback(void (*callback)(void*), void* callbackData);
+    virtual unsigned int RememberServerAddress(const std::string& address);
     virtual void GetFullFriendSessionInfo(FriendSessionInfo* info, void (*callback)(bool, void*), void* callbackData);
     virtual void ForceFriendsSessionRefresh();
     virtual void ClearFriendsSessions();
@@ -154,7 +161,11 @@ private:
 
     struct KnownSession
     {
-        KnownSession() : id(0), lan(false), answered(false), probing(false), lastProbe(0) {}
+        KnownSession()
+            : id(0), lan(false), answered(false), probing(false), lastProbe(0),
+              status(FriendSessionInfo::eServerStatus_Pinging), pingMs(-1)
+        {
+        }
 
         unsigned int id;
         bool lan;
@@ -164,6 +175,8 @@ private:
         bool answered;
         bool probing;
         int64_t lastProbe;
+        int status;
+        int pingMs;
     };
 
     struct SessionQuery
@@ -309,6 +322,10 @@ private:
     C4JCriticalSection m_acceptLock;
     std::vector<AcceptedSocket> m_acceptedSockets;
     bool m_listening;
+    unsigned short m_listenPort;
+    std::wstring m_motd;
+    std::vector<unsigned char> m_serverIcon;
+    bool m_serverIconFixed;
     unsigned int m_nextSystemId;
     uint32_t m_sessionNonce;
     std::vector<RemoteSystem> m_systems;

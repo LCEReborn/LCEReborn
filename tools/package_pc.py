@@ -56,7 +56,7 @@ TOP = "LCEReborn"
 LINUX = sys.platform.startswith("linux")
 if LINUX:
     SYSTEM = "linux"
-    PROGRAMS = ("LCEReborn", "LCERebornLauncher")
+    PROGRAMS = ("LCEReborn", "LCERebornLauncher", "LCERebornServer")
     QT_PLUGIN_DIRS = ("imageformats", "networkinformation", "platforminputcontexts", "platformthemes",
                       "tls", "wayland-decoration-client", "wayland-graphics-integration-client",
                       "wayland-shell-integration", "xcbglintegrations")
@@ -64,7 +64,7 @@ if LINUX:
     ALLOWED_NAME = re.compile(r"(^[^.]+$|\.so(\.\d+)*$|\.(png|ico|txt)$)")
 else:
     SYSTEM = "pc"
-    PROGRAMS = ("LCEReborn.exe", "LCERebornLauncher.exe")
+    PROGRAMS = ("LCEReborn.exe", "LCERebornLauncher.exe", "LCERebornServer.exe")
     QT_PLUGIN_DIRS = ("generic", "imageformats", "networkinformation", "platforms", "styles", "tls")
     ALLOWED_NAME = re.compile(r"\.(exe|dll|png|ico|txt)$", re.I)
 REDIST_URL = "https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist"
@@ -395,7 +395,7 @@ def notices_text(source, game, qt, launcher, appimage=False):
                "or later (LICENSE.txt). It contains the libraries below. The texts of\n"
                "the licenses named here are in licenses/.\n")
 
-    out.append(rule("In " + PROGRAMS[0]))
+    out.append(rule("In " + PROGRAMS[0] + " and " + PROGRAMS[2]))
     for component in game:
         out.append(component_text(component))
         out.append("-" * 72 + "\n")

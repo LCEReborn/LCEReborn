@@ -44,6 +44,8 @@ public:
 
     bool canReceiveAllPackets(const boost::shared_ptr<ServerPlayer>& player);
     bool isOp(boost::shared_ptr<ServerPlayer> player);
+    static void SetOperators(const std::vector<std::wstring>& names);
+    static bool IsOperator(const std::wstring& name);
     int getViewDistance();
     int getSimulationDistance();
     boost::shared_ptr<ServerPlayer> findAlivePlayerOnSystem(boost::shared_ptr<ServerPlayer> player);

@@ -15,7 +15,7 @@ public:
     virtual EGameCommand getId();
     virtual void execute(boost::shared_ptr<CommandSender> sender, arrayWithLength<unsigned char> data);
 
-    void doSetGameType(const GameType* gameType);
+    static void doSetGameType(const GameType* gameType);
 
     static boost::shared_ptr<GameCommandPacket> preparePacket(unsigned char gameType);
 };

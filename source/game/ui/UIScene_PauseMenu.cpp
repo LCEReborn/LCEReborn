@@ -45,6 +45,7 @@
 #include "game/core/GameSettings.hpp"
 #include "platform/C4JThreadImpl.hpp"
 #include "platform/Runtime.hpp"
+#include "game/ui/UIScene_OnlineSettingsMenu.hpp"
 
 extern ConsoleUIController gConsoleUIController;
 
@@ -133,6 +134,9 @@ void UIScene_PauseMenu::Init()
         m_buttonList.AddNewMenuButton(L10N::GetString(IDS_SAVE_GAME), 5);
         if (gApp.HasNoSpaceForSaveQuota())
             m_buttonList.EnableItem(5, false, true);
+        m_buttonList.AddNewMenuButton(CGameNetworkManager::sInstance.IsLocalGame() ? L"Open to LAN"
+                                                                                   : L"LAN World Settings",
+                                      9);
     }
 
     m_buttonList.AddNewMenuButton(L10N::GetString(IDS_EXIT_GAME), 6);
@@ -348,6 +352,11 @@ void UIScene_PauseMenu::handlePress(int, int childId)
         OpenExitGameDialog(m_playerId, reinterpret_cast<void*>(GetCallbackUniqueId()), ExitGameDialogReturned,
                            ExitGameSaveDialogReturned, EOpenExitGameDialog_ExitGame);
         break;
+    case 9:
+        UIScene_OnlineSettingsMenu::Open(m_playerId, CGameNetworkManager::sInstance.IsLocalGame()
+                                                         ? UIScene_OnlineSettingsMenu::eMode_OpenToLan
+                                                         : UIScene_OnlineSettingsMenu::eMode_LanWorld);
+        return;
     case 3:
         break;
     }

@@ -292,6 +292,11 @@ InteractionResult::EInteractionResult BucketItem::useOn(boost::shared_ptr<Player
     }
 }
 
+static double PickRange(const boost::shared_ptr<Player>& player)
+{
+    return player->isCreative() ? 5.0 : 4.5;
+}
+
 static bool isPickable_apply(boost::shared_ptr<Entity> entity)
 {
     bool pickable = true;
@@ -313,10 +318,10 @@ HitResult* BucketItem::ScanForHitResultEntities(boost::shared_ptr<Player> player
     HitResult* output = const_cast<HitResult*>(result);
     if (result != NULL)
     {
-        double entityReach = Minecraft::GetInstance()->mGameMode->getPickRange();
+        double entityReach = PickRange(player);
         Vec3* eyePosition = Vec3::newTemp(player->mX, player->mY + player->getEyeHeight(), player->mZ);
         bool limitedReach = false;
-        if (Minecraft::GetInstance()->mGameMode->hasFarPickRange())
+        if (player->isCreative())
         {
             entityReach = kCreativePickRange;
         }
@@ -417,7 +422,7 @@ HitResult* BucketItem::GetPlayerHitResult(boost::shared_ptr<Player> player, Leve
 {
     static const float kPartialTick = 1.0f;
 
-    HitResult* result = player->pick(Minecraft::GetInstance()->mGameMode->getPickRange(), kPartialTick);
+    HitResult* result = player->pick(PickRange(player), kPartialTick);
     if (useLiquids || result == NULL || result->mType == HitResult::MISS)
     {
         result = Item::getPlayerPOVHitResult(level, player, useLiquids);

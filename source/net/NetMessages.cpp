@@ -45,7 +45,12 @@ void ByteWriter::Bytes(const void* data, size_t size)
 
 void ByteWriter::Text(const std::wstring& text)
 {
-    size_t length = text.size() < kMaxTextLength ? text.size() : kMaxTextLength;
+    Text(text, kMaxTextLength);
+}
+
+void ByteWriter::Text(const std::wstring& text, size_t maxLength)
+{
+    size_t length = text.size() < maxLength ? text.size() : maxLength;
     U16(static_cast<unsigned int>(length));
     for (size_t index = 0; index < length; ++index)
         U16(text[index] <= 0xffff ? static_cast<unsigned int>(text[index]) : 0xfffdu);
@@ -105,8 +110,13 @@ void ByteReader::Bytes(void* data, size_t size)
 
 std::wstring ByteReader::Text()
 {
+    return Text(kMaxTextLength);
+}
+
+std::wstring ByteReader::Text(size_t maxLength)
+{
     size_t length = U16();
-    if (length > kMaxTextLength)
+    if (length > maxLength)
     {
         m_ok = false;
         return std::wstring();
@@ -136,7 +146,18 @@ PlayerUID ByteReader::Uid()
     return uid;
 }
 
-void WriteSession(ByteWriter& writer, const SessionDescription& session)
+uint32_t DetailsHash(const std::wstring& motd, const std::vector<unsigned char>& icon)
+{
+    uint32_t hash = 2166136261u;
+    for (size_t index = 0; index < motd.size(); ++index)
+        hash = (hash ^ (static_cast<uint32_t>(motd[index]) & 0xffff)) * 16777619u;
+    hash = (hash ^ 0x1f) * 16777619u;
+    for (size_t index = 0; index < icon.size(); ++index)
+        hash = (hash ^ icon[index]) * 16777619u;
+    return hash;
+}
+
+void WriteSession(ByteWriter& writer, const SessionDescription& session, bool details)
 {
     const GameSessionData& data = session.data;
     writer.U16(kProtocolVersion);
@@ -156,11 +177,25 @@ void WriteSession(ByteWriter& writer, const SessionDescription& session)
     writer.U8(data.m_gameModeId);
     writer.U8(data.m_miniGameId);
     writer.U32(data.m_customGameModeHostOptions);
+    writer.U8(session.maxPlayers);
+    writer.U8(session.dedicated ? 1 : 0);
+    writer.U32(session.detailsHash);
+    writer.U8(details ? 1 : 0);
+    if (!details)
+        return;
+    writer.Text(session.motd, kMaxMotdLength);
+    const size_t iconSize = session.icon.size() <= kMaxIconSize ? session.icon.size() : 0;
+    writer.U16(static_cast<unsigned int>(iconSize));
+    if (iconSize != 0)
+        writer.Bytes(&session.icon[0], iconSize);
 }
 
-bool ReadSession(ByteReader& reader, SessionDescription& session)
+bool ReadSession(ByteReader& reader, SessionDescription& session, unsigned int* version)
 {
-    if (reader.U16() != kProtocolVersion)
+    const unsigned int sentVersion = reader.U16();
+    if (version != NULL)
+        *version = reader.Ok() ? sentVersion : 0;
+    if (sentVersion != kProtocolVersion)
         return false;
     GameSessionData& data = session.data;
     session.port = static_cast<unsigned short>(reader.U16());
@@ -179,6 +214,22 @@ bool ReadSession(ByteReader& reader, SessionDescription& session)
     data.m_gameModeId = reader.U8() & 0xf;
     data.m_miniGameId = reader.U8() & 0xf;
     data.m_customGameModeHostOptions = reader.U32();
+    session.maxPlayers = static_cast<unsigned char>(reader.U8());
+    session.dedicated = reader.U8() != 0;
+    session.detailsHash = reader.U32();
+    session.hasDetails = reader.U8() != 0;
+    session.motd.clear();
+    session.icon.clear();
+    if (session.hasDetails)
+    {
+        session.motd = reader.Text(kMaxMotdLength);
+        const size_t iconSize = reader.U16();
+        if (iconSize > kMaxIconSize)
+            return false;
+        session.icon.resize(iconSize);
+        if (iconSize != 0)
+            reader.Bytes(&session.icon[0], iconSize);
+    }
     return reader.Ok();
 }
 }

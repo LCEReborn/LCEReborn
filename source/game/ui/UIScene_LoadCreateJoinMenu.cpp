@@ -5,7 +5,10 @@
 #include <cwchar>
 
 #include "game/client/audio/SoundEvents.hpp"
+#include "game/client/render/Font.hpp"
 #include "game/client/render/ProgressRenderer.hpp"
+#include "game/client/render/Tesselator.hpp"
+#include "game/client/render/Textures.hpp"
 #include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/core/CMinecraftApp.hpp"
 #include "game/core/ConsoleUIController.hpp"
@@ -13,15 +16,25 @@
 #include "game/core/GameSettings.hpp"
 #include "game/core/L10N.hpp"
 #include "game/core/Minecraft.hpp"
+#include "game/core/BufferBuilder.hpp"
+#include "game/core/DebugOverlay.hpp"
+#include "game/core/ExtraStrings.hpp"
+#include "game/core/GlStateManager.hpp"
+#include "game/core/Motd.hpp"
 #include "game/core/PIXNamedEvents.hpp"
+#include "game/core/StringFormat.hpp"
+#include "game/core/System.hpp"
 #include "game/core/StringConversion.hpp"
 #include "game/network/CGameNetworkManager.hpp"
+#include "game/ui/FJ_Base.hpp"
+#include "game/ui/FJ_List.hpp"
 #include "game/ui/FJ_LoadCreateJoinMenu.hpp"
 #include "game/ui/UIGroup.hpp"
 #include "game/ui/UILayer.hpp"
 #include "game/ui/UIScene_FullscreenProgress.hpp"
 #include "game/ui/fuiFile.hpp"
 #include "game/ui/fuiRenderNode.hpp"
+#include "game/util/ResourceLocation.hpp"
 #include "game/world/biome/arrayWithLength.hpp"
 #include "platform/C4JThreadImpl.hpp"
 #include "platform/CInput.hpp"
@@ -44,7 +57,50 @@ const unsigned int THUMBNAIL_WINDOW_SIZE = 21;
 const int THUMBNAIL_WINDOW_LEAD = 7;
 const unsigned int UPLOAD_POLL_INTERVAL = 50;
 const unsigned int COPY_POLL_INTERVAL = 100;
+const float kServerTextLeft = 60.0f;
+const float kServerRowInset = 12.0f;
+const float kServerLineHeight = 17.0f;
+const float kServerStatusGap = 6.0f;
+const float kTextScaleAt720 = 2.0f;
+const float kPingWidth = 10.0f;
+const float kPingHeight = 8.0f;
+const float kPingTop = 176.0f;
+const int kPingUnreachable = 5;
+const int kNameColour = static_cast<int>(0xFFEFEFEF);
+const int kSelectedNameColour = static_cast<int>(0xFFEFEF00);
+const int kMotdColour = static_cast<int>(0xFFD0D0D0);
 
+void DrawRowText(Font& font, const std::wstring& text, float x, float y, float scale, int colour)
+{
+    GlStateManager::pushMatrix();
+    GlStateManager::translatef(x, y, 0.0f);
+    GlStateManager::scalef(scale, scale, 1.0f);
+    font.drawShadow(text, 0, 0, colour);
+    GlStateManager::popMatrix();
+}
+
+std::wstring FitRowText(Font& font, const std::wstring& text, int width)
+{
+    if (font.width(text) <= width)
+        return text;
+    std::wstring fitted = text;
+    while (!fitted.empty() && font.width(fitted + L"...") > width)
+        fitted.erase(fitted.size() - 1);
+    return fitted + L"...";
+}
+
+int PingRow(int pingMs)
+{
+    if (pingMs < 0)
+        return kPingUnreachable;
+    if (pingMs < 150)
+        return 0;
+    if (pingMs < 300)
+        return 1;
+    if (pingMs < 600)
+        return 2;
+    return pingMs < 1000 ? 3 : 4;
+}
 }
 
 UIScene_LoadCreateJoinMenu::UIScene_LoadCreateJoinMenu(int playerId, void* data, UILayer* layer)
@@ -715,16 +771,16 @@ void UIScene_LoadCreateJoinMenu::SetCreateListEnabled(bool)
 {
 }
 
-void UIScene_LoadCreateJoinMenu::AddJoinListButton(const std::wstring& label, int id, unsigned char* gameIcon,
-                                                   unsigned int gameIconSize, const std::wstring& gameIconName,
-                                                   unsigned char* packIcon, unsigned int packIconSize,
-                                                   const std::wstring& packIconName)
+void UIScene_LoadCreateJoinMenu::AddJoinListIcon(const std::wstring& label, int id, const std::wstring& iconName,
+                                                 const unsigned char* data, unsigned int size)
 {
-    if (gameIconSize != 0 && gameIcon != NULL)
-        registerSubstitutionTexture(gameIconName, gameIcon, gameIconSize, false);
-    if (packIconSize != 0 && packIcon != NULL)
-        registerSubstitutionTexture(packIconName, packIcon, packIconSize, false);
-    m_gamesList.AddNewItem(label, id, packIconName, gameIconName);
+    if (!hasRegisteredSubstitutionTexture(iconName))
+    {
+        unsigned char* copy = new unsigned char[size];
+        memcpy(copy, data, size);
+        registerSubstitutionTexture(iconName, copy, size, true);
+    }
+    m_gamesList.AddNewItem(label, id, iconName);
     m_joinRowIds.push_back(id);
     SetMatchesAvailable(true);
 }
@@ -1166,6 +1222,151 @@ int UIScene_LoadCreateJoinMenu::handleTexturePackDialogReturned(int pad, C4JStor
 int UIScene_LoadCreateJoinMenu::getSceneType()
 {
     return EUIScene_LoadCreateJoinMenu;
+}
+
+void UIScene_LoadCreateJoinMenu::render(int width, int height, C4JRender::eViewportType viewport)
+{
+    UIScene::render(width, height, viewport);
+    if (!m_reloading && m_hasTicked && m_movie != NULL && m_activeTab == (m_hideLoadTab ? 1 : 2))
+        DrawServerRows(width, height, viewport);
+}
+
+void UIScene_LoadCreateJoinMenu::DrawServerRows(int width, int height, C4JRender::eViewportType viewport)
+{
+    Minecraft* minecraft = Minecraft::GetInstance();
+    fuiRenderNode* listNode = m_gamesList.getFuiRenderNode();
+    fuiRenderNode* tabNode = m_joinTab.getFuiRenderNode();
+    if (minecraft == NULL || minecraft->mFont == NULL || minecraft->getTextureManager() == NULL || listNode == NULL
+        || tabNode == NULL || listNode->getFuiNode() == NULL || m_stageWidth <= 0 || m_stageHeight <= 0)
+        return;
+    FJ_List* list = listNode->getFuiNode()->asFJ_List();
+    if (list == NULL)
+        return;
+    Font& font = *minecraft->mFont;
+    Textures* textures = minecraft->getTextureManager();
+    static ResourceLocation sIcons(TN_GUI_ICONS);
+
+    const float stageWidth = static_cast<float>(m_stageWidth);
+    const float stageHeight = static_cast<float>(m_stageHeight);
+    int viewportX = 0;
+    int viewportY = 0;
+    DebugOverlay::ViewportOrigin(viewport, &viewportX, &viewportY);
+    const float scaleX = static_cast<float>(width) / stageWidth;
+    const float scaleY = static_cast<float>(height) / stageHeight;
+    const float scale = scaleX < scaleY ? scaleX : scaleY;
+    const int originX = viewportX + static_cast<int>((width - stageWidth * scale) * 0.5f);
+    const int originY = viewportY + static_cast<int>((height - stageHeight * scale) * 0.5f);
+    const float textScale = kTextScaleAt720 * stageHeight / 720.0f;
+    const float lineHeight = kServerLineHeight * stageHeight / 720.0f;
+    const bool listFocused = DoesGamesListHaveFocus();
+    const unsigned int selectedId = m_gamesList.getCurrentSelection();
+    const long long now = System::processTimeInMilliSecs();
+
+    DebugOverlay::BeginScreenDraw(originX, originY, scale);
+    GlStateManager::enableBlend();
+    GlStateManager::blendFunc(4, 5);
+    GlStateManager::enableTexture();
+    for (int index = 0; index < list->getINumButtons(); ++index)
+    {
+        FJ_FuiNode* item = list->ReturnItem(index);
+        if (item == NULL || item->m_pRenderNode == NULL || !item->m_pRenderNode->isVisible())
+            continue;
+        FJ_Base* base = item->asFJ_Base();
+        const FriendSessionInfo* session = base != NULL ? GetJoinListSession(static_cast<int>(base->getId())) : NULL;
+        if (session == NULL)
+            continue;
+
+        const float rowLeft = tabNode->getX() + item->getX();
+        const float rowTop = tabNode->getY() + item->getY();
+        const float left = rowLeft + kServerTextLeft * stageHeight / 720.0f;
+        const float right = rowLeft + item->getWidth() - kServerRowInset * stageHeight / 720.0f;
+        const float top = rowTop + (list->GetListItemHeight(index) - 3.0f * lineHeight) * 0.5f;
+
+        std::wstring status;
+        std::wstring motd = session->m_motd;
+        int pingColumn = 0;
+        int pingRow = -1;
+        switch (session->m_serverStatus)
+        {
+        case FriendSessionInfo::eServerStatus_Pinging:
+        {
+            pingColumn = 1;
+            pingRow = static_cast<int>((now / 100 + index * 2) & 7);
+            if (pingRow > 4)
+                pingRow = 8 - pingRow;
+            motd = std::wstring(L"\u00a77") + L10N::GetString(IDS_LCE_SERVER_PINGING);
+            break;
+        }
+        case FriendSessionInfo::eServerStatus_Offline:
+            pingRow = kPingUnreachable;
+            motd = std::wstring(L"\u00a7c") + L10N::GetString(IDS_LCE_SERVER_CANT_CONNECT);
+            break;
+        case FriendSessionInfo::eServerStatus_ClientOutdated:
+        case FriendSessionInfo::eServerStatus_ServerOutdated:
+            pingRow = kPingUnreachable;
+            status = std::wstring(L"\u00a7c")
+                     + L10N::GetString(session->m_serverStatus == FriendSessionInfo::eServerStatus_ClientOutdated
+                                           ? IDS_LCE_CLIENT_OUT_OF_DATE
+                                           : IDS_LCE_SERVER_OUT_OF_DATE);
+            motd.clear();
+            break;
+        default:
+        {
+            int players = session->m_gameSessionData.m_numPlayers;
+            int maxPlayers = session->m_maxPlayers;
+            if (session->m_dedicated)
+            {
+                players = players > 0 ? players - 1 : 0;
+                maxPlayers = maxPlayers > 0 ? maxPlayers - 1 : 0;
+            }
+            status = maxPlayers > 0 ? formatwstr(L"%d\u00a77/\u00a7r%d", players, maxPlayers)
+                                    : formatwstr(L"%d", players);
+            if (session->m_savedServer >= 0)
+                pingRow = PingRow(session->m_pingMs);
+            break;
+        }
+        }
+
+        float statusRight = right;
+        if (pingRow >= 0)
+        {
+            const float pingWidth = kPingWidth * textScale;
+            const float pingLeft = right - pingWidth;
+            const float u0 = kPingWidth * static_cast<float>(pingColumn) / 256.0f;
+            const float u1 = u0 + kPingWidth / 256.0f;
+            const float v0 = (kPingTop + kPingHeight * static_cast<float>(pingRow)) / 256.0f;
+            const float v1 = v0 + kPingHeight / 256.0f;
+            textures->bindTexture(&sIcons);
+            GlStateManager::color4f(1.0f, 1.0f, 1.0f, 1.0f);
+            BufferBuilder* builder = Tesselator::getInstance()->getBuilder();
+            builder->begin();
+            builder->vertexUV(pingLeft, top + kPingHeight * textScale, 0.0f, u0, v1);
+            builder->vertexUV(right, top + kPingHeight * textScale, 0.0f, u1, v1);
+            builder->vertexUV(right, top, 0.0f, u1, v0);
+            builder->vertexUV(pingLeft, top, 0.0f, u0, v0);
+            builder->end();
+            statusRight = pingLeft - kServerStatusGap * stageHeight / 720.0f;
+        }
+        float statusLeft = statusRight;
+        if (!status.empty())
+        {
+            statusLeft = statusRight - static_cast<float>(font.width(status)) * textScale;
+            DrawRowText(font, status, statusLeft, top, textScale, kNameColour);
+        }
+
+        const int nameWidth = static_cast<int>((statusLeft - left) / textScale) - 4;
+        const std::wstring name = FitRowText(font, session->m_displayName != NULL ? session->m_displayName : L"",
+                                             nameWidth);
+        const bool selected = listFocused && base->getId() == selectedId;
+        DrawRowText(font, name, left, top, textScale, selected ? kSelectedNameColour : kNameColour);
+
+        const int motdWidth = static_cast<int>((right - left) / textScale);
+        const std::vector<std::wstring> lines = Motd::Lines(font, motd, motdWidth, 2);
+        for (size_t line = 0; line < lines.size(); ++line)
+            DrawRowText(font, lines[line], left, top + lineHeight * static_cast<float>(line + 1), textScale,
+                        kMotdColour);
+    }
+    DebugOverlay::EndScreenDraw();
 }
 
 unsigned int UIScene_LoadCreateJoinMenu::getSubSceneType() const

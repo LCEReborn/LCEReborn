@@ -300,6 +300,11 @@ std::wstring CProfile::LocalPlayerName()
     return name;
 }
 
+void CProfile::SetPlayerName(const std::wstring& name)
+{
+    mPlayerName = name.substr(0, kMaxPlayerNameLength);
+}
+
 ACTUuid CProfile::LocalPlayerUuid(const std::wstring& name)
 {
     unsigned long long high = 0x6c62272e07bb0142ULL;

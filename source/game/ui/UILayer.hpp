@@ -94,7 +94,8 @@ enum EUIScene
     EUIScene_EditServerMenu = 0x53,
     EUIScene_DebugOverlayMenu = 0x54,
     EUIScene_ShaderMenu = 0x55,
-    EUIScene_None = 0x56,
+    EUIScene_OnlineSettingsMenu = 0x56,
+    EUIScene_None = 0x57,
     EUIScene_Count
 };
 

@@ -121,6 +121,20 @@ bool PlayerList::canReceiveAllPackets(const boost::shared_ptr<ServerPlayer>& pla
     return false;
 }
 
+static std::vector<std::wstring> sOperators;
+
+void PlayerList::SetOperators(const std::vector<std::wstring>& names)
+{
+    sOperators.clear();
+    for (std::vector<std::wstring>::const_iterator it = names.begin(); it != names.end(); ++it)
+        sOperators.push_back(toLower(*it));
+}
+
+bool PlayerList::IsOperator(const std::wstring& name)
+{
+    return std::find(sOperators.begin(), sOperators.end(), toLower(name)) != sOperators.end();
+}
+
 bool PlayerList::isOp(boost::shared_ptr<ServerPlayer> player)
 {
     const bool cheatsEnabled = gApp.GetGameHostOption(eGameHostOption_CheatsEnabled) != 0;
@@ -587,6 +601,10 @@ void PlayerList::placeNewPlayer(Connection* connection, boost::shared_ptr<Server
     {
         player->enableAllPlayerPrivileges(true);
         player->setPlayerGamePrivilege(Player::ePlayerGamePrivilege_Moderator, 1);
+    }
+    else if (IsOperator(player->getName()))
+    {
+        player->setPlayerGamePrivilege(Player::ePlayerGamePrivilege_Op, 1);
     }
 
     validatePlayerSpawnPosition(player);

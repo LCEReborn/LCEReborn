@@ -21,6 +21,7 @@
 #include "game/ui/UIScene_FullscreenProgress.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
 #include "game/world/generation/Player.hpp"
+#include "platform/CInput.hpp"
 #include "platform/CProfile.hpp"
 #include "platform/CStorage.hpp"
 #include "platform/pc/Log.hpp"
@@ -69,7 +70,37 @@ void Fail(const char* message, const std::string& detail)
     Enter(StartWorldState_Done);
 }
 
-bool ReadSaveFile(const std::string& folder, const char* file, std::vector<unsigned char>& data, std::string& error)
+bool LoadWorld(const std::string& folder, std::string& error)
+{
+    _NetworkGameInitData* initData = PcPrepareWorldLoad(folder, error);
+    if (initData == NULL)
+        return false;
+    gApp.SetTutorialMode(false, boost::shared_ptr<Player>());
+    CGameNetworkManager::sInstance.HostGame(0, false, false, static_cast<unsigned char>(initData->m_gameType),
+                                            eMiniGameId_Any, 0, 0);
+    CGameNetworkManager::sInstance.FakeLocalPlayerJoined();
+
+    _LoadingInputParams* params = new _LoadingInputParams();
+    params->m_threadProc = &CGameNetworkManager::RunNetworkGameThreadProc;
+    params->m_threadParam = initData;
+    FullscreenProgressState* progressState = new FullscreenProgressState();
+    progressState->closeMode = 3;
+    progressState->playerId = 0;
+    params->m_completionData = progressState;
+    gApp.SetAutosaveTimerTime();
+    gConsoleUIController.NavigateToScene(gProfile->GetPrimaryPad(), EUIScene_FullscreenProgress, params, EUILayer_Scene,
+                                         EUIGroup_PlayerDefault);
+    return true;
+}
+}
+
+bool PcSaveFolderExists(const std::string& folder)
+{
+    std::error_code error;
+    return std::filesystem::is_regular_file(std::filesystem::path(PcSaveRoot()) / "games" / folder / "world.bin", error);
+}
+
+bool PcReadSaveFile(const std::string& folder, const char* file, std::vector<unsigned char>& data, std::string& error)
 {
     std::filesystem::path path = std::filesystem::path(PcSaveRoot()) / "games" / folder / file;
     std::ifstream stream(path, std::ios::binary);
@@ -96,17 +127,18 @@ bool ReadSaveFile(const std::string& folder, const char* file, std::vector<unsig
     return true;
 }
 
-bool LoadWorld(const std::string& folder, std::string& error)
+_NetworkGameInitData* PcPrepareWorldLoad(const std::string& folder, std::string& error)
 {
     std::vector<unsigned char> world;
-    if (!ReadSaveFile(folder, "world.bin", world, error))
-        return false;
+    if (!PcReadSaveFile(folder, "world.bin", world, error))
+        return NULL;
 
     int texturePackId = -1;
     std::vector<unsigned char> thumbnail;
     std::string thumbnailError;
-    if (ReadSaveFile(folder, "image.png", thumbnail, thumbnailError))
+    if (PcReadSaveFile(folder, "image.png", thumbnail, thumbnailError))
     {
+        CGameNetworkManager::sInstance.SetWorldThumbnail(&thumbnail[0], static_cast<unsigned int>(thumbnail.size()));
         CMinecraftApp::PngTagData tagData;
         gApp.GetImageTextData(&thumbnail[0], static_cast<unsigned int>(thumbnail.size()), &tagData);
         tagData.flags |= CMinecraftApp::PngTagData::eFlag_NumLoads;
@@ -117,6 +149,7 @@ bool LoadWorld(const std::string& folder, std::string& error)
     }
     else
     {
+        CGameNetworkManager::sInstance.SetWorldThumbnail(NULL, 0);
         LOG_WARN(sLog, "Loading with default settings: %s", thumbnailError.c_str());
     }
 
@@ -124,7 +157,7 @@ bool LoadWorld(const std::string& folder, std::string& error)
     if (data == NULL)
     {
         error = "out of memory for the save";
-        return false;
+        return NULL;
     }
     std::memcpy(data, &world[0], world.size());
 
@@ -134,12 +167,9 @@ bool LoadWorld(const std::string& folder, std::string& error)
     gStorage->ResetSaveData();
     gStorage->SetSaveTitle(name.c_str());
     gStorage->SetSaveUniqueFilename(&uniqueName[0]);
-    gApp.SetTutorialMode(false, boost::shared_ptr<Player>());
 
     if (texturePackId >= 0)
         Minecraft::GetInstance()->mTexturePackRepository->selectTexturePackById(texturePackId, false);
-    unsigned char gameType = static_cast<unsigned char>(gApp.GetGameHostOption(eGameHostOption_GameType));
-    CGameNetworkManager::sInstance.HostGame(0, false, false, gameType, eMiniGameId_Any, 0, 0);
 
     DiskSaveBuffer* saveBuffer = new DiskSaveBuffer;
     saveBuffer->data = data;
@@ -157,21 +187,7 @@ bool LoadWorld(const std::string& folder, std::string& error)
         initData->m_texturePackId = texturePackId;
     initData->m_savePlatform = SAVE_FILE_PLATFORM_LOCAL;
     initData->m_gameType = gApp.GetGameHostOption(eGameHostOption_GameType);
-
-    CGameNetworkManager::sInstance.FakeLocalPlayerJoined();
-
-    _LoadingInputParams* params = new _LoadingInputParams();
-    params->m_threadProc = &CGameNetworkManager::RunNetworkGameThreadProc;
-    params->m_threadParam = initData;
-    FullscreenProgressState* progressState = new FullscreenProgressState();
-    progressState->closeMode = 3;
-    progressState->playerId = 0;
-    params->m_completionData = progressState;
-    gApp.SetAutosaveTimerTime();
-    gConsoleUIController.NavigateToScene(gProfile->GetPrimaryPad(), EUIScene_FullscreenProgress, params, EUILayer_Scene,
-                                         EUIGroup_PlayerDefault);
-    return true;
-}
+    return initData;
 }
 
 bool PcInWorld()
@@ -184,8 +200,9 @@ bool PcInWorld()
 void PcStartWorldTick()
 {
     const PcLaunchOptions& options = PcGetLaunchOptions();
-    if (options.world.empty())
+    if (options.world.empty() && options.join.empty())
         return;
+    const std::string& target = options.world.empty() ? options.join : options.world;
 
     switch (sState)
     {
@@ -204,32 +221,38 @@ void PcStartWorldTick()
         if (!gConsoleUIController.IsSceneInStack(gProfile->GetPrimaryPad(), EUIScene_MainMenu))
         {
             if (NowSeconds() - sStateStart > kTimeoutSeconds)
-                Fail("The main menu never appeared", options.world);
+                Fail("The main menu never appeared", target);
             break;
         }
+        gProfile->SetPrimaryPad(g_pInput->LastInputPad());
         {
             std::string error;
-            if (!LoadWorld(options.world, error))
+            if (!options.world.empty() && !LoadWorld(options.world, error))
             {
                 Fail("The world could not be loaded", error);
                 break;
             }
+            if (options.world.empty() && CGameNetworkManager::sInstance.JoinServerAddress(options.join) != 0)
+            {
+                Fail("Could not join", options.join);
+                break;
+            }
         }
-        LOG_INFO(sLog, "Loading %s", options.world.c_str());
+        LOG_INFO(sLog, options.world.empty() ? "Joining %s" : "Loading %s", target.c_str());
         Enter(StartWorldState_Loading);
         break;
     case StartWorldState_Loading:
         if (PcInWorld())
         {
             Minecraft* minecraft = Minecraft::GetInstance();
-            LOG_INFO(sLog, "In %s at %.2f,%.2f,%.2f facing %.1f,%.1f", options.world.c_str(), minecraft->mPlayer->mX,
+            LOG_INFO(sLog, "In %s at %.2f,%.2f,%.2f facing %.1f,%.1f", target.c_str(), minecraft->mPlayer->mX,
                      minecraft->mPlayer->mY, minecraft->mPlayer->mZ, minecraft->mPlayer->mYRot,
                      minecraft->mPlayer->mXRot);
             Enter(StartWorldState_Done);
         }
         else if (NowSeconds() - sStateStart > kTimeoutSeconds)
         {
-            Fail("The world did not finish loading", options.world);
+            Fail("The world did not finish loading", target);
         }
         break;
     case StartWorldState_Done:

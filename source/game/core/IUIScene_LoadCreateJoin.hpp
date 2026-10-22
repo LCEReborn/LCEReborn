@@ -59,7 +59,7 @@ public:
     void CheckAndJoinGame(int);
     void HandleGamesListPressed(int);
     FriendSessionInfo* GetJoinListSession(int id);
-    void AddSessionButton(FriendSessionInfo* session, int id, const std::wstring& key);
+    void AddServerRow(const FriendSessionInfo* session, int id);
     int GetSelectedSavedServer();
     void EditSavedServer(int serverIndex);
     static int RemoveServerDialogReturned(void*, int, C4JStorage::EMessageResult);
@@ -86,9 +86,8 @@ public:
     virtual void ScrollCreateListToSelection(unsigned int selection) = 0;
     virtual void ClearCreateList() = 0;
     virtual void SetCreateListEnabled(bool enabled) = 0;
-    virtual void AddJoinListButton(const std::wstring& label, int id, unsigned char* data, unsigned int size,
-                                   const std::wstring& textureName, unsigned char* data1, unsigned int size1,
-                                   const std::wstring& textureName1) = 0;
+    virtual void AddJoinListIcon(const std::wstring& label, int id, const std::wstring& iconName,
+                                 const unsigned char* data, unsigned int size) = 0;
     virtual void AddJoinListAction(const std::wstring& label, int id, const std::wstring& iconPath,
                                    const std::wstring& iconName) = 0;
     virtual void AddJoinListScanningRow(const std::wstring& label, int id) = 0;

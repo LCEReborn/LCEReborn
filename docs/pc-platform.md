@@ -65,8 +65,14 @@ comes from its arguments (`platform/pc/PcLaunchOptions`, `--help` lists them).
 `--language` the language, falling back to the system's. `--uuid` sets the
 first player's identity, 32 hexadecimal digits with or without dashes;
 without it the identity is made from the player name. `--license-file` sets
-the license file (see Licenses). Most players start the game from the
-launcher (`pc-launcher.md`).
+the license file (see Licenses). `--world` loads a save folder from
+`saves/games/` as soon as the main menu is up. Most players start the game
+from the launcher (`pc-launcher.md`).
+
+Debug builds (`-DCMAKE_BUILD_TYPE=RelWithDebInfo` or `Debug`) add options for
+render testing: `--position` and `--rotation` place the player once a world
+has loaded, and `--capture-frames`, `--capture-delay` and `--capture-dir`
+save that many frames as PNG files after the delay, then quit.
 
 ## Licenses
 

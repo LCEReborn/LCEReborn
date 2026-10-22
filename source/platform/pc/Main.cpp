@@ -43,6 +43,8 @@
 #include "platform/pc/Log.hpp"
 #include "platform/pc/PcLaunchOptions.hpp"
 #include "platform/pc/PcLicenses.hpp"
+#include "platform/pc/PcFrameCapture.hpp"
+#include "platform/pc/PcStartWorld.hpp"
 #include "platform/pc/PcWindow.hpp"
 
 extern CConsoleMinecraftApp gApp;
@@ -260,6 +262,10 @@ int main(int argc, char** argv)
         CGameNetworkManager::sInstance.DoWork();
         PIXEndNamedEvent();
         gApp.HandleXuiActions();
+        PcStartWorldTick();
+#if LCE_DEBUG_BUILD
+        PcFrameCaptureTick();
+#endif
         if (!gProfile->IsFullVersion())
         {
             if (gApp.GetGameStarted() != 0)

@@ -17,6 +17,7 @@
 #include "platform/pc/Log.hpp"
 #include "platform/pc/PcCrashReport.hpp"
 #include "platform/pc/PcKeyboardOverlay.hpp"
+#include "platform/pc/PcFrameCapture.hpp"
 #include "platform/pc/PcWindow.hpp"
 #include "platform/pc/RenderShaders.hpp"
 #include "platform/pc/shaderpack/ShaderPipeline.hpp"
@@ -2806,6 +2807,9 @@ void Renderer::Present()
         int drawableWidth = 0;
         int drawableHeight = 0;
         PcWindowGetDrawableSize(&drawableWidth, &drawableHeight);
+#if LCE_DEBUG_BUILD
+        PcFrameCaptureFrame(drawableWidth, drawableHeight);
+#endif
         PcKeyboardOverlayDraw(drawableWidth, drawableHeight);
         PcWindowSwap();
         mDevice->Invalidate();

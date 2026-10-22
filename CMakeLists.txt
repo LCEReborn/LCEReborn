@@ -37,7 +37,8 @@ target_compile_definitions(lce_common INTERFACE
   LCE_PLATFORM_PC=1
   NDEBUG
   BOOST_ENABLE_ASSERT_HANDLER
-  BOOST_NO_EXCEPTIONS)
+  BOOST_NO_EXCEPTIONS
+  $<$<CONFIG:Debug,RelWithDebInfo>:LCE_DEBUG_BUILD=1>)
 
 if(MSVC)
   target_compile_definitions(lce_common INTERFACE

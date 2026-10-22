@@ -2,6 +2,7 @@
 
 #include <cctype>
 #include <cstdio>
+#include <cstdlib>
 #include <vector>
 
 #if defined(_WIN32)
@@ -50,8 +51,17 @@ static void PrintUsage(std::FILE* stream)
                "  --license-file <file>       what is unlocked (default: license.cfg in the working folder)\n"
                "  --split-screen <on|off>     other controllers can join as more players (default: on)\n"
                "  --join-prompt <on|off>      prompt other controllers to join when a world loads (default: off)\n"
-               "  --help                      show this message\n",
+               "  --world <folder>            load this save from the saves folder's games folder at start\n",
                stream);
+#if LCE_DEBUG_BUILD
+    std::fputs("  --position <x,y,z>          move the player here once a world has loaded\n"
+               "  --rotation <yaw,pitch>      turn the player to face this way once a world has loaded\n"
+               "  --capture-frames <count>    save this many frames as PNG files, then quit\n"
+               "  --capture-delay <seconds>   wait this long in the world before capturing (default: 10)\n"
+               "  --capture-dir <dir>         where captured frames go (default: capture in the working folder)\n",
+               stream);
+#endif
+    std::fputs("  --help                      show this message\n", stream);
 }
 
 bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
@@ -82,6 +92,12 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
 
         std::string* target = NULL;
         bool* flag = NULL;
+#if LCE_DEBUG_BUILD
+        int* count = NULL;
+        double* seconds = NULL;
+        std::vector<double>* list = NULL;
+        size_t listSize = 0;
+#endif
         if (name == "--split-screen")
             flag = &sOptions.splitScreen;
         else if (name == "--join-prompt")
@@ -102,6 +118,26 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
             target = &sOptions.uuid;
         else if (name == "--license-file")
             target = &sOptions.licenseFile;
+        else if (name == "--world")
+            target = &sOptions.world;
+#if LCE_DEBUG_BUILD
+        else if (name == "--position")
+        {
+            list = &sOptions.position;
+            listSize = 3;
+        }
+        else if (name == "--rotation")
+        {
+            list = &sOptions.rotation;
+            listSize = 2;
+        }
+        else if (name == "--capture-dir")
+            target = &sOptions.captureDir;
+        else if (name == "--capture-frames")
+            count = &sOptions.captureFrames;
+        else if (name == "--capture-delay")
+            seconds = &sOptions.captureDelay;
+#endif
         else
         {
             std::fprintf(stderr, "Unknown option: %s\n", arguments[index].c_str());
@@ -139,6 +175,50 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
             }
             continue;
         }
+
+#if LCE_DEBUG_BUILD
+        if (list != NULL)
+        {
+            list->clear();
+            const char* cursor = value.c_str();
+            for (;;)
+            {
+                char* end = NULL;
+                const double number = std::strtod(cursor, &end);
+                if (end == cursor)
+                    break;
+                list->push_back(number);
+                cursor = end;
+                if (*cursor != ',')
+                    break;
+                ++cursor;
+            }
+            if (list->size() != listSize || *cursor != '\0')
+            {
+                std::fprintf(stderr, "%s must be %u numbers separated by commas, not %s\n", name.c_str(),
+                             static_cast<unsigned int>(listSize), value.c_str());
+                return false;
+            }
+            continue;
+        }
+
+        if (count != NULL || seconds != NULL)
+        {
+            char* end = NULL;
+            const double number = std::strtod(value.c_str(), &end);
+            if (end == value.c_str() || *end != '\0' || number < 0.0 || (count != NULL && number != (int)number))
+            {
+                std::fprintf(stderr, "%s must be a %s, not %s\n", name.c_str(),
+                             count != NULL ? "whole number" : "number of seconds", value.c_str());
+                return false;
+            }
+            if (count != NULL)
+                *count = (int)number;
+            else
+                *seconds = number;
+            continue;
+        }
+#endif
 
         *target = value;
     }

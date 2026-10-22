@@ -960,10 +960,10 @@ float GameRenderer::getFov(float amount, bool useSmoothing)
     boost::shared_ptr<MultiplayerLocalPlayer> player = Minecraft::GetInstance()->mPlayer;
     const int playerIndex = player != NULL ? player->mUserIndex : 0;
 
-    float fov = static_cast<float>(VideoSettings::GetFov());
+    float fov = static_cast<float>(VideoSettings::FOV_NORMAL);
     if (useSmoothing)
     {
-        fov = (fov + mMinecraft->mOptions->mFov)
+        fov = (static_cast<float>(VideoSettings::GetFov()) + mMinecraft->mOptions->mFov)
               * ((mFov[playerIndex] - mFovO[playerIndex]) * amount + mFovO[playerIndex]);
     }
 
@@ -1253,25 +1253,53 @@ void GameRenderer::moveCameraToPlayer(float partialTick)
         (living->mZ - living->mZo) * partialTick + living->mZo, partialTick);
 }
 
-void GameRenderer::getFovAndAspect(float& fov, float& aspect, float partialTick, bool useSmoothing)
+void GameRenderer::getViewportAspectAndFovScale(float& aspect, float& fovScale)
 {
 #if LCE_PLATFORM_PC
     aspect = gRenderer->GetScreenAspect();
 #else
     aspect = static_cast<float>(mMinecraft->mWidth) / static_cast<float>(mMinecraft->mHeight);
 #endif
-    fov = getFov(partialTick, useSmoothing);
+    fovScale = 1.0f;
 
     if (mMinecraft->mPlayer->mViewport == 1 || mMinecraft->mPlayer->mViewport == 2)
     {
         aspect = aspect + aspect;
-        fov = fov * 0.7f;
+        fovScale = 0.7f;
     }
     else if (mMinecraft->mPlayer->mViewport == 3 || mMinecraft->mPlayer->mViewport == 4)
     {
         aspect = aspect * 0.5f;
-        fov = fov * 1.1f;
+        fovScale = 1.1f;
     }
+}
+
+void GameRenderer::getFovAndAspect(float& fov, float& aspect, float partialTick, bool useSmoothing)
+{
+    float fovScale;
+    getViewportAspectAndFovScale(aspect, fovScale);
+    fov = getFov(partialTick, useSmoothing) * fovScale;
+}
+
+float GameRenderer::getViewScale(float fov)
+{
+    float aspect;
+    float fovScale;
+    getViewportAspectAndFovScale(aspect, fovScale);
+    return 1.0f / (tanf(fov * fovScale * 0.5f * Mth::DEG_TO_RAD) * aspect);
+}
+
+float GameRenderer::getHandScreenShift()
+{
+    static const float kWidescreenAspect = 16.0f / 9.0f;
+    static const float kHandAnchor = 0.56f / 0.72f;
+
+    const float handFov = static_cast<float>(VideoSettings::FOV_NORMAL);
+    const float reference = 1.0f / (tanf(handFov * 0.5f * Mth::DEG_TO_RAD) * kWidescreenAspect);
+    const float scale = getViewScale(handFov);
+    if (scale <= reference)
+        return 0.0f;
+    return (scale - reference) * kHandAnchor;
 }
 
 void GameRenderer::setupCamera(float partialTick, int eyeIndex)

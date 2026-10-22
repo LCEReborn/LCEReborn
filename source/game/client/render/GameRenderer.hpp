@@ -81,7 +81,10 @@ public:
     float getCameraYRot(float);
     float getCameraXRot(float);
     void moveCameraToPlayer(float);
+    void getViewportAspectAndFovScale(float&, float&);
     void getFovAndAspect(float&, float&, float, bool);
+    float getViewScale(float);
+    float getHandScreenShift();
     void setupCamera(float, int);
     void turnOnLightLayer(double);
     void turnOffLightLayer(double);

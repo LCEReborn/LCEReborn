@@ -29,6 +29,7 @@
 #include "game/item/Enchantment.hpp"
 #include "game/item/Item.hpp"
 #include "game/network/CGameNetworkManager.hpp"
+#include "game/network/ClientPacketListener.hpp"
 #include "game/network/INetworkPlayer.hpp"
 #include "game/ui/Tooltips.hpp"
 #include "game/util/ResourceLocation.hpp"
@@ -108,6 +109,7 @@ struct Suggestion
 
 struct State
 {
+    int pad;
     bool open;
     bool controller;
     bool justOpened;
@@ -194,11 +196,17 @@ std::vector<std::wstring> PlayerNames()
     return names;
 }
 
-const ChatCommands::CommandUsage* FindCommand(const std::wstring& name)
+const std::vector<ChatCommands::CommandUsage>& Commands(const State& s)
 {
-    size_t count = 0;
-    const ChatCommands::CommandUsage* usages = ChatCommands::Usages(&count);
-    for (size_t index = 0; index < count; ++index)
+    static const std::vector<ChatCommands::CommandUsage> kNone;
+    ClientPacketListener* connection = Minecraft::GetInstance()->getConnection(s.pad);
+    return connection != NULL ? connection->getCommands() : kNone;
+}
+
+const ChatCommands::CommandUsage* FindCommand(const State& s, const std::wstring& name)
+{
+    const std::vector<ChatCommands::CommandUsage>& usages = Commands(s);
+    for (size_t index = 0; index < usages.size(); ++index)
     {
         if (name == usages[index].name)
             return &usages[index];
@@ -334,7 +342,8 @@ bool SuggestSelector(State& s, const std::wstring& word)
     return true;
 }
 
-std::vector<std::wstring> ArgumentOptions(const std::wstring& kind, const std::vector<std::wstring>& before)
+std::vector<std::wstring> ArgumentOptions(const State& s, const std::wstring& kind,
+                                          const std::vector<std::wstring>& before)
 {
     std::vector<std::wstring> options;
     if (kind == L"targets")
@@ -367,9 +376,8 @@ std::vector<std::wstring> ArgumentOptions(const std::wstring& kind, const std::v
     }
     else if (kind == L"command")
     {
-        size_t count = 0;
-        const ChatCommands::CommandUsage* usages = ChatCommands::Usages(&count);
-        for (size_t index = 0; index < count; ++index)
+        const std::vector<ChatCommands::CommandUsage>& usages = Commands(s);
+        for (size_t index = 0; index < usages.size(); ++index)
         {
             if (iswalpha(usages[index].name[0]))
                 options.push_back(usages[index].name);
@@ -482,14 +490,13 @@ void UpdateSuggestions(State& s)
     const bool command = !s.text.empty() && s.text[0] == L'/';
     if (command && wordStart == 0)
     {
-        size_t count = 0;
-        const ChatCommands::CommandUsage* usages = ChatCommands::Usages(&count);
-        for (size_t index = 0; index < count; ++index)
+        const std::vector<ChatCommands::CommandUsage>& usages = Commands(s);
+        for (size_t index = 0; index < usages.size(); ++index)
         {
-            const std::wstring name = std::wstring(L"/") + usages[index].name;
+            const std::wstring name = L"/" + usages[index].name;
             if (!StartsWithIgnoringCase(name, word) || Lower(name) == Lower(word))
                 continue;
-            AddSuggestion(s, name + (usages[index].usage[0] != 0 ? L" " : L""), usages[index].usage);
+            AddSuggestion(s, name + (usages[index].usage.empty() ? L"" : L" "), usages[index].usage);
         }
         return;
     }
@@ -519,7 +526,7 @@ void UpdateSuggestions(State& s)
         }
         if (!resolved)
         {
-            const ChatCommands::CommandUsage* info = FindCommand(Lower(line[0]));
+            const ChatCommands::CommandUsage* info = FindCommand(s, Lower(line[0]));
             if (info == NULL)
                 return;
             const size_t argument = line.size() - 1;
@@ -528,12 +535,12 @@ void UpdateSuggestions(State& s)
                 kind = kinds[argument];
             else if (!kinds.empty() && kinds.back() == L"text")
                 kind = L"text";
-            if (word.empty() && info->usage[0] != 0 && !kind.empty())
-                s.usage = std::wstring(L"/") + info->name + L" " + info->usage;
+            if (word.empty() && !info->usage.empty() && !kind.empty())
+                s.usage = L"/" + info->name + L" " + info->usage;
         }
         if (kind == L"targets" && SuggestSelector(s, word))
             return;
-        options = ArgumentOptions(kind, line);
+        options = ArgumentOptions(s, kind, line);
     }
     else if (!word.empty())
     {
@@ -1407,6 +1414,7 @@ bool OpenScreen(int pad, ChatScreen::EOpenMode mode, bool afterMenus)
         return false;
     Minecraft* minecraft = Minecraft::GetInstance();
     State& s = sStates[pad];
+    s.pad = pad;
     if (s.open || !minecraft->mLocalPlayers[pad] || !minecraft->mLocalPlayers[pad]->isAlive()
         || (!afterMenus && gConsoleUIController.GetMenuDisplayed(pad)))
         return false;

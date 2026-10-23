@@ -29,6 +29,7 @@ public:
 
     static const std::wstring WORLD_SIZE_PACKET;
     static const std::wstring LEADERBOARD_PACKET;
+    static const std::wstring COMMANDS_PACKET;
 
     std::wstring getIdentifier();
     arrayWithLength<unsigned char> getData();

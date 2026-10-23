@@ -308,7 +308,8 @@ ClientPacketListener::ClientPacketListener(Minecraft* minecraft, Socket* socket,
       m_savedDataStorage(0),
       m_sentViewDistance(-1),
       m_worldXZSize(0),
-      m_worldHellScale(0)
+      m_worldHellScale(0),
+      m_commands()
 {
     InitializeCriticalSection(&m_mutex);
     m_savedDataStorage = new SavedDataMemoryStorage();
@@ -3639,6 +3640,11 @@ void ClientPacketListener::handleItemCooldown(boost::shared_ptr<ClientboundCoold
         m_minecraft->mLocalPlayers[m_playerId]->getCooldowns()->addCooldown(packet->getItem(), packet->getDuration());
 }
 
+const std::vector<ChatCommands::CommandUsage>& ClientPacketListener::getCommands() const
+{
+    return m_commands;
+}
+
 void ClientPacketListener::handleCustomPayload(boost::shared_ptr<ClientboundCustomPayloadPacket> packet)
 {
     ByteArrayInputStream byteStream(packet->getData());
@@ -3667,6 +3673,10 @@ void ClientPacketListener::handleCustomPayload(boost::shared_ptr<ClientboundCust
     else if (packet->getIdentifier() == ClientboundCustomPayloadPacket::LEADERBOARD_PACKET)
     {
         static_cast<LceLeaderboardManager*>(g_pLeaderboardManager)->OnServerRows(packet->getData());
+    }
+    else if (packet->getIdentifier() == ClientboundCustomPayloadPacket::COMMANDS_PACKET)
+    {
+        m_commands = ChatCommands::ReadUsages(packet->getData());
     }
     else if (packet->getIdentifier() == ClientboundCustomPayloadPacket::WORLD_SIZE_PACKET)
     {

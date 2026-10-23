@@ -135,6 +135,7 @@ ServerGamePacketListenerImpl::ServerGamePacketListenerImpl(MinecraftServer* serv
       mKeepAlivePending(0),
       mChatSpamTickCount(0),
       mDropSpamTickCount(0),
+      mSentCommandPermission(-1),
       mFirstGoodX(0.0),
       mFirstGoodY(0.0),
       mFirstGoodZ(0.0),
@@ -373,7 +374,18 @@ void ServerGamePacketListenerImpl::tick()
             --mChatSpamTickCount;
         if (mDropSpamTickCount > 0)
             --mDropSpamTickCount;
+        sendCommands();
     }
+}
+
+void ServerGamePacketListenerImpl::sendCommands()
+{
+    const int permission = ChatCommands::PermissionOf(mPlayer);
+    if (permission == mSentCommandPermission)
+        return;
+    mSentCommandPermission = permission;
+    send(boost::shared_ptr<Packet>(new ClientboundCustomPayloadPacket(ClientboundCustomPayloadPacket::COMMANDS_PACKET,
+                                                                      ChatCommands::WriteUsages(permission))));
 }
 
 bool ServerGamePacketListenerImpl::containsInvalidValues(boost::shared_ptr<ServerboundMoveVehiclePacket> packet)

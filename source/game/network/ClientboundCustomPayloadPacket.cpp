@@ -8,6 +8,7 @@
 
 const std::wstring ClientboundCustomPayloadPacket::WORLD_SIZE_PACKET = L"LCE|World";
 const std::wstring ClientboundCustomPayloadPacket::LEADERBOARD_PACKET = L"LCE|Board";
+const std::wstring ClientboundCustomPayloadPacket::COMMANDS_PACKET = L"LCE|Commands";
 
 ClientboundCustomPayloadPacket::ClientboundCustomPayloadPacket()
 {

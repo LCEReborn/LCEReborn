@@ -191,7 +191,9 @@ font draws (`Font::draw`).
 
 The Chat button can be changed in Controls for keyboards and controllers.
 
-A message starting with `/` is a command (`ChatCommands` in `game/command/`).
+A message starting with `/` is a command. Each command is a `ChatCommand`
+in `game/command/chat/`, registered with `ChatCommands::Register`, which
+finds commands by name or alias and checks permission before running them.
 They follow Java 1.12, with `/execute`, `/xp` and coordinates as in 1.13:
 
 - **Players and items:** `/give`, `/clear`, `/effect`, `/enchant`, `/xp`,
@@ -210,13 +212,14 @@ They follow Java 1.12, with `/execute`, `/xp` and coordinates as in 1.13:
 `/xp add`, `set` and `query` take `points` or `levels`; the older
 `/xp 5L` form also works. `/effect` and `/enchant` work on any mob.
 
-`/help` lists them a page at a time, and `/help <command>` shows one usage.
-`/me`, `/msg`, `/list` and `/help` are open to everyone. The rest follow the
-game's own permission rule: the host and moderators can use them when the
-world has Host Privileges on, and anyone else is told they don't have
-permission. `/kick` can't remove the host or players on the host's console.
-`/op` and `/deop` make a player a moderator or not; the host always is one.
-In a hosted game they take a player who is online.
+`/help` lists the commands you can use a page at a time, and
+`/help <command>` shows one usage. `/me`, `/msg`, `/list` and `/help` are
+open to everyone. The rest follow the game's own permission rule: the host
+and moderators can use them when the world has Host Privileges on, and
+anyone else is told they don't have permission. `/kick` can't remove the
+host or players on the host's console. `/op` and `/deop` make a player a
+moderator or not; the host always is one. In a hosted game they take a
+player who is online.
 
 Where a command takes targets, a player name or a selector works
 (`TargetSelector`): `@p` nearest player, `@a` all players, `@r` a random
@@ -227,7 +230,9 @@ negates `type`, `name` and `m`. Coordinates take `~` for values relative to
 where you are, or `^left ^up ^forward` for values relative to where you
 face; both are measured from whoever runs the command.
 Tab completes item, block, effect, enchantment and entity names, and selector
-arguments.
+arguments. The server sends each player the commands they may use over the
+`LCE|Commands` channel, again whenever that changes, so completion only
+offers those; a game hosted by an older version sends none.
 
 ## Debug overlay
 

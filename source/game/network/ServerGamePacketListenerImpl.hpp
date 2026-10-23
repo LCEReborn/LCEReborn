@@ -152,6 +152,7 @@ public:
 private:
     void DisableAchievements();
     void sendLeaderboard(int board, bool aroundMe, unsigned int startRank, unsigned int count);
+    void sendCommands();
 
     friend class PlayerList;
     friend class ServerPlayer;
@@ -181,6 +182,7 @@ private:
     int mKeepAlivePending;
     int mChatSpamTickCount;
     int mDropSpamTickCount;
+    int mSentCommandPermission;
     double mFirstGoodX;
     double mFirstGoodY;
     double mFirstGoodZ;

@@ -58,8 +58,18 @@ public:
     int GetPlayerCount();
     bool IsLocalGame();
     unsigned short GetListenPort();
+    void SetListenPort(unsigned short port);
+    void SetMotd(const std::wstring& motd);
+    void SetServerIcon(const std::vector<unsigned char>& icon, bool fixed);
+    void SetWorldThumbnail(const unsigned char* png, unsigned int size);
+    bool GetWorldThumbnail(std::vector<unsigned char>& png);
+    bool OpenToNetwork();
+    void CloseToNetwork();
+    void ApplyHostSettings();
+    std::wstring LocalAddressText();
     bool StartNetworkGame(Minecraft* minecraft, void* data);
     bool _RunNetworkGame(void* data);
+    bool RunDedicatedServer(void* data);
     int GetOnlinePlayerCount();
     bool AddLocalPlayerByUserIndex(int userIndex);
     bool RemoveLocalPlayerByUserIndex(int userIndex);
@@ -91,6 +101,7 @@ public:
     void ForceFriendsSessionRefresh();
     void ClearFriendsSessions();
     int JoinGame(FriendSessionInfo* info, int userIndex, bool matchmaking);
+    int JoinServerAddress(const std::string& address);
     int FindAndJoinGame(int userIndex, EMiniGameId miniGameId, unsigned int attributeCount, unsigned int* attributes,
                         unsigned int* ids);
     static void CancelJoinGame(void* data);
@@ -187,6 +198,8 @@ private:
     std::vector<ClientPacketListener*> m_connections;
     C4JCriticalSection m_connectionsMutex;
     unsigned char m_trailingPadding[4];
+    C4JCriticalSection m_worldThumbnailLock;
+    std::vector<unsigned char> m_worldThumbnail;
 
 public:
     EMiniGameId m_joiningMiniGameId;

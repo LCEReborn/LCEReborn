@@ -1014,6 +1014,15 @@ bool CMinecraftApp::GetGameStarted()
 {
     return mGameStarted;
 }
+static bool sDedicatedServer = false;
+bool CMinecraftApp::IsDedicatedServer()
+{
+    return sDedicatedServer;
+}
+void CMinecraftApp::SetDedicatedServer(bool dedicated)
+{
+    sDedicatedServer = dedicated;
+}
 void CMinecraftApp::SetDefaultHostOptions()
 {
     gApp.SetGameHostOption(eGameHostOption_MobGriefing, 1);

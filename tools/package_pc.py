@@ -5,8 +5,8 @@
 
 Build the game and the launcher first (docs/pc-platform.md). On Windows this
 writes build/LCEReborn-pc-<commit>.zip, on Linux
-build/LCEReborn-linux-<commit>.tar.gz, holding the two programs, the Qt
-libraries the launcher uses, resources/, a README, the project's license and,
+build/LCEReborn-linux-<commit>.tar.gz, holding the game, the launcher, the
+dedicated server, the Qt libraries the launcher uses, resources/, a README, the project's license and,
 in third_party/, the notices and licenses of every library in the programs.
 On Linux the tar.gz also holds the desktop entry the launcher and the game
 share (resources/linux) and install-desktop-entry, which lists it in the
@@ -62,7 +62,7 @@ DESKTOP_SCRIPT = "install-desktop-entry"
 LINUX = sys.platform.startswith("linux")
 if LINUX:
     SYSTEM = "linux"
-    PROGRAMS = ("LCEReborn", "LCERebornLauncher")
+    PROGRAMS = ("LCEReborn", "LCERebornLauncher", "LCERebornServer")
     EXECUTABLES = PROGRAMS + (DESKTOP_SCRIPT, "AppRun")
     QT_PLUGIN_DIRS = ("imageformats", "networkinformation", "platforminputcontexts", "platformthemes",
                       "tls", "wayland-decoration-client", "wayland-graphics-integration-client",
@@ -71,7 +71,7 @@ if LINUX:
     ALLOWED_NAME = re.compile(r"(^[^.]+$|\.so(\.\d+)*$|\.(png|ico|txt|desktop)$)")
 else:
     SYSTEM = "pc"
-    PROGRAMS = ("LCEReborn.exe", "LCERebornLauncher.exe")
+    PROGRAMS = ("LCEReborn.exe", "LCERebornLauncher.exe", "LCERebornServer.exe")
     EXECUTABLES = PROGRAMS
     QT_PLUGIN_DIRS = ("generic", "imageformats", "networkinformation", "platforms", "styles", "tls")
     ALLOWED_NAME = re.compile(r"\.(exe|dll|png|ico|txt)$", re.I)
@@ -403,7 +403,7 @@ def notices_text(source, game, qt, launcher, appimage=False):
                "or later (LICENSE.txt). It contains the libraries below. The texts of\n"
                "the licenses named here are in licenses/.\n")
 
-    out.append(rule("In " + PROGRAMS[0]))
+    out.append(rule("In " + PROGRAMS[0] + " and " + PROGRAMS[2]))
     for component in game:
         out.append(component_text(component))
         out.append("-" * 72 + "\n")
@@ -493,6 +493,21 @@ def requirements_text(glibc):
             "default.\n" % glibc)
 
 
+def server_text():
+    if LINUX:
+        start = ("Set up the game with the launcher first, then start it with --content-dir "
+                 "~/.local/share/LCEReborn/assets to use the content the launcher imported. The AppImage "
+                 "can't start it; use the tar.gz.")
+    else:
+        start = ("Set up the game with the launcher first, then start it from this folder, where it finds "
+                 "the content the launcher imported.")
+    text = ("%s plays a world for others with no window. %s It keeps its worlds, server.properties and "
+            "ops.json in saves in the folder it is started from; --save-dir picks another, and one apart "
+            "from your own saves is safest. Players join on TCP port 25570, and the server takes commands "
+            "typed into it. See docs/pc-platform.md in the source." % (PROGRAMS[2], start))
+    return "Dedicated server\n----------------\n\n%s\n\n" % textwrap.fill(text, 72, break_on_hyphens=False)
+
+
 def readme_text(source, glibc, desktop_script=False):
     readme = read(os.path.join(ROOT, "README.md"))
     disclaimers = block(readme, "## Disclaimers", "\n## ", os.path.join(ROOT, "README.md"))
@@ -514,6 +529,7 @@ def readme_text(source, glibc, desktop_script=False):
             "the first time, it asks for your own dumps of the base game and update\n"
             "688 and imports them into %s"
             "%s\n"
+            "%s"
             "Source and license\n"
             "------------------\n\n"
             "LCEReborn is free software under the GNU General Public License,\n"
@@ -522,7 +538,7 @@ def readme_text(source, glibc, desktop_script=False):
             "third_party/NOTICES.txt lists the libraries in it and their licenses.\n\n"
             "Disclaimers\n"
             "-----------\n\n"
-            "%s\n" % (title, "=" * len(title), build, PROGRAMS[1], folder, requirements_text(glibc),
+            "%s\n" % (title, "=" * len(title), build, PROGRAMS[1], folder, requirements_text(glibc), server_text(),
                       source["repository"], source["commit"], disclaimers))
 
 

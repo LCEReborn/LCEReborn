@@ -21,6 +21,7 @@ const int kFormatStrikethrough = 18;
 const int kFormatUnderline = 19;
 const int kFormatItalic = 20;
 const int kFormatReset = 21;
+const int kFormatHex = 22;
 
 int FormatCode(wchar_t code)
 {
@@ -36,7 +37,24 @@ int FormatCode(wchar_t code)
         return code - L'K' + kFormatObfuscated;
     if (code == L'r' || code == L'R')
         return kFormatReset;
+    if (code == L'x' || code == L'X')
+        return kFormatHex;
     return -1;
+}
+
+bool HexColour(const std::wstring& text, size_t start, int& rgb)
+{
+    if (start + 12 > text.length())
+        return false;
+    rgb = 0;
+    for (size_t digit = 0; digit < 6; ++digit)
+    {
+        const int value = FormatCode(text[start + digit * 2 + 1]);
+        if (text[start + digit * 2] != 0xA7 || value < 0 || value > 15)
+            return false;
+        rgb = (rgb << 4) | value;
+    }
+    return true;
 }
 
 struct TextLine
@@ -199,10 +217,13 @@ int Font::width(const std::wstring& text)
         if (character == 0xA7 && i + 1 < text.length())
         {
             const int code = FormatCode(text[++i]);
+            int rgb;
             if (code == kFormatBold)
                 bold = true;
-            else if ((code >= 0 && code < 16) || code == kFormatReset)
+            else if ((code >= 0 && code < 16) || code == kFormatReset || code == kFormatHex)
                 bold = false;
+            if (code == kFormatHex && HexColour(text, i + 1, rgb))
+                i += 12;
             continue;
         }
         const int mapped = CharacterExists(character) ? MapCharacter(character) : 0;
@@ -279,14 +300,24 @@ unsigned int Font::draw(const std::wstring& text, bool darken, bool useBuilder)
         if (character == 0xA7 && i + 1 < text.length())
         {
             const int code = FormatCode(text[++i]);
-            if ((code >= 0 && code < 16) || code == kFormatReset)
+            int rgb = 0;
+            const bool hex = code == kFormatHex && HexColour(text, i + 1, rgb);
+            if ((code >= 0 && code < 16) || code == kFormatReset || hex)
             {
                 obfuscated = false;
                 bold = false;
                 strikethrough = false;
                 underline = false;
                 italic = false;
-                color = code == kFormatReset ? (mBaseColor & 0xFFFFFF) : mColors[darken ? code + 16 : code];
+                if (hex)
+                {
+                    color = darken ? (rgb & 0xFCFCFC) >> 2 : rgb;
+                    i += 12;
+                }
+                else
+                {
+                    color = code == kFormatReset ? (mBaseColor & 0xFFFFFF) : mColors[darken ? code + 16 : code];
+                }
                 builder->color(color, alpha);
             }
             else if (code == kFormatObfuscated)

@@ -37,7 +37,8 @@ target_compile_definitions(lce_common INTERFACE
   LCE_PLATFORM_PC=1
   NDEBUG
   BOOST_ENABLE_ASSERT_HANDLER
-  BOOST_NO_EXCEPTIONS)
+  BOOST_NO_EXCEPTIONS
+  $<$<CONFIG:Debug,RelWithDebInfo>:LCE_DEBUG_BUILD=1>)
 
 if(MSVC)
   target_compile_definitions(lce_common INTERFACE
@@ -112,6 +113,8 @@ set_target_properties(lce_game PROPERTIES CXX_STANDARD 14)
 # The PC platform layer.
 file(GLOB_RECURSE LCE_PLATFORM_SOURCES CONFIGURE_DEPENDS "${LCE_SOURCE}/platform/pc/*.cpp")
 list(FILTER LCE_PLATFORM_SOURCES EXCLUDE REGEX "/platform/pc/audio/")
+# Each program's entry point: the game's Main.cpp and the dedicated server's ServerMain.cpp.
+list(FILTER LCE_PLATFORM_SOURCES EXCLUDE REGEX "/platform/pc/(Server)?Main\\.cpp$")
 # The LAN and internet play shared with the Wii U build.
 file(GLOB LCE_NET_SOURCES CONFIGURE_DEPENDS "${LCE_SOURCE}/net/*.cpp")
 list(APPEND LCE_PLATFORM_SOURCES ${LCE_NET_SOURCES})
@@ -130,6 +133,8 @@ add_custom_target(lce_build_info
           -P "${CMAKE_SOURCE_DIR}/launcher/BuildInfo.cmake"
   BYPRODUCTS "${CMAKE_BINARY_DIR}/generated/BuildInfo.hpp")
 add_dependencies(lce_platform lce_build_info)
+set(LCE_DISCORD_APP_ID "" CACHE STRING "Discord application used for Rich Presence when --discord-app is not given")
+target_compile_definitions(lce_platform PRIVATE LCE_DISCORD_APP_ID="${LCE_DISCORD_APP_ID}")
 target_include_directories(lce_platform PRIVATE "${CMAKE_BINARY_DIR}/generated")
 if(MSVC)
   # Boost 1.53 still uses std::auto_ptr and std::unary_function, which C++17 removes.
@@ -161,28 +166,40 @@ if(MSVC)
   target_compile_definitions(lce_png PRIVATE _CRT_SECURE_NO_WARNINGS)
 endif()
 
-add_executable(LCEReborn $<TARGET_OBJECTS:lce_game> $<TARGET_OBJECTS:lce_platform> $<TARGET_OBJECTS:lce_audio>)
-target_link_libraries(LCEReborn PRIVATE lce_png lce_zlib SDL3::SDL3-static)
+function(lce_add_program target main)
+  add_executable(${target} "${LCE_SOURCE}/platform/pc/${main}" $<TARGET_OBJECTS:lce_game>
+                 $<TARGET_OBJECTS:lce_platform> $<TARGET_OBJECTS:lce_audio>)
+  target_link_libraries(${target} PRIVATE lce_common lce_png lce_zlib SDL3::SDL3-static)
+  set_target_properties(${target} PROPERTIES CXX_STANDARD 17)
+  target_compile_definitions(${target} PRIVATE LCE_DISCORD_APP_ID="${LCE_DISCORD_APP_ID}")
+  if(WIN32)
+    target_link_libraries(${target} PRIVATE shell32 ws2_32 dbghelp)
+    # The executable's icon (tools/pcart/make_icon.py).
+    target_sources(${target} PRIVATE "${CMAKE_BINARY_DIR}/LCEReborn.rc")
+  else()
+    find_package(Threads REQUIRED)
+    target_link_libraries(${target} PRIVATE Threads::Threads ${CMAKE_DL_LIBS})
+    # Function names in crash report stacks.
+    set_target_properties(${target} PROPERTIES ENABLE_EXPORTS ON)
+  endif()
+  if(MSVC)
+    target_compile_definitions(${target} PRIVATE _HAS_AUTO_PTR_ETC=1)
+    target_link_options(${target} PRIVATE /errorlimit:0 /DEBUG /OPT:REF /OPT:ICF)
+  endif()
+endfunction()
+
 if(WIN32)
-  target_link_libraries(LCEReborn PRIVATE shell32 ws2_32 dbghelp)
-  # The executable's icon (tools/pcart/make_icon.py).
   set(LCE_ICON "${CMAKE_SOURCE_DIR}/resources/pc/icon.ico")
   file(WRITE "${CMAKE_BINARY_DIR}/LCEReborn.rc" "1 ICON \"${LCE_ICON}\"\n")
-  target_sources(LCEReborn PRIVATE "${CMAKE_BINARY_DIR}/LCEReborn.rc")
   set_source_files_properties("${CMAKE_BINARY_DIR}/LCEReborn.rc" PROPERTIES OBJECT_DEPENDS "${LCE_ICON}")
-else()
-  find_package(Threads REQUIRED)
-  target_link_libraries(LCEReborn PRIVATE Threads::Threads ${CMAKE_DL_LIBS})
-  # Function names in crash report stacks.
-  set_target_properties(LCEReborn PROPERTIES ENABLE_EXPORTS ON)
 endif()
+
+lce_add_program(LCEReborn Main.cpp)
+lce_add_program(LCERebornServer ServerMain.cpp)
 # The PC interface art (tools/pcart) is read from resources/ in the working folder unless --resource-dir is given.
 add_custom_command(TARGET LCEReborn POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/resources/pc"
           "$<TARGET_FILE_DIR:LCEReborn>/resources")
-if(MSVC)
-  target_link_options(LCEReborn PRIVATE /errorlimit:0 /DEBUG /OPT:REF /OPT:ICF)
-endif()
 
 option(LCE_BUILD_LAUNCHER "Build the Qt launcher (needs python tools/build/qt.py first)" ON)
 if(LCE_BUILD_LAUNCHER)

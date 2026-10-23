@@ -11,6 +11,7 @@
 #include "game/core/Boxed.hpp"
 #include "game/core/Difficulty.hpp"
 #include "game/core/Direction.hpp"
+#include "game/core/CMinecraftApp.hpp"
 #include "game/core/GameModeConstraints.hpp"
 #include "game/core/GameRules.hpp"
 #include "game/core/Minecraft.hpp"
@@ -290,9 +291,10 @@ void PortalBlock::entityInside(Level*, const BlockPos& pos, const BlockState*, c
     bool isPlayer = eTYPE_DERIVED_FROM(EntityType::PLAYER, entity->GetType());
     if (isPlayer)
     {
-        if (Minecraft::GetInstance()->mGameMode == NULL)
+        MultiPlayerGameMode* gameMode = Minecraft::GetInstance()->mGameMode;
+        if (gameMode == NULL && !CMinecraftApp::IsDedicatedServer())
             return;
-        if (!Minecraft::GetInstance()->mGameMode->getGameModeConstraints()->CanUsePortal())
+        if (gameMode != NULL && !gameMode->getGameModeConstraints()->CanUsePortal())
             return;
     }
 

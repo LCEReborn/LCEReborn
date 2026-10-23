@@ -58,6 +58,7 @@ public:
     virtual void handlePress(int controlId, int childId);
     virtual void HandleDLCMountingComplete();
     virtual void HandleSaveDeviceRemoved(int deviceIndex);
+    virtual void render(int width, int height, C4JRender::eViewportType viewport);
 
     wchar_t* getThumbnailName(int index);
     static int LoadSaveDataThumbnailReturned(void* context, unsigned char* data, unsigned int size);
@@ -81,9 +82,8 @@ public:
     virtual void ScrollCreateListToSelection(unsigned int selection);
     virtual void ClearCreateList();
     virtual void SetCreateListEnabled(bool enabled);
-    virtual void AddJoinListButton(const std::wstring& label, int id, unsigned char* gameIcon,
-                                   unsigned int gameIconSize, const std::wstring& gameIconName, unsigned char* packIcon,
-                                   unsigned int packIconSize, const std::wstring& packIconName);
+    virtual void AddJoinListIcon(const std::wstring& label, int id, const std::wstring& iconName,
+                                 const unsigned char* data, unsigned int size);
     virtual void AddJoinListAction(const std::wstring& label, int id, const std::wstring& iconPath,
                                    const std::wstring& iconName);
     virtual void AddJoinListScanningRow(const std::wstring& label, int id);
@@ -152,6 +152,8 @@ private:
     int m_activeTab;
     EUploadState m_uploadState;
     bool m_uploadCancelled;
+
+    void DrawServerRows(int width, int height, C4JRender::eViewportType viewport);
 };
 
 #endif

@@ -86,12 +86,11 @@ void FishingHookRenderer::render(boost::shared_ptr<Entity>& entity, double x, do
     }
     else
     {
-        float fov = (float)Minecraft::GetInstance()->mGameRenderer->GetFovVal() / 100.0f;
-        float sideOffset = -0.37f;
-        boost::shared_ptr<LocalPlayer> localPlayer = boost::dynamic_pointer_cast<LocalPlayer>(owner);
-        if (localPlayer && (localPlayer->mViewport == 3 || localPlayer->mViewport == 4 || !gRenderer->IsWidescreen()))
-            sideOffset = -0.165f;
-        Vec3* offset = Vec3::newTemp((double)(sideOffset * fov), -0.045 * (double)fov, 0.4);
+        GameRenderer* gameRenderer = Minecraft::GetInstance()->mGameRenderer;
+        float fov = gameRenderer->GetFovVal() / 100.0f;
+        float handShift = gameRenderer->getHandScreenShift() / gameRenderer->getViewScale(gameRenderer->GetFovVal());
+        float sideOffset = -0.37f * fov + 0.4f * handShift;
+        Vec3* offset = Vec3::newTemp((double)sideOffset, -0.045 * (double)fov, 0.4);
         offset = offset->xRot(-(owner->mXRotO + (owner->mXRot - owner->mXRotO) * partialTick) * Mth::DEG_TO_RAD);
         offset = offset->yRot(-(owner->mYRotO + (owner->mYRot - owner->mYRotO) * partialTick) * Mth::DEG_TO_RAD);
         offset = offset->yRot(swing * 0.5f);

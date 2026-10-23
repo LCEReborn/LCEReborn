@@ -2,6 +2,7 @@
 
 #include <cctype>
 #include <cstdio>
+#include <cstdlib>
 #include <vector>
 
 #if defined(_WIN32)
@@ -37,8 +38,19 @@ static std::vector<std::string> CommandLineArguments(int argc, char** argv)
     return arguments;
 }
 
-static void PrintUsage(std::FILE* stream)
+static void PrintUsage(std::FILE* stream, PcProgram program)
 {
+    if (program == PcProgram::Server)
+    {
+        std::fputs("Usage: LCERebornServer [options]\n"
+                   "  --content-dir <dir>         game content (default: assets in the working folder)\n"
+                   "  --save-dir <dir>            worlds, server.properties and server-icon.png (default: saves in the\n"
+                   "                              working folder)\n"
+                   "  --log-dir <dir>             logs (default: logs in the working folder)\n"
+                   "  --help                      show this message\n",
+                   stream);
+        return;
+    }
     std::fputs("Usage: LCEReborn [options]\n"
                "  --username <name>           player name\n"
                "  --uuid <uuid>               player identity, 32 hex digits (default: made from the name)\n"
@@ -50,11 +62,23 @@ static void PrintUsage(std::FILE* stream)
                "  --license-file <file>       what is unlocked (default: license.cfg in the working folder)\n"
                "  --split-screen <on|off>     other controllers can join as more players (default: on)\n"
                "  --join-prompt <on|off>      prompt other controllers to join when a world loads (default: off)\n"
-               "  --help                      show this message\n",
+               "  --world <folder>            load this save from the saves folder's games folder at start\n"
+               "  --join <address>            join the game at this address (host or host:port) at start\n"
+               "  --discord-app <id>          show what you are doing in Discord, through this Discord application\n"
+               "  --profiles <file>           the launcher's profiles, offered to split-screen players who join\n",
                stream);
+#if LCE_DEBUG_BUILD
+    std::fputs("  --position <x,y,z>          move the player here once a world has loaded\n"
+               "  --rotation <yaw,pitch>      turn the player to face this way once a world has loaded\n"
+               "  --capture-frames <count>    save this many frames as PNG files, then quit\n"
+               "  --capture-delay <seconds>   wait this long in the world before capturing (default: 10)\n"
+               "  --capture-dir <dir>         where captured frames go (default: capture in the working folder)\n",
+               stream);
+#endif
+    std::fputs("  --help                      show this message\n", stream);
 }
 
-bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
+bool PcParseLaunchOptions(int argc, char** argv, int& exitCode, PcProgram program)
 {
     exitCode = 1;
     const std::vector<std::string> arguments = CommandLineArguments(argc, argv);
@@ -75,13 +99,26 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
 
         if (name == "--help" || name == "-h")
         {
-            PrintUsage(stdout);
+            PrintUsage(stdout, program);
             exitCode = 0;
+            return false;
+        }
+
+        if (program == PcProgram::Server && name != "--content-dir" && name != "--save-dir" && name != "--log-dir")
+        {
+            std::fprintf(stderr, "Unknown option: %s\n", arguments[index].c_str());
+            PrintUsage(stderr, program);
             return false;
         }
 
         std::string* target = NULL;
         bool* flag = NULL;
+#if LCE_DEBUG_BUILD
+        int* count = NULL;
+        double* seconds = NULL;
+        std::vector<double>* list = NULL;
+        size_t listSize = 0;
+#endif
         if (name == "--split-screen")
             flag = &sOptions.splitScreen;
         else if (name == "--join-prompt")
@@ -102,10 +139,36 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
             target = &sOptions.uuid;
         else if (name == "--license-file")
             target = &sOptions.licenseFile;
+        else if (name == "--world")
+            target = &sOptions.world;
+        else if (name == "--join")
+            target = &sOptions.join;
+        else if (name == "--discord-app")
+            target = &sOptions.discordApp;
+        else if (name == "--profiles")
+            target = &sOptions.profiles;
+#if LCE_DEBUG_BUILD
+        else if (name == "--position")
+        {
+            list = &sOptions.position;
+            listSize = 3;
+        }
+        else if (name == "--rotation")
+        {
+            list = &sOptions.rotation;
+            listSize = 2;
+        }
+        else if (name == "--capture-dir")
+            target = &sOptions.captureDir;
+        else if (name == "--capture-frames")
+            count = &sOptions.captureFrames;
+        else if (name == "--capture-delay")
+            seconds = &sOptions.captureDelay;
+#endif
         else
         {
             std::fprintf(stderr, "Unknown option: %s\n", arguments[index].c_str());
-            PrintUsage(stderr);
+            PrintUsage(stderr, program);
             return false;
         }
 
@@ -114,7 +177,7 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
             if (index + 1 >= arguments.size())
             {
                 std::fprintf(stderr, "Missing value for %s\n", name.c_str());
-                PrintUsage(stderr);
+                PrintUsage(stderr, program);
                 return false;
             }
             value = arguments[++index];
@@ -139,6 +202,50 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode)
             }
             continue;
         }
+
+#if LCE_DEBUG_BUILD
+        if (list != NULL)
+        {
+            list->clear();
+            const char* cursor = value.c_str();
+            for (;;)
+            {
+                char* end = NULL;
+                const double number = std::strtod(cursor, &end);
+                if (end == cursor)
+                    break;
+                list->push_back(number);
+                cursor = end;
+                if (*cursor != ',')
+                    break;
+                ++cursor;
+            }
+            if (list->size() != listSize || *cursor != '\0')
+            {
+                std::fprintf(stderr, "%s must be %u numbers separated by commas, not %s\n", name.c_str(),
+                             static_cast<unsigned int>(listSize), value.c_str());
+                return false;
+            }
+            continue;
+        }
+
+        if (count != NULL || seconds != NULL)
+        {
+            char* end = NULL;
+            const double number = std::strtod(value.c_str(), &end);
+            if (end == value.c_str() || *end != '\0' || number < 0.0 || (count != NULL && number != (int)number))
+            {
+                std::fprintf(stderr, "%s must be a %s, not %s\n", name.c_str(),
+                             count != NULL ? "whole number" : "number of seconds", value.c_str());
+                return false;
+            }
+            if (count != NULL)
+                *count = (int)number;
+            else
+                *seconds = number;
+            continue;
+        }
+#endif
 
         *target = value;
     }

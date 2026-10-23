@@ -197,18 +197,7 @@ void IUIScene_LoadCreateJoin::UpdateGamesList()
             if (m_miniGames && session->m_savedServer < 0
                 && session->m_gameSessionData.m_gameModeId != GameType::LOBBY->getId())
                 continue;
-            if (session->m_savedServer >= 0 && !session->m_savedServerAnswered)
-            {
-                AddJoinListAction(session->m_displayName, static_cast<int>(index), L"Graphics\\MinecraftIcon.png",
-                                  L"SavedServerIcon");
-            }
-            else
-            {
-                std::wstring key = session->m_savedServer >= 0
-                                       ? formatwstr(L"sv%d", session->m_savedServer)
-                                       : std::wstring(session->m_displayName);
-                AddSessionButton(session, static_cast<int>(index), key);
-            }
+            AddServerRow(session, static_cast<int>(index));
             if (hadSelection && session->m_sessionId == selectedSessionId)
                 selection = position;
             ++position;
@@ -222,60 +211,19 @@ void IUIScene_LoadCreateJoin::UpdateGamesList()
     updateTooltips();
 }
 
-void IUIScene_LoadCreateJoin::AddSessionButton(FriendSessionInfo* session, int id, const std::wstring& key)
+void IUIScene_LoadCreateJoin::AddServerRow(const FriendSessionInfo* session, int id)
 {
-    const GameSessionData& data = session->m_gameSessionData;
-    std::wstring gameIcon;
-    if (data.m_gameModeId == GameType::SURVIVAL->getId())
-        gameIcon = L"Graphics\\SurvivalIcon.png";
-    else if (data.m_gameModeId == GameType::CREATIVE->getId())
-        gameIcon = L"Graphics\\CreativeIcon.png";
-    else if (data.m_gameModeId == GameType::ADVENTURE->getId())
-        gameIcon = L"Graphics\\AdventureIcon.png";
-    else if (data.m_gameModeId == GameType::LOBBY->getId())
-        gameIcon = MiniGameDef::GetCustomGameModeById(static_cast<EMiniGameId>(data.m_miniGameId), true)->getIcon();
-
-    std::wstring gameIconName;
-    unsigned int gameIconSize = 0;
-    unsigned char* gameIconData = NULL;
-    if (!gameIcon.empty() && gApp.hasArchiveFile(gameIcon, false))
-    {
-        arrayWithLength<unsigned char> gameIconFile = gApp.getArchiveFile(gameIcon, false);
-        gameIconData = gameIconFile.data;
-        gameIconSize = gameIconFile.length;
-        if (gameIconSize != 0 && gameIconData != NULL)
-            gameIconName = L"gm" + key;
-    }
-
-    std::wstring packIconName;
-    unsigned int packIconSize = 0;
-    unsigned char* packIcon = NULL;
-    if (data.m_texturePackParentId != 0)
-    {
-        TexturePack* pack =
-            Minecraft::GetInstance()->mTexturePackRepository->getTexturePackById(data.m_texturePackParentId);
-        if (pack == NULL)
-        {
-            unsigned char* tpdData = NULL;
-            unsigned int tpdSize = 0;
-            gApp.GetTPD(data.m_texturePackParentId, &tpdData, &tpdSize);
-            gApp.GetFileFromTPD(eTPDFileType_Icon, tpdData, tpdSize, &packIcon, &packIconSize);
-        }
-        else
-        {
-            packIcon = static_cast<unsigned char*>(const_cast<void*>(pack->getPackIcon(packIconSize)));
-        }
-    }
-    if (data.m_texturePackParentId == 0 || packIcon == NULL)
-    {
-        TexturePack* defaultPack = Minecraft::GetInstance()->mTexturePackRepository->getTexturePackByIndex(0);
-        packIcon = static_cast<unsigned char*>(const_cast<void*>(defaultPack->getPackIcon(packIconSize)));
-    }
-    if (packIconSize != 0 && packIcon != NULL)
-        packIconName = L"tp" + key;
-
-    AddJoinListButton(session->m_displayName, id, packIcon, packIconSize, packIconName, gameIconData, gameIconSize,
-                      gameIconName);
+    static const unsigned char kSignature[16] = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 13,
+                                                 'I',  'H', 'D', 'R'};
+    const std::vector<unsigned char>& icon = session->m_icon;
+    const bool usable = icon.size() >= 24 && memcmp(&icon[0], kSignature, sizeof(kSignature)) == 0 && icon[16] == 0
+                        && icon[17] == 0 && icon[18] == 0 && icon[19] == 64 && icon[20] == 0 && icon[21] == 0
+                        && icon[22] == 0 && icon[23] == 64;
+    if (usable)
+        AddJoinListIcon(L"", id, formatwstr(L"si%08x", session->m_iconHash), &icon[0],
+                        static_cast<unsigned int>(icon.size()));
+    else
+        AddJoinListAction(L"", id, L"Graphics\\MinecraftIcon.png", L"SavedServerIcon");
 }
 
 FriendSessionInfo* IUIScene_LoadCreateJoin::GetJoinListSession(int id)
@@ -310,6 +258,7 @@ void IUIScene_LoadCreateJoin::_init(bool miniGames)
     imageData.flags |= CMinecraftApp::PngTagData::eFlag_HostOptions | CMinecraftApp::PngTagData::eFlag_ExtraData;
     imageData.hostOptions = 0;
     gApp.SetCurrentImageTextData(&imageData);
+    CGameNetworkManager::sInstance.SetWorldThumbnail(NULL, 0);
     if (gApp.StartInstallDLCProcess(GetPad()) != 0 || gApp.DLCInstallPending() != 0)
         m_ignoreInput = true;
     else
@@ -740,6 +689,7 @@ void IUIScene_LoadCreateJoin::LoadLevelGen(LevelGenerationOptions* options)
 {
     gApp.ClearTerrainFeaturePosition();
     gStorage->ResetSaveData();
+    CGameNetworkManager::sInstance.SetWorldThumbnail(NULL, 0);
     gStorage->SetSaveTitle(options->getDefaultSaveName().c_str());
 
     bool isClientSide = false;
@@ -787,6 +737,7 @@ void IUIScene_LoadCreateJoin::LoadLevelGen(LevelGenerationOptions* options)
 void IUIScene_LoadCreateJoin::LoadSaveFromDisk(File* file, ESavePlatform platform)
 {
     gStorage->ResetSaveData();
+    CGameNetworkManager::sInstance.SetWorldThumbnail(NULL, 0);
     gStorage->SetSaveTitle(file->getName().c_str());
 
     unsigned int fileLength = static_cast<unsigned int>(file->length());

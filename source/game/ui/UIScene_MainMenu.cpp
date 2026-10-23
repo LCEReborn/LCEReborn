@@ -468,6 +468,7 @@ void UIScene_MainMenu::LoadTrial()
     gApp.SetTutorialMode(true, boost::shared_ptr<Player>());
     gApp.ClearTerrainFeaturePosition();
     gStorage->ResetSaveData();
+    CGameNetworkManager::sInstance.SetWorldThumbnail(NULL, 0);
     gProfile->StartTrialGame();
     gStorage->SetSaveDisabled(true);
     gApp.SetGameHostOption(eGameHostOption_WasntSaveOwner, 0);

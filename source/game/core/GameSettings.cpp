@@ -22,6 +22,7 @@
 #include "platform/CInput.hpp"
 #include "platform/CStorage.hpp"
 #include "platform/CProfile.hpp"
+#include "game/core/VideoSettings.hpp"
 extern C4JStorage* gStorage;
 
 GameSettings* gGameSettings[4] = {NULL, NULL, NULL, NULL};
@@ -564,6 +565,8 @@ uint32_t GameSettings::GetActionVal(unsigned char value)
 }
 void GameSettings::ActionGameSettings(int profile, eGameSetting setting)
 {
+    if (CMinecraftApp::IsDedicatedServer())
+        return;
     Minecraft* minecraft = Minecraft::GetInstance();
     switch (setting)
     {
@@ -1223,6 +1226,26 @@ uint32_t GameSettings::GetPlayerSkinId(int profile)
     if (IsAllowedSkin(profile))
         id = gGameSettings[profile]->mSkinId;
     return id;
+}
+
+int GameSettings::GetPlayerFov(int profile)
+{
+    if (profile < 0 || profile >= 4 || gGameSettings[profile] == NULL)
+        return VideoSettings::GetFov();
+    const int fov = gGameSettings[profile]->mFov;
+    return fov >= VideoSettings::FOV_MIN && fov <= VideoSettings::FOV_MAX ? fov : VideoSettings::GetFov();
+}
+
+void GameSettings::SetPlayerFov(int profile, int fov)
+{
+    if (profile < 0 || profile >= 4 || gGameSettings[profile] == NULL)
+        return;
+    fov = fov < VideoSettings::FOV_MIN ? VideoSettings::FOV_MIN : (fov > VideoSettings::FOV_MAX ? VideoSettings::FOV_MAX : fov);
+    GameSettings* current = gGameSettings[profile];
+    if (current->mFov == fov)
+        return;
+    current->mFov = static_cast<unsigned char>(fov);
+    current->mChanged = 1;
 }
 
 void GameSettings::SetPlayerFavoriteSkin(int profile, int index, unsigned int id)

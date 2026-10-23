@@ -140,11 +140,12 @@ ConsoleUIController::ConsoleUIController()
         s_uiCriticalSectionInitialized = true;
     }
     m_resolutionDisableFlags = 0;
+    m_rawPadMenus = 0;
 }
 
 EUIGroup ConsoleUIController::GetGroup(int playerId)
 {
-    if (playerId != 0xff && playerId >= 0)
+    if (playerId >= 0 && playerId < 4)
         return static_cast<EUIGroup>(EUIGroup_Player1 + playerId);
     return EUIGroup_Fullscreen;
 }
@@ -579,7 +580,7 @@ bool ConsoleUIController::IsPauseMenuDisplayed(int playerId)
 
 bool ConsoleUIController::GetMenuDisplayed(int playerId)
 {
-    return m_menuDisplayed[playerId];
+    return playerId >= 0 && playerId < 4 && m_menuDisplayed[playerId];
 }
 
 void ConsoleUIController::SetTutorialDescription(int playerId, _TutorialPopupInfo* popupInfo)
@@ -707,6 +708,8 @@ void ConsoleUIController::endCustomDrawGameState()
 
 void ConsoleUIController::SetMenuDisplayed(int playerId, bool displayed)
 {
+    if (playerId != 0xff && (playerId < 0 || playerId >= 4))
+        return;
     if (!displayed)
     {
         if (playerId == 0xff)
@@ -786,7 +789,7 @@ bool ConsoleUIController::NavigateToScene(int playerId, EUIScene scene, void* sc
     }
 
     PerformanceTimer timer;
-    int menuPlayer = 0xff;
+    int menuPlayer = playerId >= 4 && playerId != 0xff ? playerId : 0xff;
     bool navigated;
     if ((int)scene == 4)
     {
@@ -848,7 +851,7 @@ bool ConsoleUIController::NavigateBack(int playerId, bool closeCurrent, EUIScene
         if (!m_groups[EUIGroup_Fullscreen]->GetMenuDisplayed())
             SetMenuDisplayed(0xff, false);
     }
-    else if (!navigated && playerId != 0xff && playerId >= 0)
+    else if (!navigated && playerId >= 0 && playerId < 4)
     {
         m_groups[groupId]->NavigateBack(playerId, scene, layer);
         if (!m_groups[groupId]->GetMenuDisplayed())
@@ -2114,7 +2117,7 @@ bool ConsoleUIController::handleInput()
                 m_groups[EUIGroup_DRC]->getDRC()->handleDRCTouchInput((unsigned int)pad);
         }
 #endif
-        if (!gApp.GetGameStarted() || gApp.m_signInResult != 0)
+        if (!gApp.GetGameStarted() || gApp.m_signInResult != 0 || (m_rawPadMenus & (1u << pad)) != 0)
         {
             if (g_pInput->IsPadLocked(pad) == 0 && g_pInput->IsPadConnected(pad) != 0)
             {
@@ -2127,6 +2130,16 @@ bool ConsoleUIController::handleInput()
         }
     }
     return false;
+}
+
+void ConsoleUIController::SetRawPadMenuOpen(int pad, bool open)
+{
+    if (pad < 4 || pad >= 9)
+        return;
+    if (open)
+        m_rawPadMenus |= 1u << pad;
+    else
+        m_rawPadMenus &= ~(1u << pad);
 }
 
 void ConsoleUIController::tick()

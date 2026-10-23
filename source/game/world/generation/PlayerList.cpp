@@ -12,7 +12,9 @@
 #include <boost/pointer_cast.hpp>
 #include <boost/unordered_set.hpp>
 #include <cmath>
+#include <cstdarg>
 #include <cstring>
+#include <cwctype>
 #include <limits>
 #include <set>
 
@@ -62,6 +64,9 @@
 #include "game/network/INetworkPlayer.hpp"
 #include "game/network/ServerGamePacketListenerImpl.hpp"
 #include "game/network/CGameNetworkManager.hpp"
+#if LCE_PLATFORM_PC
+#include "platform/pc/Log.hpp"
+#endif
 #include "game/entity/mob/EntityTracker.hpp"
 #include "game/entity/mob/MobEffectInstance.hpp"
 #include "game/entity/mob/EntityIO.hpp"
@@ -119,6 +124,184 @@ bool PlayerList::canReceiveAllPackets(const boost::shared_ptr<ServerPlayer>& pla
         if (*it == player)
             return true;
     return false;
+}
+
+#if LCE_PLATFORM_PC
+static const Logger sLog("Players");
+
+static void LogInfo(const wchar_t* format, ...)
+{
+    va_list arguments;
+    va_start(arguments, format);
+    sLog.WriteWideV(LogLevel::Info, format, arguments);
+    va_end(arguments);
+}
+#endif
+
+static std::vector<ServerOperator> sOperators;
+static void (*sOperatorsChanged)(const std::vector<ServerOperator>& operators) = NULL;
+
+static std::vector<ServerOperator>::iterator FindOperator(const std::wstring& id)
+{
+    std::vector<ServerOperator>::iterator it = sOperators.begin();
+    while (it != sOperators.end() && it->id != id)
+        ++it;
+    return it;
+}
+
+static std::vector<ServerOperator>::iterator FindPendingOperator(const std::wstring& name)
+{
+    const std::wstring wanted = toLower(name);
+    std::vector<ServerOperator>::iterator it = sOperators.begin();
+    while (it != sOperators.end() && !(it->id.empty() && toLower(it->name) == wanted))
+        ++it;
+    return it;
+}
+
+static void OperatorsChanged()
+{
+    if (sOperatorsChanged != NULL)
+        sOperatorsChanged(sOperators);
+}
+
+bool PlayerList::ParsePlayerId(const std::wstring& text, std::wstring* id)
+{
+    std::wstring digits;
+    for (size_t index = 0; index < text.size(); ++index)
+    {
+        const wchar_t character = static_cast<wchar_t>(towlower(text[index]));
+        if (character == L'-')
+            continue;
+        if (!((character >= L'0' && character <= L'9') || (character >= L'a' && character <= L'f')))
+            return false;
+        digits.push_back(character);
+    }
+    if (digits.size() != 20 && digits.size() != 28 && digits.size() != 32)
+        return false;
+    *id = digits;
+    return true;
+}
+
+void PlayerList::SetOperators(const std::vector<ServerOperator>& operators)
+{
+    sOperators.clear();
+    for (std::vector<ServerOperator>::const_iterator it = operators.begin(); it != operators.end(); ++it)
+    {
+        ServerOperator entry = *it;
+        if (entry.id.empty() ? entry.name.empty() || FindPendingOperator(entry.name) != sOperators.end()
+                             : !ParsePlayerId(it->id, &entry.id) || FindOperator(entry.id) != sOperators.end())
+            continue;
+        sOperators.push_back(entry);
+    }
+}
+
+bool PlayerList::IsOperator(const PlayerUID& uid)
+{
+    return FindOperator(uid.toString()) != sOperators.end();
+}
+
+bool PlayerList::FindOperatorByName(const std::wstring& name, ServerOperator* found)
+{
+    const std::wstring wanted = toLower(name);
+    for (std::vector<ServerOperator>::const_iterator it = sOperators.begin(); it != sOperators.end(); ++it)
+    {
+        if (!it->name.empty() && toLower(it->name) == wanted)
+        {
+            *found = *it;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool PlayerList::AddOperator(const std::wstring& id, const std::wstring& name)
+{
+    if (id.empty())
+    {
+        ServerOperator known;
+        if (FindOperatorByName(name, &known))
+            return false;
+        ServerOperator entry;
+        entry.name = name;
+        sOperators.push_back(entry);
+        OperatorsChanged();
+        return true;
+    }
+    bool modified = false;
+    std::vector<ServerOperator>::iterator pending = name.empty() ? sOperators.end() : FindPendingOperator(name);
+    if (pending != sOperators.end())
+    {
+        sOperators.erase(pending);
+        modified = true;
+    }
+    std::vector<ServerOperator>::iterator it = FindOperator(id);
+    const bool added = it == sOperators.end();
+    if (added)
+    {
+        ServerOperator entry;
+        entry.id = id;
+        entry.name = name;
+        sOperators.push_back(entry);
+        modified = true;
+    }
+    else if (!name.empty() && it->name != name)
+    {
+        it->name = name;
+        modified = true;
+    }
+    if (modified)
+        OperatorsChanged();
+    return added;
+}
+
+bool PlayerList::RemoveOperator(const std::wstring& id, const std::wstring& name)
+{
+    bool removed = false;
+    std::vector<ServerOperator>::iterator it = id.empty() ? sOperators.end() : FindOperator(id);
+    if (it != sOperators.end())
+    {
+        sOperators.erase(it);
+        removed = true;
+    }
+    it = name.empty() ? sOperators.end() : FindPendingOperator(name);
+    if (it != sOperators.end())
+    {
+        sOperators.erase(it);
+        removed = true;
+    }
+    if (removed)
+        OperatorsChanged();
+    return removed;
+}
+
+bool PlayerList::ResolveOperator(const PlayerUID& uid, const std::wstring& name)
+{
+    const std::wstring id = uid.toString();
+    std::vector<ServerOperator>::iterator it = FindOperator(id);
+    if (it != sOperators.end())
+    {
+        if (it->name != name)
+        {
+            it->name = name;
+            OperatorsChanged();
+        }
+        return true;
+    }
+    it = FindPendingOperator(name);
+    if (it == sOperators.end())
+        return false;
+    it->id = id;
+    it->name = name;
+    OperatorsChanged();
+#if LCE_PLATFORM_PC
+    LogInfo(L"Operator %ls is now kept by the UUID %ls", name.c_str(), id.c_str());
+#endif
+    return true;
+}
+
+void PlayerList::SetOperatorsChanged(void (*changed)(const std::vector<ServerOperator>& operators))
+{
+    sOperatorsChanged = changed;
 }
 
 bool PlayerList::isOp(boost::shared_ptr<ServerPlayer> player)
@@ -587,6 +770,15 @@ void PlayerList::placeNewPlayer(Connection* connection, boost::shared_ptr<Server
     {
         player->enableAllPlayerPrivileges(true);
         player->setPlayerGamePrivilege(Player::ePlayerGamePrivilege_Moderator, 1);
+    }
+    else if (CMinecraftApp::IsDedicatedServer())
+    {
+        const std::wstring id = player->getXuid().toString();
+#if LCE_PLATFORM_PC
+        LogInfo(L"UUID of player %ls is %ls", player->getName().c_str(), id.c_str());
+#endif
+        const bool op = ResolveOperator(player->getXuid(), player->getName());
+        player->setPlayerGamePrivilege(Player::ePlayerGamePrivilege_Op, op ? 1 : 0);
     }
 
     validatePlayerSpawnPosition(player);

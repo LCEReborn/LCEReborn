@@ -542,3 +542,9 @@ uint32_t FJ_Base::getType()
 {
     return 0x8000;
 }
+
+void FJ_Base::SetNavigation(const std::string& up, const std::string& down)
+{
+    m_navUpName = up;
+    m_navDownName = down;
+}

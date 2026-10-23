@@ -65,8 +65,14 @@ comes from its arguments (`platform/pc/PcLaunchOptions`, `--help` lists them).
 `--language` the language, falling back to the system's. `--uuid` sets the
 first player's identity, 32 hexadecimal digits with or without dashes;
 without it the identity is made from the player name. `--license-file` sets
-the license file (see Licenses). Most players start the game from the
-launcher (`pc-launcher.md`).
+the license file (see Licenses). `--world` loads a save folder from
+`saves/games/` as soon as the main menu is up. Most players start the game
+from the launcher (`pc-launcher.md`).
+
+Debug builds (`-DCMAKE_BUILD_TYPE=RelWithDebInfo` or `Debug`) add options for
+render testing: `--position` and `--rotation` place the player once a world
+has loaded, and `--capture-frames`, `--capture-delay` and `--capture-dir`
+save that many frames as PNG files after the delay, then quit.
 
 ## Licenses
 
@@ -79,16 +85,71 @@ own. `full_game = true` unlocks the full game, otherwise it runs as the trial.
 ## Multiplayer
 
 The PC and Wii U builds share one network manager (`source/net/`), so they
-can play together. An online game is hosted on port 25570 (TCP for players,
-UDP for finding games on the local network), and the host is told the port
-in chat on joining. The Join tab lists worlds and mini games found on the
-local network, and Add Server saves a name and an address (`host` or
-`host:port`) for anything else. While the list is open, each saved server is
-asked every few seconds what it is hosting, and its row shows that world or
-mini game. The PC keeps the saved servers in `servers.dat` in the save
-folder; the Wii U keeps them in its save data. The Mini Games menu's Join
-tab lists the same saved servers but only the mini games found on the local
-network.
+can play together. An online game is hosted on the port set in Online
+Settings (25570 unless changed; TCP for players, UDP for finding games on
+the local network), and the host is told the port in chat on joining. Online
+Settings opens with X (Y on the Wii U) on the Create and Load screens while
+Online Game is focused. It also sets whether the world shows on the local network and the
+message shown under it in the Join tab (written like a dedicated server's
+`motd`); these are saved in `video.txt`. A world started offline can be
+opened from the pause menu with Open to LAN. Once open, the same button is
+LAN World Settings: it lists the players, changes the message, visibility,
+game mode and Host Privileges, and Stop LAN World disconnects the players
+who joined over the network. Turning on Host Privileges or Creative asks
+first when the world still has achievements. The Join tab lists worlds and
+mini games found on the local network, and Add Server saves a name and an
+address (`host` or `host:port`) for anything else. Each row shows the game's
+icon, its message and the player count, as Java's server list does; a hosted
+world's icon is the thumbnail it was last saved with. While the list is
+open, each saved server is asked every few seconds for these, and its row
+also shows the ping, or that the server can't be reached or runs another
+version. The PC keeps the saved servers in `servers.dat` in the save folder;
+the Wii U keeps them in its save data. The Mini Games menu's Join tab lists
+the same saved servers but only the mini games found on the local network.
+
+`--join <address>` joins a game at start, the same as picking a saved
+server.
+
+## Dedicated server
+
+`LCERebornServer` runs a world with no window, sound or local player, on
+Windows and Linux. It needs the same content folder as the game and takes
+`--content-dir`, `--save-dir` and `--log-dir`. In a release, that content is
+what the launcher imported: in the package folder on Windows, where the
+server finds it when started there, and in `~/.local/share/LCEReborn/assets`
+on Linux. The AppImage only starts the launcher, so run the server from the
+tar.gz. The first start writes
+`server.properties` to the saves folder; edit it and restart to apply
+changes. `world` names the folder in `games` to load, and a new world is made
+there if it is missing. Operators may use commands when cheats are allowed.
+They are kept by UUID in `ops.json` beside `server.properties`, and `op` and
+`deop` change them while the server runs. `op` takes a player's UUID, which
+the server logs when they join, or a name. A UUID is better when you know
+it: a name of a player who isn't online is held until the first player with
+that name joins, who is then kept by their UUID, and anyone can join with
+any name.
+
+`motd` is the message under the server in the Join tab. It takes what Java
+servers take: `§`, `\u00A7` or `&` formatting codes, `&#RRGGBB` or
+`§x§R§R§G§G§B§B` colours, `\n` for a second line, or a JSON text component.
+A 64x64 `server-icon.png` beside `server.properties` is the server's icon;
+without one, the world's thumbnail is used.
+
+The server reads commands from its standard input: any chat command without
+the `/`, plus `save-all` and `stop`. Ctrl+C or SIGTERM also saves and stops,
+and with no input it keeps running, so it works as a service or in a
+container (publish the TCP port; finding games on the local network doesn't
+reach past Docker's own network). The world is saved every
+`autosave-minutes`. If it can't start, for example because its port is
+taken, it exits with code 1.
+
+## Discord
+
+With a Discord application ID, the game shows what the player is doing (the
+same text as the console's rich presence) in the Discord app running on the
+same computer. The ID comes from `--discord-app <id>`, or from the CMake
+setting `LCE_DISCORD_APP_ID` when the option is not given. Without either,
+nothing is sent.
 
 ## Chat
 
@@ -127,7 +188,7 @@ They follow Java 1.12, with `/execute`, `/xp` and coordinates as in 1.13:
   `/setworldspawn`, `/toggledownfall`, `/seed`, `/summon`, `/setblock` and
   `/fill` (up to 32768 blocks).
 - **Chat and server:** `/say`, `/me`, `/msg` (also `/tell` and `/w`),
-  `/list` and `/kick`.
+  `/list`, `/kick`, `/op` and `/deop`.
 - **Execute:** `/execute` runs a command as or at other entities: `as`,
   `at`, `positioned` (or `positioned as`), `if entity`, `unless entity` and
   `run`, such as
@@ -142,6 +203,8 @@ They follow Java 1.12, with `/execute`, `/xp` and coordinates as in 1.13:
 game's own permission rule: the host and moderators can use them when the
 world has Host Privileges on, and anyone else is told they don't have
 permission. `/kick` can't remove the host or players on the host's console.
+`/op` and `/deop` make a player a moderator or not; the host always is one.
+In a hosted game they take a player who is online.
 
 Where a command takes targets, a player name or a selector works
 (`TargetSelector`): `@p` nearest player, `@a` all players, `@r` a random
@@ -274,7 +337,7 @@ python tools/package_pc.py
 
 packages the build for players as `build/LCEReborn-pc-<commit>.zip` on
 Windows or `build/LCEReborn-linux-<commit>.tar.gz` on Linux: the game, the
-launcher with its Qt libraries, `resources/`, a README and the license and
+dedicated server, the launcher with its Qt libraries, `resources/`, a README and the license and
 notices of everything in it. On Linux it also packs the same files as
 `build/LCEReborn-linux-<commit>.AppImage`, which starts the launcher; that
 needs `appimagetool` and the AppImage runtime, which the Docker image has

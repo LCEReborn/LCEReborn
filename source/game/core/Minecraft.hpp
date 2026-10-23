@@ -70,6 +70,7 @@ public:
     static Minecraft* GetInstance();
     static long long currentTimeMillis();
     static void main();
+    static void mainHeadless();
     static void start(const std::wstring& userName, const std::wstring& sessionId);
     static void startAndConnectTo(const std::wstring& userName, const std::wstring& sessionId,
                                   const std::wstring& server);
@@ -91,6 +92,7 @@ public:
                                                             boost::shared_ptr<BlockEntity> blockEntity);
 
     void init();
+    void initHeadless();
     void run();
     void run_middle();
     void run_end();

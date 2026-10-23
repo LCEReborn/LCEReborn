@@ -3,6 +3,7 @@
 #include "game/core/ConsoleUIController.hpp"
 #include "game/core/DLCPack.hpp"
 #include "game/core/ShutdownManager.hpp"
+#include "game/network/CGameNetworkManager.hpp"
 #include "game/ui/UIScene_AchievementsMenu.hpp"
 #include "platform/C4JThread.hpp"
 #include "platform/CInput.hpp"
@@ -437,12 +438,21 @@ void CConsoleMinecraftApp::GetSaveThumbnail(unsigned char** data, unsigned int* 
             *data = new unsigned char[m_saveThumbnail.mSize];
             *size = m_saveThumbnail.mSize;
             memcpy(*data, m_saveThumbnail.mData, *size);
+            CGameNetworkManager::sInstance.SetWorldThumbnail(*data, *size);
         }
         free(m_saveThumbnail.mData);
         m_saveThumbnail.mData = NULL;
     }
     else if (data != NULL)
     {
+        std::vector<unsigned char> world;
+        if (CGameNetworkManager::sInstance.GetWorldThumbnail(world))
+        {
+            *data = new unsigned char[world.size()];
+            *size = static_cast<unsigned int>(world.size());
+            memcpy(*data, &world[0], world.size());
+            return;
+        }
         unsigned char* thumbnail;
         unsigned int thumbnailSize;
         gStorage->GetDefaultSaveThumbnail(&thumbnail, &thumbnailSize);

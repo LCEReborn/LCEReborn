@@ -1635,6 +1635,11 @@ bool CInput::IsKeyboardPad(int pad)
     return RemapIpad(pad) && pad == kKeyboardJoypad;
 }
 
+int CInput::LastInputPad()
+{
+    return lastInputJoypad + 4;
+}
+
 bool CInput::UsesKeyboard(int pad)
 {
     return IsKeyboardPad(pad);

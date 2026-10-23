@@ -297,6 +297,8 @@ uniform isamplerBuffer lce_TerrainVertices;
 bool lce_HasQuadTangent;
 vec3 lce_QuadTangent;
 float lce_QuadHandedness;
+bool lce_HasQuadNormal;
+vec3 lce_QuadNormal;
 float lce_PackedFloat(int low, int high)
 {
     return intBitsToFloat((low & 0xFFFF) | (high << 16));
@@ -313,6 +315,7 @@ vec3 lce_StandardCorner(int vertex, out vec2 uv)
 void lce_SetupQuad()
 {
     lce_HasQuadTangent = false;
+    lce_HasQuadNormal = false;
     if (lce_QuadVertexMode == 0)
         return;
     int base = lce_QuadBase();
@@ -324,6 +327,12 @@ void lce_SetupQuad()
     vec3 p1 = lce_StandardCorner(base + 1, uv1);
     vec3 p2 = lce_StandardCorner(base + 2, uv2);
     vec3 p3 = lce_StandardCorner(base + 3, uv3);
+    vec3 faceNormal = cross(p2 - p0, p3 - p1);
+    if (dot(faceNormal, faceNormal) > 0.0)
+    {
+        lce_QuadNormal = normalize(faceNormal);
+        lce_HasQuadNormal = true;
+    }
     vec4 mid = vec4((uv0 + uv1 + uv2 + uv3) * 0.25, 0.0, 1.0);
     if ((lce_MAT_TEX * mid).x > 1.0)
         mid -= inverse(lce_MAT_TEX) * vec4(1.0, 0.0, 0.0, 0.0);
@@ -338,7 +347,6 @@ void lce_SetupQuad()
         return;
     vec3 tangent = (edge1 * delta2.y - edge2 * delta1.y) / determinant;
     vec3 bitangent = (edge2 * delta1.x - edge1 * delta2.x) / determinant;
-    vec3 faceNormal = cross(p2 - p0, p3 - p1);
     if (dot(tangent, tangent) <= 0.0)
         return;
     lce_QuadTangent = normalize(tangent);
@@ -369,7 +377,9 @@ void lce_SetupStandard()
 vec3 lce_AttributeNormal()
 {
     vec3 normal = max(vec3(lce_aNormal.xyz) * (1.0 / 127.0), vec3(-1.0));
-    return dot(normal, normal) > 0.0 ? normal : vec3(0.0, 0.0, 1.0);
+    if (dot(normal, normal) > 0.0)
+        return normal;
+    return lce_HasQuadNormal ? lce_QuadNormal : vec3(0.0, 0.0, 1.0);
 }
 )";
 
@@ -469,11 +479,13 @@ std::string ShaderAdapterHeader(ShaderAdapter adapter, ShaderStage stage, const 
     else
     {
         header += kGameConstants;
+        header += "mat3 lce_NormalMatrixOf(mat3 modelView)\n{\n"
+                  "    return transpose(inverse(modelView)) * pow(abs(determinant(modelView)), 1.0 / 3.0);\n}\n";
         if (adapter == ShaderAdapter_Terrain)
         {
             header += "#define lce_ModelViewMatrix lce_MAT_WV\n";
             header += "#define lce_ModelViewMatrixInverse inverse(lce_ModelViewMatrix)\n";
-            header += "#define lce_NormalMatrix transpose(inverse(mat3(lce_ModelViewMatrix)))\n";
+            header += "#define lce_NormalMatrix lce_NormalMatrixOf(mat3(lce_ModelViewMatrix))\n";
         }
         else if (adapter == ShaderAdapter_Entity)
         {
@@ -485,7 +497,7 @@ std::string ShaderAdapterHeader(ShaderAdapter adapter, ShaderStage stage, const 
         {
             header += "#define lce_ModelViewMatrix (lce_MAT_WV * lce_MAT_WV2)\n";
             header += "#define lce_ModelViewMatrixInverse inverse(lce_ModelViewMatrix)\n";
-            header += "#define lce_NormalMatrix transpose(inverse(mat3(lce_ModelViewMatrix)))\n";
+            header += "#define lce_NormalMatrix lce_NormalMatrixOf(mat3(lce_ModelViewMatrix))\n";
         }
         header += "mat4[8] lce_TextureMatrixArray()\n{\n    mat4 matrices[8];\n"
                   "    for (int index = 0; index < 8; ++index)\n        matrices[index] = mat4(1.0);\n";

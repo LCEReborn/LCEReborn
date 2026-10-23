@@ -13,6 +13,7 @@
 #include "game/core/BufferBuilder.hpp"
 #include "game/core/ColourTable.hpp"
 #include "game/core/Direction.hpp"
+#include "game/core/FloatBuffer.hpp"
 #include "game/item/EnchantmentHelper.hpp"
 #include "game/item/Enchantments.hpp"
 #include "game/core/GlStateManager.hpp"
@@ -48,6 +49,25 @@ namespace
 int sItemRenderDisplayLists[5] = {-1, -1, -1, -1, -1};
 static ResourceLocation WATER_OVERLAY_LOCATION(TN_MISC_WATER);
 static ResourceLocation MAP_BACKGROUND_LOCATION(TN_MISC_MAPBG);
+FloatBuffer* sProjection = MemoryTracker::createFloatBuffer(16);
+
+void pushScreenShift(float shift)
+{
+    GlStateManager::matrixMode(1);
+    GlStateManager::pushMatrix();
+    GlStateManager::getMatrix(1, sProjection);
+    GlStateManager::loadIdentity();
+    GlStateManager::translatef(shift, 0.0f, 0.0f);
+    GlStateManager::multMatrix(sProjection);
+    GlStateManager::matrixMode(0);
+}
+
+void popScreenShift()
+{
+    GlStateManager::matrixMode(1);
+    GlStateManager::popMatrix();
+    GlStateManager::matrixMode(0);
+}
 
 }
 
@@ -591,7 +611,6 @@ void ItemInHandRenderer::renderArmWithItem(boost::shared_ptr<LocalPlayer> player
     else
         arm = player->getMainArm()->getOpposite();
 
-    float offsetX = 0.0f;
     float offsetY = 0.0f;
     bool splitScreenVertical = false;
     if (player->mViewport == 2 || player->mViewport == 1)
@@ -599,20 +618,13 @@ void ItemInHandRenderer::renderArmWithItem(boost::shared_ptr<LocalPlayer> player
         splitScreenVertical = true;
         offsetY = 0.08f;
     }
-    else if (player->mViewport == 3 || player->mViewport == 4 || !gRenderer->IsWidescreen())
-    {
-        if (arm == HumanoidArm::LEFT)
-            offsetX = 0.3f;
-        else
-            offsetX = -0.3f;
-    }
 
     GlStateManager::pushMatrix();
     if (item->isEmpty())
     {
         if (mainHand && !player->isInvisible())
         {
-            GlStateManager::translatef(offsetX, offsetY, 0.0f);
+            GlStateManager::translatef(0.0f, offsetY, 0.0f);
             renderPlayerArm(equipProgress, swingProgress, arm);
         }
         GlStateManager::popMatrix();
@@ -629,7 +641,7 @@ void ItemInHandRenderer::renderArmWithItem(boost::shared_ptr<LocalPlayer> player
         }
         else
         {
-            GlStateManager::translatef(offsetX, offsetY, 0.0f);
+            GlStateManager::translatef(0.0f, offsetY, 0.0f);
             renderOneHandedMap(equipProgress, arm, swingProgress, item);
         }
         GlStateManager::popMatrix();
@@ -643,7 +655,7 @@ void ItemInHandRenderer::renderArmWithItem(boost::shared_ptr<LocalPlayer> player
         switch (item->getUseAnimation())
         {
         case UseAnim_none:
-            GlStateManager::translatef(offsetX, offsetY, 0.0f);
+            GlStateManager::translatef(0.0f, offsetY, 0.0f);
             applyItemArmTransform(arm, equipProgress);
             break;
         case UseAnim_eat:
@@ -667,7 +679,7 @@ void ItemInHandRenderer::renderArmWithItem(boost::shared_ptr<LocalPlayer> player
         }
         case UseAnim_bow:
         {
-            GlStateManager::translatef(offsetX, offsetY, 0.0f);
+            GlStateManager::translatef(0.0f, offsetY, 0.0f);
             applyItemArmTransform(arm, equipProgress);
             GlStateManager::translatef((float)side * -0.2785682f, 0.18344387f, 0.15731531f);
             GlStateManager::rotatef(-13.935f, 1.0f, 0.0f, 0.0f);
@@ -724,7 +736,7 @@ void ItemInHandRenderer::renderArmWithItem(boost::shared_ptr<LocalPlayer> player
     else
     {
         if (swingProgress == 0.0f)
-            GlStateManager::translatef(offsetX, offsetY, 0.0f);
+            GlStateManager::translatef(0.0f, offsetY, 0.0f);
         float swingX = -0.4f * Mth::sin(Mth::sqrt(swingProgress) * 3.1415927f);
         float swingY = 0.2f * Mth::sin(Mth::sqrt(swingProgress) * 6.2831855f);
         float swingZ = -0.2f * Mth::sin(swingProgress * 3.1415927f);
@@ -762,6 +774,11 @@ void ItemInHandRenderer::render(float partialTick)
             renderOffHand = !usedMainHand;
         }
     }
+    const float handShift = mMinecraft->mGameRenderer->getHandScreenShift();
+    const float offHandShift = player->getMainArm() == HumanoidArm::RIGHT ? handShift : -handShift;
+    float mainHandShift = -offHandShift;
+    if (mMainHandItem->getItem() == Items::filledMap && mOffHandItem->isEmpty())
+        mainHandShift = 0.0f;
     enableLight(pitch, yaw);
     setLightValue(player);
     setPlayerBob(player, partialTick);
@@ -781,8 +798,12 @@ void ItemInHandRenderer::render(float partialTick)
         float mainSwing = swingingArm == InteractionHand::eInteractionHand_MainHand ? attackProgress : 0.0f;
         float mainHandHeight = mMainHandHeightOld + (mMainHandHeight - mMainHandHeightOld) * partialTick;
         float mainEquip = 1.0f - mainHandHeight;
+        if (mainHandShift != 0.0f)
+            pushScreenShift(mainHandShift);
         renderArmWithItem(player, partialTick, pitch, InteractionHand::eInteractionHand_MainHand, mainSwing,
                           mMainHandItem, mainEquip);
+        if (mainHandShift != 0.0f)
+            popScreenShift();
     }
     if (renderOffHand)
     {
@@ -799,8 +820,12 @@ void ItemInHandRenderer::render(float partialTick)
         float offSwing = swingingArm == InteractionHand::eInteractionHand_OffHand ? attackProgress : 0.0f;
         float offHandHeight = mOffHandHeightOld + (mOffHandHeight - mOffHandHeightOld) * partialTick;
         float offEquip = 1.0f - offHandHeight;
+        if (offHandShift != 0.0f)
+            pushScreenShift(offHandShift);
         renderArmWithItem(player, partialTick, pitch, InteractionHand::eInteractionHand_OffHand, offSwing, mOffHandItem,
                           offEquip);
+        if (offHandShift != 0.0f)
+            popScreenShift();
     }
     GlStateManager::disableRescaleNormal();
     Lighting::turnOff();

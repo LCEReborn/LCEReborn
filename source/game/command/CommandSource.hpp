@@ -18,6 +18,7 @@ struct CommandSource
     double z;
     float yRot;
     float xRot;
+    bool console;
 };
 
 #endif

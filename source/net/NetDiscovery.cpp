@@ -55,7 +55,7 @@ void Beacon::SetSession(const SessionDescription& session)
 {
     ByteWriter writer;
     writer.U32(kBeaconMagic);
-    WriteSession(writer, session);
+    WriteSession(writer, session, false);
     EnterCriticalSection(&m_lock);
     m_payload = writer.Data();
     LeaveCriticalSection(&m_lock);

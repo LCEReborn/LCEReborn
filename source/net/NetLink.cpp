@@ -33,6 +33,7 @@ Link::Link(unsigned int systemId, LinkHandler* handler)
       m_closed(false),
       m_flushThenClose(false),
       m_openedAt(NowMs()),
+      m_connectedAt(0),
       m_queuedBytes(0)
 {
     InitializeCriticalSection(&m_lock);
@@ -84,6 +85,7 @@ void Link::Adopt(TcpSocket& socket, const Address& peer)
     m_socket.Swap(socket);
     m_peer = peer;
     m_connected = true;
+    m_connectedAt = NowMs();
     Start();
 }
 
@@ -124,6 +126,7 @@ bool Link::TakeControl(Frame& frame)
     if (found)
     {
         frame.channel = m_inbox.front().channel;
+        frame.receivedAt = m_inbox.front().receivedAt;
         frame.payload.swap(m_inbox.front().payload);
         m_inbox.pop_front();
     }
@@ -147,6 +150,14 @@ void Link::Close()
     m_socket.Shutdown();
     LeaveCriticalSection(&m_lock);
     m_wake->Set();
+}
+
+int64_t Link::ConnectedAt()
+{
+    EnterCriticalSection(&m_lock);
+    int64_t connectedAt = m_connectedAt;
+    LeaveCriticalSection(&m_lock);
+    return connectedAt;
 }
 
 bool Link::IsClosed()
@@ -271,6 +282,7 @@ void Link::ReadLoop()
         {
             m_socket.Swap(socket);
             m_connected = true;
+            m_connectedAt = NowMs();
         }
         LeaveCriticalSection(&m_lock);
         if (stopped)
@@ -304,6 +316,7 @@ void Link::ReadLoop()
             m_inbox.push_back(Frame());
             m_inbox.back().channel = header[0];
             m_inbox.back().payload = payload;
+            m_inbox.back().receivedAt = NowMs();
             LeaveCriticalSection(&m_lock);
         }
     }

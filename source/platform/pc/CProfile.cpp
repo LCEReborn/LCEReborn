@@ -25,6 +25,9 @@
 #include "platform/pc/C4JThreadImpl.hpp"
 #include "platform/pc/Log.hpp"
 #include "platform/pc/PcAvatar.hpp"
+#include "platform/pc/PcDiscord.hpp"
+#include "platform/pc/PcPlayerProfiles.hpp"
+#include "platform/pc/PcProfilePicker.hpp"
 #include "platform/pc/PcLaunchOptions.hpp"
 #include "platform/pc/PcPaths.hpp"
 #include "platform/pc/PcUnlockPage.hpp"
@@ -297,6 +300,11 @@ std::wstring CProfile::LocalPlayerName()
     return name;
 }
 
+void CProfile::SetPlayerName(const std::wstring& name)
+{
+    mPlayerName = name.substr(0, kMaxPlayerNameLength);
+}
+
 ACTUuid CProfile::LocalPlayerUuid(const std::wstring& name)
 {
     unsigned long long high = 0x6c62272e07bb0142ULL;
@@ -378,8 +386,25 @@ int CProfile::RequestSignInUI(bool online, bool guest, bool subAccount, bool tri
     mRequestForce = force;
     mRequestTrial = trial;
     mRequestFromGame = fromGame;
+    if (quadrant >= 4 && quadrant < 9 && mPickerPad >= 0)
+        return 0;
     mSignInUIHandler = handler;
     mSignInUIContext = context;
+    if (quadrant >= 4 && quadrant < 9)
+    {
+        std::vector<PcPlayerProfile> choices = UnusedLauncherProfiles();
+        if (!choices.empty())
+        {
+            mPickerPad = quadrant;
+            gConsoleUIController.SetRawPadMenuOpen(quadrant, true);
+            if (gConsoleUIController.NavigateToScene(quadrant, EUIScene_CustomMenu,
+                                                     new PcProfilePickerPage(quadrant, choices),
+                                                     EUILayer_Fullscreen, EUIGroup_Fullscreen))
+                return 0;
+            mPickerPad = -1;
+            gConsoleUIController.SetRawPadMenuOpen(quadrant, false);
+        }
+    }
     int choice = 0;
     for (int player = 0; player < 4; ++player)
     {
@@ -394,7 +419,51 @@ int CProfile::RequestSignInUI(bool online, bool guest, bool subAccount, bool tri
     return 0;
 }
 
+void CProfile::ProfilePickerClosed(int pad, const PcPlayerProfile* chosen)
+{
+    if (pad != mPickerPad)
+        return;
+    mPickerPad = -1;
+    gConsoleUIController.SetRawPadMenuOpen(pad, false);
+    if (chosen == NULL)
+    {
+        SetSignInChoicesComplete(false, -1, pad);
+        return;
+    }
+    const int quadrant = SignInAs(pad, chosen);
+    SetSignInChoicesComplete(quadrant >= 0, quadrant, pad);
+}
+
+std::vector<PcPlayerProfile> CProfile::UnusedLauncherProfiles()
+{
+    std::vector<PcPlayerProfile> unused;
+    std::vector<PcPlayerProfile> profiles = PcReadPlayerProfiles();
+    for (size_t index = 0; index < profiles.size(); ++index)
+    {
+        const ACTUuid uuid = UuidFromHex(profiles[index].uuid);
+        bool used = false;
+        for (int quadrant = 0; quadrant < 4 && !used; ++quadrant)
+            used = mProfiles[quadrant].signedIn && mProfiles[quadrant].uuid == uuid;
+        if (!used)
+            unused.push_back(profiles[index]);
+    }
+    return unused;
+}
+
+ACTUuid CProfile::UuidFromHex(const std::string& hex)
+{
+    ACTUuid uuid;
+    for (int index = 0; index < 16; ++index)
+        uuid.data[index] = static_cast<unsigned char>(std::strtoul(hex.substr(index * 2, 2).c_str(), NULL, 16));
+    return uuid;
+}
+
 int CProfile::SignInUser(int pad)
+{
+    return SignInAs(pad, NULL);
+}
+
+int CProfile::SignInAs(int pad, const PcPlayerProfile* chosen)
 {
     int quadrant = 0;
     while (quadrant < 4 && mProfiles[quadrant].signedIn)
@@ -405,19 +474,17 @@ int CProfile::SignInUser(int pad)
         return -1;
     }
     PROFILE_DETAILS& profile = mProfiles[quadrant];
-    std::wstring name = mPlayerName;
-    if (quadrant != 0)
+    std::wstring name = chosen != NULL ? chosen->username : mPlayerName;
+    if (chosen == NULL && quadrant != 0)
         name += L" (" + std::to_wstring(quadrant + 1) + L")";
     std::memset(profile.name, 0, sizeof(profile.name));
     std::wcsncpy(profile.name, name.c_str(), sizeof(profile.name) / sizeof(profile.name[0]) - 1);
     profile.uuid = LocalPlayerUuid(std::wstring(profile.name));
     const std::string& launchUuid = PcGetLaunchOptions().uuid;
-    if (quadrant == 0 && launchUuid.size() == 32)
-    {
-        for (int index = 0; index < 16; ++index)
-            profile.uuid.data[index] =
-                static_cast<unsigned char>(std::strtoul(launchUuid.substr(index * 2, 2).c_str(), NULL, 16));
-    }
+    if (chosen != NULL)
+        profile.uuid = UuidFromHex(chosen->uuid);
+    else if (quadrant == 0 && launchUuid.size() == 32)
+        profile.uuid = UuidFromHex(launchUuid);
     profile.onlineAccount = false;
     profile.signedIn = true;
     OnSignin(pad);
@@ -889,6 +956,7 @@ void CProfile::SetPresenceString(int presence)
     {
         DebugPrintf("Rich presence - %ls\n", text.c_str());
         mCurrentPresenceString = text;
+        PcDiscordSetPresence(text);
     }
 }
 

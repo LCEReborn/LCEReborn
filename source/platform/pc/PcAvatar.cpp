@@ -448,7 +448,11 @@ BufferedImage* LoadDefaultSkin(int index)
 
 BufferedImage* PcRenderAvatarHead(int quadrant, int size)
 {
-    const unsigned int skinId = GameSettings::GetPlayerSkinId(quadrant);
+    return PcRenderSkinHead(GameSettings::GetPlayerSkinId(quadrant), quadrant + 1, size);
+}
+
+BufferedImage* PcRenderSkinHead(unsigned int skinId, int defaultIndex, int size)
+{
     std::vector<Box> headBoxes;
     std::vector<Box> bodyBoxes;
     unsigned int animFlags = 0;
@@ -485,7 +489,7 @@ BufferedImage* PcRenderAvatarHead(int quadrant, int size)
         if ((skinId >> 31) == 0 && (skinId & 0x7fffffe0u) == 0)
             index = static_cast<int>(skinId & 0x1fu);
         if (index == 0)
-            index = quadrant + 1;
+            index = defaultIndex;
         skin = LoadDefaultSkin(index);
     }
     if (skin == NULL)

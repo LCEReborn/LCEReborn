@@ -11,8 +11,10 @@
 
 namespace lcenet
 {
-const uint16_t kProtocolVersion = 1;
+const uint16_t kProtocolVersion = 2;
 const uint32_t kBeaconMagic = 0x4c434542;
+const size_t kMaxMotdLength = 2048;
+const size_t kMaxIconSize = 0xffff;
 
 enum ControlChannel
 {
@@ -32,6 +34,7 @@ public:
     void U32(uint32_t value);
     void Bytes(const void* data, size_t size);
     void Text(const std::wstring& text);
+    void Text(const std::wstring& text, size_t maxLength);
     void Uid(const PlayerUID& uid);
     const std::vector<unsigned char>& Data() const { return m_data; }
 
@@ -53,6 +56,7 @@ public:
     uint32_t U32();
     void Bytes(void* data, size_t size);
     std::wstring Text();
+    std::wstring Text(size_t maxLength);
     PlayerUID Uid();
     bool Ok() const { return m_ok; }
 
@@ -67,16 +71,23 @@ private:
 
 struct SessionDescription
 {
-    SessionDescription() : port(0), nonce(0) {}
+    SessionDescription() : port(0), nonce(0), maxPlayers(0), dedicated(false), detailsHash(0), hasDetails(false) {}
 
     unsigned short port;
     uint32_t nonce;
     std::wstring hostName;
     GameSessionData data;
+    unsigned char maxPlayers;
+    bool dedicated;
+    uint32_t detailsHash;
+    bool hasDetails;
+    std::wstring motd;
+    std::vector<unsigned char> icon;
 };
 
-void WriteSession(ByteWriter& writer, const SessionDescription& session);
-bool ReadSession(ByteReader& reader, SessionDescription& session);
+uint32_t DetailsHash(const std::wstring& motd, const std::vector<unsigned char>& icon);
+void WriteSession(ByteWriter& writer, const SessionDescription& session, bool details);
+bool ReadSession(ByteReader& reader, SessionDescription& session, unsigned int* version = NULL);
 }
 
 #endif

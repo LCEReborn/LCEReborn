@@ -1,9 +1,12 @@
 #include "game/core/StringUtils.hpp"
 
+#include <cstring>
 #include <vector>
 #include <sstream>
 #include <algorithm>
 #include <cctype>
+
+#include "game/core/StringConversion.hpp"
 
 std::vector<std::wstring>& stringSplit(const std::wstring& text, wchar_t separator, std::vector<std::wstring>& result)
 {
@@ -94,6 +97,10 @@ void makeReplacements(const boost::unordered_map<std::wstring, std::wstring>& re
 
 void toUtf8(const std::wstring& text, char** output, unsigned int& length)
 {
+    const std::string utf8 = convWstringToString(text);
+    length = static_cast<unsigned int>(utf8.size() + 1);
+    *output = new char[length];
+    std::memcpy(*output, utf8.c_str(), length);
 }
 
 bool equalsIgnoreCase(const std::wstring& first, const std::wstring& second)

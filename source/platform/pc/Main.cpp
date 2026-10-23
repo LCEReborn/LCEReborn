@@ -40,9 +40,12 @@
 #include "platform/FileApi.hpp"
 #include "platform/pc/PcApplication.hpp"
 #include "platform/pc/PcCrashReport.hpp"
+#include "platform/pc/PcDiscord.hpp"
 #include "platform/pc/Log.hpp"
 #include "platform/pc/PcLaunchOptions.hpp"
 #include "platform/pc/PcLicenses.hpp"
+#include "platform/pc/PcFrameCapture.hpp"
+#include "platform/pc/PcStartWorld.hpp"
 #include "platform/pc/PcWindow.hpp"
 
 extern CConsoleMinecraftApp gApp;
@@ -57,7 +60,7 @@ static const Logger sLog("Main");
 int main(int argc, char** argv)
 {
     int exitCode;
-    if (!PcParseLaunchOptions(argc, argv, exitCode))
+    if (!PcParseLaunchOptions(argc, argv, exitCode, PcProgram::Game))
         return exitCode;
 
     C4JThreadImpl::SetMainThreadID();
@@ -76,6 +79,8 @@ int main(int argc, char** argv)
     LOG_INFO(sLog, "Content: %s", PcContentRoot().c_str());
     LOG_INFO(sLog, "Saves: %s", PcSaveRoot().c_str());
     LOG_INFO(sLog, "Resources: %s", PcResourceRoot().c_str());
+    const std::string& discordApp = PcGetLaunchOptions().discordApp;
+    PcDiscordStart(discordApp.empty() ? std::string(LCE_DISCORD_APP_ID) : discordApp);
 
     ShutdownManager::Initialise();
     if (gProfile == 0)
@@ -260,6 +265,10 @@ int main(int argc, char** argv)
         CGameNetworkManager::sInstance.DoWork();
         PIXEndNamedEvent();
         gApp.HandleXuiActions();
+        PcStartWorldTick();
+#if LCE_DEBUG_BUILD
+        PcFrameCaptureTick();
+#endif
         if (!gProfile->IsFullVersion())
         {
             if (gApp.GetGameStarted() != 0)

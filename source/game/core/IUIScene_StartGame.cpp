@@ -16,6 +16,7 @@
 #include "game/core/ConsoleUIController.hpp"
 #include "game/core/DLCManager.hpp"
 #include "game/core/DLCPack.hpp"
+#include "game/core/ExtraStrings.hpp"
 #include "game/core/Difficulty.hpp"
 #include "game/core/GameSettings.hpp"
 #include "game/core/GameType.hpp"
@@ -30,11 +31,14 @@
 #include "game/minigame/MiniGameDef.hpp"
 #include "game/minigame/MiniGameOptionCache.hpp"
 #include "game/network/CGameNetworkManager.hpp"
+#include "game/ui/UIScene_OnlineSettingsMenu.hpp"
 #include "game/ui/UIScene_QuadrantSignin.hpp"
 #include "game/ui/UIGroup.hpp"
 #include "game/ui/UILayer.hpp"
 #include "game/ui/UIString.hpp"
 #include "game/ui/fuiFile.hpp"
+#include "game/ui/fuiRenderNode.hpp"
+#include "game/ui/fuiRenderNodeTimeline.hpp"
 #include "game/util/Random.hpp"
 #include "game/world/LevelGenerationOptions.hpp"
 #include "game/world/LevelRules.hpp"
@@ -94,6 +98,9 @@ IUIScene_StartGame::IUIScene_StartGame(int sceneType, void* data, UILayer* layer
     m_signInPending = false;
     m_gameTypeId = GameType::SURVIVAL->getId();
     m_pendingSlot = -1;
+    m_onlineFocused = false;
+    for (int index = 0; index < kPreviewCount; ++index)
+        m_previewShown[index] = true;
     m_seed = 0;
     m_difficulty = 0;
     m_texturePackParentPack = NULL;
@@ -308,6 +315,95 @@ void IUIScene_StartGame::UpdateTexturePackDescription(int packId)
     }
 }
 
+namespace
+{
+fuiRenderNode* FindDescendant(fuiRenderNode* node, const char* name)
+{
+    if (node == NULL)
+        return NULL;
+    if (node->getNodeFromPath(name) == node)
+        return node;
+    fuiRenderNodeTimeline* timeline = static_cast<fuiRenderNodeTimeline*>(node->asTimeline());
+    if (timeline == NULL)
+        return NULL;
+    for (int child = 0; child < timeline->getNumChildren(); ++child)
+    {
+        fuiRenderNode* found = FindDescendant(timeline->getChildAt(child), name);
+        if (found != NULL)
+            return found;
+    }
+    return NULL;
+}
+}
+
+void IUIScene_StartGame::UpdateOnlineFocus(int focus)
+{
+    const bool focused = !m_launchData.mHostMiniGame && !m_launchData.mJoinMiniGame
+                         && focus == m_onlineGameCheckBox.getId();
+    if (focused == m_onlineFocused)
+        return;
+    m_onlineFocused = focused;
+    m_texturePackIcon.setVisible(!focused);
+    static const char* const kPreviewNodes[] = {"ComparisonPic", "ComparisonPicBG", "DefaultPack_Comparison",
+                                                "Pack_Comparison", "MinecraftIcon"};
+    fuiRenderNode* root = m_movie->getRootNode();
+    fuiRenderNode* picture = m_texturePackComparison.getFuiRenderNode();
+    fuiRenderNode* panel = picture != NULL ? picture->getParent() : NULL;
+    for (int index = 0; index < kPreviewCount; ++index)
+    {
+        fuiRenderNode* node = panel != NULL ? panel->findNode(kPreviewNodes[index]) : NULL;
+        if (node == NULL)
+            node = FindDescendant(root, kPreviewNodes[index]);
+        if (node == NULL)
+            continue;
+        if (focused)
+        {
+            m_previewShown[index] = node->isVisible();
+            node->setVisibility(false);
+        }
+        else
+        {
+            node->setVisibility(m_previewShown[index]);
+        }
+    }
+    fuiRenderNodeTimeline* siblings =
+        panel != NULL ? static_cast<fuiRenderNodeTimeline*>(panel->asTimeline()) : NULL;
+    for (int child = 0; siblings != NULL && child < siblings->getNumChildren(); ++child)
+    {
+        fuiRenderNode* node = siblings->getChildAt(child);
+        if (node != picture && node->getName()[0] == '\0' && node->asTimeline() == NULL
+            && node->getX() == picture->getX() && node->getY() == picture->getY())
+            node->setVisibility(!focused);
+    }
+    if (focused)
+        RefreshOnlineSummary();
+    else if (m_selectedSlot >= 0 && m_selectedSlot < static_cast<int>(m_texturePacks.size()))
+        UpdateTexturePackDescription(m_texturePacks[m_selectedSlot].packId);
+    updateTooltips();
+}
+
+void IUIScene_StartGame::RefreshOnlineSummary()
+{
+    if (!m_onlineFocused)
+        return;
+    m_texturePackName.setLabel(UIString(L10N::GetString(IDS_ONLINE_GAME)), false, false);
+    m_texturePackDescription.setLabel(UIString(UIScene_OnlineSettingsMenu::Summary()), false, false);
+}
+
+bool IUIScene_StartGame::OpenOnlineSettings(int action, bool pressed)
+{
+    if (action != EControllerActions_MenuX || !m_onlineFocused)
+        return false;
+    if (pressed)
+        UIScene_OnlineSettingsMenu::Open(m_playerId, UIScene_OnlineSettingsMenu::eMode_BeforeLoad);
+    return true;
+}
+
+int IUIScene_StartGame::OnlineSettingsTooltip() const
+{
+    return m_onlineFocused ? static_cast<int>(IDS_LCE_ONLINE_SETTINGS) : -1;
+}
+
 void IUIScene_StartGame::OrganizeTexturePacks()
 {
     Minecraft* minecraft = Minecraft::GetInstance();
@@ -464,6 +560,7 @@ void IUIScene_StartGame::HostGame(unsigned int playerMask)
         else
         {
             gStorage->ResetSaveData();
+            CGameNetworkManager::sInstance.SetWorldThumbnail(NULL, 0);
             gStorage->SetSaveTitle(m_levelGenerationOptions->getDefaultSaveName().c_str());
             gApp.ClearTerrainFeaturePosition();
         }
@@ -474,6 +571,7 @@ void IUIScene_StartGame::HostGame(unsigned int playerMask)
             std::wstring saveName;
             saveName.assign(m_worldName, 0, std::wstring::npos);
             gStorage->ResetSaveData();
+            CGameNetworkManager::sInstance.SetWorldThumbnail(NULL, 0);
             gStorage->SetSaveTitle(saveName.c_str());
             std::wstring seedText;
             if (m_launchData.mSeed.size() != 0)

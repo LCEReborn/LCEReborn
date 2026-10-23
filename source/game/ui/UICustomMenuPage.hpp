@@ -18,6 +18,7 @@ public:
     virtual bool KeepDescriptionOpen() const;
     virtual bool GetTooltips(int& tooltipX, int& tooltipY) const;
     virtual bool ShowLogo() const;
+    virtual bool IsOverlay() const;
 };
 
 #endif

@@ -150,6 +150,8 @@ public:
     void handleCommand(const std::wstring& command);
 
 private:
+    void DisableAchievements();
+
     friend class PlayerList;
     friend class ServerPlayer;
     friend class ServerConnection;

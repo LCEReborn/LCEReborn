@@ -151,6 +151,7 @@ public:
 
 private:
     void DisableAchievements();
+    void sendLeaderboard(int board, bool aroundMe, unsigned int startRank, unsigned int count);
 
     friend class PlayerList;
     friend class ServerPlayer;
@@ -161,6 +162,7 @@ private:
     static const int DROP_SPAM_STEP = 20;
     static const int CHAT_SPAM_LIMIT = 200;
     static const int CHAT_SPAM_STEP = 20;
+    static const int LEADERBOARD_MAX_ROWS = 50;
 
 public:
     Connection* mConnection;

@@ -57,6 +57,8 @@ void UIScene_PauseMenu::Init()
 
     m_buttonList.AddNewMenuButton(L10N::GetString(IDS_RESUME_GAME), 0);
     m_buttonList.AddNewMenuButton(L10N::GetString(IDS_HELP_AND_OPTIONS), 1);
+    if (gApp.GetGameHostOption(eGameHostOption_MiniGame) == 0)
+        m_buttonList.AddNewMenuButton(L10N::GetString(IDS_LEADERBOARDS), 2);
 
     PlayerUID xuid(0);
     gProfile->GetXUID(m_playerId, &xuid, false);
@@ -299,21 +301,6 @@ void UIScene_PauseMenu::handlePress(int, int childId)
         return;
     case 2:
     {
-        int parameters[1] = {static_cast<int>(IDS_CONFIRM_OK)};
-        if (gProfile->IsGuest(m_playerId))
-        {
-            gConsoleUIController.RequestAlertMessage(0x0e6bf122, static_cast<int>(0x8ba9896fU), parameters, 1,
-                                                     gProfile->GetPrimaryPad(), NULL, NULL, NULL, true);
-            return;
-        }
-        if (!gProfile->IsSignedInLive(m_playerId))
-        {
-            int errorParameters[1] = {static_cast<int>(IDS_CONFIRM_OK)};
-            gConsoleUIController.RequestErrorMessage(static_cast<int>(IDS_PRO_NOTONLINE_TITLE),
-                                                     static_cast<int>(0xc34c0b77U), errorParameters, 1, m_playerId,
-                                                     NULL, NULL, NULL, true);
-            return;
-        }
         gConsoleUIController.NavigateToScene(m_playerId, EUIScene_LeaderboardsMenu, NULL, EUILayer_Scene,
                                              EUIGroup_PlayerDefault);
         return;

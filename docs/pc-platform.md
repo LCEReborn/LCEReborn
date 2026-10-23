@@ -143,6 +143,18 @@ reach past Docker's own network). The world is saved every
 `autosave-minutes`. If it can't start, for example because its port is
 taken, it exits with code 1.
 
+## Leaderboards
+
+The console's four boards (Travelling, Mining, Farming and Kills) show one
+total each, with no split by difficulty. Leaderboards on the main menu shows
+My Statistics: the player's own totals from every game they have played.
+Leaderboards in the pause menu shows the current world's board, ranking
+everyone who has played there, and X (Y on the Wii U) switches between
+Overall, My Score and My Statistics. The world's server counts these and keeps them in the save
+by UUID, so a dedicated server keeps one for its players. A game hosted by
+an older version doesn't keep one. Stats count in every game mode and world,
+as Java's do; only achievements keep the console's limits.
+
 ## Discord
 
 With a Discord application ID, the game shows what the player is doing (the

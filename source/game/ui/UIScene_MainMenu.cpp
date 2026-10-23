@@ -171,7 +171,6 @@ void UIScene_MainMenu::proceedToScene(int, EUIScene scene)
 void UIScene_MainMenu::handleReload()
 {
     removeControl(&m_buttons[7], false);
-    removeControl(&m_buttons[2], false);
 }
 
 void UIScene_MainMenu::updateTooltips()
@@ -310,11 +309,6 @@ void UIScene_MainMenu::RunLeaderboards(int playerId)
     {
         gConsoleUIController.RequestErrorMessage(0xe6bf122, 0x8ba9896f, &messageParameter, 1, 0xff, NULL, NULL, NULL,
                                                  true);
-    }
-    else if (!gProfile->IsSignedInLive(playerId))
-    {
-        gConsoleUIController.RequestErrorMessage(IDS_PRO_NOTONLINE_TITLE, 0xc34c0b77, &messageParameter, 1, 0xff, NULL,
-                                                 NULL, NULL, true);
     }
     else
     {

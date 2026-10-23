@@ -1,6 +1,7 @@
 #include "game/network/ClientPacketListener.hpp"
 
 #include "game/core/ChatScreen.hpp"
+#include "game/core/LceLeaderboardManager.hpp"
 #include "game/core/StringConversion.hpp"
 #include "game/core/StringIds.hpp"
 #include "game/server/MinecraftServer.hpp"
@@ -3662,6 +3663,10 @@ void ClientPacketListener::handleCustomPayload(boost::shared_ptr<ClientboundCust
         not_null_ptr<ItemInstance> book = hand == 1 ? m_minecraft->mLocalPlayers[m_playerId]->getOffhandItem()
                                                     : m_minecraft->mLocalPlayers[m_playerId]->getMainHandItem();
         book->getItem();
+    }
+    else if (packet->getIdentifier() == ClientboundCustomPayloadPacket::LEADERBOARD_PACKET)
+    {
+        static_cast<LceLeaderboardManager*>(g_pLeaderboardManager)->OnServerRows(packet->getData());
     }
     else if (packet->getIdentifier() == ClientboundCustomPayloadPacket::WORLD_SIZE_PACKET)
     {

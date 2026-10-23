@@ -66,6 +66,7 @@
 #include "game/client/render/LevelRenderer.hpp"
 #include "game/core/System.hpp"
 #include "game/core/GameType.hpp"
+#include "game/server/LeaderboardSavedData.hpp"
 #include "game/server/MinecraftServer.hpp"
 #include "game/server/ServerPlayerGameMode.hpp"
 #include "game/server/ServerItemCooldowns.hpp"
@@ -1580,6 +1581,13 @@ void ServerPlayer::setPlayerInput(float xxa, float zza, bool jumping, bool sneak
 
 void ServerPlayer::awardStat(Stat* stat, arrayWithLength<unsigned char> parameters)
 {
+    if (stat != NULL && parameters.data != NULL && parameters.length >= sizeof(int))
+    {
+        int amount;
+        std::memcpy(&amount, parameters.data, sizeof(amount));
+        if (amount > 0)
+            LeaderboardSavedData::onAward(this, stat, static_cast<unsigned int>(amount));
+    }
     if (stat != NULL && stat->isAwardedFromServer() && CanRecordStats(stat, parameters))
     {
         int value = *(int*)parameters.data;

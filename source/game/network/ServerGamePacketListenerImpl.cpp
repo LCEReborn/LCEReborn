@@ -35,6 +35,10 @@
 #include "game/network/ServerboundPlayerAbilitiesPacket.hpp"
 #include "game/network/ServerboundSetCarriedItemPacket.hpp"
 #include "game/server/MinecraftServer.hpp"
+#include "game/server/LeaderboardSavedData.hpp"
+#include "game/core/ByteArrayOutputStream.hpp"
+#include "game/core/DataOutputStream.hpp"
+#include "game/network/ClientboundCustomPayloadPacket.hpp"
 #include "game/server/ServerPlayerGameMode.hpp"
 #include "game/world/generation/PlayerList.hpp"
 #include "game/core/MasterGameMode.hpp"
@@ -1380,6 +1384,19 @@ void ServerGamePacketListenerImpl::handleCustomPayload(boost::shared_ptr<Serverb
         if (mPlayer != NULL && mPlayer->getLevel() != NULL)
             mPlayer->getLevel()->getChunkMap()->updatePlayerViewDistance(mPlayer);
     }
+    else if (ServerboundCustomPayloadPacket::LEADERBOARD_PACKET == identifier)
+    {
+        ByteArrayInputStream bytes(packet->getData());
+        DataInputStream input(&bytes);
+        const int board = input.readByte();
+        const bool aroundMe = input.readByte() != 0;
+        const int startRank = input.readInt();
+        const int count = Mth::clamp(input.readInt(), 0, LEADERBOARD_MAX_ROWS);
+        bytes.reset();
+        input.close();
+        sendLeaderboard(board, aroundMe, startRank < 1 ? 1u : static_cast<unsigned int>(startRank),
+                        static_cast<unsigned int>(count));
+    }
     else if (ServerboundCustomPayloadPacket::PICK_ITEM_PACKET == identifier)
     {
         ByteArrayInputStream bytes(packet->getData());
@@ -1392,6 +1409,36 @@ void ServerGamePacketListenerImpl::handleCustomPayload(boost::shared_ptr<Serverb
         input.close();
     }
 }
+void ServerGamePacketListenerImpl::sendLeaderboard(int board, bool aroundMe, unsigned int startRank,
+                                                   unsigned int count)
+{
+    if (mPlayer == NULL)
+        return;
+    std::vector<LeaderboardSavedData::Ranked> rows;
+    unsigned int total = 0;
+    boost::shared_ptr<LeaderboardSavedData> data = LeaderboardSavedData::get();
+    if (data)
+        total = data->query(board, aroundMe, mPlayer->getXuid().toString(), startRank, count, rows);
+
+    ByteArrayOutputStream bytes;
+    DataOutputStream output(&bytes);
+    output.writeByte(static_cast<unsigned char>(board));
+    output.writeInt(static_cast<int>(total));
+    output.writeShort(static_cast<short>(rows.size()));
+    const int columns = LeaderboardBoards::ColumnCount(board);
+    for (size_t i = 0; i < rows.size(); ++i)
+    {
+        output.writeInt(static_cast<int>(rows[i].rank));
+        output.writeUTF(rows[i].row->name);
+        output.writeUTF(rows[i].row->id);
+        output.writeByte(static_cast<unsigned char>(columns));
+        for (int column = 0; column < columns; ++column)
+            output.writeInt(static_cast<int>(rows[i].row->values[board][column]));
+    }
+    send(boost::shared_ptr<Packet>(
+        new ClientboundCustomPayloadPacket(ClientboundCustomPayloadPacket::LEADERBOARD_PACKET, bytes.toByteArray())));
+}
+
 void ServerGamePacketListenerImpl::handleCraftItem(boost::shared_ptr<CraftItemPacket> packet)
 {
     if (packet->mStackedItems.empty() && packet->mItemIds.empty())

@@ -87,6 +87,20 @@ const wchar_t* ExtraString(int id)
         return L"Client out of date!";
     case IDS_LCE_SERVER_OUT_OF_DATE:
         return L"Server out of date!";
+    case IDS_LCE_LEADERBOARD_TRAVELLING:
+        return L"Travelling";
+    case IDS_LCE_LEADERBOARD_MINING:
+        return L"Mining";
+    case IDS_LCE_LEADERBOARD_FARMING:
+        return L"Farming";
+    case IDS_LCE_LEADERBOARD_KILLS:
+        return L"Kills";
+    case IDS_LCE_LEADERBOARD_MY_STATISTICS:
+        return L"My Statistics";
+    case IDS_LCE_LEADERBOARD_UNAVAILABLE:
+        return L"This game doesn't keep a leaderboard.";
+    case IDS_LCE_LEADERBOARD_PLAYER:
+        return L"Player";
     default:
         return NULL;
     }

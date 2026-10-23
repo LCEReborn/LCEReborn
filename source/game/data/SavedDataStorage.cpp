@@ -14,6 +14,7 @@
 #include "game/data/ShortTag.hpp"
 #include "game/data/Tag.hpp"
 #include "game/item/MapItemSavedData.hpp"
+#include "game/server/LeaderboardSavedData.hpp"
 #include "game/world/generation/StructureFeatureSavedData.hpp"
 #include "game/world/generation/Villages.hpp"
 
@@ -80,6 +81,10 @@ boost::shared_ptr<SavedData> SavedDataStorage::get(const std::type_info& type, c
             {
                 boost::shared_ptr<StructureFeatureSavedData> featureData(new StructureFeatureSavedData(id));
                 savedData = boost::dynamic_pointer_cast<SavedData>(featureData);
+            }
+            else if (type == typeid(LeaderboardSavedData))
+            {
+                savedData = boost::shared_ptr<SavedData>(new LeaderboardSavedData(id));
             }
             else
             {

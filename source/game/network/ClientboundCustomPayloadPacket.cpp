@@ -7,6 +7,7 @@
 #include "game/world/biome/arrayWithLength.hpp"
 
 const std::wstring ClientboundCustomPayloadPacket::WORLD_SIZE_PACKET = L"LCE|World";
+const std::wstring ClientboundCustomPayloadPacket::LEADERBOARD_PACKET = L"LCE|Board";
 
 ClientboundCustomPayloadPacket::ClientboundCustomPayloadPacket()
 {

@@ -3,6 +3,7 @@
 #include "game/client/render/Renderer.hpp"
 #include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/world/generation/PlayerUID.hpp"
+#include "platform/BuiltInPacks.hpp"
 #include "platform/wiiu/CProfile.hpp"
 #include "platform/wiiu/CInput.hpp"
 #include "platform/wiiu/WiiU_Runtime.hpp"
@@ -345,9 +346,6 @@ int CStorage::GetSaveDeviceSelected(unsigned int)
 {
     return 1;
 }
-void CStorage::ClearDLCOffers()
-{
-}
 int CStorage::ReadTMSFile(int, C4JStorage::eGlobalStorage, C4JStorage::eTMS_FileType, wchar_t*, unsigned char**,
                           unsigned int*, int (*)(void*, wchar_t*, int, bool, C4JStorage::eTMS_FileType), void*, int)
 {
@@ -358,10 +356,6 @@ int CStorage::WriteTMSFile(int, C4JStorage::eGlobalStorage, wchar_t*, unsigned c
     return 1;
 }
 int CStorage::DeleteTMSFile(int, C4JStorage::eGlobalStorage, wchar_t*)
-{
-    return 1;
-}
-int CStorage::GetDLCOffers(int, DLCOffersCallback, void*, unsigned int)
 {
     return 1;
 }
@@ -1781,60 +1775,55 @@ void CStorage::AddInstalled(CONTENT_DATA& content)
 {
     m_installedContent.push_back(content);
 }
+static bool IsPackFile(const char* name)
+{
+    const size_t length = std::strlen(name);
+    return length >= 4 && strcasecmp(name + length - 4, ".pck") == 0;
+}
+
+void CStorage::AddPack(const char* path, unsigned char source, const char* label)
+{
+    const char* slash = std::strrchr(path, '/');
+    CONTENT_DATA content;
+    const char* name = slash == NULL ? path : slash + 1;
+    if (label != NULL && std::strlen(label) < sizeof(content.name))
+        name = label;
+    std::memset(&content, 0, sizeof(content));
+    if (std::strlen(name) >= sizeof(content.name) || std::strlen(path) >= sizeof(content.path))
+        return;
+    content.source = source;
+    std::strcpy(content.name, name);
+    std::strcpy(content.path, path);
+    content.index = -1;
+    AddInstalled(content);
+}
+
+void CStorage::EnumeratePacksFolder()
+{
+    const char* root = WiiUPacksFolder();
+    if (root[0] == '\0' || !m_openDir(root, &m_dlcDirectory))
+        return;
+    std::vector<std::string> names;
+    while (m_readDir(&m_dlcDirectory, &m_dlcDirectoryEntry))
+    {
+        const bool directory = (m_dlcDirectoryEntry.info.flags & FS_STAT_DIRECTORY) != 0;
+        if (std::strcmp(m_dlcDirectoryEntry.name, ".") == 0 || std::strcmp(m_dlcDirectoryEntry.name, "..") == 0)
+            continue;
+        if (directory || IsPackFile(m_dlcDirectoryEntry.name))
+            names.push_back(m_dlcDirectoryEntry.name);
+    }
+    m_closeDir(&m_dlcDirectory);
+    std::sort(names.begin(), names.end());
+    for (size_t index = 0; index < names.size(); ++index)
+        AddPack((std::string(root) + "/" + names[index]).c_str(), EPackSource_PacksFolder);
+}
+
 unsigned int CStorage::EnumerateLocalDLCPackages()
 {
-    char root[32];
-    std::strcpy(root, "/vol/content/WiiU/DLC");
-    if (!m_openDir(root, &m_dlcDirectory))
-    {
-        s_storage->DebugPrintf("Error reading directory %s\n", root);
-        return 0;
-    }
-
-    while (m_readDir(&m_dlcDirectory, &m_dlcDirectoryEntry))
-    {
-        if ((m_dlcDirectoryEntry.info.flags & 0x80000000U) != 0 && std::strcmp(m_dlcDirectoryEntry.name, ".") != 0
-            && std::strcmp(m_dlcDirectoryEntry.name, "..") != 0)
-        {
-            CONTENT_DATA content;
-            content.state = 0;
-            content.updatePackage = false;
-            std::strcpy(content.name, m_dlcDirectoryEntry.name);
-            std::strcpy(content.path, root);
-            std::strcat(content.path, "/");
-            std::strcat(content.path, m_dlcDirectoryEntry.name);
-            content.index = -1;
-            AddInstalled(content);
-        }
-    }
-    s_storage->DebugPrintf("Finished finding files in %s\n", root);
-    m_closeDir(&m_dlcDirectory);
-
-    std::strcpy(root, "/vol/content/WiiU/CU/DLC");
-    if (!m_openDir(root, &m_dlcDirectory))
-    {
-        s_storage->DebugPrintf("Error reading directory %s\n", root);
-        return 0;
-    }
-
-    while (m_readDir(&m_dlcDirectory, &m_dlcDirectoryEntry))
-    {
-        if ((m_dlcDirectoryEntry.info.flags & 0x80000000U) != 0 && std::strcmp(m_dlcDirectoryEntry.name, ".") != 0
-            && std::strcmp(m_dlcDirectoryEntry.name, "..") != 0)
-        {
-            CONTENT_DATA content;
-            content.state = 0;
-            content.updatePackage = true;
-            std::strcpy(content.name, m_dlcDirectoryEntry.name);
-            std::strcpy(content.path, root);
-            std::strcat(content.path, "/");
-            std::strcat(content.path, m_dlcDirectoryEntry.name);
-            content.index = -1;
-            AddInstalled(content);
-        }
-    }
-    s_storage->DebugPrintf("Finished finding files in %s\n", root);
-    m_closeDir(&m_dlcDirectory);
+    m_installedContent.clear();
+    for (unsigned int index = 0; index < BUILT_IN_PACK_COUNT; ++index)
+        AddPack(BUILT_IN_PACKS[index], EPackSource_BuiltIn);
+    EnumeratePacksFolder();
     return 1;
 }
 int CStorage::GetInstalledDLC(int, InstalledDLCCallback callback, void* context)
@@ -1853,10 +1842,6 @@ int CStorage::GetInstalledDLC(int, InstalledDLCCallback callback, void* context)
 int CStorage::GetDLC(unsigned int index)
 {
     return (int)(uintptr_t)(&m_installedContent[0] + index);
-}
-int CStorage::GetAvailableDLCCount(int)
-{
-    return 0;
 }
 void CStorage::MountInstalledDLC_thread()
 {
@@ -1911,6 +1896,11 @@ int CStorage::UnmountInstalledDLC(const char* drive)
 int CStorage::GetMountedDLCFileList(const char*, std::vector<std::string>& files)
 {
     CONTENT_DATA& content = m_installedContent[m_mountedDLCIndex];
+    if (IsPackFile(content.path) && content.source != EPackSource_BuiltIn)
+    {
+        files.push_back(content.path);
+        return 0;
+    }
     if (!m_openDir(content.path, &m_dlcDirectory))
     {
         DebugPrintf("Error reading directory %s\n", content.path);
@@ -1952,17 +1942,53 @@ std::string CStorage::GetMountedPath(std::string path)
     }
     return std::string();
 }
-void CStorage::SetDLCProductCode(const char* code)
+std::string CStorage::GetPacksFolder()
 {
-    std::strcpy(m_dlcProductCode, code);
+    return WiiUPacksFolder();
 }
-void CStorage::SetProductUpgradeKey(const char* key)
+std::string CStorage::GetServerPacksFolder()
 {
-    std::strcpy(m_productUpgradeKey, key);
+    const std::string packs = WiiUPacksFolder();
+    if (packs.size() < 5)
+        return std::string();
+    return packs.substr(0, packs.size() - 5) + "serverpacks";
 }
-int CStorage::CheckForTrialUpgradeKey(DLCUpgradeCallback, void*)
+int CStorage::AddInstalledPack(const char* path, const char* name)
 {
-    return 1;
+    const size_t count = m_installedContent.size();
+    AddPack(path, EPackSource_Server, name);
+    return m_installedContent.size() > count ? static_cast<int>(count) : -1;
+}
+void CStorage::RemoveServerPacks()
+{
+    std::vector<CONTENT_DATA>::iterator content = m_installedContent.begin();
+    while (content != m_installedContent.end())
+    {
+        if (content->source == EPackSource_Server)
+            content = m_installedContent.erase(content);
+        else
+            ++content;
+    }
+    const std::string folder = GetServerPacksFolder();
+    if (!folder.empty())
+        DeletePath(folder);
+}
+bool CStorage::ListFiles(const std::string& root, std::vector<std::string>& paths,
+                         std::vector<unsigned long long>& sizes)
+{
+    return WiiUListFiles(root.c_str(), paths, sizes);
+}
+bool CStorage::DeletePath(const std::string& path)
+{
+    return WiiURemoveAll(path.c_str());
+}
+bool CStorage::RenamePath(const std::string& from, const std::string& to)
+{
+    return WiiURename(from.c_str(), to.c_str());
+}
+bool CStorage::CreateDirectories(const std::string& path)
+{
+    return WiiUCreateDirectories(path.c_str());
 }
 void CStorage::DLCOnCreate()
 {
@@ -1970,8 +1996,6 @@ void CStorage::DLCOnCreate()
     m_dlcResult = 0;
     m_dlcMountState = 0;
     m_dlcMountNameData = 0;
-    std::memset(m_dlcProductCode, 0, sizeof(m_dlcProductCode));
-    std::memset(m_productUpgradeKey, 0, sizeof(m_productUpgradeKey));
 }
 void CStorage::TickDLC()
 {

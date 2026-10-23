@@ -6,7 +6,6 @@
 #include "game/core/CriticalSection.hpp"
 #include "game/core/FileHeader.hpp"
 #include "game/core/IUIPartial_OnlineRestricted.hpp"
-#include "game/core/IUIScene_DLCUpsell.hpp"
 #include "game/minigame/EMiniGameId.hpp"
 #include "platform/C4JStorage.hpp"
 class File;
@@ -20,7 +19,7 @@ struct JoinSceneData
     int userIndex;
     bool miniGames;
 };
-class IUIScene_LoadCreateJoin : public IUIScene_DLCUpsell, public IUIPartial_OnlineRestricted
+class IUIScene_LoadCreateJoin : public IUIPartial_OnlineRestricted
 {
 public:
     static const int cJoinRowAddServer = 0x10000;
@@ -55,7 +54,6 @@ public:
     void LoadGameMode(EMiniGameId);
     void HandleLoadListPress(int);
     void HandleNewListPress(int, int);
-    static int TexturePackDialogReturned(void*, int, C4JStorage::EMessageResult);
     void CheckAndJoinGame(int);
     void HandleGamesListPressed(int);
     FriendSessionInfo* GetJoinListSession(int id);
@@ -63,7 +61,7 @@ public:
     int GetSelectedSavedServer();
     void EditSavedServer(int serverIndex);
     static int RemoveServerDialogReturned(void*, int, C4JStorage::EMessageResult);
-    virtual void SetIgnoreInput(bool);
+    void SetIgnoreInput(bool);
     virtual void Initialise() = 0;
     virtual void updateTooltips() = 0;
     virtual int GetPad() = 0;
@@ -104,7 +102,6 @@ public:
     virtual void ShowNoGamesLabel(bool show) = 0;
     virtual void DeleteSaveFile(int index) = 0;
     virtual int handleSaveOptionsDialogReturned(int userIndex, C4JStorage::EMessageResult result) = 0;
-    virtual int handleTexturePackDialogReturned(int userIndex, C4JStorage::EMessageResult result) = 0;
     virtual uint32_t GetCustomGameModeID();
 
 protected:

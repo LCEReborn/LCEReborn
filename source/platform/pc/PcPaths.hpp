@@ -7,8 +7,9 @@ void PcSetContentRoot(const std::string& path);
 void PcSetSaveRoot(const std::string& path);
 const std::string& PcContentRoot();
 const std::string& PcSaveRoot();
+const std::string& PcPacksRoot();
 const std::string& PcResourceRoot();
-const std::string& PcLicenseFile();
 bool PcCheckGameFolders(std::string& message, bool needInterfaceArt = true);
+void PcOpenFolder(const std::string& path);
 
 #endif

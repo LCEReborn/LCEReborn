@@ -1,6 +1,7 @@
 #include "game/core/ColourTable.hpp"
 
 #include <boost/unordered_map.hpp>
+#include <cstring>
 #include <cwchar>
 #include <sstream>
 
@@ -16,7 +17,6 @@
 
 
 typedef boost::unordered_map<std::wstring, eMinecraftColour> ColourNameMap;
-typedef boost::unordered_map<int, ColourTable::BiomeColourInfo> BiomeColourInfoMap;
 
 static const int DEFAULT_BIOME_ID = -1;
 
@@ -528,7 +528,6 @@ static const wchar_t* COLOUR_NAMES[ColourTable::NUM_COLOURS] = {L"NOTSET",
                                                                 L"Cauldron_Water"};
 
 static ColourNameMap sColourIndicesByName;
-static BiomeColourInfoMap sBiomeColourInfo;
 static const std::wstring DEFAULT_BIOME_NAME = L"default";
 
 Block* getColour(unsigned char colour)
@@ -656,23 +655,34 @@ arrayWithLength<unsigned char> ColourTable::getBinaryData()
         stream.writeUTF(COLOUR_NAMES[i]);
         stream.writeInt(mColours[i]);
     }
-    stream.writeInt((int)sBiomeColourInfo.size());
-    BiomeColourInfoMap::const_iterator entry = sBiomeColourInfo.begin();
-    for (; entry != sBiomeColourInfo.end(); ++entry)
+    int biomeCount = 0;
+    for (int slot = 0; slot < NUM_BIOME_SLOTS; ++slot)
     {
+        if (mHasBiomeColourInfo[slot])
+        {
+            ++biomeCount;
+        }
+    }
+    stream.writeInt(biomeCount);
+    for (int slot = 0; slot < NUM_BIOME_SLOTS; ++slot)
+    {
+        if (!mHasBiomeColourInfo[slot])
+        {
+            continue;
+        }
         std::wstringstream name;
-        if (entry->first == DEFAULT_BIOME_ID)
+        if (slot == DEFAULT_BIOME_ID + 1)
         {
             name << DEFAULT_BIOME_NAME;
         }
         else
         {
-            name << entry->first;
+            name << slot - 1;
         }
         stream.writeUTF(name.str());
-        stream.writeInt((int)entry->second.waterSurfaceColour);
-        stream.writeInt((int)entry->second.waterFogColour);
-        stream.writeInt((int)entry->second.waterFogDistance);
+        stream.writeInt((int)mBiomeColourInfo[slot].waterSurfaceColour);
+        stream.writeInt((int)mBiomeColourInfo[slot].waterFogColour);
+        stream.writeInt((int)mBiomeColourInfo[slot].waterFogDistance);
     }
     return byteStream.toByteArray();
 }
@@ -710,7 +720,7 @@ void ColourTable::loadColoursFromData(unsigned char* data, unsigned int length)
 
     if (biomeCount > 0)
     {
-        sBiomeColourInfo.clear();
+        std::memset(mHasBiomeColourInfo, 0, sizeof(mHasBiomeColourInfo));
     }
 
     for (int biomeIndex = 0; biomeIndex < biomeCount; biomeIndex++)
@@ -722,15 +732,18 @@ void ColourTable::loadColoursFromData(unsigned char* data, unsigned int length)
         info.waterFogColour = stream.readInt();
         info.waterFogDistance = stream.readInt();
 
-        if (biomeName == DEFAULT_BIOME_NAME)
-        {
-            sBiomeColourInfo[DEFAULT_BIOME_ID] = info;
-        }
-        else
+        int biomeId = DEFAULT_BIOME_ID;
+        if (biomeName != DEFAULT_BIOME_NAME)
         {
             Biome* biome = Biome::byNameId(biomeName);
-            sBiomeColourInfo[biome->id] = info;
+            if (biome == NULL || biome->id < 0 || biome->id + 1 >= NUM_BIOME_SLOTS)
+            {
+                continue;
+            }
+            biomeId = biome->id;
         }
+        mBiomeColourInfo[biomeId + 1] = info;
+        mHasBiomeColourInfo[biomeId + 1] = true;
     }
 
     byteStream.reset();
@@ -738,6 +751,9 @@ void ColourTable::loadColoursFromData(unsigned char* data, unsigned int length)
 
 ColourTable::ColourTable(unsigned char* data, unsigned int length)
 {
+    std::memset(mColours, 0, sizeof(mColours));
+    std::memset(mBiomeColourInfo, 0, sizeof(mBiomeColourInfo));
+    std::memset(mHasBiomeColourInfo, 0, sizeof(mHasBiomeColourInfo));
     loadColoursFromData(data, length);
 }
 
@@ -755,21 +771,17 @@ unsigned int ColourTable::getColour(eMinecraftColour colour)
 
 const ColourTable::BiomeColourInfo& ColourTable::getBiomeColourInfo(int biomeId, int baseBiomeId) const
 {
-    BiomeColourInfoMap::const_iterator entry = sBiomeColourInfo.find(biomeId);
-
-    if (entry != sBiomeColourInfo.end())
+    if (biomeId >= 0 && biomeId + 1 < NUM_BIOME_SLOTS && mHasBiomeColourInfo[biomeId + 1])
     {
-        return entry->second;
+        return mBiomeColourInfo[biomeId + 1];
     }
 
-    BiomeColourInfoMap::const_iterator baseEntry = sBiomeColourInfo.find(baseBiomeId);
-
-    if (baseEntry != sBiomeColourInfo.end())
+    if (baseBiomeId >= 0 && baseBiomeId + 1 < NUM_BIOME_SLOTS && mHasBiomeColourInfo[baseBiomeId + 1])
     {
-        return baseEntry->second;
+        return mBiomeColourInfo[baseBiomeId + 1];
     }
 
-    return sBiomeColourInfo.at(DEFAULT_BIOME_ID);
+    return mBiomeColourInfo[DEFAULT_BIOME_ID + 1];
 }
 
 unsigned int ColourTable::getWaterSurfaceColor(int biomeId, int baseBiomeId)

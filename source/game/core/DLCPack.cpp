@@ -32,13 +32,12 @@ bool pathCmp(DLCFile* file)
     return *path == file->getPath();
 }
 
-DLCPack::DLCPack(const std::wstring& name, unsigned int licenseMask)
+DLCPack::DLCPack(const std::wstring& name)
 {
     m_dataPath = L"";
+    m_source = 0;
     m_name = name;
-    m_licenseMask = licenseMask;
     m_dlcMountIndex = 0xffffffffu;
-    m_purchaseOfferId = 0;
     m_isCorrupt = false;
     m_packId = 0;
     m_packVersion = 0;
@@ -213,24 +212,6 @@ bool DLCPack::doesPackContainSkin(const std::wstring& name)
 {
     return doesPackContainFile(DLCManager::eDLCType_Skin, name, true, true);
 }
-bool DLCPack::hasPurchasedPack()
-{
-    if (m_licenseMask == 0)
-    {
-        unsigned int packId = GetPackId();
-        if (packId < 0x1009)
-        {
-            if (packId != 0x1001 && packId != 0x1007)
-                return gApp.mDLCManager.IsDlcPackTemporarilyFree(packId);
-        }
-        else if (packId > 0x100a && packId != 0x100f)
-        {
-            if (packId < 0x1014 || packId > 0x1015)
-                return gApp.mDLCManager.IsDlcPackTemporarilyFree(packId);
-        }
-    }
-    return true;
-}
 bool DLCPack::IsCorrupt()
 {
     return m_isCorrupt;
@@ -243,10 +224,6 @@ void DLCPack::SetDataPointer(unsigned char* data, bool ownsData)
 {
     m_data = data;
     m_ownsData = ownsData;
-}
-unsigned int DLCPack::getLicenseMask()
-{
-    return m_licenseMask;
 }
 DLCFile* DLCPack::addFile(DLCManager::EDLCType type, const std::wstring& name)
 {
@@ -409,6 +386,19 @@ void DLCPack::SetDLCDeviceID(int id)
 {
     m_dlcDeviceId = id;
 }
+void DLCPack::SetRootPath(const std::wstring& path, unsigned char source)
+{
+    m_rootPath = path;
+    m_source = source;
+}
+const std::wstring& DLCPack::GetRootPath()
+{
+    return m_rootPath;
+}
+unsigned char DLCPack::GetSource()
+{
+    return m_source;
+}
 std::vector<DLCPack*>& DLCPack::getChildPacks()
 {
     return m_childPacks;
@@ -420,26 +410,6 @@ void DLCPack::AddCreditID(const std::wstring& value)
 void DLCPack::AddCreditString(const std::wstring& value)
 {
     m_creditStrings.push_back(value);
-}
-void DLCPack::updateLicenseMask(unsigned int licenseMask)
-{
-    unsigned int packId = m_packId;
-    if (packId < 0x40a)
-    {
-        if (packId == 0x208 || packId == 0x20a || packId == 0x405)
-        {
-            m_licenseMask = 1;
-            return;
-        }
-        m_licenseMask = licenseMask;
-        return;
-    }
-    if (packId == 0x40a || packId == 0x803 || (packId >= 0x805 && packId <= 0x806))
-    {
-        m_licenseMask = 1;
-        return;
-    }
-    m_licenseMask = licenseMask;
 }
 int DLCPack::getFileIndexAt(DLCManager::EDLCType type, const std::wstring& name, bool& found)
 {

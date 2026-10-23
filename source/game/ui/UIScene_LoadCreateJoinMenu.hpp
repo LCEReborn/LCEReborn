@@ -115,7 +115,6 @@ public:
     static void CancelSaveUploadCallback(void* context);
     static int SaveTransferDialogReturned(void* context, int pad, C4JStorage::EMessageResult result);
     virtual int handleSaveOptionsDialogReturned(int pad, C4JStorage::EMessageResult result);
-    virtual int handleTexturePackDialogReturned(int pad, C4JStorage::EMessageResult result);
     virtual int GetPad();
     static void LoadSaveCallback(void* context, bool success);
 

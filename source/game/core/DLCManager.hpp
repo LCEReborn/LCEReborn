@@ -62,12 +62,6 @@ public:
         eDLCParameterType_NumTypes
     };
 
-    struct FreePackPeriod
-    {
-        long long startTime;
-        long long endTime;
-    };
-
     DLCManager();
     ~DLCManager();
 
@@ -85,13 +79,10 @@ public:
     unsigned int getPackIndex(DLCPack* pPack, bool& bFound, EDLCType type);
 
     DLCFile* getSkinFile(const std::wstring& fileName);
-    DLCFile* getSkinFile(int skinIndex, bool& bIsDefaultSkin, bool& bHasPurchasedPack);
+    DLCFile* getSkinFile(int skinIndex, bool& bIsDefaultSkin);
     unsigned int getPackIndexContainingSkin(const std::wstring& fileName, bool& bFound);
     DLCPack* getPackContainingSkin(const std::wstring& fileName);
 
-    bool IsDlcPackTemporarilyFree(int packID);
-    bool IsMiniGameTemporarilyFree(int miniGameID);
-    void UpdateTemporarilyFreePacks(ArchiveFile* pArchiveFile);
 
     int checkForCorruptDLCAndAlert(bool bShowMessage);
 
@@ -112,8 +103,6 @@ private:
     std::vector<DLCPack*> m_packs;
     bool m_bCorruptDLCFound;
     int m_numCorruptPacks;
-    boost::unordered_map<int, FreePackPeriod> m_freeDLCPackPeriods;
-    boost::unordered_map<int, FreePackPeriod> m_freeMiniGamePeriods;
 };
 
 #endif

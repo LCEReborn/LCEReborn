@@ -9,6 +9,7 @@
 #include "game/core/L10N.hpp"
 #include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/core/CMinecraftApp.hpp"
+#include "game/core/ClientMasterGameMode.hpp"
 #include "game/core/CommonMasterGameMode.hpp"
 #include "game/core/ConditionConnective.hpp"
 #include "game/core/CriticalSection.hpp"
@@ -17,6 +18,7 @@
 #include "game/core/GameSettings.hpp"
 #include "game/core/GameType.hpp"
 #include "game/core/MasterGameMode.hpp"
+#include "game/core/Minecraft.hpp"
 #include "game/core/StringConversion.hpp"
 #include "game/core/StringFormat.hpp"
 #include "game/core/StringUtils.hpp"
@@ -2538,7 +2540,7 @@ void MiniGameDef::SetGameSettingsFromMatchmakingFilter(LaunchMoreOptionsMenuInit
         if (!HasFeatureSeasonalMaps())
         {
             LevelRules::ELevelRuleType type = LevelRules::GetRuleTypeForMiniGame(data->mMiniGameId);
-            gApp.getLevelRules()->getRulesByType(type, &data->mLevelRulesetGroups, true);
+            gApp.getLevelRules()->getRulesByType(type, &data->mLevelRulesetGroups);
         }
         data->mOnlineGame = true;
         data->mInviteOnly = false;
@@ -2670,7 +2672,7 @@ bool MiniGameDef::HasMultipleMaps() const
 
     LevelRules::ELevelRuleType type = LevelRules::GetRuleTypeForMiniGame(id);
     std::vector<LevelRules::LevelRulesetGroup*> groups;
-    gApp.getLevelRules()->getRulesByType(type, &groups, false);
+    gApp.getLevelRules()->getRulesByType(type, &groups);
     return groups.size() > 1;
 }
 
@@ -2694,7 +2696,12 @@ unsigned int MiniGameDef::VotableType() const
         return 1;
     if (mId != eMiniGameId_Build)
     {
-        if (HasMultipleMaps())
+        std::vector<ClientMasterGameMode::MapSelectInfo> playlist;
+        Minecraft* minecraft = Minecraft::GetInstance();
+        ClientMasterGameMode* client = minecraft != NULL ? minecraft->GetClientMasterGameMode() : NULL;
+        if (client != NULL)
+            client->GetUniquePlaylist(playlist);
+        if (playlist.size() > 1 || HasMultipleMaps())
             return 0;
         if (HasMultipleVariants())
             return 1;

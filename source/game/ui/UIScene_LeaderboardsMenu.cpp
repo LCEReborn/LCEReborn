@@ -50,7 +50,7 @@ UIScene_LeaderboardsMenu::UIScene_LeaderboardsMenu(int type, void* data, UILayer
     m_entriesLabel.init(UIString(entriesText));
     ReadStats(-1);
     if (gApp.StartInstallDLCProcess(gProfile->GetPrimaryPad()) == 0)
-        gApp.getLevelRules()->getRulesByType(LevelRules::eLevelRuleType_Glide, &m_levelRuleGroups, false);
+        gApp.getLevelRules()->getRulesByType(LevelRules::eLevelRuleType_Glide, &m_levelRuleGroups);
     m_result = static_cast<unsigned int>(-1);
 }
 
@@ -346,7 +346,7 @@ void UIScene_LeaderboardsMenu::SetLeaderboardHeader()
     {
         unsigned int uniqueId = LevelGenerationOptions::CreateUniqueId(static_cast<int>(descriptor.themeId), 0);
         if (m_levelRuleGroups.size() == 0)
-            gApp.getLevelRules()->getRulesByType(LevelRules::eLevelRuleType_Glide, &m_levelRuleGroups, false);
+            gApp.getLevelRules()->getRulesByType(LevelRules::eLevelRuleType_Glide, &m_levelRuleGroups);
         for (std::vector<LevelRules::LevelRulesetGroup*>::iterator group = m_levelRuleGroups.begin();
              group != m_levelRuleGroups.end(); ++group)
         {

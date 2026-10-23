@@ -46,6 +46,7 @@ static void PrintUsage(std::FILE* stream, PcProgram program)
                    "  --content-dir <dir>         game content (default: assets in the working folder)\n"
                    "  --save-dir <dir>            worlds, server.properties and server-icon.png (default: saves in the\n"
                    "                              working folder)\n"
+                   "  --packs-dir <dir>           packs to load (default: packs in the working folder)\n"
                    "  --log-dir <dir>             logs (default: logs in the working folder)\n"
                    "  --help                      show this message\n",
                    stream);
@@ -56,10 +57,10 @@ static void PrintUsage(std::FILE* stream, PcProgram program)
                "  --uuid <uuid>               player identity, 32 hex digits (default: made from the name)\n"
                "  --content-dir <dir>         game content (default: assets in the working folder)\n"
                "  --save-dir <dir>            saves and settings (default: saves in the working folder)\n"
+               "  --packs-dir <dir>           packs to load (default: packs in the working folder)\n"
                "  --resource-dir <dir>        PC interface art (default: resources in the working folder)\n"
                "  --language <code>           language, such as en-GB or ja (default: the system language)\n"
                "  --log-dir <dir>             logs (default: logs in the working folder)\n"
-               "  --license-file <file>       what is unlocked (default: license.cfg in the working folder)\n"
                "  --split-screen <on|off>     other controllers can join as more players (default: on)\n"
                "  --join-prompt <on|off>      prompt other controllers to join when a world loads (default: off)\n"
                "  --world <folder>            load this save from the saves folder's games folder at start\n"
@@ -104,7 +105,8 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode, PcProgram progra
             return false;
         }
 
-        if (program == PcProgram::Server && name != "--content-dir" && name != "--save-dir" && name != "--log-dir")
+        if (program == PcProgram::Server && name != "--content-dir" && name != "--save-dir" && name != "--packs-dir"
+            && name != "--log-dir")
         {
             std::fprintf(stderr, "Unknown option: %s\n", arguments[index].c_str());
             PrintUsage(stderr, program);
@@ -129,6 +131,8 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode, PcProgram progra
             target = &sOptions.contentDir;
         else if (name == "--save-dir")
             target = &sOptions.saveDir;
+        else if (name == "--packs-dir")
+            target = &sOptions.packsDir;
         else if (name == "--resource-dir")
             target = &sOptions.resourceDir;
         else if (name == "--language")
@@ -137,8 +141,6 @@ bool PcParseLaunchOptions(int argc, char** argv, int& exitCode, PcProgram progra
             target = &sOptions.logDir;
         else if (name == "--uuid")
             target = &sOptions.uuid;
-        else if (name == "--license-file")
-            target = &sOptions.licenseFile;
         else if (name == "--world")
             target = &sOptions.world;
         else if (name == "--join")

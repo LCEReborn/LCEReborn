@@ -20,9 +20,9 @@ python tools/package.py --update <update v688 dump>
 - Your own extracted, decrypted dumps of the base game (title
   `00050000101D9D00`) and of update version 688 (title `0005000E101D9D00`),
   the version this source reconstructs. Each dump is a title folder with
-  `code/`, `content/` and `meta/`. DLC dumps are not needed: the pack data
-  ships inside the game's content, and the DLC title only unlocks it on a
-  console or in Cemu.
+  `code/`, `content/` and `meta/`. DLC dumps are not needed: the packs that
+  came free with the game load from its content, and other packs go in the
+  packs folder (`pc-platform.md`, Packs).
 - Python 3.8 or newer.
 - Docker (Docker Desktop on Windows and macOS) with about 15 GB of
   free space while the toolchain image is first built, and about 6 GB for
@@ -154,7 +154,8 @@ python tools/package.py --update <update v688 dump>
 writes `build/title/`, a title folder in the layout Cemu loads:
 
 - `code/` - the RPX you built, with `app.xml` and `cos.xml` from the
-  update dump;
+  update dump, `cos.xml` changed to allow SD card access for the packs
+  folder;
 - `meta/` - the update dump's `meta/` folder;
 - `content/` - a link to `assets/` (a junction on Windows, a symbolic link
   elsewhere). `--copy` copies `assets/` instead, for a folder you want to

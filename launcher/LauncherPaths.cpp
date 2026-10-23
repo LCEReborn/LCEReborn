@@ -31,11 +31,6 @@ QString ResourcesDir()
     return InstallDir() + "/resources";
 }
 
-QString LicenseFile()
-{
-    return DataDir() + "/license.cfg";
-}
-
 QString GameExecutable()
 {
 #if defined(Q_OS_WIN)

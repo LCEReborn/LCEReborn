@@ -22,7 +22,7 @@ const unsigned int PNG_CHUNK_TYPE_TEXT = 0x74455874U;
 struct CONTENT_DATA
 {
     unsigned int state;
-    bool updatePackage;
+    unsigned char source;
     unsigned char reserved[7];
     char name[256];
     char path[640];
@@ -105,27 +105,30 @@ public:
     virtual void DeleteGenericData(int, const std::wstring&);
     virtual void SetSaveDeviceSelected(unsigned int, bool);
     virtual int GetSaveDeviceSelected(unsigned int);
-    virtual void ClearDLCOffers();
     virtual int ReadTMSFile(int, C4JStorage::eGlobalStorage, C4JStorage::eTMS_FileType, wchar_t*, unsigned char**,
                             unsigned int*, int (*)(void*, wchar_t*, int, bool, C4JStorage::eTMS_FileType), void*, int);
     virtual int WriteTMSFile(int, C4JStorage::eGlobalStorage, wchar_t*, unsigned char*, unsigned int);
     virtual int DeleteTMSFile(int, C4JStorage::eGlobalStorage, wchar_t*);
-    virtual int GetDLCOffers(int pad, DLCOffersCallback callback, void* context, unsigned int contentId);
     virtual void SetOpenDirFn(DirectoryOpenCallback);
     virtual void SetReadDirFn(DirectoryReadCallback);
     virtual void SetCloseDirFn(DirectoryCloseCallback);
     virtual void SetDLCPackageRoot(const char*);
     virtual int GetInstalledDLC(int, InstalledDLCCallback, void*);
     virtual int GetDLC(unsigned int);
-    virtual int GetAvailableDLCCount(int);
     virtual int MountInstalledDLC(int, unsigned int, DLCMountCallback, void*, const char*);
     virtual int UnmountInstalledDLC(const char*);
     virtual int GetMountedDLCFileList(const char*, std::vector<std::string>&);
     virtual int GetMountedDLCIndex();
     virtual std::string GetMountedPath(std::string);
-    virtual void SetDLCProductCode(const char*);
-    virtual void SetProductUpgradeKey(const char*);
-    virtual int CheckForTrialUpgradeKey(DLCUpgradeCallback, void*);
+    virtual std::string GetPacksFolder();
+    virtual std::string GetServerPacksFolder();
+    virtual int AddInstalledPack(const char* path, const char* name);
+    virtual void RemoveServerPacks();
+    virtual bool ListFiles(const std::string& root, std::vector<std::string>& paths,
+                           std::vector<unsigned long long>& sizes);
+    virtual bool DeletePath(const std::string& path);
+    virtual bool RenamePath(const std::string& from, const std::string& to);
+    virtual bool CreateDirectories(const std::string& path);
 
     void DisplaySavingMessages();
     void Init(SavingMessageCallback, void*, const char*);
@@ -166,6 +169,8 @@ public:
     void SetDefaultImages(unsigned char*, unsigned int, unsigned char*, unsigned int);
     void TickSaveGame();
     void AddInstalled(CONTENT_DATA&);
+    void AddPack(const char*, unsigned char, const char* label = NULL);
+    void EnumeratePacksFolder();
     unsigned int EnumerateLocalDLCPackages();
     void MountInstalledDLC_thread();
     static int MountInstalledDLC_threadEntry(int, void*);
@@ -320,8 +325,6 @@ private:
     char m_defaultDLCMountName[40];
     unsigned int m_dlcMountNameData;
     std::vector<DriveMapping> m_mountedDrives;
-    char m_dlcProductCode[16];
-    char m_productUpgradeKey[60];
     unsigned int m_dlcReserved3[2];
     OSThread m_dlcThread;
     DirectoryOpenCallback m_openDir;

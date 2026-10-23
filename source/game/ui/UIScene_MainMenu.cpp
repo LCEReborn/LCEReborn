@@ -22,6 +22,7 @@
 #include "platform/CProfile.hpp"
 #include "platform/CStorage.hpp"
 #include "game/network/CGameNetworkManager.hpp"
+#include "game/network/PackTransfer.hpp"
 #include "game/core/GlStateManager.hpp"
 #include "game/core/Mth.hpp"
 #include "game/core/System.hpp"
@@ -29,6 +30,7 @@
 #include "game/client/render/Font.hpp"
 #include "game/client/render/Renderer.hpp"
 #include "game/ui/UILayer.hpp"
+#include "game/ui/UIPacksPage.hpp"
 #include "game/ui/ScreenSizeCalculator.hpp"
 #include "game/ui/fuiFile.hpp"
 #include "game/ui/fuiRect.hpp"
@@ -73,16 +75,7 @@ UIScene_MainMenu::UIScene_MainMenu(int sceneType, void*, UILayer* layer)
     m_buttons[2].init(UIString(IDS_LEADERBOARDS), 2);
     m_buttons[3].init(UIString(IDS_ACHIEVEMENTS), 3);
     m_buttons[4].init(UIString(IDS_HELP_AND_OPTIONS), 4);
-    if (gProfile->IsFullVersion())
-    {
-        m_showUpsell = false;
-        m_buttons[5].init(UIString(IDS_DOWNLOADABLECONTENT), 5);
-    }
-    else
-    {
-        m_showUpsell = true;
-        m_buttons[5].init(UIString(IDS_UNLOCK_FULL_GAME), 5);
-    }
+    m_buttons[5].init(UIString(L"Packs"), 5);
     m_buttons[6].init(UIString(IDS_EXIT_GAME), 6);
     handleReload();
     doHorizontalResizeCheck();
@@ -235,6 +228,11 @@ std::wstring UIScene_MainMenu::getMoviePath()
 void UIScene_MainMenu::tick()
 {
     UIScene::tick();
+    if (hasFocus(m_playerId))
+    {
+        PackReceiver::Get().releasePacks();
+        PackReceiver::Get().showLeaveMessage();
+    }
     if (s_nextScene != EUIScene_Count && gApp.GetTMSAction(m_playerId) == 0)
     {
         int playerId = gProfile->GetLockedProfile();
@@ -253,12 +251,6 @@ void UIScene_MainMenu::tick()
                                                  EUIGroup_PlayerDefault);
             s_nextScene = EUIScene_Count;
         }
-    }
-
-    if (m_showUpsell && gProfile->IsFullVersion())
-    {
-        m_showUpsell = false;
-        m_buttons[5].init(UIString(L10N::GetString(IDS_DOWNLOADABLECONTENT)), 5);
     }
 }
 
@@ -281,11 +273,6 @@ void UIScene_MainMenu::handleInput(int playerId, int action, bool repeat, bool p
         sendInputToMovie(action, repeat, pressed, released);
         break;
     }
-}
-
-void UIScene_MainMenu::handleUnlockFullVersion()
-{
-    m_buttons[5].setLabel(UIString(IDS_DOWNLOADABLECONTENT), true, false);
 }
 
 void UIScene_MainMenu::PrepareToPlayGame(int playerId)
@@ -339,61 +326,23 @@ int UIScene_MainMenu::Leaderboards_SignInReturned(void* context, bool signedIn, 
     return 0;
 }
 
-void UIScene_MainMenu::RunUnlockOrDLC(int playerId)
+void UIScene_MainMenu::RunPacks(int playerId)
 {
-    int messageParameter = IDS_CONFIRM_OK;
-    if (gProfile->IsFullVersion())
-    {
-        if (gProfile->IsSignedInLive(playerId))
-        {
-            if (gProfile->IsGuest(playerId))
-            {
-                m_loading = false;
-                gConsoleUIController.RequestErrorMessage(0xe6bf122, 0x8ba9896f, &messageParameter, 1, 0xff, NULL, NULL,
-                                                         NULL, true);
-                return;
-            }
-
-            gProfile->QuerySigninStatus();
-            gProfile->SetLockedProfile(playerId);
-            proceedToScene(gProfile->GetPrimaryPad(), EUIScene_DLCMainMenu);
-            return;
-        }
-
-        int messageParameters[2] = {IDS_PRO_NOTONLINE_ACCEPT, IDS_PRO_NOTONLINE_DECLINE};
-        m_pendingAction = 5;
-        gConsoleUIController.RequestErrorMessage(IDS_PRO_NOTONLINE_TITLE, IDS_PRO_NOTONLINE_TEXT, messageParameters, 2,
-                                                 playerId, MustConnectReturnedNintendo, this, NULL, true);
-        return;
-    }
-
-    if (gProfile->IsGuest(playerId))
-    {
-        m_loading = false;
-        gConsoleUIController.RequestErrorMessage(IDS_UNLOCK_TITLE, IDS_UNLOCK_GUEST_TEXT, &messageParameter, 1,
-                                                 playerId, NULL, NULL, NULL, true);
-        return;
-    }
-    if (!gProfile->IsSignedInLive(playerId))
-    {
-        int signInParameter = IDS_CONFIRM_OK;
-        gConsoleUIController.RequestErrorMessage(IDS_PRO_NOTONLINE_TITLE, 0xc34c0b77, &signInParameter, 1, 0xff, NULL,
-                                                 NULL, NULL, true);
-        return;
-    }
     gProfile->QuerySigninStatus();
-    telemetryManagerInstance->RecordUpsellPresented(playerId, eSen_UpsellID_FullGame, 1);
-    gProfile->DisplayFullVersionPurchase(false, playerId, 1);
+    gProfile->SetLockedProfile(playerId);
+    gApp.StartInstallDLCProcess(playerId);
+    gConsoleUIController.NavigateToScene(playerId, EUIScene_CustomMenu, new UIPacksPage(), EUILayer_Scene,
+                                         EUIGroup_PlayerDefault);
 }
 
-int UIScene_MainMenu::UnlockFullGame_SignInReturned(void* context, bool signedIn, int userIndex, int playerIndex)
+int UIScene_MainMenu::Packs_SignInReturned(void* context, bool signedIn, int userIndex, int playerIndex)
 {
     UIScene_MainMenu* scene = static_cast<UIScene_MainMenu*>(context);
     if (signedIn)
     {
         gProfile->SetCurrentGameActivity(userIndex, 1, false);
         gProfile->SetPrimaryPad(playerIndex);
-        scene->RunUnlockOrDLC(userIndex);
+        scene->RunPacks(userIndex);
     }
     else
     {
@@ -423,10 +372,6 @@ int UIScene_MainMenu::MustConnectReturnedNintendo(void* context, int userIndex, 
             CGameNetworkManager::sInstance.ShowConnectOnlineNintendoProgress(userIndex, CreateLoad_SignInReturned,
                                                                              scene);
             break;
-        case 5:
-            CGameNetworkManager::sInstance.ShowConnectOnlineNintendoProgress(userIndex, UnlockFullGame_SignInReturned,
-                                                                             scene);
-            break;
         }
     }
     else if (scene->m_pendingAction == 1)
@@ -443,68 +388,6 @@ int UIScene_MainMenu::MustConnectReturnedNintendo(void* context, int userIndex, 
     return 0;
 }
 
-int UIScene_MainMenu::MiniGamesUnlock_Returned(void* context, int playerId, C4JStorage::EMessageResult result)
-{
-    UIScene_MainMenu* scene = static_cast<UIScene_MainMenu*>(
-        gConsoleUIController.GetSceneFromCallbackId(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context))));
-    if (scene != NULL)
-    {
-        if (result == C4JStorage::EMessageResult_Accept)
-            scene->RunUnlockOrDLC(playerId);
-        else
-            scene->m_loading = false;
-    }
-    return 0;
-}
-
-void UIScene_MainMenu::LoadTrial()
-{
-    gApp.SetTutorialMode(true, boost::shared_ptr<Player>());
-    gApp.ClearTerrainFeaturePosition();
-    gStorage->ResetSaveData();
-    CGameNetworkManager::sInstance.SetWorldThumbnail(NULL, 0);
-    gProfile->StartTrialGame();
-    gStorage->SetSaveDisabled(true);
-    gApp.SetGameHostOption(eGameHostOption_WasntSaveOwner, 0);
-    gApp.SetGameHostOption(eGameHostOption_DisableSaving, 1);
-    gApp.SetGameHostOption(eGameHostOption_GameType, GameType::SURVIVAL->getId());
-    gStorage->SetSaveTitle(L"Tutorial");
-    gApp.SetAutosaveTimerTime();
-    CGameNetworkManager::sInstance.HostGame(0, false, true, 0, eMiniGameId_Any, 0, 0);
-    CGameNetworkManager::sInstance.FakeLocalPlayerJoined();
-
-    _NetworkGameInitData* initData = new _NetworkGameInitData();
-    initData->m_seed = 0;
-    initData->m_saveData = 0;
-    initData->m_hostOptions = gApp.GetGameHostOption(eGameHostOption_Tutorial)
-                              | gApp.GetGameHostOption(eGameHostOption_DisableSaving);
-    initData->m_gameType = gApp.GetGameHostOption(eGameHostOption_GameType);
-    initData->m_levelGenerationOptions = 0;
-
-    std::vector<LevelGenerationOptions*>* generators = gApp.getLevelGenerators();
-    for (std::vector<LevelGenerationOptions*>::iterator it = generators->begin(); it != generators->end(); ++it)
-    {
-        if ((*it)->isTutorial())
-        {
-            initData->m_levelGenerationOptions = *it;
-            break;
-        }
-    }
-
-    _LoadingInputParams* loadingParams = new _LoadingInputParams();
-    loadingParams->m_threadProc = &CGameNetworkManager::RunNetworkGameThreadProc;
-    loadingParams->m_threadParam = initData;
-
-    FullscreenProgressState* state = new FullscreenProgressState;
-    state->closeMode = 3;
-    state->playerId = gProfile->GetPrimaryPad();
-    loadingParams->m_completionData = state;
-
-    gConsoleUIController.ShowTrialTimer(true);
-    gConsoleUIController.NavigateToScene(gProfile->GetPrimaryPad(), EUIScene_FullscreenProgress, loadingParams,
-                                         EUILayer_Scene, EUIGroup_PlayerDefault);
-}
-
 void UIScene_MainMenu::RunPlayGame(int playerId)
 {
     Minecraft* minecraft = Minecraft::GetInstance();
@@ -519,39 +402,18 @@ void UIScene_MainMenu::RunPlayGame(int playerId)
     }
 
     PrepareToPlayGame(playerId);
-    if (gProfile->IsFullVersion())
-    {
-        bool signedInLive = gProfile->IsSignedInLive(playerId);
-        User* user = minecraft->mUser;
-        if (!signedInLive)
-        {
-            user->name = convStringToWstring(gProfile->GetGamertag(gProfile->GetPrimaryPad()));
-            int messageParameters[2] = {IDS_PRO_NOTONLINE_ACCEPT, IDS_PRO_NOTONLINE_DECLINE};
-            m_pendingAction = 1;
-            gConsoleUIController.RequestErrorMessage(IDS_PRO_NOTONLINE_TITLE, IDS_PRO_NOTONLINE_TEXT, messageParameters,
-                                                     2, playerId, MustConnectReturnedNintendo, this, NULL, true);
-            return;
-        }
-        user->name = convStringToWstring(gProfile->GetGamertag(gProfile->GetPrimaryPad()));
-        GameSettings::ApplyGameSettingsChanged(playerId);
-        proceedToScene(gProfile->GetPrimaryPad(), EUIScene_LoadCreateJoinMenu);
-        return;
-    }
-
-    if (m_miniGamesSelected)
-    {
-        int messageParameters[2];
-        messageParameters[0] = IDS_UNLOCK_FULL_GAME;
-        messageParameters[1] = IDS_CONFIRM_CANCEL;
-        gConsoleUIController.RequestErrorMessage(IDS_UNLOCK_TITLE, 0x1e1ffdaf, messageParameters, 2,
-                                                 gProfile->GetPrimaryPad(), MiniGamesUnlock_Returned,
-                                                 reinterpret_cast<void*>(GetCallbackUniqueId()), NULL, true);
-        return;
-    }
-
-    User* user = Minecraft::GetInstance()->mUser;
+    User* user = minecraft->mUser;
     user->name = convStringToWstring(gProfile->GetGamertag(gProfile->GetPrimaryPad()));
-    LoadTrial();
+    if (!gProfile->IsSignedInLive(playerId))
+    {
+        int messageParameters[2] = {IDS_PRO_NOTONLINE_ACCEPT, IDS_PRO_NOTONLINE_DECLINE};
+        m_pendingAction = 1;
+        gConsoleUIController.RequestErrorMessage(IDS_PRO_NOTONLINE_TITLE, IDS_PRO_NOTONLINE_TEXT, messageParameters, 2,
+                                                 playerId, MustConnectReturnedNintendo, this, NULL, true);
+        return;
+    }
+    GameSettings::ApplyGameSettingsChanged(playerId);
+    proceedToScene(gProfile->GetPrimaryPad(), EUIScene_LoadCreateJoinMenu);
 }
 
 int UIScene_MainMenu::CreateLoad_SignInReturned(void* context, bool signedIn, int userIndex, int playerIndex)
@@ -562,7 +424,7 @@ int UIScene_MainMenu::CreateLoad_SignInReturned(void* context, bool signedIn, in
     {
         gProfile->SetCurrentGameActivity(userIndex, 1, false);
         bool online = gProfile->IsSignedInLive(userIndex);
-        if (!gProfile->IsGuest(gProfile->GetPrimaryPad()) && gProfile->IsFullVersion() && !online)
+        if (!gProfile->IsGuest(gProfile->GetPrimaryPad()) && !online)
             scene->RunPlayGameOffline(userIndex);
         else
             scene->RunPlayGame(userIndex);
@@ -673,7 +535,7 @@ void UIScene_MainMenu::RunAction(int playerId)
         RunHelpAndOptions(playerId);
         break;
     case 5:
-        RunUnlockOrDLC(playerId);
+        RunPacks(playerId);
         break;
     default:
         break;
@@ -700,7 +562,7 @@ int UIScene_MainMenu::MustSignInReturned(void* context, int userIndex, C4JStorag
             gProfile->RequestSignInUI(false, false, true, false, true, Achievements_SignInReturned, scene, userIndex);
             break;
         case 5:
-            gProfile->RequestSignInUI(false, false, true, false, true, UnlockFullGame_SignInReturned, scene, userIndex);
+            gProfile->RequestSignInUI(false, false, true, false, true, Packs_SignInReturned, scene, userIndex);
             break;
         default:
             break;
@@ -762,7 +624,7 @@ void UIScene_MainMenu::handlePress(int controlId, int)
         m_miniGamesSelected = false;
         gConsoleUIController.PlayUISFX(SoundEvents::UI_PRESS);
         m_pendingAction = 5;
-        signInReturnedFunc = &UnlockFullGame_SignInReturned;
+        signInReturnedFunc = &Packs_SignInReturned;
         break;
     case 6:
     {
@@ -824,8 +686,8 @@ void UIScene_MainMenu::handleGainFocus(bool hadFocus)
         updateTooltips();
     }
 
-    if (hadFocus && gProfile->IsFullVersion())
-        m_buttons[5].setLabel(UIString(IDS_DOWNLOADABLECONTENT), false, false);
+    if (hadFocus)
+        m_buttons[5].setLabel(UIString(L"Packs"), false, false);
 
     m_timer.setVisible(false);
     m_buttons[0].setVisible(true);

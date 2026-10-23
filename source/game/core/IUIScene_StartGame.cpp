@@ -27,7 +27,6 @@
 #include "game/core/SuperflatConfig.hpp"
 #include "game/core/System.hpp"
 #include "game/core/UnityClient6.hpp"
-#include "game/core/cDLCInfo.hpp"
 #include "game/minigame/MiniGameDef.hpp"
 #include "game/minigame/MiniGameOptionCache.hpp"
 #include "game/network/CGameNetworkManager.hpp"
@@ -45,8 +44,6 @@
 #include "game/world/LevelRuleset.hpp"
 #include "platform/CProfile.hpp"
 #include "platform/CStorage.hpp"
-#include "platform/Commerce.hpp"
-#include "platform/wiiu/cNintendoDLCInfo.hpp"
 #include "game/ui/UIScene_FullscreenProgress.hpp"
 #include "game/world/LevelData.hpp"
 #include "vendor/_LoadingInputParams.hpp"
@@ -103,7 +100,6 @@ IUIScene_StartGame::IUIScene_StartGame(int sceneType, void* data, UILayer* layer
         m_previewShown[index] = true;
     m_seed = 0;
     m_difficulty = 0;
-    m_texturePackParentPack = NULL;
     m_launchData.mNaturalRegeneration = true;
     m_launchData.mPad = sceneType;
     m_levelGenerationOptions = sceneData->generationOptions;
@@ -136,7 +132,7 @@ IUIScene_StartGame::IUIScene_StartGame(int sceneType, void* data, UILayer* layer
     {
         m_launchData.mHostMiniGame = true;
         gApp.getLevelRules()->getRulesByType(LevelRules::GetRuleTypeForMiniGame(miniGameId),
-                                             &m_launchData.mLevelRulesetGroups, true);
+                                             &m_launchData.mLevelRulesetGroups);
         if (miniGameId != eMiniGameId_Lobby)
         {
             unsigned int mapSelection = 0xFFFFFFFFU;
@@ -161,9 +157,7 @@ IUIScene_StartGame::IUIScene_StartGame(int sceneType, void* data, UILayer* layer
                 {
                     LevelRules::LevelRulesetGroup* group = *it;
                     LevelGenerationOptions* options = group->rulesets.front()->getGenerationOptions();
-                    if ((~mapSelection & (1U << options->getThemeId())) != 0
-                        || (!options->getPack()->hasPurchasedPack()
-                            && !gApp.mDLCManager.IsMiniGameTemporarilyFree(group->rulesets.front()->getRuleType())))
+                    if ((~mapSelection & (1U << options->getThemeId())) != 0)
                     {
                         it = m_launchData.mLevelRulesetGroups.erase(it);
                     }
@@ -176,7 +170,7 @@ IUIScene_StartGame::IUIScene_StartGame(int sceneType, void* data, UILayer* layer
                 {
                     m_launchData.mHostMiniGame = true;
                     gApp.getLevelRules()->getRulesByType(static_cast<LevelRules::ELevelRuleType>(miniGameId),
-                                                         &m_launchData.mLevelRulesetGroups, true);
+                                                         &m_launchData.mLevelRulesetGroups);
                 }
             }
         }
@@ -416,20 +410,9 @@ void IUIScene_StartGame::OrganizeTexturePacks()
     for (index = 1; index < count; ++index)
     {
         TexturePack* pack = minecraft->mTexturePackRepository->getTexturePackByIndex(index);
-        unsigned int packId = pack->getId();
-        DLC_INFO* info = gApp.GetDLCInfoInstance()->GetDLCInfoForPackID(packId);
-        if (info == NULL)
-        {
-            DLCPack* parent = static_cast<DLCTexturePack*>(pack)->getDLCInfoParentPack();
-            m_texturePacks[index].sortValue = sortValue;
-            --sortValue;
-            m_texturePacks[index].packId = parent->GetPackId();
-        }
-        else
-        {
-            m_texturePacks[index].sortValue = info->SortIndex;
-            m_texturePacks[index].packId = packId;
-        }
+        m_texturePacks[index].sortValue = sortValue;
+        --sortValue;
+        m_texturePacks[index].packId = pack->getId();
     }
     std::sort(m_texturePacks.begin(), m_texturePacks.end(), SortTexturePacks);
     for (index = 0; index < count; ++index)
@@ -984,86 +967,6 @@ void IUIScene_StartGame::UpdateCurrentTexturePack(int slot)
     }
 }
 
-int IUIScene_StartGame::TrialTexturePackWarningReturned(void* context, int, C4JStorage::EMessageResult result)
-{
-    IUIScene_StartGame* scene = static_cast<IUIScene_StartGame*>(context);
-    if (result == C4JStorage::EMessageResult_Accept)
-    {
-        scene->checkStateAndStartGame();
-        return 0;
-    }
-    scene->m_actionPending = false;
-    return 0;
-}
-
-int IUIScene_StartGame::UnlockTexturePackReturned(void* context, int userIndex, C4JStorage::EMessageResult result)
-{
-    IUIScene_StartGame* scene = static_cast<IUIScene_StartGame*>(context);
-    if (result == C4JStorage::EMessageResult_Accept)
-    {
-        gProfile->IsSignedIn(userIndex);
-    }
-    scene->m_actionPending = false;
-    return 0;
-}
-
-int IUIScene_StartGame::TexturePackDialogReturned(void* context, int userIndex, C4JStorage::EMessageResult result)
-{
-    IUIScene_StartGame* scene = static_cast<IUIScene_StartGame*>(context);
-    if (result == C4JStorage::EMessageResult_Accept && gProfile->IsSignedIn(userIndex))
-    {
-        if (gProfile->IsSignedInLive(userIndex))
-        {
-            if (!gApp.GetCommerceInstance()->PurchaseDLCByPackID(scene->m_launchData.mTexturePackId))
-            {
-                int parameters[1];
-                parameters[0] = IDS_CONFIRM_OK;
-                gConsoleUIController.RequestErrorMessage(IDS_DLC_ALREADY_INSTALLED_TITLE,
-                                                         IDS_DLC_ALREADY_INSTALLED_TEXT, parameters, 1, userIndex, NULL,
-                                                         NULL, NULL, true);
-            }
-        }
-        else
-        {
-            int parameters[1];
-            parameters[0] = IDS_CONFIRM_OK;
-            gConsoleUIController.RequestErrorMessage(-0x75DE76B5, -0x3CB3F489, parameters, 1, userIndex, NULL, NULL,
-                                                     NULL, true);
-        }
-    }
-    scene->m_actionPending = false;
-    return 0;
-}
-
-int IUIScene_StartGame::TexturePackDialogBattleMiniGameReturned(void* context, int userIndex,
-                                                                C4JStorage::EMessageResult result)
-{
-    IUIScene_StartGame* scene = static_cast<IUIScene_StartGame*>(context);
-    if (result == C4JStorage::EMessageResult_Accept && gProfile->IsSignedIn(userIndex))
-    {
-        if (gProfile->IsSignedInLive(userIndex))
-        {
-            if (!gApp.GetCommerceInstance()->PurchaseDLCByPackID(scene->m_launchData.mTexturePackId))
-            {
-                int parameters[1];
-                parameters[0] = IDS_CONFIRM_OK;
-                gConsoleUIController.RequestErrorMessage(IDS_DLC_ALREADY_INSTALLED_TITLE,
-                                                         IDS_DLC_ALREADY_INSTALLED_TEXT, parameters, 1, userIndex, NULL,
-                                                         NULL, NULL, true);
-            }
-        }
-        else
-        {
-            int parameters[1];
-            parameters[0] = IDS_CONFIRM_OK;
-            gConsoleUIController.RequestErrorMessage(-0x75DE76B5, -0x3CB3F489, parameters, 1, userIndex, NULL, NULL,
-                                                     NULL, true);
-        }
-    }
-    scene->m_actionPending = false;
-    return 0;
-}
-
 void IUIScene_StartGame::CheckPermissionsAndContinue(bool fromLoad)
 {
     int primaryPad = gProfile->GetPrimaryPad();
@@ -1187,36 +1090,6 @@ void IUIScene_StartGame::StartSharedLaunchFlow()
         gApp.SetGameHostOption(eGameHostOption_WasntSaveOwner, m_state629 ? 0 : 1);
     }
     RiderPositionOverrides::ClearOverrides();
-    if (m_launchData.mTexturePackId != 0)
-    {
-        TexturePack* pack = minecraft->mTexturePackRepository->getTexturePackById(m_launchData.mTexturePackId);
-        if (pack != NULL)
-        {
-            m_texturePackParentPack = static_cast<DLCTexturePack*>(pack)->getDLCInfoParentPack();
-            if (m_texturePackParentPack != NULL && !m_texturePackParentPack->hasPurchasedPack())
-            {
-                int parameters[2];
-                parameters[0] = IDS_CONFIRM_OK;
-                parameters[1] = IDS_CONFIRM_CANCEL;
-                if (m_launchData.mHostMiniGame)
-                {
-                    gConsoleUIController.RequestAlertMessage(0x3BB3096E, -0x0AF6FB3A, parameters, 2, m_playerId,
-                                                             TexturePackDialogReturned, this, NULL, true);
-                }
-                else
-                {
-                    gConsoleUIController.RequestAlertMessage(0x3BB3096E, 0x1CFE436F, parameters, 2, m_playerId,
-                                                             TrialTexturePackWarningReturned, this, NULL, true);
-                }
-                gApp.SetExtraGameData(eGameExtraData_TrialTexturePack, 1);
-                return;
-            }
-        }
-    }
-    if (!gProfile->IsFullVersion())
-    {
-        gApp.SetExtraGameData(eGameExtraData_TrialTexturePack, 0);
-    }
     checkStateAndStartGame();
 }
 

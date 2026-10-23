@@ -52,9 +52,9 @@ data, Nintendo friend presence) are declared under that platform's
 ## Files and folders on PC
 
 Game content is read from `assets/` (what the launcher's setup or
-`tools/prepare.py` writes), saves
-go to `saves/` and the PC interface art is read from `resources/`, all
-relative to the working directory. The `--content-dir`, `--save-dir` and
+`tools/prepare.py` writes), saves go to `saves/`, packs are read from
+`packs/` and the PC interface art is read from `resources/`, all relative to
+the working directory. The `--content-dir`, `--save-dir`, `--packs-dir` and
 `--resource-dir` arguments override them (`platform/pc/PcPaths`). A resource
 folder with a `pc` subfolder, such as the repository's own `resources/`, is
 read from that subfolder.
@@ -64,23 +64,14 @@ comes from its arguments (`platform/pc/PcLaunchOptions`, `--help` lists them).
 `--username` sets the player name, falling back to the OS user name, and
 `--language` the language, falling back to the system's. `--uuid` sets the
 first player's identity, 32 hexadecimal digits with or without dashes;
-without it the identity is made from the player name. `--license-file` sets
-the license file (see Licenses). `--world` loads a save folder from
-`saves/games/` as soon as the main menu is up. Most players start the game
-from the launcher (`pc-launcher.md`).
+without it the identity is made from the player name. `--world` loads a save
+folder from `saves/games/` as soon as the main menu is up. Most players start
+the game from the launcher (`pc-launcher.md`).
 
 Debug builds (`-DCMAKE_BUILD_TYPE=RelWithDebInfo` or `Debug`) add options for
 render testing: `--position` and `--rotation` place the player once a world
 has loaded, and `--capture-frames`, `--capture-delay` and `--capture-dir`
 save that many frames as PNG files after the delay, then quit.
-
-## Licenses
-
-The PC has no store, so the game reads what is unlocked from `license.cfg`
-(or `--license-file`) and writes it on first start with everything locked.
-Nothing is unlocked until you edit it, and you should only unlock what you
-own. `full_game = true` unlocks the full game, otherwise it runs as the trial.
-`dlc` is `none`, `all`, or pack names separated by commas.
 
 ## Multiplayer
 
@@ -114,14 +105,17 @@ server.
 
 `LCERebornServer` runs a world with no window, sound or local player, on
 Windows and Linux. It needs the same content folder as the game and takes
-`--content-dir`, `--save-dir` and `--log-dir`. In a release, that content is
-what the launcher imported: in the package folder on Windows, where the
+`--content-dir`, `--save-dir`, `--packs-dir` and `--log-dir`. In a release,
+that content is what the launcher imported: in the package folder on
+Windows, where the
 server finds it when started there, and in `~/.local/share/LCEReborn/assets`
 on Linux. The AppImage only starts the launcher, so run the server from the
 tar.gz. The first start writes
 `server.properties` to the saves folder; edit it and restart to apply
 changes. `world` names the folder in `games` to load, and a new world is made
-there if it is missing. Operators may use commands when cheats are allowed.
+there if it is missing. `texture-pack` gives the world a texture or mash-up
+pack, by its folder name in the packs folder or its pack ID. Operators may
+use commands when cheats are allowed.
 They are kept by UUID in `ops.json` beside `server.properties`, and `op` and
 `deop` change them while the server runs. `op` takes a player's UUID, which
 the server logs when they join, or a name. A UUID is better when you know
@@ -424,6 +418,28 @@ menus. When the highlighted row has a description, the Show Description
 prompt (the game's X/Square action, X on the keyboard) slides the list to the
 left and the description panel out from behind it, sized to its text; the
 same button tucks it away again. The panel follows the highlight while open.
+
+## Packs
+
+Skin, texture, mash-up and map packs are the game's `.pck` files. The packs
+that came free with the game load from its content
+(`platform/BuiltInPacks.hpp`); the rest of the game's DLC folders are not
+loaded. Other packs go in the packs folder, each as a `.pck` file or as a
+folder holding the `.pck` and its `Data` folder, and load when the game
+starts. On the Wii U the packs folder is `wiiu/LCEReborn/packs` on the SD
+card. A pack whose ID is already loaded is skipped. Packs on the main menu
+lists what is loaded and where it came from (`game/ui/UIPacksPage`).
+
+A host or server sends players the packs they are missing, as Java servers
+send resource packs (`game/network/PackTransfer`): the world's texture pack,
+which a player may decline, and the map packs of a mini-game, which a player
+must take to stay. Packs that come with the game are never sent. Received
+packs go in `serverpacks/` in the save folder (on the Wii U,
+`wiiu/LCEReborn/serverpacks` on the SD card) and are removed when the
+player leaves the game, or at the next start if the game closed first. A
+mini-game lobby's countdown waits while anyone is still downloading, and up
+to a minute for an answer; a player who still hasn't answered when it ends
+is removed.
 
 ## Shader packs
 

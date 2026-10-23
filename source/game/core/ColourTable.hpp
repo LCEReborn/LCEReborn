@@ -551,7 +551,11 @@ public:
     static unsigned int LinearBlend(int startColour, int middleColour, int endColour, float fraction);
 
 private:
+    static const int NUM_BIOME_SLOTS = 258;
+
     int mColours[NUM_COLOURS];
+    BiomeColourInfo mBiomeColourInfo[NUM_BIOME_SLOTS];
+    bool mHasBiomeColourInfo[NUM_BIOME_SLOTS];
 };
 
 #endif

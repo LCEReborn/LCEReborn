@@ -29,8 +29,7 @@ public:
         eProfileProcessState_Unknown7 = 7,
         eProfileProcessState_OfflineProfile = 8,
         eProfileProcessState_Unknown11 = 11,
-        eProfileProcessState_Unknown12 = 12,
-        eProfileProcessState_Upsell = 13
+        eProfileProcessState_Unknown12 = 12
     };
 
     enum
@@ -99,7 +98,6 @@ public:
     virtual void GetXUID(int, PlayerUID*, bool);
     virtual int AreXUIDSEqual(PlayerUID, PlayerUID);
     virtual bool AllowedToPlayMultiplayer(int);
-    virtual void StartTrialGame();
     virtual void AllowedPlayerCreatedContent(int, bool, int*, int*);
     virtual bool CanViewPlayerCreatedContent(int, bool, PlayerUID*, unsigned int);
     virtual bool GetProfileAvatar(int, AvatarHandler, void*);
@@ -114,8 +112,6 @@ public:
     virtual wchar_t* GetGamertag(int);
     virtual std::wstring GetDisplayName(int);
     virtual char* GetNetworkAccountID();
-    virtual bool IsFullVersion();
-    virtual void SetFullVersion(bool);
     virtual void SetSignInChangeCallback(SignInChangeHandler, void*);
     virtual void SetSignInChoicesComplete(bool, int, int);
     virtual void SetNotificationsCallback(NotificationsHandler, void*);
@@ -144,9 +140,6 @@ public:
     virtual void SetFriendPresenceChangeCallback(FriendPresenceHandler, void*);
     virtual void SetRichPresenceGetStringCallback(RichPresenceStringHandler);
     virtual void SetFriendPresenceOnline(bool);
-    virtual void DisplayFullVersionPurchase(bool, int, int);
-    virtual void SetUpsellCallback(UpsellHandler, void*);
-    virtual void SetDebugFullOverride(bool);
     virtual void SetNetworkStatus(bool);
     virtual void SetNetworkStatusWithoutSigninChange(bool);
     virtual void TryToConnectOnline();
@@ -177,7 +170,6 @@ public:
     void SetPresenceString(int);
     void RichPresenceOnCreate();
     void TickRichPresence();
-    void SetUpsellType(eUpsellType, int);
     void DebugPrintf(const char*, ...);
     void SystemOnCreate();
     void SetLeaderboardDisable(bool);
@@ -243,11 +235,8 @@ private:
     char mNetworkAccountId[19];
     C4JCriticalSection mInitSaveDirCriticalSection;
     std::vector<AvatarRequest> mAvatarRequests;
-    bool mFullVersion;
-    bool mUpsellFromTrial;
     bool mSystemUIShowing;
     bool mLeaderboardDisable;
-    bool mDebugFullOverride;
     int mPrimaryPad;
     int mLiveConnectionStatus;
     SignInChangeHandler mSignInChangeHandler;
@@ -256,10 +245,6 @@ private:
     void* mProfileReadErrorContext;
     NotificationsHandler mNotificationsHandler;
     void* mNotificationsContext;
-    UpsellHandler mUpsellHandler;
-    void* mUpsellContext;
-    eUpsellType mUpsellType;
-    int mUpsellParam;
     std::unordered_map<int, int> mPresenceContexts;
     std::unordered_map<int, int> mPresenceStrings;
     std::unordered_map<int, std::unordered_map<int, int> > mPresenceContextStrings;

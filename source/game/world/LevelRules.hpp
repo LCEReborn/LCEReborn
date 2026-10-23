@@ -49,14 +49,15 @@ public:
     LevelRules();
     void addLevelRule(const std::wstring& name, LevelRuleset* ruleset);
     void removeLevelRule(LevelRuleset* ruleset);
-    void getRulesByType(ELevelRuleType type, std::vector<LevelRuleset*>* rules, bool requirePurchase);
+    void getRulesByType(ELevelRuleType type, std::vector<LevelRuleset*>* rules);
     void populateRulesets();
-    void getRulesByType(ELevelRuleType type, std::vector<LevelRulesetGroup*>* groups, bool requirePurchase);
+    void getRulesByType(ELevelRuleType type, std::vector<LevelRulesetGroup*>* groups);
     LevelGenerationOptions* getLevelGenFromUniqueId(ELevelRuleType type, int uniqueId) const;
     std::vector<LevelRuleset*>* getLevelRules();
-    void getRulesExcludingType(ELevelRuleType type, std::vector<LevelRuleset*>* rules, bool requirePurchase);
 
 private:
+    void addToGroup(LevelRuleset* ruleset);
+
     std::vector<LevelRuleset*> m_levelRules;
     std::vector<LevelRulesetGroup*> m_ruleGroups;
 };

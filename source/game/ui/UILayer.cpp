@@ -33,8 +33,6 @@
 #include "game/ui/UIScene_CreateWorldMenu.hpp"
 #include "game/ui/UIScene_CreativeMenu.hpp"
 #include "game/ui/UIScene_Credits.hpp"
-#include "game/ui/UIScene_DLCMainMenu.hpp"
-#include "game/ui/UIScene_DLCOffersMenu.hpp"
 #include "game/ui/UIScene_DeathMenu.hpp"
 #include "game/ui/UIScene_DispenserMenu.hpp"
 #include "game/ui/UIScene_EULA.hpp"
@@ -86,7 +84,6 @@
 #include "game/ui/UIScene_DebugOverlayMenu.hpp"
 #include "game/ui/UIScene_OnlineSettingsMenu.hpp"
 #include "game/ui/UIScene_EditServerMenu.hpp"
-#include "game/ui/UIScene_TrialExitUpsell.hpp"
 #include "game/ui/UIScene_WritableBookMenu.hpp"
 #include "platform/wiiu/UIComponent_WiiUDRC.hpp"
 #if LCE_PLATFORM_PC
@@ -537,9 +534,6 @@ bool UILayer::NavigateToScene(int player, EUIScene scene, void* data)
     case EUIScene_MapVoteMenu:
         created = new UIScene_MapVoteMenu(player, data, this);
         break;
-    case EUIScene_TrialExitUpsell:
-        created = new UIScene_TrialExitUpsell(player, data, this);
-        break;
     case EUIScene_Intro:
         created = new UIScene_Intro(player, data, this);
         break;
@@ -569,12 +563,6 @@ bool UILayer::NavigateToScene(int player, EUIScene scene, void* data)
         break;
     case EUIScene_LeaderboardsMenu:
         created = new UIScene_LeaderboardsMenu(player, data, this);
-        break;
-    case EUIScene_DLCMainMenu:
-        created = new UIScene_DLCMainMenu(player, data, this);
-        break;
-    case EUIScene_DLCOffersMenu:
-        created = new UIScene_DLCOffersMenu(player, data, this);
         break;
     case EUIScene_EULA:
         created = new UIScene_EULA(player, data, this);
@@ -833,12 +821,6 @@ void UILayer::HandleDLCInstalled()
         (*it)->HandleDLCInstalled();
 }
 
-void UILayer::HandleDLCLicenseChange()
-{
-    for (std::vector<UIScene*>::reverse_iterator it = m_scenes.rbegin(); it != m_scenes.rend(); ++it)
-        (*it)->HandleDLCLicenseChange();
-}
-
 void UILayer::HandleTMSBanFileRetrieved()
 {
     for (std::vector<UIScene*>::reverse_iterator it = m_scenes.rbegin(); it != m_scenes.rend(); ++it)
@@ -855,12 +837,6 @@ void UILayer::HandleSaveDeviceRemoved(int device)
 {
     for (std::vector<UIScene*>::reverse_iterator it = m_scenes.rbegin(); it != m_scenes.rend(); ++it)
         (*it)->HandleSaveDeviceRemoved(device);
-}
-
-void UILayer::handleUnlockFullVersion()
-{
-    for (std::vector<UIScene*>::iterator it = m_scenes.begin(); it != m_scenes.end(); ++it)
-        (*it)->handleUnlockFullVersion();
 }
 
 UIScene* UILayer::FindScene(EUIScene scene)

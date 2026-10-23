@@ -71,7 +71,13 @@ public:
         EMessageResult_FourthOption
     };
 
-    struct DLC_TMS_DETAILS;
+    enum EPackSource
+    {
+        EPackSource_BuiltIn,
+        EPackSource_PacksFolder,
+        EPackSource_Server
+    };
+
     struct TMSPP_FILEDATA;
 
     enum eGlobalStorage
@@ -151,11 +157,9 @@ public:
     typedef int (*DirectoryOpenCallback)(const char*, int*);
     typedef int (*DirectoryReadCallback)(int*, FSDirEntry*);
     typedef int (*DirectoryCloseCallback)(int*);
-    typedef int (*DLCOffersCallback)(void*, unsigned int, unsigned int, int);
     typedef int (*OffersCallback)(void*, int, unsigned int, unsigned int);
     typedef int (*InstalledDLCCallback)(void*, int, int);
     typedef int (*DLCMountCallback)(void*, int, unsigned int, unsigned int);
-    typedef void (*DLCUpgradeCallback)(void*, bool);
 
     virtual void Tick() = 0;
     virtual void Init(unsigned int, const wchar_t*, const char*, int, SavingMessageCallback, void*, const char*,
@@ -219,12 +223,10 @@ public:
     virtual void DeleteGenericData(int, const std::wstring&) = 0;
     virtual void SetSaveDeviceSelected(unsigned int device, bool selected);
     virtual int GetSaveDeviceSelected(unsigned int) = 0;
-    virtual void ClearDLCOffers() = 0;
     virtual int ReadTMSFile(int, eGlobalStorage, eTMS_FileType, wchar_t*, unsigned char**, unsigned int*,
                             int (*)(void*, wchar_t*, int, bool, eTMS_FileType), void*, int) = 0;
     virtual int WriteTMSFile(int, eGlobalStorage, wchar_t*, unsigned char*, unsigned int) = 0;
     virtual int DeleteTMSFile(int, eGlobalStorage, wchar_t*) = 0;
-    virtual int GetDLCOffers(int pad, DLCOffersCallback callback, void* context, unsigned int contentId) = 0;
     virtual void SetOpenDirFn(DirectoryOpenCallback) = 0;
     virtual void SetReadDirFn(DirectoryReadCallback) = 0;
     virtual void SetCloseDirFn(DirectoryCloseCallback) = 0;
@@ -235,15 +237,20 @@ public:
 #elif LCE_PLATFORM_PC
     virtual intptr_t GetDLC(unsigned int) = 0;
 #endif
-    virtual int GetAvailableDLCCount(int) = 0;
     virtual int MountInstalledDLC(int, unsigned int, DLCMountCallback, void*, const char*) = 0;
     virtual int UnmountInstalledDLC(const char*) = 0;
     virtual int GetMountedDLCFileList(const char*, std::vector<std::string>&) = 0;
     virtual int GetMountedDLCIndex() = 0;
     virtual std::string GetMountedPath(std::string) = 0;
-    virtual void SetDLCProductCode(const char*) = 0;
-    virtual void SetProductUpgradeKey(const char*) = 0;
-    virtual int CheckForTrialUpgradeKey(DLCUpgradeCallback, void*) = 0;
+    virtual std::string GetPacksFolder() = 0;
+    virtual std::string GetServerPacksFolder() = 0;
+    virtual int AddInstalledPack(const char* path, const char* name) = 0;
+    virtual void RemoveServerPacks() = 0;
+    virtual bool ListFiles(const std::string& root, std::vector<std::string>& paths,
+                           std::vector<unsigned long long>& sizes) = 0;
+    virtual bool DeletePath(const std::string& path) = 0;
+    virtual bool RenamePath(const std::string& from, const std::string& to) = 0;
+    virtual bool CreateDirectories(const std::string& path) = 0;
 };
 
 #endif

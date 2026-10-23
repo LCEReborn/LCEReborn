@@ -86,12 +86,9 @@ void UIScene_InGameSaveManagementMenu::GetSaveInfo()
 void UIScene_InGameSaveManagementMenu::Initialise()
 {
     m_selectedSaveIndex = 0;
-    if (gProfile->IsFullVersion())
-    {
-        if (!gStorage->GetSaveDisabled())
-            gStorage->EnoughSpaceForAMinSaveGame();
-        GetSaveInfo();
-    }
+    if (!gStorage->GetSaveDisabled())
+        gStorage->EnoughSpaceForAMinSaveGame();
+    GetSaveInfo();
     m_ignoreInput = false;
 }
 

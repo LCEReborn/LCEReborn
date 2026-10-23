@@ -347,6 +347,8 @@ static fs::path ResolvePath(const char* fileName)
         return ContentPath(UnderRoot(PcContentRoot(), rest));
     if (MatchMount(path, "/vol/save", rest))
         return UnderRoot(PcSaveRoot(), rest);
+    if (MatchMount(path, "/vol/packs", rest))
+        return UnderRoot(PcPacksRoot(), rest);
 
     const fs::path nativePath = GamePath(path);
     if ((!path.empty() && path[0] == '/') || nativePath.is_absolute())
@@ -528,6 +530,27 @@ int CreateDirectoryA(const char* pathName, void*)
     std::error_code error;
     const bool created = fs::create_directory(ResolvePath(pathName), error);
     return created && !error;
+}
+
+bool PcRemoveAll(const char* path)
+{
+    std::error_code error;
+    fs::remove_all(ResolvePath(path), error);
+    return !error;
+}
+
+bool PcRename(const char* from, const char* to)
+{
+    std::error_code error;
+    fs::rename(ResolvePath(from), ResolvePath(to), error);
+    return !error;
+}
+
+bool PcCreateDirectories(const char* path)
+{
+    std::error_code error;
+    fs::create_directories(ResolvePath(path), error);
+    return !error;
 }
 
 int OpenDir(const char* path, int* directory)

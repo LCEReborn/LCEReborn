@@ -313,6 +313,8 @@ MasterGameMode::MasterGameMode(std::vector<LevelRules::LevelRulesetGroup*>* play
     mTickCount = 0;
     mLastChatMessage = 0;
     mLastChatTime = 0;
+    mLastTimerTick = 0;
+    mNextDownloadNotice = 0;
     mBlockRemover = NULL;
 
     mPlayerSpawnSlots.data = new unsigned char[32];
@@ -398,6 +400,19 @@ void MasterGameMode::TickTimers()
     }
 
     const long long now = GetCurrentTimeMillis();
+    const long long elapsed = mLastTimerTick > 0 ? now - mLastTimerTick : 0;
+    mLastTimerTick = now;
+    if (elapsed > 0 && HasTimer(eTimerID_LobbyInterval) && ArePacksDownloading())
+    {
+        HoldTimer(eTimerID_LobbyInterval, elapsed);
+        if (now >= mNextDownloadNotice)
+        {
+            std::vector<int> arguments;
+            BroadcastChat(ClientboundChatPacket::eChatPacketMessage_WaitingForDownloads, arguments);
+            mNextDownloadNotice = now + 1000;
+        }
+    }
+
     boost::unordered_map<ETimerID, _TimerInfo>::iterator it = mTimers.begin();
     while (it != mTimers.end())
     {
@@ -424,6 +439,27 @@ void MasterGameMode::TickTimers()
         }
         ++it;
     }
+}
+
+void MasterGameMode::HoldTimer(ETimerID timer, long long time)
+{
+    boost::unordered_map<ETimerID, _TimerInfo>::iterator it = mTimers.find(timer);
+    if (it == mTimers.end() || !it->second.active || it->second.endTime <= 0)
+        return;
+    it->second.endTime += time;
+    it->second.startTime += time;
+    it->second.nextAnnouncement += time;
+}
+
+bool MasterGameMode::ArePacksDownloading()
+{
+    std::vector<boost::shared_ptr<ServerPlayer> >* players = ServerPlayers()->getPlayers();
+    for (std::vector<boost::shared_ptr<ServerPlayer> >::iterator it = players->begin(); it != players->end(); ++it)
+    {
+        if ((*it)->mConnection != NULL && (*it)->mConnection->isSendingPacks())
+            return true;
+    }
+    return false;
 }
 
 void MasterGameMode::SyncNextLevelGen()
@@ -735,7 +771,8 @@ void MasterGameMode::CheckReadyStates()
     }
     else if (GetState() == eInternalGameModeState_LobbyCountdown
              && static_cast<unsigned int>(GetPlayerCount(false, false))
-                    >= static_cast<unsigned int>(GetMinimumPlayersToStart()))
+                    >= static_cast<unsigned int>(GetMinimumPlayersToStart())
+             && !ArePacksDownloading())
     {
         CompleteTimer(eTimerID_LobbyInterval);
     }
@@ -3204,6 +3241,15 @@ void MasterGameMode::StaticCtor()
 
 void MasterGameMode::OnGameChange(MasterGameMode* gameMode, void* context)
 {
+    std::vector<boost::shared_ptr<ServerGamePacketListenerImpl> > unanswered;
+    std::vector<boost::shared_ptr<ServerPlayer> >* players = ServerPlayers()->getPlayers();
+    for (std::vector<boost::shared_ptr<ServerPlayer> >::iterator it = players->begin(); it != players->end(); ++it)
+    {
+        if ((*it)->mConnection != NULL)
+            unanswered.push_back((*it)->mConnection);
+    }
+    for (size_t index = 0; index < unanswered.size(); ++index)
+        unanswered[index]->removeIfMissingPacks();
     BroadcastChatMessage(ClientboundChatPacket::eChatPacketMessage_RoundChanging);
     gameMode->SetState(eInternalGameModeState_SelectingGameRules);
 }

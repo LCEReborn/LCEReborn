@@ -6,7 +6,7 @@
 Run tools/prepare.py and tools/build.py first. This writes build/title/:
 
   code/      Minecraft.Client.rpx from tools/build.py, with app.xml and
-             cos.xml from the update dump
+             cos.xml from the update dump (cos.xml also allows SD card access)
   meta/      the update dump's meta/
   content/   a link to assets/, or a copy of it with --copy
 
@@ -24,6 +24,7 @@ Options:
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -39,6 +40,8 @@ BUILD_DIR = os.path.join(ROOT, "build")
 RPX = os.path.join(BUILD_DIR, "Minecraft.Client.rpx")
 TITLE_DIR = os.path.join(BUILD_DIR, "title")
 CODE_FILES = ("app.xml", "cos.xml")
+FS_PERMISSION_GROUP = 11
+SD_CARD_PERMISSIONS = 0x000B0000
 
 
 class PackageError(Exception):
@@ -97,6 +100,21 @@ def copy_tree(source, target):
     shutil.copytree(source, target, ignore=shutil.ignore_patterns(prepare.MANIFEST))
 
 
+def grant_sd_card(path):
+    """Let the title read, write and mount the SD card, where the packs folder lives."""
+    with open(path, encoding="utf-8", newline="") as handle:
+        text = handle.read()
+    pattern = re.compile(r'(<group type="unsignedInt" length="4">\s*%d</group>\s*<mask type="hexBinary" length="8">)'
+                         r'([0-9A-Fa-f]{16})(</mask>)' % FS_PERMISSION_GROUP)
+    match = pattern.search(text)
+    if match is None:
+        raise PackageError("%s has no FS permission group" % path)
+    mask = "%016X" % (int(match.group(2), 16) | SD_CARD_PERMISSIONS)
+    text = text[:match.start(2)] + mask + text[match.end(2):]
+    with open(path, "w", encoding="utf-8", newline="") as handle:
+        handle.write(text)
+
+
 def package(update, copy):
     content = os.path.join(TITLE_DIR, "content")
     remove_content(content)
@@ -109,6 +127,7 @@ def package(update, copy):
     shutil.copyfile(RPX, os.path.join(code, os.path.basename(RPX)))
     for name in CODE_FILES:
         shutil.copyfile(os.path.join(update, "code", name), os.path.join(code, name))
+    grant_sd_card(os.path.join(code, "cos.xml"))
     copy_tree(os.path.join(update, "meta"), os.path.join(TITLE_DIR, "meta"))
     if copy:
         print("copying assets/ into %s" % os.path.relpath(content, ROOT), flush=True)

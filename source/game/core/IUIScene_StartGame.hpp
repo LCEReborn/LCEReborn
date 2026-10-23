@@ -50,10 +50,6 @@ public:
     virtual void handleTimerComplete(int timerId);
     virtual void HandleDLCMountingComplete();
     void UpdateCurrentTexturePack(int slot);
-    static int TrialTexturePackWarningReturned(void* context, int userIndex, C4JStorage::EMessageResult result);
-    static int UnlockTexturePackReturned(void* context, int userIndex, C4JStorage::EMessageResult result);
-    static int TexturePackDialogReturned(void* context, int userIndex, C4JStorage::EMessageResult result);
-    static int TexturePackDialogBattleMiniGameReturned(void* context, int userIndex, C4JStorage::EMessageResult result);
     void CheckPermissionsAndContinue(bool fromLoad);
     static int WiiUDRCWarningReturned(void* context, int userIndex, C4JStorage::EMessageResult result);
     void StartSharedLaunchFlow();
@@ -86,7 +82,6 @@ protected:
     UIControl_CheckBox m_onlineGameCheckBox;
     LaunchMoreOptionsMenuInitData m_launchData;
     bool m_actionPending;
-    DLCPack* m_texturePackParentPack;
     LevelGenerationOptions* m_levelGenerationOptions;
     std::vector<TEXTUREPACKSORTSTRUCT> m_texturePacks;
     std::wstring m_worldName;

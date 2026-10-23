@@ -30,8 +30,6 @@ public:
     unsigned int handleHold(int player, int action, bool repeat, bool pressed, bool released, bool& handled);
     void HideChestRefillAnimation();
     void ResetUIComponents();
-    void showTrialTimer(bool show);
-    void setTrialTimer(const std::wstring& timer);
     void showSaveIcon(bool show);
     void ShowChestRefillAnimation(bool show, int yOffset);
     void showPlayerDisplayName(bool show);
@@ -60,11 +58,9 @@ public:
 private:
     bool m_showSaveIcon;
     bool m_showAutosaveTimer;
-    bool m_showTrialTimer;
     bool m_showPressStart[4];
-    std::wstring m_trialTimer;
     std::wstring m_autosaveTimer;
-    UIControl_Label m_trialTimerLabel;
+    UIControl_Label m_timerLabel;
     UIControl_Label m_playerNameLabel;
     UIControl m_saveIcon;
     UIControl m_mainPanel;

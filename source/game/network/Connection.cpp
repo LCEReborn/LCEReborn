@@ -485,3 +485,11 @@ int Connection::countDelayedPackets()
 {
     return (int)m_outgoingSlow.size();
 }
+
+int Connection::getEstimatedRemaining()
+{
+    EnterCriticalSection(&m_writeLock);
+    const int remaining = m_estimatedRemaining;
+    LeaveCriticalSection(&m_writeLock);
+    return remaining;
+}

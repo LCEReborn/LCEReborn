@@ -29,16 +29,13 @@ public:
     virtual std::wstring getMoviePath();
     virtual void tick();
     virtual void handleInput(int playerId, int action, bool repeat, bool pressed, bool released, bool& handled);
-    virtual void handleUnlockFullVersion();
     void PrepareToPlayGame(int playerId);
     void RunPlayGameOffline(int playerId);
     void RunLeaderboards(int playerId);
     static int Leaderboards_SignInReturned(void* context, bool signedIn, int userIndex, int playerIndex);
-    void RunUnlockOrDLC(int playerId);
-    static int UnlockFullGame_SignInReturned(void* context, bool signedIn, int userIndex, int playerIndex);
+    void RunPacks(int playerId);
+    static int Packs_SignInReturned(void* context, bool signedIn, int userIndex, int playerIndex);
     static int MustConnectReturnedNintendo(void* context, int pad, C4JStorage::EMessageResult result);
-    static int MiniGamesUnlock_Returned(void* context, int playerId, C4JStorage::EMessageResult result);
-    static void LoadTrial();
     void RunPlayGame(int playerId);
     static int CreateLoad_SignInReturned(void* context, bool signedIn, int userIndex, int playerIndex);
     void RunAchievements(int playerId);
@@ -58,7 +55,6 @@ private:
     UIControl_Button m_buttons[8];
     UIControl m_timer;
     bool m_loading;
-    bool m_showUpsell;
     bool m_signedIn;
     bool m_miniGamesSelected;
     bool m_trial;

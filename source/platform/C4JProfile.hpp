@@ -22,16 +22,6 @@ enum eAwardType
     eAwardType_None = 0
 };
 
-enum eUpsellType
-{
-    eUpsellType_None = 0
-};
-
-enum eUpsellResponse
-{
-    eUpsellResponse_None = 0
-};
-
 #if LCE_PLATFORM_WIIU
 struct ProfileSignInEntry
 {
@@ -56,7 +46,6 @@ public:
     typedef void (*FriendPresenceHandler)(unsigned int, void*);
     typedef wchar_t* (*RichPresenceStringHandler)(int);
     typedef int (*RichPresenceSettingHandler)(const void*);
-    typedef void (*UpsellHandler)(void*, eUpsellType, eUpsellResponse, int);
     typedef int (*SignInChoicesHandler)(int);
 
     virtual void Initialise(const void*, const void*, unsigned short, unsigned int, unsigned int, unsigned int*, int,
@@ -81,7 +70,6 @@ public:
     virtual void GetXUID(int, PlayerUID*, bool) = 0;
     virtual int AreXUIDSEqual(PlayerUID, PlayerUID) = 0;
     virtual bool AllowedToPlayMultiplayer(int) = 0;
-    virtual void StartTrialGame() = 0;
     virtual void AllowedPlayerCreatedContent(int, bool, int*, int*) = 0;
     virtual bool CanViewPlayerCreatedContent(int, bool, PlayerUID*, unsigned int) = 0;
     virtual bool GetProfileAvatar(int, AvatarHandler, void*) = 0;
@@ -96,8 +84,6 @@ public:
     virtual wchar_t* GetGamertag(int) = 0;
     virtual std::wstring GetDisplayName(int) = 0;
     virtual char* GetNetworkAccountID() = 0;
-    virtual bool IsFullVersion() = 0;
-    virtual void SetFullVersion(bool) = 0;
     virtual void SetSignInChangeCallback(SignInChangeHandler, void*) = 0;
     virtual void SetSignInChoicesComplete(bool, int, int) = 0;
     virtual void SetNotificationsCallback(NotificationsHandler, void*) = 0;
@@ -129,9 +115,6 @@ public:
     virtual void SetFriendPresenceChangeCallback(FriendPresenceHandler, void*) = 0;
     virtual void SetRichPresenceGetStringCallback(RichPresenceStringHandler) = 0;
     virtual void SetFriendPresenceOnline(bool) = 0;
-    virtual void DisplayFullVersionPurchase(bool, int, int) = 0;
-    virtual void SetUpsellCallback(UpsellHandler, void*) = 0;
-    virtual void SetDebugFullOverride(bool) = 0;
     virtual void SetNetworkStatus(bool) = 0;
     virtual void SetNetworkStatusWithoutSigninChange(bool) = 0;
     virtual void TryToConnectOnline() = 0;

@@ -14,7 +14,7 @@ class StringTable;
 class DLCPack
 {
 public:
-    DLCPack(const std::wstring& name, unsigned int licenseMask);
+    explicit DLCPack(const std::wstring& name);
     ~DLCPack();
 
     DLCFile* getFile(DLCManager::EDLCType type, unsigned int index, bool searchParent, bool searchChildren);
@@ -27,11 +27,9 @@ public:
     bool doesPackContainFile(DLCManager::EDLCType type, const std::wstring& name, bool searchParent,
                              bool searchChildren);
     bool doesPackContainSkin(const std::wstring& name);
-    bool hasPurchasedPack();
     bool IsCorrupt();
     void SetIsCorrupt(bool corrupt);
     void SetDataPointer(unsigned char* data, bool ownsData);
-    unsigned int getLicenseMask();
     DLCFile* addFile(DLCManager::EDLCType type, const std::wstring& name);
     void SetPackId(unsigned int id);
     void SetPackVersion(unsigned int version);
@@ -46,12 +44,13 @@ public:
     unsigned int GetDLCMountIndex();
     void SetDLCDeviceID(int id);
     int GetDLCDeviceID();
+    void SetRootPath(const std::wstring& path, unsigned char source);
+    const std::wstring& GetRootPath();
+    unsigned char GetSource();
     std::vector<DLCPack*>& getChildPacks();
     void AddCreditID(const std::wstring& value);
     void AddCreditString(const std::wstring& value);
     bool getParameterAsUInt(DLCManager::EDLCParameterType type, unsigned int& value);
-    void updateLicenseMask(unsigned int licenseMask);
-    unsigned int getPurchaseOfferId();
     int getFileIndexAt(DLCManager::EDLCType type, const std::wstring& name, bool& found);
     int getSkinCount();
     int getSkinIndexAt(const std::wstring& name, bool& found);
@@ -73,10 +72,10 @@ private:
     boost::unordered_map<int, std::wstring> m_parameters;
     std::wstring m_name;
     std::wstring m_dataPath;
-    unsigned int m_licenseMask;
+    std::wstring m_rootPath;
+    unsigned char m_source;
     unsigned int m_dlcMountIndex;
     int m_dlcDeviceId;
-    unsigned int m_purchaseOfferId;
     bool m_isCorrupt;
     unsigned int m_packId;
     unsigned int m_packVersion;

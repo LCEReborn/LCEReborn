@@ -32,8 +32,7 @@ public:
         eProfileProcessState_Unknown7 = 7,
         eProfileProcessState_OfflineProfile = 8,
         eProfileProcessState_Unknown11 = 11,
-        eProfileProcessState_Unknown12 = 12,
-        eProfileProcessState_Upsell = 13
+        eProfileProcessState_Unknown12 = 12
     };
 
     struct AvatarRequest
@@ -103,7 +102,6 @@ public:
     virtual void GetXUID(int, PlayerUID*, bool);
     virtual int AreXUIDSEqual(PlayerUID, PlayerUID);
     virtual bool AllowedToPlayMultiplayer(int);
-    virtual void StartTrialGame();
     virtual void AllowedPlayerCreatedContent(int, bool, int*, int*);
     virtual bool CanViewPlayerCreatedContent(int, bool, PlayerUID*, unsigned int);
     virtual bool GetProfileAvatar(int, AvatarHandler, void*);
@@ -118,8 +116,6 @@ public:
     virtual wchar_t* GetGamertag(int);
     virtual std::wstring GetDisplayName(int);
     virtual char* GetNetworkAccountID();
-    virtual bool IsFullVersion();
-    virtual void SetFullVersion(bool);
     virtual void SetSignInChangeCallback(SignInChangeHandler, void*);
     virtual void SetSignInChoicesComplete(bool, int, int);
     virtual void SetNotificationsCallback(NotificationsHandler, void*);
@@ -149,9 +145,6 @@ public:
     virtual void SetFriendPresenceChangeCallback(FriendPresenceHandler, void*);
     virtual void SetRichPresenceGetStringCallback(RichPresenceStringHandler);
     virtual void SetFriendPresenceOnline(bool);
-    virtual void DisplayFullVersionPurchase(bool, int, int);
-    virtual void SetUpsellCallback(UpsellHandler, void*);
-    virtual void SetDebugFullOverride(bool);
     virtual void SetNetworkStatus(bool);
     virtual void SetNetworkStatusWithoutSigninChange(bool);
     virtual void TryToConnectOnline();
@@ -194,7 +187,6 @@ public:
     void SetPresenceString(int);
     void RichPresenceOnCreate();
     void TickRichPresence();
-    void SetUpsellType(eUpsellType, int);
     void DebugPrintf(const char*, ...);
     void SystemOnCreate();
     void SetSysUIShowing(bool);
@@ -242,13 +234,6 @@ public:
     void SetOnlineID(int, unsigned int, bool);
     unsigned long long currentTimeMillis();
     static void PrintFriendPresence(unsigned int);
-    bool GetLicenseChange();
-    void SetLicenseChange(bool);
-    void ContentLicenseChanged();
-    void SetLicenseRequired(bool);
-    bool GetLicenseRequired();
-    eUpsellType GetUpsellType();
-    void CallUpsellCallback(eUpsellResponse);
     void SetLiveConnectionStatus(long);
     bool PlayerAcceptsOfflineLeaderboard();
     void NotificationsCallback(unsigned int, unsigned int);
@@ -332,13 +317,9 @@ private:
     OSFastMutex mInitSaveDirCriticalSection;
     std::vector<AvatarRequest> mAvatarRequests;
     unsigned char mProductState[4];
-    bool mFullVersion;
-    bool mLicenseState;
-    bool mUpsellFromTrial;
     bool mSystemUIShowing;
     unsigned char mSystemNotificationState[2];
     bool mLeaderboardDisable;
-    bool mDebugFullOverride;
     int mPrimaryPad;
     int mLiveConnectionStatus;
     SignInChangeHandler mSignInChangeHandler;
@@ -347,10 +328,6 @@ private:
     void* mProfileReadErrorContext;
     NotificationsHandler mNotificationsHandler;
     void* mNotificationsContext;
-    UpsellHandler mUpsellHandler;
-    void* mUpsellContext;
-    eUpsellType mUpsellType;
-    int mUpsellParam;
     unsigned int mRichPresenceData[14];
     boost::unordered_map<int, int> mPresenceContexts;
     boost::unordered_map<int, int> mPresenceStrings;

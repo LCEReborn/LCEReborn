@@ -1,6 +1,5 @@
 #include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/core/ConsoleUIController.hpp"
-#include "game/core/C_AOC.hpp"
 #include "game/core/GameSettings.hpp"
 #include "game/core/L10N.hpp"
 #include "game/core/InfoBarManager.hpp"
@@ -28,7 +27,6 @@
 #include "game/core/LeaderboardManager.hpp"
 #include "platform/wiiu/CProfile.hpp"
 #include "platform/wiiu/CStorage.hpp"
-#include "platform/wiiu/cCommerceNintendoWiiU.hpp"
 #include "platform/wiiu/NintendoFileSystem_WiiU.hpp"
 #include "platform/wiiu/WiiUFileSystemHelpers.hpp"
 #include "platform/wiiu/WiiU_Runtime.hpp"
@@ -122,7 +120,6 @@ char* gHeapStart;
 char* gHeapEnd;
 char* gHeapTop;
 static int s_drcIconDelay = 0x78;
-static unsigned char s_trialTimerShown = 1;
 static const unsigned int kStorageFullErrorCode = 1550100;
 static unsigned char gMainThreadStack[0x20000];
 static OSThread gMainThread;
@@ -155,7 +152,6 @@ int main()
     WiiUInitialise();
 
     gApp.loadMediaArchive();
-    gApp.InitialiseDLCInfo();
     if (gApp.ReadProductCodes() == 0)
         gApp.FatalLoadError(L"ReadProductCodes");
 
@@ -187,7 +183,6 @@ int main()
         uiHeight = 480;
     }
     gConsoleUIController.init(uiWidth, uiHeight);
-    gApp.CommerceInit();
     gApp.InitTime();
     static unsigned int s_profileDefaults[5];
     gProfile->Initialise(L"", L"", 0x22, 5, 4, s_profileDefaults, 0x1e60, &gApp.mGameDefinedDataChangedBitmask);
@@ -220,6 +215,7 @@ int main()
     gStorage->SetReadDirFn(ReadDir);
     gStorage->SetCloseDirFn(CloseDir);
     gStorage->SetDLCPackageRoot("DLCDrive");
+    gStorage->RemoveServerPacks();
 
     Tesselator::CreateNewThreadStorage(0x100000);
     AABB::CreateNewThreadStorage();
@@ -238,8 +234,6 @@ int main()
     Minecraft* minecraft = Minecraft::GetInstance();
     gApp.InitGameSettings();
     gStorage->ReadFromProfile(0, 0);
-    gProfile->SetUpsellCallback(reinterpret_cast<CProfile::UpsellHandler>(CMinecraftApp::UpsellReturnedCallback),
-                                &gApp);
     gApp.InitialiseTips();
     g_pLeaderboardManager->OpenSession();
     CGameNetworkManager::sInstance.Initialise();
@@ -247,7 +241,6 @@ int main()
     if (noSpaceForSaveQuota)
         g_pInput->RequestErrorViewer(1, kStorageFullErrorCode,
                                      reinterpret_cast<C_4JInput::ErrorViewerCallback>(DeviceFullErrorReturn), 0);
-    C_AOC::getInstance()->Init();
 
     float timingColour = 0.0f;
     while (true)
@@ -323,7 +316,6 @@ int main()
         }
 
         minecraft->mSoundEngine->playMusicTick();
-        gApp.GetCommerceInstance()->tick();
         InfoBarManager::StartTimingCategory(InfoBarManager::eTimingCagegory_UITick);
         gConsoleUIController.tick();
         InfoBarManager::EndTimingCategory(InfoBarManager::eTimingCagegory_UITick);
@@ -358,20 +350,6 @@ int main()
         CGameNetworkManager::sInstance.DoWork();
         PIXEndNamedEvent();
         gApp.HandleXuiActions();
-        if (!gProfile->IsFullVersion())
-        {
-            if (gApp.GetGameStarted() != 0)
-            {
-                if (gApp.IsAppPaused() != 0)
-                    gApp.UpdateTrialPausedTimer();
-                gConsoleUIController.UpdateTrialTimer(gProfile->GetPrimaryPad());
-            }
-        }
-        else if (s_trialTimerShown != 0)
-        {
-            gConsoleUIController.ShowTrialTimer(false);
-            s_trialTimerShown = 0;
-        }
         Vec3::resetPool();
     }
 }

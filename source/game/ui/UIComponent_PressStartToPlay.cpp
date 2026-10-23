@@ -42,13 +42,11 @@ UIComponent_PressStartToPlay::UIComponent_PressStartToPlay(int type, void* data,
     initialiseMovie();
     m_showSaveIcon = false;
     m_showAutosaveTimer = false;
-    m_showTrialTimer = false;
     for (int i = 0; i < 4; ++i)
         m_showPressStart[i] = false;
-    m_trialTimer = L"";
     m_autosaveTimer = L"";
-    m_trialTimerLabel.init(UIString(L""));
-    m_trialTimerLabel.setVisible(false);
+    m_timerLabel.init(UIString(L""));
+    m_timerLabel.setVisible(false);
     m_player = 0;
     m_achievement = 0;
     m_holdToShowAchievements = false;
@@ -116,20 +114,6 @@ void UIComponent_PressStartToPlay::ResetUIComponents()
 {
     m_achievementToastShowing = false;
     HideChestRefillAnimation();
-}
-
-void UIComponent_PressStartToPlay::showTrialTimer(bool show)
-{
-    m_showTrialTimer = show;
-    if (!gConsoleUIController.IsExpectingOrReloadingSkin() && hasMovie())
-        m_trialTimerLabel.setVisible(show);
-}
-
-void UIComponent_PressStartToPlay::setTrialTimer(const std::wstring& timer)
-{
-    m_trialTimer = timer;
-    if (!gConsoleUIController.IsExpectingOrReloadingSkin() && hasMovie())
-        m_trialTimerLabel.setLabel(UIString(timer), false, false);
 }
 
 void UIComponent_PressStartToPlay::showSaveIcon(bool show)
@@ -254,8 +238,8 @@ unsigned int UIComponent_PressStartToPlay::mapElementsAndNames()
     UIScene::mapElementsAndNames();
     fuiRenderNode* root = m_movie->getRootNode();
     {
-        m_trialTimerLabel.setupControl(this, root, std::string("TrialTimer"));
-        m_controls.push_back(&m_trialTimerLabel);
+        m_timerLabel.setupControl(this, root, std::string("TrialTimer"));
+        m_controls.push_back(&m_timerLabel);
     }
     {
         m_saveIcon.setupControl(this, root, std::string("SaveIcon"));
@@ -281,10 +265,8 @@ void UIComponent_PressStartToPlay::handleReload()
 {
     bool saveVisible = m_showSaveIcon && GameSettings::GetGameSettings(m_playerId, eGameSetting_DisplaySaveIcon);
     m_saveIcon.setVisible(saveVisible);
-    m_trialTimerLabel.setVisible(m_showAutosaveTimer);
-    m_trialTimerLabel.setLabel(UIString(m_autosaveTimer), false, false);
-    m_trialTimerLabel.setVisible(m_showTrialTimer);
-    m_trialTimerLabel.setLabel(UIString(m_trialTimer), false, false);
+    m_timerLabel.setVisible(m_showAutosaveTimer);
+    m_timerLabel.setLabel(UIString(m_autosaveTimer), false, false);
     SetText(UIString(L10N::GetString(IDS_PRESS_START_TO_JOIN)), false);
     bool any = false;
     for (int i = 0; i < 4; ++i)
@@ -355,14 +337,14 @@ void UIComponent_PressStartToPlay::setAutosaveTimer(const std::wstring& timer)
 {
     m_autosaveTimer = timer;
     if (!gConsoleUIController.IsExpectingOrReloadingSkin() && hasMovie())
-        m_trialTimerLabel.setLabel(UIString(timer), false, false);
+        m_timerLabel.setLabel(UIString(timer), false, false);
 }
 
 void UIComponent_PressStartToPlay::showAutosaveTimer(bool show)
 {
     m_showAutosaveTimer = show;
     if (!gConsoleUIController.IsExpectingOrReloadingSkin() && hasMovie())
-        m_trialTimerLabel.setVisible(show);
+        m_timerLabel.setVisible(show);
 }
 
 void UIComponent_PressStartToPlay::ShowBetaWatermark()

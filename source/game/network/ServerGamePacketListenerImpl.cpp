@@ -76,6 +76,10 @@
 #include "game/data/StringTag.hpp"
 #include "game/item/WrittenBookItem.hpp"
 #include "game/minigame/MiniGameDef.hpp"
+#include "game/world/LevelGenerationOptions.hpp"
+#include "game/world/LevelRules.hpp"
+#include "game/world/LevelRuleset.hpp"
+#include "game/core/DLCPack.hpp"
 #include "game/network/ClientboundSoundPacket.hpp"
 #include "game/network/GameCommandPacket.hpp"
 #include "game/network/GameModePacket.hpp"
@@ -136,6 +140,7 @@ ServerGamePacketListenerImpl::ServerGamePacketListenerImpl(MinecraftServer* serv
       mChatSpamTickCount(0),
       mDropSpamTickCount(0),
       mSentCommandPermission(-1),
+      mPacksOffered(false),
       mFirstGoodX(0.0),
       mFirstGoodY(0.0),
       mFirstGoodZ(0.0),
@@ -375,6 +380,47 @@ void ServerGamePacketListenerImpl::tick()
         if (mDropSpamTickCount > 0)
             --mDropSpamTickCount;
         sendCommands();
+        offerPacks();
+        mPackSender.tick(this);
+    }
+}
+
+bool ServerGamePacketListenerImpl::removeIfMissingPacks()
+{
+    if (!mPackSender.sendRemovedIfUnanswered(this))
+        return false;
+    disconnect(DisconnectPacket::eDisconnectReason_MissingPack);
+    return true;
+}
+
+void ServerGamePacketListenerImpl::offerPacks()
+{
+    if (mPacksOffered)
+        return;
+    mPacksOffered = true;
+    INetworkPlayer* networkPlayer = getNetworkPlayer();
+    if (networkPlayer == NULL || networkPlayer->IsLocal())
+        return;
+    mPackSender.offer(this, static_cast<unsigned int>(mServer->getGameModeId()) & 0x00ffffffu, false);
+
+    const EMiniGameId miniGame = Minecraft::GetInstance()->GetMiniGame()->GetId();
+    if (miniGame == eMiniGameId_Any)
+        return;
+    for (int type = LevelRules::eLevelRuleType_Battle; type <= LevelRules::eLevelRuleType_Build; ++type)
+    {
+        if (miniGame != eMiniGameId_Lobby && LevelRules::GetRuleTypeForMiniGame(miniGame) != type)
+            continue;
+        std::vector<LevelRuleset*> rules;
+        gApp.getLevelRules()->getRulesByType(static_cast<LevelRules::ELevelRuleType>(type), &rules);
+        for (size_t index = 0; index < rules.size(); ++index)
+        {
+            LevelGenerationOptions* options = rules[index]->getGenerationOptions();
+            if (options == NULL)
+                continue;
+            if (options->getPack() != NULL)
+                mPackSender.offer(this, options->getPack()->GetPackId(), true);
+            mPackSender.offer(this, options->getTexturePackId() & 0x00ffffffu, false);
+        }
     }
 }
 
@@ -1395,6 +1441,10 @@ void ServerGamePacketListenerImpl::handleCustomPayload(boost::shared_ptr<Serverb
         input.close();
         if (mPlayer != NULL && mPlayer->getLevel() != NULL)
             mPlayer->getLevel()->getChunkMap()->updatePlayerViewDistance(mPlayer);
+    }
+    else if (ServerboundCustomPayloadPacket::PACK_PACKET == identifier)
+    {
+        mPackSender.handle(packet->getData());
     }
     else if (ServerboundCustomPayloadPacket::LEADERBOARD_PACKET == identifier)
     {

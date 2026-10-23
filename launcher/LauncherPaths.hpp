@@ -9,7 +9,6 @@ QString InstallDir();
 QString DataDir();
 QString AssetsDir();
 QString ResourcesDir();
-QString LicenseFile();
 QString GameExecutable();
 QString ProfilesFile();
 QString SettingsFile();

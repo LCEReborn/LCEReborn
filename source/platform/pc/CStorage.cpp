@@ -12,7 +12,9 @@
 #include <system_error>
 
 #include "game/world/generation/PlayerUID.hpp"
+#include "platform/BuiltInPacks.hpp"
 #include "platform/C4JProfile.hpp"
+#include "platform/pc/FileApi.hpp"
 #include "platform/pc/PcPaths.hpp"
 
 extern C_4JProfile* gProfile;
@@ -587,10 +589,6 @@ int CStorage::GetSaveDeviceSelected(unsigned int)
     return 1;
 }
 
-void CStorage::ClearDLCOffers()
-{
-}
-
 int CStorage::ReadTMSFile(int pad, C4JStorage::eGlobalStorage, C4JStorage::eTMS_FileType type, wchar_t* name,
                           unsigned char** data, unsigned int* size,
                           int (*callback)(void*, wchar_t*, int, bool, C4JStorage::eTMS_FileType), void* context, int)
@@ -640,11 +638,6 @@ int CStorage::DeleteTMSFile(int, C4JStorage::eGlobalStorage, wchar_t* name)
     std::lock_guard<std::mutex> lock(m_storageMutex);
     std::error_code error;
     return fs::remove(TMSPath(name), error) && !error ? 1 : 0;
-}
-
-int CStorage::GetDLCOffers(int, DLCOffersCallback, void*, unsigned int)
-{
-    return 1;
 }
 
 void CStorage::InitialiseProfileData(unsigned short version, unsigned int profileCount, unsigned int optionCount,
@@ -1831,6 +1824,7 @@ bool CStorage::ListDirectory(const std::string& path, std::vector<DirectoryEntry
         DirectoryEntry entry;
         entry.name = m_dlcDirectoryEntry.name;
         entry.isDirectory = m_dlcDirectoryEntry.isDirectory;
+        entry.size = m_dlcDirectoryEntry.size;
         entries.push_back(entry);
     }
     m_closeDir(&m_dlcDirectory);
@@ -1844,38 +1838,54 @@ void CStorage::AddInstalled(CONTENT_DATA& content)
     m_installedContent.push_back(content);
 }
 
-unsigned int CStorage::EnumerateDLCDirectory(const std::string& root, bool updatePackage)
+static bool IsPackFile(const std::string& name)
 {
-    std::vector<DirectoryEntry> entries;
-    if (!ListDirectory(root, entries))
-        return 0;
-    unsigned int added = 0;
-    for (size_t index = 0; index < entries.size(); ++index)
-    {
-        const DirectoryEntry& entry = entries[index];
-        if (!entry.isDirectory || entry.name == "." || entry.name == "..")
-            continue;
-        std::string path = root + "/" + entry.name;
-        CONTENT_DATA content;
-        std::memset(&content, 0, sizeof(content));
-        if (entry.name.size() >= sizeof(content.name) || path.size() >= sizeof(content.path))
-            continue;
-        content.state = 0;
-        content.updatePackage = updatePackage;
-        std::strcpy(content.name, entry.name.c_str());
-        std::strcpy(content.path, path.c_str());
-        content.index = -1;
-        AddInstalled(content);
-        ++added;
-    }
-    return added;
+    if (name.size() < 4)
+        return false;
+    std::string extension = name.substr(name.size() - 4);
+    for (size_t index = 0; index < extension.size(); ++index)
+        extension[index] = static_cast<char>(std::tolower(static_cast<unsigned char>(extension[index])));
+    return extension == ".pck";
+}
+
+void CStorage::AddPack(const std::string& path, unsigned char source, const char* label)
+{
+    const std::string::size_type slash = path.find_last_of('/');
+    CONTENT_DATA content;
+    std::string name = slash == std::string::npos ? path : path.substr(slash + 1);
+    if (label != NULL && std::strlen(label) < sizeof(content.name))
+        name = label;
+    std::memset(&content, 0, sizeof(content));
+    if (name.size() >= sizeof(content.name) || path.size() >= sizeof(content.path))
+        return;
+    content.source = source;
+    std::strcpy(content.name, name.c_str());
+    std::strcpy(content.path, path.c_str());
+    content.index = -1;
+    AddInstalled(content);
 }
 
 unsigned int CStorage::EnumerateLocalDLCPackages()
 {
     m_installedContent.clear();
-    EnumerateDLCDirectory("/vol/content/WiiU/DLC", false);
-    EnumerateDLCDirectory("/vol/content/WiiU/CU/DLC", true);
+    for (unsigned int index = 0; index < BUILT_IN_PACK_COUNT; ++index)
+        AddPack(BUILT_IN_PACKS[index], EPackSource_BuiltIn);
+
+    const std::string root = "/vol/packs";
+    std::error_code error;
+    fs::create_directories(fs::u8path(PcPacksRoot()), error);
+    std::vector<DirectoryEntry> entries;
+    if (ListDirectory(root, entries))
+    {
+        for (size_t index = 0; index < entries.size(); ++index)
+        {
+            const DirectoryEntry& entry = entries[index];
+            if (entry.name == "." || entry.name == "..")
+                continue;
+            if (entry.isDirectory || IsPackFile(entry.name))
+                AddPack(root + "/" + entry.name, EPackSource_PacksFolder);
+        }
+    }
     return 1;
 }
 
@@ -1896,11 +1906,6 @@ int CStorage::GetInstalledDLC(int, InstalledDLCCallback callback, void* context)
 intptr_t CStorage::GetDLC(unsigned int index)
 {
     return reinterpret_cast<intptr_t>(&m_installedContent[0] + index);
-}
-
-int CStorage::GetAvailableDLCCount(int)
-{
-    return 0;
 }
 
 void CStorage::MountInstalledContent()
@@ -1951,7 +1956,11 @@ int CStorage::GetMountedDLCFileList(const char*, std::vector<std::string>& files
     CONTENT_DATA& content = m_installedContent[m_mountedDLCIndex];
     std::vector<DirectoryEntry> entries;
     if (!ListDirectory(content.path, entries))
+    {
+        if (IsPackFile(content.path))
+            files.push_back(content.path);
         return 0;
+    }
     for (size_t index = 0; index < entries.size(); ++index)
     {
         if (entries[index].isDirectory)
@@ -1993,29 +2002,91 @@ std::string CStorage::GetMountedPath(std::string path)
     return std::string();
 }
 
-void CStorage::SetDLCProductCode(const char* code)
+std::string CStorage::GetPacksFolder()
 {
-    std::strncpy(m_dlcProductCode, code, sizeof(m_dlcProductCode) - 1);
-    m_dlcProductCode[sizeof(m_dlcProductCode) - 1] = '\0';
+    return PcPacksRoot();
 }
 
-void CStorage::SetProductUpgradeKey(const char* key)
+std::string CStorage::GetServerPacksFolder()
 {
-    std::strncpy(m_productUpgradeKey, key, sizeof(m_productUpgradeKey) - 1);
-    m_productUpgradeKey[sizeof(m_productUpgradeKey) - 1] = '\0';
+    return "/vol/save/serverpacks";
 }
 
-int CStorage::CheckForTrialUpgradeKey(DLCUpgradeCallback, void*)
+int CStorage::AddInstalledPack(const char* path, const char* name)
 {
-    return 1;
+    const size_t count = m_installedContent.size();
+    AddPack(path, EPackSource_Server, name);
+    return m_installedContent.size() > count ? static_cast<int>(count) : -1;
+}
+
+void CStorage::RemoveServerPacks()
+{
+    std::vector<CONTENT_DATA>::iterator content = m_installedContent.begin();
+    while (content != m_installedContent.end())
+    {
+        if (content->source == EPackSource_Server)
+            content = m_installedContent.erase(content);
+        else
+            ++content;
+    }
+    const std::string folder = GetServerPacksFolder();
+    if (!folder.empty())
+        DeletePath(folder);
+}
+
+bool CStorage::ListFilesUnder(const std::string& folder, const std::string& prefix, std::vector<std::string>& paths,
+                              std::vector<unsigned long long>& sizes)
+{
+    std::vector<DirectoryEntry> entries;
+    if (!ListDirectory(folder, entries))
+        return false;
+    for (size_t index = 0; index < entries.size(); ++index)
+    {
+        const DirectoryEntry& entry = entries[index];
+        if (entry.name == "." || entry.name == "..")
+            continue;
+        const std::string relative = prefix.empty() ? entry.name : prefix + "/" + entry.name;
+        if (entry.isDirectory)
+        {
+            if (!ListFilesUnder(folder + "/" + entry.name, relative, paths, sizes))
+                return false;
+        }
+        else
+        {
+            paths.push_back(relative);
+            sizes.push_back(entry.size);
+        }
+    }
+    return true;
+}
+
+bool CStorage::ListFiles(const std::string& root, std::vector<std::string>& paths,
+                         std::vector<unsigned long long>& sizes)
+{
+    paths.clear();
+    sizes.clear();
+    return ListFilesUnder(root, std::string(), paths, sizes);
+}
+
+bool CStorage::DeletePath(const std::string& path)
+{
+    return PcRemoveAll(path.c_str());
+}
+
+bool CStorage::RenamePath(const std::string& from, const std::string& to)
+{
+    return PcRename(from.c_str(), to.c_str());
+}
+
+bool CStorage::CreateDirectories(const std::string& path)
+{
+    return PcCreateDirectories(path.c_str());
 }
 
 void CStorage::DLCOnCreate()
 {
     m_dlcState = 0;
     m_dlcMountState = 0;
-    std::memset(m_dlcProductCode, 0, sizeof(m_dlcProductCode));
-    std::memset(m_productUpgradeKey, 0, sizeof(m_productUpgradeKey));
 }
 
 void CStorage::TickDLC()

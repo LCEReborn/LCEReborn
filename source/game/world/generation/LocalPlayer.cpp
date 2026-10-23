@@ -1161,8 +1161,7 @@ void LocalPlayer::awardStat(Stat* stat, arrayWithLength<unsigned char> params)
         if ((awarded & mask) == 0)
         {
             gProfile->Award(mUserIndex, achievementId, false);
-            if (gProfile->IsFullVersion())
-                awarded |= mask;
+            awarded |= mask;
         }
         mMinecraft->mStats[mUserIndex]->award(
             stat, static_cast<StatsCounter::ESubTypes>(mLevel->getDifficulty()->getId()), count, true);

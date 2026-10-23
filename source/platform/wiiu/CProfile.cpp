@@ -452,10 +452,6 @@ bool CProfile::AllowedToPlayMultiplayer(int quadrant)
     return IsSignedInLive(quadrant);
 }
 
-void CProfile::StartTrialGame()
-{
-}
-
 void CProfile::AllowedPlayerCreatedContent(int quadrant, bool singlePlayer, int* allowed, int* communicationAllowed)
 {
     int result = true;
@@ -651,11 +647,6 @@ void CProfile::Tick()
     {
         if (PrimaryPlayerChanged() && PrimaryPlayerHasSignedOutDialogBox(true))
             SetLockedProfile(-1);
-    }
-    else if (mProfileProcessState == eProfileProcessState_Upsell)
-    {
-        DebugPrintf("-----------------------------SonyCommerce_UpgradeTrial removed for now\n");
-        SetProfileProcessState(eProfileProcessState_Unknown12);
     }
 }
 
@@ -1066,16 +1057,6 @@ void CProfile::ClearGameUsers()
     }
 }
 
-bool CProfile::IsFullVersion()
-{
-    return true;
-}
-
-void CProfile::SetFullVersion(bool fullVersion)
-{
-    mFullVersion = fullVersion;
-}
-
 void CProfile::SetSignInChangeCallback(SignInChangeHandler handler, void* context)
 {
     mSignInChangeHandler = handler;
@@ -1114,38 +1095,12 @@ void CProfile::SetProfileReadErrorCallback(ProfileReadErrorHandler handler, void
     mProfileReadErrorContext = context;
 }
 
-void CProfile::SetUpsellType(eUpsellType type, int upsellParam)
-{
-    mUpsellType = type;
-    mUpsellParam = upsellParam;
-}
-
-void CProfile::DisplayFullVersionPurchase(bool fromTrial, int, int upsellParam)
-{
-    SetUpsellType(eUpsellType_None, upsellParam);
-    if (fromTrial)
-        mUpsellFromTrial = true;
-    gProfileInstance->SetProfileProcessState(eProfileProcessState_Upsell);
-}
-
-void CProfile::SetUpsellCallback(UpsellHandler handler, void* context)
-{
-    mUpsellHandler = handler;
-    mUpsellContext = context;
-}
-
-void CProfile::SetDebugFullOverride(bool enabled)
-{
-    mDebugFullOverride = enabled;
-}
-
 void CProfile::DebugPrintf(const char*, ...)
 {
 }
 
 void CProfile::SystemOnCreate()
 {
-    mDebugFullOverride = true;
     mSystemUIShowing = false;
 }
 

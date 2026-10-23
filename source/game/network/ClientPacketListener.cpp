@@ -10,6 +10,7 @@
 #include "game/network/Connection.hpp"
 #include "game/core/Socket.hpp"
 #include "game/data/SavedDataMemoryStorage.hpp"
+#include "game/data/StringTable.hpp"
 #include "game/network/ClientboundRespawnPacket.hpp"
 #include "game/network/ClientboundSetTimePacket.hpp"
 #include "game/network/ClientboundSetCarriedItemPacket.hpp"
@@ -68,7 +69,6 @@
 #include "game/client/render/TexturePack.hpp"
 #include "game/client/render/DLCTexturePack.hpp"
 #include "game/world/generation/MultiPlayerGameMode.hpp"
-#include "game/core/TrialMode.hpp"
 #include "game/core/UnityClient6.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
 #include "game/item/Inventory.hpp"
@@ -215,6 +215,7 @@
 #include "game/network/ServerboundMoveVehiclePacket.hpp"
 #include "game/network/ServerboundContainerClosePacket.hpp"
 #include "game/network/TexturePacket.hpp"
+#include "game/network/PackTransfer.hpp"
 #include "game/network/TextureChangePacket.hpp"
 #include "game/network/TextureAndGeometryPacket.hpp"
 #include "game/network/TextureAndGeometryChangePacket.hpp"
@@ -309,7 +310,9 @@ ClientPacketListener::ClientPacketListener(Minecraft* minecraft, Socket* socket,
       m_sentViewDistance(-1),
       m_worldXZSize(0),
       m_worldHellScale(0),
-      m_commands()
+      m_commands(),
+      m_nextGameMode(-1),
+      m_nextMap(0)
 {
     InitializeCriticalSection(&m_mutex);
     m_savedDataStorage = new SavedDataMemoryStorage();
@@ -326,6 +329,7 @@ ClientPacketListener::ClientPacketListener(Minecraft* minecraft, Socket* socket,
 
 ClientPacketListener::~ClientPacketListener()
 {
+    PackReceiver::Get().disconnected(this);
     delete m_connection;
     m_connection = 0;
     delete m_savedDataStorage;
@@ -444,6 +448,8 @@ void ClientPacketListener::tick()
     if (!m_closed)
         m_connection->tick();
     m_connection->flush();
+    if (!m_closed && IsPrimaryPlayer())
+        PackReceiver::Get().tick(this);
 }
 
 void ClientPacketListener::sendViewDistance(int distance)
@@ -621,8 +627,6 @@ void ClientPacketListener::handleLogin(boost::shared_ptr<ClientboundLoginPacket>
         else if (gApp.GetTutorialMode(boost::shared_ptr<Player>()))
             m_minecraft->mGameMode = new MultiPlayerGameMode(gProfile->GetPrimaryPad(), this, packet->mDifficulty, true,
                                                              false);
-        else if (!gProfile->IsFullVersion())
-            m_minecraft->mGameMode = new TrialMode(gProfile->GetPrimaryPad(), this, packet->mDifficulty);
         else
         {
             MemSect(13);
@@ -1599,19 +1603,6 @@ int ClientPacketListener::ExitGameAndSaveReturned(void* context, int result, C4J
 
 int ClientPacketListener::HostDisconnectReturned(void* context, int result, C4JStorage::EMessageResult messageResult)
 {
-    TexturePack* selected = Minecraft::GetInstance()->mTexturePackRepository->getSelected();
-    if (selected != TexturePackRepository::defaultTexturePack)
-    {
-        if (!static_cast<DLCTexturePack*>(Minecraft::GetInstance()->mTexturePackRepository->getSelected())
-                 ->getDLCInfoParentPack()
-                 ->hasPurchasedPack())
-        {
-            gMinecraftServer->saveOnExit = false;
-            MinecraftServer::s_saveOnExitAnswered = true;
-            gApp.SetAction(result, eXuiAction_ExitWorld, NULL);
-        }
-    }
-
     bool saveExists = false;
     gStorage->DoesSaveExist(&saveExists);
     if (!saveExists)
@@ -2307,6 +2298,10 @@ void ClientPacketListener::handleChat(boost::shared_ptr<ClientboundChatPacket> p
     case 128:
         text = L10N::GetString(0xaf2e63a6);
         text.replace(text.find(L"%d"), 2, _toString<int>(packet->ints[0]));
+        singleMessage = true;
+        break;
+    case ClientboundChatPacket::eChatPacketMessage_WaitingForDownloads:
+        text = L"Waiting for players to download packs";
         singleMessage = true;
         break;
     case 129:
@@ -3640,6 +3635,24 @@ void ClientPacketListener::handleItemCooldown(boost::shared_ptr<ClientboundCoold
         m_minecraft->mLocalPlayers[m_playerId]->getCooldowns()->addCooldown(packet->getItem(), packet->getDuration());
 }
 
+void ClientPacketListener::applyNextGameMode()
+{
+    if (m_nextGameMode < 0 || !IsPrimaryPlayer())
+        return;
+    std::vector<LevelRuleset*> rules;
+    gApp.getLevelRules()->getRulesByType(static_cast<LevelRules::ELevelRuleType>(m_nextGameMode), &rules);
+    for (std::vector<LevelRuleset*>::iterator it = rules.begin(); it != rules.end(); ++it)
+    {
+        LevelGenerationOptions* options = (*it)->getGenerationOptions();
+        if (options->getUniqueId() == m_nextMap)
+        {
+            m_minecraft->GetClientMasterGameMode()->SetNextLevelGenerationOptions(options, false);
+            m_nextGameMode = -1;
+            return;
+        }
+    }
+}
+
 const std::vector<ChatCommands::CommandUsage>& ClientPacketListener::getCommands() const
 {
     return m_commands;
@@ -3677,6 +3690,11 @@ void ClientPacketListener::handleCustomPayload(boost::shared_ptr<ClientboundCust
     else if (packet->getIdentifier() == ClientboundCustomPayloadPacket::COMMANDS_PACKET)
     {
         m_commands = ChatCommands::ReadUsages(packet->getData());
+    }
+    else if (packet->getIdentifier() == ClientboundCustomPayloadPacket::PACK_PACKET)
+    {
+        if (IsPrimaryPlayer())
+            PackReceiver::Get().handle(this, packet->getData());
     }
     else if (packet->getIdentifier() == ClientboundCustomPayloadPacket::WORLD_SIZE_PACKET)
     {
@@ -4187,8 +4205,7 @@ void ClientPacketListener::handleGameMode(boost::shared_ptr<GameModePacket> pack
                 else
                 {
                     std::vector<LevelRuleset*> rules;
-                    gApp.getLevelRules()->getRulesByType(static_cast<LevelRules::ELevelRuleType>(data.gameMode), &rules,
-                                                         false);
+                    gApp.getLevelRules()->getRulesByType(static_cast<LevelRules::ELevelRuleType>(data.gameMode), &rules);
                     for (std::vector<LevelRuleset*>::iterator it = rules.begin(); it != rules.end(); ++it)
                     {
                         LevelGenerationOptions* options = (*it)->getGenerationOptions();
@@ -4219,20 +4236,9 @@ void ClientPacketListener::handleGameMode(boost::shared_ptr<GameModePacket> pack
     {
         GameModePacket::ChangeCustomGameMode data;
         packet->ReadPacket(data);
-        std::vector<LevelRuleset*> rules;
-        gApp.getLevelRules()->getRulesByType(static_cast<LevelRules::ELevelRuleType>(data.gameMode), &rules, false);
-        if (IsPrimaryPlayer())
-        {
-            for (std::vector<LevelRuleset*>::iterator it = rules.begin(); it != rules.end(); ++it)
-            {
-                LevelGenerationOptions* options = (*it)->getGenerationOptions();
-                if (options->getUniqueId() == data.customGameMode)
-                {
-                    m_minecraft->GetClientMasterGameMode()->SetNextLevelGenerationOptions(options, false);
-                    break;
-                }
-            }
-        }
+        m_nextGameMode = data.gameMode;
+        m_nextMap = data.customGameMode;
+        applyNextGameMode();
         break;
     }
     case GameModePacket::eMessage_LockPlayerLocation:
@@ -4346,12 +4352,24 @@ void ClientPacketListener::handleMapSelectInfo(boost::shared_ptr<MapSelectInfoPa
         const int miniGameType = gApp.GetFirstMiniGameType();
         if (miniGameType == 1 || miniGameType == 3)
         {
+            std::vector<int> uniqueIds;
+            std::vector<std::wstring> nameKeys;
+            std::vector<int> texturePackIds;
             for (int i = 0; i < count; ++i)
             {
-                const int uniqueId = input.readInt();
-                name = input.readUTF();
-                const int texturePackId = input.readInt();
-                gameMode->AddMapToPlaylist(uniqueId, name, texturePackId);
+                uniqueIds.push_back(input.readInt());
+                nameKeys.push_back(input.readUTF());
+                texturePackIds.push_back(input.readInt());
+            }
+            StringTable names;
+            if (count > 0)
+                names.ReadAllFromStream(&input);
+            for (int i = 0; i < count; ++i)
+            {
+                name = names.getString(nameKeys[i]);
+                if (name.empty())
+                    name = nameKeys[i];
+                gameMode->AddMapToPlaylist(uniqueIds[i], name, texturePackIds[i]);
             }
         }
         else if (miniGameType == 4)

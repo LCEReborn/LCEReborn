@@ -831,33 +831,7 @@ void UIScene_LoadMenu::handlePress(int controlId, int childId)
 
         if (m_launchData.mHostMiniGame && m_launchData.mMiniGameId == eMiniGameId_Battle)
         {
-            int mapSelection = 0;
-            switch (m_launchData.mMiniGameId)
-            {
-            case eMiniGameId_Battle:
-                mapSelection = GameSettings::GetBattleMiniGameMapSelection(m_playerId);
-                break;
-            case eMiniGameId_Glide:
-                mapSelection = GameSettings::GetGlideMiniGameMapSelection(m_playerId);
-                break;
-            default:
-                break;
-            }
             std::vector<LevelRules::LevelRulesetGroup*>& groups = initData->mLevelRulesetGroups;
-            if (mapSelection != 0)
-            {
-                std::vector<LevelRules::LevelRulesetGroup*>::iterator group = groups.begin();
-                while (group != groups.end())
-                {
-                    LevelRules::LevelRulesetGroup* current = *group;
-                    LevelRuleset* ruleset = current->rulesets.front();
-                    if (!ruleset->getGenerationOptions()->getPack()->hasPurchasedPack()
-                        && !gApp.mDLCManager.IsMiniGameTemporarilyFree(static_cast<int>(ruleset->getRuleType())))
-                        group = groups.erase(group);
-                    else
-                        ++group;
-                }
-            }
             if (groups.empty())
             {
                 int messageParameter = static_cast<int>(IDS_CONFIRM_OK);

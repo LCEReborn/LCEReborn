@@ -682,7 +682,7 @@ void MinecraftServer::stopServer(bool didInit)
     mConnection->stop();
 
     if (!s_primaryPlayerSignedOut && gProfile->IsSignedIn(gProfile->GetPrimaryPad()) && saveOnExit
-        && gProfile->IsFullVersion() && !gStorage->GetSaveDisabled() && didInit)
+        && !gStorage->GetSaveDisabled() && didInit)
     {
         if (mPlayers != 0)
         {
@@ -1264,7 +1264,7 @@ void MinecraftServer::Suspend()
     _LARGE_INTEGER start;
     QueryPerformanceFrequency(&frequency);
     QueryPerformanceCounter(&start);
-    if (initialised && gProfile->IsFullVersion() && !gStorage->GetSaveDisabled())
+    if (initialised && !gStorage->GetSaveDisabled())
     {
         if (mPlayers != 0)
             mPlayers->saveAll(0, false);

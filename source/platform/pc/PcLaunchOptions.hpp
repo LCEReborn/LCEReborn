@@ -17,11 +17,11 @@ struct PcLaunchOptions
     std::string username;
     std::string contentDir;
     std::string saveDir;
+    std::string packsDir;
     std::string resourceDir;
     std::string language;
     std::string logDir;
     std::string uuid;
-    std::string licenseFile;
     std::string world;
     std::string join;
     std::string discordApp;

@@ -175,7 +175,8 @@ public:
         eChatPacketMessage_NowSpectating = 154,
         eChatPacketMessage_NoPlayersToSpectate = 155,
         eChatPacketMessage_ContainerLocked = 156,
-        eChatPacketMessage_PlayerChat = 157
+        eChatPacketMessage_PlayerChat = 157,
+        eChatPacketMessage_WaitingForDownloads = 158
     };
 
     ClientboundChatPacket();

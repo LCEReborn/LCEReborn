@@ -19,12 +19,6 @@
 #include "game/core/CriticalSection.hpp"
 #include "platform/PlatformTiming.hpp"
 #include "vendor/_XUSER_SIGNIN_INFO.hpp"
-struct _DLCRequest
-{
-    unsigned int mContentId;
-    unsigned int mStatus;
-};
-
 struct NOTIFICATION
 {
     unsigned int type;
@@ -54,7 +48,6 @@ class ItemInstance;
 class CommandBlockEntity;
 class Stat;
 class DLCPack;
-class IUIScene_DLCUpsell;
 class ModelPart;
 struct SKIN_BOX;
 struct MEMDATA
@@ -125,7 +118,6 @@ enum eXuiAction
     eXuiAction_SaveGameNow,
     eXuiAction_ExitWorld,
     eXuiAction_ExitWorldNow,
-    eXuiAction_ExitWorldAfterUpsell,
     eXuiAction_Respawn,
     eXuiAction_RespawnProgress,
     eXuiAction_PrimarySignedOut,
@@ -133,7 +125,6 @@ enum eXuiAction
     eXuiAction_PrimarySignedOutReturnToMenu,
     eXuiAction_RemoveLocalPlayer,
     eXuiAction_RemoveLocalPlayerNoStats,
-    eXuiAction_TrialOver,
     eXuiAction_ExitGame,
     eXuiAction_CloseScenesOnConnect,
     eXuiAction_ConnectionLost,
@@ -141,7 +132,6 @@ enum eXuiAction
     eXuiAction_ExitWorldAfterDisconnect,
     eXuiAction_ReturnToMenuAfterDisconnect,
     eXuiAction_JoinFromInvite,
-    eXuiAction_UpsellForInvite,
     eXuiAction_ExitAndJoinFromInvite,
     eXuiAction_JoinInvitedGame,
     eXuiAction_ChangeSessionType,
@@ -186,102 +176,6 @@ enum eTPDFileType
 enum eTMSAction
 {
     eTMSAction_Default = 0
-};
-enum EDLC_ID
-{
-    EDLC_ID_Default = 0,
-    EDLC_ID_TutorialWorld = 4,
-    EDLC_ID_SkinPack1 = 0x200,
-    EDLC_ID_SkinPack2 = 0x201,
-    EDLC_ID_SkinPack3 = 0x202,
-    EDLC_ID_SkinPack4 = 0x203,
-    EDLC_ID_SummerOfArcadeSkinPack = 0x204,
-    EDLC_ID_HalloweenCharitySkinPack = 0x205,
-    EDLC_ID_FestiveSkinPack = 0x206,
-    EDLC_ID_BirthdaySkinPack = 0x207,
-    EDLC_ID_BattleAndBeasts = 0x208,
-    EDLC_ID_SkinPack5 = 0x209,
-    EDLC_ID_BattleAndBeasts2 = 0x20a,
-    EDLC_ID_StarWarsClassicSkinPack = 0x20c,
-    EDLC_ID_StarWarsPrequelSkinPack = 0x20d,
-    EDLC_ID_SkinPack6 = 0x20f,
-    EDLC_ID_MarvelAvengers = 0x211,
-    EDLC_ID_MarvelSpiderMan = 0x212,
-    EDLC_ID_DoctorWhoSkinsVolume1 = 0x214,
-    EDLC_ID_TheSimpsons = 0x215,
-    EDLC_ID_SecondBirthdaySkinPack = 0x216,
-    EDLC_ID_MarvelGuardiansOfTheGalaxy = 0x217,
-    EDLC_ID_StarWarsRebelsSkinPack = 0x218,
-    EDLC_ID_DoctorWhoSkinsVolume2 = 0x219,
-    EDLC_ID_BiomeSettlersPack1 = 0x21a,
-    EDLC_ID_BiomeSettlersPack2 = 0x21b,
-    EDLC_ID_StoryModeSkinPack = 0x21c,
-    EDLC_ID_RedstoneSpecialistsSkinPack = 0x21d,
-    EDLC_ID_CampfireTalesSkinPack = 0x21e,
-    EDLC_ID_ThirdBirthdaySkinPack = 0x222,
-    EDLC_ID_Minecon2015SkinPack = 0x223,
-    EDLC_ID_FourthBirthdaySkinPack = 0x224,
-    EDLC_ID_SecondBirthdaySkinPackAlt = 0x225,
-    EDLC_ID_Minecon2016SkinPack = 0x226,
-    EDLC_ID_FirstBirthdaySkinPack = 0x227,
-    EDLC_ID_VillainsSkinPack = 0x228,
-    EDLC_ID_MiniGamesHeroesSkinPack = 0x22b,
-    EDLC_ID_MagicTheGatheringSkinPack = 0x22d,
-    EDLC_ID_StrangersBiomeSettlers3SkinPack = 0x22e,
-    EDLC_ID_StrangerThingsSkinPack = 0x22f,
-    EDLC_ID_MineconEarth2017 = 0x230,
-    EDLC_ID_MoanaCharacterPack = 0x232,
-    EDLC_ID_FourthBirthdaySkinPackAlt = 0x233,
-    EDLC_ID_SecondBirthdaySkinPackAlt2 = 0x234,
-    EDLC_ID_StarWarsSequelSkinPack = 0x235,
-    EDLC_ID_FinalFantasyXVSkinPack = 0x236,
-    EDLC_ID_TheIncrediblesSkinPack = 0x238,
-    EDLC_ID_SoloAStarWarsStoryPack = 0x239,
-    EDLC_ID_FromTheShadowsSkinPack = 0x23c,
-    EDLC_ID_MassEffect = 0x400,
-    EDLC_ID_Skyrim = 0x401,
-    EDLC_ID_Halo = 0x402,
-    EDLC_ID_Festive = 0x405,
-    EDLC_ID_LittleBigPlanet = 0x406,
-    EDLC_ID_GreekMythology = 0x407,
-    EDLC_ID_NorseMythology = 0x408,
-    EDLC_ID_Halloween2015 = 0x409,
-    EDLC_ID_Mario = 0x40a,
-    EDLC_ID_AdventureTime = 0x40c,
-    EDLC_ID_PiratesOfTheCaribbean = 0x40e,
-    EDLC_ID_EgyptianMythology = 0x40f,
-    EDLC_ID_ChineseMythology = 0x4f4,
-    EDLC_ID_Fallout = 0x4f5,
-    EDLC_ID_TheNightmareBeforeChristmas = 0x4f9,
-    EDLC_ID_Plastic = 0x801,
-    EDLC_ID_Candy = 0x802,
-    EDLC_ID_Fantasy = 0x803,
-    EDLC_ID_HalloweenTexturePack = 0x804,
-    EDLC_ID_Natural = 0x805,
-    EDLC_ID_City = 0x806,
-    EDLC_ID_Cartoon = 0x807,
-    EDLC_ID_Steampunk = 0x808,
-    EDLC_ID_Pattern = 0x809,
-    EDLC_ID_SuperCuteTexturePack = 0x812,
-    EDLC_ID_BattleMapPack0 = 0x1001,
-    EDLC_ID_BattleMapPack1 = 0x1002,
-    EDLC_ID_BattleMapPack2 = 0x1003,
-    EDLC_ID_BattleMapPack3 = 0x1004,
-    EDLC_ID_BattleMapPack4 = 0x1005,
-    EDLC_ID_MG02MapPack0 = 0x1007,
-    EDLC_ID_MG02MapPack1 = 0x1009,
-    EDLC_ID_MG04TestWorldPack = 0x100a,
-    EDLC_ID_HalloweenBattleMap = 0x100b,
-    EDLC_ID_FestiveBattleMap = 0x100c,
-    EDLC_ID_FalloutBattleMapPack = 0x100e,
-    EDLC_ID_GlideMapPack0 = 0x100f,
-    EDLC_ID_GlideBeastsTrackPack = 0x1011,
-    EDLC_ID_GlideGiantsTrackPack = 0x1012,
-    EDLC_ID_GlideMythsTrackPack = 0x1013,
-    EDLC_ID_MG02MapPack2 = 0x1014,
-    EDLC_ID_MG02MapPack3 = 0x1015,
-    EDLC_ID_CityAlt = 0x1000806,
-    EDLC_ID_SteampunkAlt = 0x1000808
 };
 const unsigned int SKIN_ID_DLC_FLAG_SHIFT = 31;
 const unsigned int SKIN_ID_DLC_MASK = 0x7fffffffU;
@@ -388,7 +282,6 @@ public:
     void SetAction(int player, eXuiAction action, void* param);
     void SetBanListCheck(int32_t player, bool check);
     void InvalidateBannedList(int32_t player);
-    void ClearAndResetDLCDownloadQueue();
     void ClearDLCInstalled();
     uint8_t GetLiveLinkRequired();
     static int SignInChangeCallback(void* context, bool signedIn, unsigned int usersMask);
@@ -403,7 +296,6 @@ public:
     static void SetDedicatedServer(bool dedicated);
     void SetDefaultHostOptions();
     void InitGameSettings();
-    static int UpsellReturnedCallback(void* context, eUpsellType type, eUpsellResponse response, int userIndex);
     static int TipsSortFunction(const void* firstTip, const void* secondTip);
     void InitialiseTips();
     void SetAppPaused(bool paused);
@@ -414,17 +306,13 @@ public:
     static int BannedLevelDialogReturned(void* context, int pad, C4JStorage::EMessageResult result);
     void SetGlobalXuiAction(eXuiAction action);
     uint8_t GetChangingSessionType();
-    static int UnlockFullSaveReturned(void* context, int pad, C4JStorage::EMessageResult result);
     void SetAutosaveTimerTime();
     void SetGameStarted(bool started);
     uint32_t GetXuiServerAction(int32_t player);
-    static int UnlockFullExitReturned(void* context, int pad, C4JStorage::EMessageResult result);
     void SetChangingSessionType(bool changing);
     uint32_t GetDisconnectReason();
     void SetReallyChangingSessionType(bool changing);
     static int SignoutExitWorldThreadProc(void* context);
-    static int TrialOverReturned(void* context, int pad, C4JStorage::EMessageResult result);
-    static int UnlockFullInviteReturned(void* context, int pad, C4JStorage::EMessageResult result);
     static int ExitAndJoinFromInvite(void* context, int pad, C4JStorage::EMessageResult result);
     static int ExitAndJoinFromInviteAndSaveReturned(void* context, int pad, C4JStorage::EMessageResult result);
     static int ExitAndJoinFromInviteDeclineSaveReturned(void* context, int pad, C4JStorage::EMessageResult result);
@@ -436,23 +324,21 @@ public:
     static int RemoteSaveThreadProc(void* context);
     static int ExitGameFromRemoteSaveDialogReturned(void* context, int pad, C4JStorage::EMessageResult result);
     static void ExitGameFromRemoteSave(void* context);
-    static int TexturePackDialogReturned(void* context, int pad, C4JStorage::EMessageResult result);
     static void SetupMiniGameMusic();
     static int GameModeTransitionThreadProc(void* context);
     static int GameModeTransitionComplete(void* context);
     void SetTMSAction(int32_t player, eTMSAction action);
     uint8_t IsAppPaused();
-    void UpdateTrialPausedTimer();
     void setLevelGenerationOptions(LevelGenerationOptions* options);
     uint8_t DLCInstallProcessCompleted();
-    std::wstring getDLCFolderName(EDLC_ID dlcId);
-    std::wstring getRootPath(unsigned int contentType, bool create, bool mounted, std::wstring suffix);
-    std::wstring getFilePath(unsigned int packId, std::wstring fileName, bool inPack, std::wstring path);
+    std::wstring getFilePath(unsigned int packId, std::wstring fileName, bool inPack, std::wstring drive);
     void HandleDLC(DLCPack* pack);
     static int DLCMountedCallback(void* context, int result, unsigned int contentType, unsigned int index);
     void MountNextDLC(int32_t pad);
     static int DLCInstalledCallback(void* context, int result, int index);
     uint32_t StartInstallDLCProcess(int32_t pad);
+    int LoadPack(const std::string& path, const std::wstring& name);
+    bool UnloadServerPacks();
     std::vector<LevelGenerationOptions*>* getLevelGenerators();
     void ClearTerrainFeaturePosition();
     void LocaleAndLanguageInit();
@@ -505,8 +391,6 @@ public:
     static uint32_t DebugInputCallback(void* context);
     void SetDebugSequence(const char* sequence);
     uint8_t DLCInstallPending();
-    void SetNewDLCAvailable(bool available);
-    void UpsellDLC(int userIndex, DLCPack* pack, int (*callback)(void*, int, int), IUIScene_DLCUpsell* scene);
     bool isXuidNotch(PlayerUID uid);
     bool isXuidDeadmau5(PlayerUID uid);
     void AddMemoryTextureFile(const std::wstring& path, unsigned char* data, unsigned int size);
@@ -517,9 +401,6 @@ public:
     void RemoveLevelFromBannedLevelList(int player, PlayerUID uid, char* levelId);
     void SetUniqueMapName(char* name);
     uint64_t getArchiveFileSize(const std::wstring& path);
-    void SetTrialTimerStart();
-    double getTrialTimer();
-    static uint32_t WarningTrialTexturePackReturned(void* context, int pad, C4JStorage::EMessageResult result);
     static uint32_t tipFiltered(int32_t tipId);
     uint32_t GetNextTip(bool firstTipRequest, EMiniGameId miniGame);
     unsigned int GetHTMLColour(eMinecraftColour colour);
@@ -562,8 +443,6 @@ public:
     uint32_t GetPlayerPrivileges(uint8_t networkSmallId);
     uint8_t GetPlayerGameType(uint8_t networkSmallId);
     std::wstring getEntityName(uint64_t entityType, int32_t auxValue);
-    static int DLCOffersReturned(void* context, unsigned int offerValue, unsigned int contentId, int status);
-    uint32_t RetrieveNextDLCContent();
     void SetCorruptSaveDeleted(bool deleted);
     uint8_t GetCorruptSaveDeleted();
     void SetAdditionalSkinBoxes(unsigned int skinId, SKIN_BOX* boxes, unsigned int count, _SkinAdjustments adjustments);
@@ -574,6 +453,7 @@ public:
     static unsigned int getSkinIdFromPath(const std::wstring& path);
     static std::wstring getSkinPathFromId(unsigned int id);
     void SetRequiredTexturePackID(uint32_t texturePackId);
+    uint32_t GetRequiredTexturePackID() const;
     void getLocale(std::vector<std::wstring>& localeNames);
     void SetFirstMiniGameType(EMiniGameId type);
     EMiniGameId GetFirstMiniGameType();
@@ -608,11 +488,6 @@ public:
     void SetOptionsCallbackStatus(int profile, C4JStorage::eOptionsCallback status);
     uint32_t GetAdditionalModelParts(int value);
     static void PrimaryPlayerSignedOutReturned(void* context, int pad, C4JStorage::EMessageResult result);
-    static void MarketplaceCountsCallback(void* context, C4JStorage::DLC_TMS_DETAILS* details, int count);
-    void ClearNewDLCAvailable();
-    bool GetNewDLCAvailable();
-    void DisplayNewDLCTipAgain();
-    void DisplayNewDLCTip();
     void RemoveMemoryTextureFile(const std::wstring& value);
     void AddMemoryTPDFile(int p1, unsigned char* p2, unsigned int p3);
     void RemoveMemoryTPDFile(int value);
@@ -629,16 +504,8 @@ public:
     bool IsTerrainFeature(int p1, int p2);
     static void RegisterMojangData(wchar_t* p1, PlayerUID p2, wchar_t* p3, wchar_t* p4);
     static void RegisterConfigValues(wchar_t* p1, int p2);
-    void RegisterDLCData(char* p1, unsigned int p2);
     uint32_t getDebugGameRuleDefinitions();
     void setDebugGameRuleDefinitions(LevelRuleset* value);
-    void AddDLCRequest(int p1, bool p2);
-    bool CheckTMSDLCCanStop();
-    int GetDLCContentType(int value);
-    int Find_eDLCContentType(unsigned int value);
-    uint32_t GetDLCOffersCount();
-    void DLCContentRetrieved(int value);
-    void TickDLCOffersRetrieved();
     void RetrieveNextTMSPPContent();
     void TickTMSPPFilesRetrieved();
     void ClearTMSPPFilesRetrieved();
@@ -648,11 +515,9 @@ public:
     bool GetBanListRead(int value);
     void SetBanListRead(int p1, bool p2);
     void ClearBanList(int value);
-    uint32_t GetRequiredTexturePackID();
     bool IsLocaleKorea();
     uint32_t get_eMCLang(wchar_t* value);
     uint32_t get_xcLang(wchar_t* value);
-    void SetTickTMSDLCFiles(bool value);
     void SetFakePadValue(int p1, unsigned char p2);
 
 
@@ -704,8 +569,6 @@ private:
     unsigned int mUnusedServerActionWord;
     bool mLiveLinkRequired;
     bool mDebugInputEnabled;
-    float mTrialTimerStart;
-    float mTrialPausedTime;
     _LARGE_INTEGER mLastPerformanceCounter;
     long long mAccumulatedPerformanceCounter;
     float mAppTime;
@@ -729,8 +592,6 @@ private:
     bool mBanListCheck[4];
     unsigned int mAutosaveTime;
     int mOpacityTimer[4];
-    bool mNewDLCAvailable;
-    bool mUnusedNewDLCFlag;
     PngTagData mCurrentImageTextData;
 
 public:
@@ -743,13 +604,7 @@ private:
     unsigned char mPlayerGameTypes[8];
     C4JCriticalSection mSaveNotificationMutex;
     int mSaveNotificationCount;
-    std::vector<_DLCRequest*> mDLCDownloadQueue;
     std::vector<_TMSPPRequest*> mTMSPPRequests;
-    unsigned int mDLCOffersRetrievedValue;
-    bool mDLCDownloadQueueResetFlag;
-    bool mUnusedDLCQueueFlags[2];
-    C4JCriticalSection mDLCRetrieveMutex;
-    C4JCriticalSection mDLCDownloadQueueMutex;
     C4JCriticalSection mAdditionalModelPartsMutex;
     C4JCriticalSection mAdditionalSkinBoxesMutex;
     C4JCriticalSection mSkinAdjustmentsMutex;

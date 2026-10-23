@@ -349,10 +349,6 @@ void UIScene::HandleDLCInstalled()
 {
 }
 
-void UIScene::HandleDLCLicenseChange()
-{
-}
-
 void UIScene::HandleTMSBanFileRetrieved()
 {
 }
@@ -362,10 +358,6 @@ void UIScene::HandleMessage(EUIMessage, void*)
 }
 
 void UIScene::HandleSaveDeviceRemoved(int)
-{
-}
-
-void UIScene::handleUnlockFullVersion()
 {
 }
 

@@ -162,6 +162,11 @@ void UIScene_CustomMenu::Build()
     gConsoleUIController.TouchBoxRebuild(this);
 }
 
+void UIScene_CustomMenu::HandleDLCMountingComplete()
+{
+    Rebuild();
+}
+
 void UIScene_CustomMenu::Rebuild()
 {
     int focusId = m_focusId;

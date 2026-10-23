@@ -386,30 +386,11 @@ DLCPack* DLCManager::getPackContainingSkin(const std::wstring& fileName)
     return pFound;
 }
 
-bool DLCManager::IsDlcPackTemporarilyFree(int packID)
-{
-    bool bFree = false;
-    long long now = System::currentUnixEpochTimeSeconds();
-
-    boost::unordered_map<int, FreePackPeriod>::iterator it = m_freeDLCPackPeriods.find(packID);
-
-    if (it != m_freeDLCPackPeriods.end())
-    {
-        if (it->second.startTime <= now && it->second.endTime >= now)
-        {
-            bFree = true;
-        }
-    }
-
-    return bFree;
-}
-
-DLCFile* DLCManager::getSkinFile(int skinIndex, bool& bIsDefaultSkin, bool& bHasPurchasedPack)
+DLCFile* DLCManager::getSkinFile(int skinIndex, bool& bIsDefaultSkin)
 {
     DLCFile* pFile = NULL;
 
     bIsDefaultSkin = false;
-    bHasPurchasedPack = false;
 
     if (((skinIndex >> 31) & 1) != 0)
     {
@@ -422,13 +403,11 @@ DLCFile* DLCManager::getSkinFile(int skinIndex, bool& bIsDefaultSkin, bool& bHas
         if (pPack != NULL)
         {
             pFile = pPack->getSkinFile(fileName);
-            bHasPurchasedPack = pPack->hasPurchasedPack();
         }
     }
     else if ((skinIndex & 0x7FFFFFE0) == 0)
     {
         bIsDefaultSkin = true;
-        bHasPurchasedPack = true;
     }
 
     return pFile;
@@ -551,11 +530,11 @@ bool DLCManager::processDLCDataFile(unsigned int& numItemsAdded, unsigned char* 
 
         if (itemType == eDLCType_TexturePack)
         {
-            pTexturePack = new DLCPack(pPack->getName(), pPack->getLicenseMask());
+            pTexturePack = new DLCPack(pPack->getName());
         }
         else if (itemType == eDLCType_SkinPack)
         {
-            pChildPack = new DLCPack(pPack->getName(), pPack->getLicenseMask());
+            pChildPack = new DLCPack(pPack->getName());
         }
         else if (itemType != eDLCType_Pack)
         {
@@ -681,15 +660,7 @@ bool DLCManager::readDLCDataFile(unsigned int& numItemsAdded, const std::string&
     std::wstring wideFileName = convStringToWstring(fileName);
     int file = CreateFileA(fileName.c_str(), GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     if (file == -1)
-    {
-        GetLastError();
-        if (numItemsAdded == 0)
-        {
-            removePack(pPack);
-        }
-
         return false;
-    }
 
     const unsigned int fileSize = GetFileSize(file, NULL);
     unsigned char* pData = new unsigned char[fileSize];
@@ -700,6 +671,8 @@ bool DLCManager::readDLCDataFile(unsigned int& numItemsAdded, const std::string&
     }
     else
     {
+        CloseHandle(file);
+        delete[] pData;
         pPack->SetIsCorrupt(true);
         m_bCorruptDLCFound = true;
 
@@ -867,22 +840,4 @@ unsigned int DLCManager::retrievePackIDFromDLCDataFile(const std::string& fileNa
     delete[] pData;
 
     return packID;
-}
-
-bool DLCManager::IsMiniGameTemporarilyFree(int miniGameID)
-{
-    bool bFree = false;
-    long long now = System::currentUnixEpochTimeSeconds();
-
-    boost::unordered_map<int, FreePackPeriod>::iterator it = m_freeMiniGamePeriods.find(miniGameID);
-
-    if (it != m_freeMiniGamePeriods.end())
-    {
-        if (it->second.startTime <= now && it->second.endTime >= now)
-        {
-            bFree = true;
-        }
-    }
-
-    return bFree;
 }

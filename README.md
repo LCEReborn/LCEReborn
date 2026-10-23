@@ -26,10 +26,7 @@ hand class families to Luna and Opus 5 workers. See `docs/overview.md`.
    base game and update 688. It imports the game's content beside itself on
    Windows and into `~/.local/share/LCEReborn` on Linux; nothing is
    downloaded.
-3. The game starts as the trial with no DLC. Setup's Licenses step opens
-   `license.cfg`, where you unlock the full game and your packs. Only
-   unlock what you own.
-4. Pick a profile and press Play.
+3. Pick a profile and press Play.
 
 The PC version runs in a window of any shape or borderless fullscreen, with
 keyboard and mouse or controllers, split screen, render distance up to 32
@@ -71,7 +68,7 @@ function.
 - [docs/overview.md](docs/overview.md) - what is here, what is not, and status
 - [docs/building.md](docs/building.md) - preparing game files, building the RPX and running it in Cemu
 - [docs/pc-platform.md](docs/pc-platform.md) - the PC version: building, files, multiplayer, display, sound and releases
-- [docs/pc-launcher.md](docs/pc-launcher.md) - the PC launcher: setup, licenses and profiles
+- [docs/pc-launcher.md](docs/pc-launcher.md) - the PC launcher: setup and profiles
 - [docs/pc-input.md](docs/pc-input.md) - keyboard, mouse and controllers on PC
 - [docs/measuring.md](docs/measuring.md) - comparing your build with your copy of the original, function by function
 - [docs/architecture.md](docs/architecture.md) - directory layout and the platform seam

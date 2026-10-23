@@ -1,5 +1,6 @@
 #include "game/core/GameRuleManager.hpp"
 
+#include <algorithm>
 #include <boost/unordered_set.hpp>
 
 #include "game/core/ByteArrayInputStream.hpp"
@@ -24,7 +25,6 @@
 
 static const unsigned int CRC_POLYNOMIAL = 0xedb88320U;
 static const unsigned int CRC_INITIAL = 0xffffffffU;
-static const unsigned int FULL_LICENSE_MASK = 0xffffffffU;
 
 static unsigned int gGameRuleCRCTable[256];
 static bool gGameRuleCRCTableReady = false;
@@ -453,6 +453,7 @@ unsigned int GameRuleManager::readRuleFile(LevelGenerationOptions* options, unsi
         if (found != types.end())
             type = found->second;
         GameRuleDefinition* definition = NULL;
+        LevelRuleset* ruleset = NULL;
         if (type == ConsoleGameRules::eGameRuleType_MapOptions)
         {
             addLevelGenerationOptions(options);
@@ -461,15 +462,16 @@ unsigned int GameRuleManager::readRuleFile(LevelGenerationOptions* options, unsi
         }
         else if (type == ConsoleGameRules::eGameRuleType_LevelRules)
         {
-            LevelRuleset* ruleset = new LevelRuleset();
+            ruleset = new LevelRuleset();
             options->setRequiredGameRules(ruleset);
             ruleset->setGenerationOptions(options);
             ruleset->loadStringTable(table);
-            mLevelRules->addLevelRule(L"", ruleset);
             definition = ruleset;
         }
         readAttributes(rules, &names, definition);
         readChildren(rules, &names, &types, definition);
+        if (ruleset != NULL)
+            mLevelRules->addLevelRule(L"", ruleset);
     }
     if (compression != 0)
     {
@@ -519,6 +521,51 @@ void GameRuleManager::loadGameRules(DLCPack* pack)
         options->setSrc(LevelGenerationOptions::eSrc_Local);
         readRuleFile(options, data, size, table);
         options->setLoadedData();
+    }
+}
+
+static bool IsFromPack(LevelGenerationOptions* options, DLCPack* pack)
+{
+    for (DLCPack* owner = options->getPack(); owner != NULL; owner = owner->GetParentPack())
+    {
+        if (owner == pack)
+            return true;
+    }
+    return false;
+}
+
+void GameRuleManager::unloadGameRules(DLCPack* pack)
+{
+    std::vector<LevelGenerationOptions*> unloaded;
+    std::vector<LevelGenerationOptions*>* generators = mLevelGenerators->getLevelGenerators();
+    for (std::vector<LevelGenerationOptions*>::iterator it = generators->begin(); it != generators->end(); ++it)
+    {
+        if (IsFromPack(*it, pack))
+            unloaded.push_back(*it);
+    }
+    std::vector<LevelRuleset*> rulesets(*mLevelRules->getLevelRules());
+    for (std::vector<LevelRuleset*>::iterator it = rulesets.begin(); it != rulesets.end(); ++it)
+    {
+        LevelGenerationOptions* options = (*it)->getGenerationOptions();
+        if (options == NULL || !IsFromPack(options, pack))
+            continue;
+        mLevelRules->removeLevelRule(*it);
+        if (std::find(unloaded.begin(), unloaded.end(), options) == unloaded.end())
+            unloaded.push_back(options);
+        if (*it == mGameRuleDefinitions)
+            mGameRuleDefinitions = NULL;
+        delete *it;
+    }
+    for (std::vector<LevelGenerationOptions*>::iterator it = unloaded.begin(); it != unloaded.end(); ++it)
+    {
+        LevelGenerationOptions* options = *it;
+        mLevelGenerators->removeLevelGenerator(options);
+        if (options == mLevelGenerationOptions)
+            mLevelGenerationOptions = NULL;
+        if (options->getSrc() == LevelGenerationOptions::eSrc_Local)
+            delete options->getGrSource();
+        options->loadStringTable(NULL);
+        delete options;
     }
 }
 
@@ -712,7 +759,7 @@ unsigned int GameRuleManager::loadGameRulesPack(File* file)
     bool loaded = false;
     if (file->exists())
     {
-        DLCPack* pack = new DLCPack(std::wstring(L""), FULL_LICENSE_MASK);
+        DLCPack* pack = new DLCPack(std::wstring(L""));
         unsigned int count = 0;
         if (gApp.mDLCManager.readDLCDataFile(count, file->getPath(), pack, 0, false))
         {

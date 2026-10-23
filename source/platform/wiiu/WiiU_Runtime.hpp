@@ -2,6 +2,8 @@
 #define WIIU_RUNTIME_HPP
 
 #include <coreinit/filesystem.h>
+#include <string>
+#include <vector>
 
 #ifndef ERROR_CANCELLED
 #define ERROR_CANCELLED 1223
@@ -90,5 +92,10 @@ unsigned int FileTimeToSystemTime(const FILETIME* fileTime, SYSTEMTIME* systemTi
 extern FSClient* gFileSystemClient;
 extern FSClient* gFileCacheClient;
 void WiiUInitialise();
+const char* WiiUPacksFolder();
+bool WiiUListFiles(const char* root, std::vector<std::string>& paths, std::vector<unsigned long long>& sizes);
+bool WiiURemoveAll(const char* path);
+bool WiiURename(const char* from, const char* to);
+bool WiiUCreateDirectories(const char* path);
 
 #endif

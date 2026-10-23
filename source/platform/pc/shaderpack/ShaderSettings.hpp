@@ -24,6 +24,7 @@ struct ShaderSettings
     static const float kHandDepthValues[3];
 
     std::string shaderPack = kPackOff;
+    bool enableShaders = true;
     int antialiasingLevel = 0;
     bool normalMapEnabled = true;
     bool specularMapEnabled = true;
@@ -36,6 +37,8 @@ struct ShaderSettings
     void Load(const std::filesystem::path& path);
     bool Save(const std::filesystem::path& path) const;
     bool IsPackSelected() const { return shaderPack != kPackOff && shaderPack != kPackInternal; }
+    bool UsesPack() const { return enableShaders && IsPackSelected(); }
+    bool UsesInternal() const { return enableShaders && shaderPack == kPackInternal; }
 };
 
 ShaderMacros ShaderStandardMacros(const ShaderSettings& settings, int glVersion, int glslVersion,

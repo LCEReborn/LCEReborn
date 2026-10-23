@@ -120,6 +120,39 @@ std::vector<std::string> ShaderPackManager::ListPacks() const
     return packs;
 }
 
+bool ShaderPackManager::InstallPack(const std::filesystem::path& source, std::string& name, std::string& error)
+{
+    std::filesystem::path from = source.has_filename() ? source : source.parent_path();
+    name = from.filename().u8string();
+    if (!ShaderPack::IsShaderPack(from))
+    {
+        error = "not a shader pack";
+        return false;
+    }
+    std::error_code fileError;
+    std::filesystem::path target = PacksFolder() / from.filename();
+    if (std::filesystem::exists(target, fileError))
+    {
+        error = "a shader pack with that name is already there";
+        return false;
+    }
+    std::filesystem::create_directories(PacksFolder(), fileError);
+    if (std::filesystem::is_directory(from, fileError))
+        std::filesystem::copy(from, target, std::filesystem::copy_options::recursive, fileError);
+    else
+        std::filesystem::copy_file(from, target, fileError);
+    if (fileError)
+    {
+        error = fileError.message();
+        std::error_code removeError;
+        std::filesystem::remove_all(target, removeError);
+        LOG_WARN(sLog, "Could not add shader pack %s: %s", name.c_str(), error.c_str());
+        return false;
+    }
+    LOG_INFO(sLog, "Added shader pack %s", name.c_str());
+    return true;
+}
+
 bool ShaderPackManager::SaveSettings() const
 {
     bool saved = mSettings.Save(SettingsPath());
@@ -205,6 +238,12 @@ void ShaderPackManager::ApplyProfile(const std::string& profile)
 void ShaderPackManager::ResetOptions()
 {
     mOptions.ResetAll();
+    RefreshProperties();
+}
+
+void ShaderPackManager::LoadOptionValues(const std::string& values)
+{
+    mOptions.LoadValues(values);
     RefreshProperties();
 }
 

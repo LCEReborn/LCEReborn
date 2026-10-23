@@ -69,6 +69,7 @@ public:
     float PointerY() const;
     void SetPointer(float x, float y);
     unsigned int ConsumeClicks();
+    bool QuickMoveHeld() const;
     void DiscardRelativeInput();
 
 private:
@@ -83,7 +84,6 @@ private:
     };
 
     bool CaptureEvent(const SDL_Event& event);
-    bool QuickMoveHeld() const;
     void PressInput(int input, EPcInputContext context);
     void ReleaseInput(int input);
     void AddBinding(EPcInputContext context, int action, int input);

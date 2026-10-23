@@ -643,8 +643,8 @@ static bool BeginPackWorld(GameRenderer* gameRenderer, float partialTick)
     sPackFrame = false;
     Minecraft* minecraft = Minecraft::GetInstance();
     ShaderPackManager& manager = ShaderPackManager::Get();
-    bool internal = manager.Settings().shaderPack == ShaderSettings::kPackInternal;
-    bool packReady = manager.Settings().IsPackSelected() && manager.ActivePack() != nullptr;
+    bool internal = manager.Settings().UsesInternal();
+    bool packReady = manager.Settings().UsesPack() && manager.ActivePack() != nullptr;
     if (!internal && !packReady)
     {
         if (ShaderPipeline::Get().Enabled())

@@ -56,8 +56,6 @@ const wchar_t* ExtraString(int id)
         return L"Shader Pack Settings";
     case IDS_LCE_SHADER_REFRESH:
         return L"Refresh";
-    case IDS_LCE_SHADER_RESET_DEFAULTS:
-        return L"Reset to Defaults";
     case IDS_LCE_SHADER_APPLY:
         return L"Apply";
     case IDS_LCE_ONLINE_SETTINGS:
@@ -87,6 +85,18 @@ const wchar_t* ExtraString(int id)
         return L"Client out of date!";
     case IDS_LCE_SERVER_OUT_OF_DATE:
         return L"Server out of date!";
+    case IDS_LCE_SHADER_PREVIOUS_NEXT:
+        return L"Previous / Next";
+    case IDS_LCE_SHADER_DEFAULT:
+        return L"Default";
+    case IDS_LCE_SHADER_HIDE_MENU:
+        return L"Hide Menu";
+    case IDS_LCE_SHADER_SHOW_MENU:
+        return L"Show Menu";
+    case IDS_LCE_SHADER_OPEN:
+        return L"Open";
+    case IDS_LCE_SHADER_SWITCH_TAB:
+        return L"Switch Tab";
     default:
         return NULL;
     }

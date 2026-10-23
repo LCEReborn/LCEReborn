@@ -85,6 +85,8 @@ void ShaderSettings::Load(const std::filesystem::path& path)
         const std::string& value = entry.second;
         if (key == "shaderPack")
             shaderPack = value.empty() ? std::string(kPackOff) : value;
+        else if (key == "enableShaders")
+            enableShaders = value != "false";
         else if (key == "antialiasingLevel")
         {
             int level = std::atoi(value.c_str());
@@ -118,6 +120,7 @@ bool ShaderSettings::Save(const std::filesystem::path& path) const
         if (!file)
             return false;
         file << "shaderPack=" << shaderPack << "\n";
+        file << "enableShaders=" << (enableShaders ? "true" : "false") << "\n";
         file << "antialiasingLevel=" << antialiasingLevel << "\n";
         file << "normalMapEnabled=" << (normalMapEnabled ? "true" : "false") << "\n";
         file << "specularMapEnabled=" << (specularMapEnabled ? "true" : "false") << "\n";

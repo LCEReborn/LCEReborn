@@ -417,6 +417,36 @@ settings and opens the pack's own option screens. The choice and global
 settings are saved to `optionsshaders.txt`, and each pack's options to
 `shaderpacks/<pack>.txt`, the same files OptiFine uses.
 
+The menu draws its own panels in the game's style and works like Iris's
+shader screens, with three tabs (LB/RB, Q/R on the keyboard):
+
+- Shader Packs: the Shaders ON/OFF switch, the built-in (internal) pipeline
+  and every pack in the folder, with a panel describing the highlighted
+  pack (its profiles, pages, worlds, size and any problems from the last
+  load). The list follows the folder as packs are added or removed. Packs
+  dropped on the window are copied into the folder, Open Pack Folder opens
+  it, and Download Shaders offers to open modrinth.com/shaders.
+- Shader Pack Settings: the pack's own screens from `shaders.properties`,
+  in their columns, with the profile, sliders, links to sub-pages, a
+  breadcrumb and Back, and the pack's comment for the highlighted option.
+  Import and Export read and write settings files, and a settings file
+  dropped on the window is imported; Reset puts every option back to its
+  default after asking.
+- Shader Settings: antialiasing, normal and specular maps, render and
+  shadow quality, hand depth and the two old-lighting switches that apply
+  to every pack.
+
+Changes wait until Apply (X), which reloads the pack in place; Done applies
+and closes, and Cancel throws away what has not been applied. B (Esc) goes
+back a page, and on the top page closes the menu like Done. Changed
+values are marked until they are applied. Enter or a left click moves an
+option to its next value, a right click or PgUp to the previous one, and
+Left/Right change single-column rows; Y, or Shift with a click or Enter
+(the Quick Move binding), puts it back to its default, and holding Shift
+previews that default in green. The mouse wheel or right stick scrolls the
+description. In a world, Hide Menu (F1, or pressing the right stick) hides
+the menu to show the world as the pack draws it.
+
 The pack is loaded and run by `platform/pc/shaderpack`; the game reaches it
 through `game/client/render/ShaderPackBridge`. Packs see the 1.12 block,
 item and entity ids from their `block.properties`, `item.properties` and

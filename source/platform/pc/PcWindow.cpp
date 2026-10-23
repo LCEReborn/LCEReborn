@@ -25,6 +25,8 @@ bool sShown = false;
 bool sFullscreen = false;
 bool sVSync = true;
 Uint64 sNextFrame = 0;
+PcDropHandler sDropHandler = NULL;
+void* sDropContext = NULL;
 const Uint64 kFramePeriod = SDL_NS_PER_SECOND / 60;
 
 std::string WindowTitle()
@@ -251,6 +253,14 @@ void PcPumpEvents()
                 g_pInput->AcquiredForeground();
             }
             break;
+        case SDL_EVENT_DROP_FILE:
+            if (sDropHandler != NULL && event.drop.data != NULL)
+                sDropHandler(event.drop.data, sDropContext);
+            break;
+        case SDL_EVENT_DROP_COMPLETE:
+            if (sDropHandler != NULL)
+                sDropHandler(NULL, sDropContext);
+            break;
         default:
             break;
         }
@@ -307,4 +317,15 @@ void PcWindowSetVSync(bool enabled)
     sVSync = enabled;
     ApplyVSync();
     SaveDisplaySettings();
+}
+
+SDL_Window* PcWindowHandle()
+{
+    return sWindow;
+}
+
+void PcWindowSetDropHandler(PcDropHandler handler, void* context)
+{
+    sDropHandler = handler;
+    sDropContext = context;
 }

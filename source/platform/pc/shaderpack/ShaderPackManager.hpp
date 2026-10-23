@@ -22,6 +22,7 @@ public:
     void Initialise();
     std::filesystem::path PacksFolder() const;
     std::vector<std::string> ListPacks() const;
+    bool InstallPack(const std::filesystem::path& source, std::string& name, std::string& error);
 
     const ShaderSettings& Settings() const { return mSettings; }
     ShaderSettings& EditSettings() { return mSettings; }
@@ -37,11 +38,14 @@ public:
     bool SetOption(const std::string& name, const std::string& value);
     void ApplyProfile(const std::string& profile);
     void ResetOptions();
+    std::string OptionValues() const { return mOptions.SaveValues(); }
+    void LoadOptionValues(const std::string& values);
     bool SaveOptions() const;
 
     ShaderMacros StandardMacros() const;
     int GlVersion() const { return mGlVersion; }
     int GlslVersion() const { return mGlslVersion; }
+    static std::string LocaleCode();
 
 private:
     ShaderPackManager();
@@ -52,7 +56,6 @@ private:
     void LogSummary() const;
     std::filesystem::path SettingsPath() const;
     std::filesystem::path OptionsPath(const std::string& pack) const;
-    static std::string LocaleCode();
 
     ShaderSettings mSettings;
     std::unique_ptr<ShaderPack> mPack;

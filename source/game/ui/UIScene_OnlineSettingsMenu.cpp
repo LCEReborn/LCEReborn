@@ -74,6 +74,11 @@ const float kPlayersInset = 20.0f;
 const float kPlayerStep = 34.0f;
 const float kHeadSize = 28.0f;
 const int kHeadPixels = 56;
+#if LCE_PLATFORM_PC
+const wchar_t* const kDeviceName = L"this PC";
+#else
+const wchar_t* const kDeviceName = L"this console";
+#endif
 
 std::wstring Html(const std::wstring& text, eMinecraftColour colour)
 {
@@ -402,14 +407,15 @@ std::wstring UIScene_OnlineSettingsMenu::NetworkInfo() const
     if (visible)
         info += Text(L"It shows up in their Join tab.");
     else if (address.empty())
-        info += Text(L"Hidden from their Join tab. They add it as a server with this PC's address and the port.");
+        info += Text(formatwstr(L"Hidden from their Join tab. They add it as a server with %ls's address and the port.",
+                                kDeviceName));
     else
         info += Text(L"Hidden from their Join tab. They add it as a server with ")
                 + Address(formatwstr(L"%ls:%d", address.c_str(), port));
     info += L"<br><br>" + Muted(L"Over the internet") + L"<br>"
             + Text(formatwstr(L"They join with your public IP and port %d. On your router, forward that port to "
-                              L"this PC",
-                              port));
+                              L"%ls",
+                              port, kDeviceName));
     info += address.empty() ? Text(L".") : Text(L":") + L"<br>" + Address(address);
     if (m_mode == eMode_OpenToLan)
         info += L"<br><br>"
@@ -522,12 +528,13 @@ void UIScene_OnlineSettingsMenu::render(int width, int height, C4JRender::eViewp
 
 void UIScene_OnlineSettingsMenu::DrawPlayers(int width, int height, C4JRender::eViewportType viewport)
 {
-#if LCE_PLATFORM_PC
     Minecraft* minecraft = Minecraft::GetInstance();
     if (minecraft == NULL || minecraft->mFont == NULL || minecraft->getTextureManager() == NULL)
         return;
     Font& font = *minecraft->mFont;
+#if LCE_PLATFORM_PC
     Textures* textures = minecraft->getTextureManager();
+#endif
 
     int viewportX = 0;
     int viewportY = 0;
@@ -549,6 +556,8 @@ void UIScene_OnlineSettingsMenu::DrawPlayers(int width, int height, C4JRender::e
     {
         PlayerRow& row = m_players[index];
         const float y = top + kPlayerStep * static_cast<float>(index);
+#if LCE_PLATFORM_PC
+        const float nameX = left + kPlayersInset + kHeadSize + 10.0f;
         if (row.texture < 0 && row.image == NULL)
         {
             row.image = PcRenderSkinHead(row.skinId, row.defaultSkin, kHeadPixels);
@@ -568,9 +577,12 @@ void UIScene_OnlineSettingsMenu::DrawPlayers(int width, int height, C4JRender::e
             builder->vertexUV(x0, y, 0.0f, 0.0f, 0.0f);
             builder->end();
         }
+#else
+        const float nameX = left + kPlayersInset;
+#endif
         const float textY = y + (kHeadSize - 16.0f) * 0.5f;
         GlStateManager::pushMatrix();
-        GlStateManager::translatef(left + kPlayersInset + kHeadSize + 10.0f, textY, 0.0f);
+        GlStateManager::translatef(nameX, textY, 0.0f);
         GlStateManager::scalef(2.0f, 2.0f, 1.0f);
         font.drawShadow(row.name, 0, 0, static_cast<int>(0xFFE0E0E0));
         GlStateManager::popMatrix();
@@ -585,11 +597,6 @@ void UIScene_OnlineSettingsMenu::DrawPlayers(int width, int height, C4JRender::e
         }
     }
     DebugOverlay::EndScreenDraw();
-#else
-    (void)width;
-    (void)height;
-    (void)viewport;
-#endif
 }
 
 void UIScene_OnlineSettingsMenu::updateTooltips()

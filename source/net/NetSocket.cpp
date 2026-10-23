@@ -69,7 +69,7 @@ int NsnSendTo(int socket, const void* data, int size, int flags, const NsnSockad
 int NsnRecvFrom(int socket, void* data, int size, int flags, NsnSockaddr* address, int* length)
     __asm__("recvfrom");
 int NsnSetSockOpt(int socket, int level, int name, const void* value, int length) __asm__("setsockopt");
-int NsnGetSockOpt(int socket, int level, int name, void* value, int* length) __asm__("getsockopt");
+int NsnGetPeerName(int socket, NsnSockaddr* address, int* length) __asm__("getpeername");
 int NsnShutdown(int socket, int how) __asm__("shutdown");
 int NsnSocketClose(int socket) __asm__("socketclose");
 int NsnSelect(int count, uint32_t* read, uint32_t* write, uint32_t* error, NsnTimeval* timeout) __asm__("select");
@@ -89,7 +89,6 @@ const int kProtoUdp = 17;
 const int kSolSocket = -1;
 const int kSoReuseAddr = 0x0004;
 const int kSoBroadcast = 0x0020;
-const int kSoError = 0x1007;
 const int kSoNonBlocking = 0x1014;
 const int kSoBlocking = 0x1015;
 const int kTcpNoDelay = 0x2004;
@@ -307,8 +306,10 @@ int PendingError(NativeSocket socket)
 {
     int result = 0;
 #if LCE_PLATFORM_WIIU
-    int length = sizeof(result);
-    NsnGetSockOpt(socket, kSolSocket, kSoError, &result, &length);
+    NsnSockaddr peer;
+    int length = sizeof(peer);
+    if (NsnGetPeerName(socket, &peer, &length) != 0)
+        result = kRefused;
 #else
     socklen_t length = sizeof(result);
     getsockopt(socket, kSolSocket, kSoError, reinterpret_cast<char*>(&result), &length);

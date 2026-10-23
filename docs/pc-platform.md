@@ -88,8 +88,8 @@ The PC and Wii U builds share one network manager (`source/net/`), so they
 can play together. An online game is hosted on the port set in Online
 Settings (25570 unless changed; TCP for players, UDP for finding games on
 the local network), and the host is told the port in chat on joining. Online
-Settings opens with X on the Create and Load screens while Online Game is
-focused. It also sets whether the world shows on the local network and the
+Settings opens with X (Y on the Wii U) on the Create and Load screens while
+Online Game is focused. It also sets whether the world shows on the local network and the
 message shown under it in the Join tab (written like a dedicated server's
 `motd`); these are saved in `video.txt`. A world started offline can be
 opened from the pause menu with Open to LAN. Once open, the same button is
@@ -114,7 +114,11 @@ server.
 
 `LCERebornServer` runs a world with no window, sound or local player, on
 Windows and Linux. It needs the same content folder as the game and takes
-`--content-dir`, `--save-dir` and `--log-dir`. The first start writes
+`--content-dir`, `--save-dir` and `--log-dir`. In a release, that content is
+what the launcher imported: in the package folder on Windows, where the
+server finds it when started there, and in `~/.local/share/LCEReborn/assets`
+on Linux. The AppImage only starts the launcher, so run the server from the
+tar.gz. The first start writes
 `server.properties` to the saves folder; edit it and restart to apply
 changes. `world` names the folder in `games` to load, and a new world is made
 there if it is missing. Operators may use commands when cheats are allowed.
@@ -132,8 +136,12 @@ A 64x64 `server-icon.png` beside `server.properties` is the server's icon;
 without one, the world's thumbnail is used.
 
 The server reads commands from its standard input: any chat command without
-the `/`, plus `save-all` and `stop`. Ctrl+C also saves and stops. The world
-is saved every `autosave-minutes`.
+the `/`, plus `save-all` and `stop`. Ctrl+C or SIGTERM also saves and stops,
+and with no input it keeps running, so it works as a service or in a
+container (publish the TCP port; finding games on the local network doesn't
+reach past Docker's own network). The world is saved every
+`autosave-minutes`. If it can't start, for example because its port is
+taken, it exits with code 1.
 
 ## Discord
 
@@ -329,7 +337,7 @@ python tools/package_pc.py
 
 packages the build for players as `build/LCEReborn-pc-<commit>.zip` on
 Windows or `build/LCEReborn-linux-<commit>.tar.gz` on Linux: the game, the
-launcher with its Qt libraries, `resources/`, a README and the license and
+dedicated server, the launcher with its Qt libraries, `resources/`, a README and the license and
 notices of everything in it. On Linux it also packs the same files as
 `build/LCEReborn-linux-<commit>.AppImage`, which starts the launcher; that
 needs `appimagetool` and the AppImage runtime, which the Docker image has

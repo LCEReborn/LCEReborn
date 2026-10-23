@@ -5,8 +5,8 @@
 
 Build the game and the launcher first (docs/pc-platform.md). On Windows this
 writes build/LCEReborn-pc-<commit>.zip, on Linux
-build/LCEReborn-linux-<commit>.tar.gz, holding the two programs, the Qt
-libraries the launcher uses, resources/, a README, the project's license and,
+build/LCEReborn-linux-<commit>.tar.gz, holding the game, the launcher, the
+dedicated server, the Qt libraries the launcher uses, resources/, a README, the project's license and,
 in third_party/, the notices and licenses of every library in the programs.
 On Linux it also writes the same files as build/LCEReborn-linux-<commit>.AppImage,
 which needs appimagetool and the AppImage runtime (tools/build/Dockerfile.linux
@@ -485,6 +485,21 @@ def requirements_text(glibc):
             "default.\n" % glibc)
 
 
+def server_text():
+    if LINUX:
+        start = ("Set up the game with the launcher first, then start it with --content-dir "
+                 "~/.local/share/LCEReborn/assets to use the content the launcher imported. The AppImage "
+                 "can't start it; use the tar.gz.")
+    else:
+        start = ("Set up the game with the launcher first, then start it from this folder, where it finds "
+                 "the content the launcher imported.")
+    text = ("%s plays a world for others with no window. %s It keeps its worlds, server.properties and "
+            "ops.json in saves in the folder it is started from; --save-dir picks another, and one apart "
+            "from your own saves is safest. Players join on TCP port 25570, and the server takes commands "
+            "typed into it. See docs/pc-platform.md in the source." % (PROGRAMS[2], start))
+    return "Dedicated server\n----------------\n\n%s\n\n" % textwrap.fill(text, 72, break_on_hyphens=False)
+
+
 def readme_text(source, glibc):
     readme = read(os.path.join(ROOT, "README.md"))
     disclaimers = block(readme, "## Disclaimers", "\n## ", os.path.join(ROOT, "README.md"))
@@ -503,6 +518,7 @@ def readme_text(source, glibc):
             "the first time, it asks for your own dumps of the base game and update\n"
             "688 and imports them into %s"
             "%s\n"
+            "%s"
             "Source and license\n"
             "------------------\n\n"
             "LCEReborn is free software under the GNU General Public License,\n"
@@ -511,7 +527,7 @@ def readme_text(source, glibc):
             "third_party/NOTICES.txt lists the libraries in it and their licenses.\n\n"
             "Disclaimers\n"
             "-----------\n\n"
-            "%s\n" % (title, "=" * len(title), build, PROGRAMS[1], folder, requirements_text(glibc),
+            "%s\n" % (title, "=" * len(title), build, PROGRAMS[1], folder, requirements_text(glibc), server_text(),
                       source["repository"], source["commit"], disclaimers))
 
 

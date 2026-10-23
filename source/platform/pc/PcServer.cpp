@@ -584,6 +584,13 @@ void LoadServerIcon()
     LOG_INFO(sLog, "Using server-icon.png as the server's icon");
 }
 
+void StopWithError()
+{
+    ShutdownManager::MainThreadHandleShutdown();
+    Log::Stop();
+    _Exit(1);
+}
+
 void TickMainThread()
 {
     gProfile->Tick();
@@ -629,7 +636,7 @@ int PcServerMain()
         if (initData == NULL)
         {
             LOG_FATAL(sLog, "The world %s could not be loaded: %s", properties.world.c_str(), error.c_str());
-            ShutdownAndExit();
+            StopWithError();
         }
         LOG_INFO(sLog, "Loading the world %s", properties.world.c_str());
     }
@@ -646,6 +653,11 @@ int PcServerMain()
     CGameNetworkManager::sInstance.SetMotd(properties.motd);
     CGameNetworkManager::sInstance.HostGame(0, true, !properties.lanVisible,
                                             static_cast<unsigned char>(initData->m_gameType), eMiniGameId_Any, 0, 0);
+    if (CGameNetworkManager::sInstance.GetListenPort() == 0)
+    {
+        LOG_FATAL(sLog, "Can't accept players on port %d. Choose another port in server.properties.", properties.port);
+        StopWithError();
+    }
 
     PcInstallStopSignals();
 
@@ -664,7 +676,7 @@ int PcServerMain()
             if (sHostResult < 0)
             {
                 LOG_FATAL(sLog, "The server could not start");
-                break;
+                StopWithError();
             }
             started = true;
             std::thread(ReadConsole).detach();

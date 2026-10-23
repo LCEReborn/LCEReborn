@@ -347,9 +347,13 @@ void IUIScene_StartGame::UpdateOnlineFocus(int focus)
     static const char* const kPreviewNodes[] = {"ComparisonPic", "ComparisonPicBG", "DefaultPack_Comparison",
                                                 "Pack_Comparison", "MinecraftIcon"};
     fuiRenderNode* root = m_movie->getRootNode();
+    fuiRenderNode* picture = m_texturePackComparison.getFuiRenderNode();
+    fuiRenderNode* panel = picture != NULL ? picture->getParent() : NULL;
     for (int index = 0; index < kPreviewCount; ++index)
     {
-        fuiRenderNode* node = FindDescendant(root, kPreviewNodes[index]);
+        fuiRenderNode* node = panel != NULL ? panel->findNode(kPreviewNodes[index]) : NULL;
+        if (node == NULL)
+            node = FindDescendant(root, kPreviewNodes[index]);
         if (node == NULL)
             continue;
         if (focused)
@@ -361,6 +365,15 @@ void IUIScene_StartGame::UpdateOnlineFocus(int focus)
         {
             node->setVisibility(m_previewShown[index]);
         }
+    }
+    fuiRenderNodeTimeline* siblings =
+        panel != NULL ? static_cast<fuiRenderNodeTimeline*>(panel->asTimeline()) : NULL;
+    for (int child = 0; siblings != NULL && child < siblings->getNumChildren(); ++child)
+    {
+        fuiRenderNode* node = siblings->getChildAt(child);
+        if (node != picture && node->getName()[0] == '\0' && node->asTimeline() == NULL
+            && node->getX() == picture->getX() && node->getY() == picture->getY())
+            node->setVisibility(!focused);
     }
     if (focused)
         RefreshOnlineSummary();

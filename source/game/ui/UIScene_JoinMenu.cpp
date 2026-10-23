@@ -36,6 +36,10 @@ std::wstring MotdHtml(const std::wstring& motd)
         const bool code = character == 0xA7 && index + 1 < motd.size();
         if ((code || character == L'\n') && !run.empty())
         {
+            for (size_t edge = 0; edge < run.size() && run[edge] == L' '; ++edge)
+                run[edge] = static_cast<wchar_t>(0xA0);
+            for (size_t edge = run.size(); edge > 0 && run[edge - 1] == L' '; --edge)
+                run[edge - 1] = static_cast<wchar_t>(0xA0);
             if (hexColour >= 0)
                 html += formatwstr(L"<font color=\"#%06x\">", hexColour) + escapeXML(run) + L"</font>";
             else

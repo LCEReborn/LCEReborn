@@ -1,7 +1,6 @@
 #include "game/core/StringConversion.hpp"
 
 #include <cstdlib>
-#include <cstring>
 #include <cwchar>
 #include <iomanip>
 #include <sstream>
@@ -14,36 +13,67 @@ static void Utf8ToWideChar(const char* source, wchar_t* destination, unsigned in
     wchar_t* output = destination;
     for (;;)
     {
-        unsigned int lead = static_cast<unsigned char>(*source);
+        const unsigned int lead = static_cast<unsigned char>(*source);
         if (lead == 0 || left == 0)
         {
             *output = 0;
             return;
         }
+        int extra;
+        unsigned int code;
         if (lead < 0x80)
         {
-            *output++ = static_cast<wchar_t>(lead);
+            extra = 0;
+            code = lead;
         }
-        else if (lead - 0xc2 < 0x1e)
+        else if (lead >= 0xc2 && lead < 0xe0)
         {
-            unsigned int trail = static_cast<unsigned char>(source[1]);
-            *output++ = static_cast<wchar_t>(lead * 0x40 + trail - 0x3080);
-            ++source;
+            extra = 1;
+            code = lead & 0x1f;
         }
-        else if (lead - 0xe0 < 0x10)
+        else if (lead >= 0xe0 && lead < 0xf0)
         {
-            unsigned int second = static_cast<unsigned char>(source[1]);
-            unsigned int third = static_cast<unsigned char>(source[2]);
-            *output++ = static_cast<wchar_t>(lead * 0x1000 + second * 0x40 + third - 0x2080);
-            source += 2;
+            extra = 2;
+            code = lead & 0x0f;
+        }
+        else if (lead >= 0xf0 && lead < 0xf5)
+        {
+            extra = 3;
+            code = lead & 0x07;
         }
         else
         {
             *destination = 0;
             return;
         }
-        --left;
-        ++source;
+        for (int index = 1; index <= extra; ++index)
+        {
+            const unsigned int trail = static_cast<unsigned char>(source[index]);
+            if ((trail & 0xc0) != 0x80)
+            {
+                *destination = 0;
+                return;
+            }
+            code = (code << 6) | (trail & 0x3f);
+        }
+        if (code >= 0x10000 && sizeof(wchar_t) == 2)
+        {
+            if (left < 2)
+            {
+                *output = 0;
+                return;
+            }
+            code -= 0x10000;
+            *output++ = static_cast<wchar_t>(0xd800 + (code >> 10));
+            *output++ = static_cast<wchar_t>(0xdc00 + (code & 0x3ff));
+            left -= 2;
+        }
+        else
+        {
+            *output++ = static_cast<wchar_t>(code);
+            --left;
+        }
+        source += extra + 1;
     }
 }
 
@@ -112,10 +142,44 @@ std::wstring convUtf8ToWstring(const char* text)
 
 std::string convWstringToString(const std::wstring& text)
 {
-    char* buffer = new char[text.size() + 1];
     std::string result;
-    result.assign(buffer, std::strlen(buffer));
-    delete[] buffer;
+    result.reserve(text.size());
+    for (size_t index = 0; index < text.size(); ++index)
+    {
+        unsigned int code = static_cast<unsigned int>(text[index]);
+        if (code >= 0xd800 && code < 0xdc00 && index + 1 < text.size()
+            && static_cast<unsigned int>(text[index + 1]) >= 0xdc00
+            && static_cast<unsigned int>(text[index + 1]) < 0xe000)
+        {
+            code = 0x10000 + ((code - 0xd800) << 10) + (static_cast<unsigned int>(text[++index]) - 0xdc00);
+        }
+        else if ((code >= 0xd800 && code < 0xe000) || code > 0x10ffff)
+        {
+            code = 0xfffd;
+        }
+        if (code < 0x80)
+        {
+            result += static_cast<char>(code);
+        }
+        else if (code < 0x800)
+        {
+            result += static_cast<char>(0xc0 | (code >> 6));
+            result += static_cast<char>(0x80 | (code & 0x3f));
+        }
+        else if (code < 0x10000)
+        {
+            result += static_cast<char>(0xe0 | (code >> 12));
+            result += static_cast<char>(0x80 | ((code >> 6) & 0x3f));
+            result += static_cast<char>(0x80 | (code & 0x3f));
+        }
+        else
+        {
+            result += static_cast<char>(0xf0 | (code >> 18));
+            result += static_cast<char>(0x80 | ((code >> 12) & 0x3f));
+            result += static_cast<char>(0x80 | ((code >> 6) & 0x3f));
+            result += static_cast<char>(0x80 | (code & 0x3f));
+        }
+    }
     return result;
 }
 

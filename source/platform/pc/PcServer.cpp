@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <map>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -50,6 +51,7 @@
 #include "platform/FileApi.hpp"
 #include "platform/pc/Log.hpp"
 #include "platform/pc/PcCrashReport.hpp"
+#include "platform/pc/PcJson.hpp"
 #include "platform/pc/PcLaunchOptions.hpp"
 #include "platform/pc/PcPaths.hpp"
 #include "platform/pc/PcStartWorld.hpp"
@@ -69,7 +71,8 @@ const char* const kDefaultProperties =
     "# world: the folder in saves/games to load; a new world is made there if it is missing\n"
     "# gamemode (survival, creative, adventure), difficulty (peaceful, easy, normal, hard),\n"
     "# world-size (classic, small, medium, large), level-seed, allow-cheats and pvp apply to new worlds\n"
-    "# ops: player names, separated by commas, that may use commands while cheats are allowed\n"
+    "# Operators may use commands while cheats are allowed. They are kept by UUID in ops.json beside this file;\n"
+    "# add and remove them with the op and deop commands.\n"
     "# motd: shown under the server in the Join tab, as on Java servers: \\u00A7 or & codes, &#RRGGBB colours,\n"
     "# \\n for a second line, or a JSON text component. A 64x64 server-icon.png beside this file is its icon.\n"
     "server-name=LCEReborn Server\n"
@@ -82,7 +85,6 @@ const char* const kDefaultProperties =
     "world-size=classic\n"
     "allow-cheats=false\n"
     "pvp=true\n"
-    "ops=\n"
     "view-distance=10\n"
     "simulation-distance=10\n"
     "autosave-minutes=5\n"
@@ -100,7 +102,6 @@ struct ServerProperties
     int worldSize = 0;
     bool allowCheats = false;
     bool pvp = true;
-    std::vector<std::wstring> ops;
     int viewDistance = 10;
     int simulationDistance = 10;
     int autosaveMinutes = 5;
@@ -282,18 +283,10 @@ void ApplyProperty(ServerProperties& properties, const std::string& key, const s
         valid = ParseBool(value, properties.pvp);
     else if (key == "ops")
     {
-        properties.ops.clear();
-        size_t start = 0;
-        while (start <= value.size())
-        {
-            size_t comma = value.find(',', start);
-            std::string name = Trim(value.substr(start, comma == std::string::npos ? std::string::npos : comma - start));
-            if (!name.empty())
-                properties.ops.push_back(Widen(name));
-            if (comma == std::string::npos)
-                break;
-            start = comma + 1;
-        }
+        if (!value.empty())
+            LOG_WARN(sLog, "server.properties: ops is no longer read; operators are kept by UUID in ops.json, set "
+                           "with the op command");
+        return;
     }
     else if (key == "view-distance")
         valid = ParseInt(value, VideoSettings::RENDER_DISTANCE_MIN, VideoSettings::RENDER_DISTANCE_MAX,
@@ -350,6 +343,73 @@ ServerProperties LoadProperties()
         ApplyProperty(properties, Lower(Trim(line.substr(0, equals))), Trim(line.substr(equals + 1)));
     }
     return properties;
+}
+
+std::filesystem::path OperatorsPath()
+{
+    return std::filesystem::path(PcSaveRoot()) / "ops.json";
+}
+
+std::vector<ServerOperator> LoadOperators()
+{
+    std::vector<ServerOperator> operators;
+    const std::filesystem::path path = OperatorsPath();
+    std::ifstream file(path, std::ios::binary);
+    if (!file)
+        return operators;
+    const std::string source((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    JsonValue root;
+    if (!PcJsonParse(source, root) || root.type != JsonValue::Array)
+    {
+        LOG_WARN(sLog, "%s is not a list of operators, so there are none", path.string().c_str());
+        return operators;
+    }
+    for (std::vector<JsonValue>::const_iterator it = root.items.begin(); it != root.items.end(); ++it)
+    {
+        std::map<std::wstring, JsonValue>::const_iterator uuid = it->members.find(L"uuid");
+        std::map<std::wstring, JsonValue>::const_iterator name = it->members.find(L"name");
+        ServerOperator entry;
+        if (name != it->members.end() && name->second.type == JsonValue::String)
+            entry.name = name->second.text;
+        const bool hasUuid =
+            uuid != it->members.end() && uuid->second.type == JsonValue::String && !uuid->second.text.empty();
+        if (it->type != JsonValue::Object || (hasUuid ? !PlayerList::ParsePlayerId(uuid->second.text, &entry.id)
+                                                      : entry.name.empty()))
+        {
+            LOG_WARN(sLog, "ops.json: skipping an entry without a valid uuid or name");
+            continue;
+        }
+        operators.push_back(entry);
+    }
+    return operators;
+}
+
+void SaveOperators(const std::vector<ServerOperator>& operators)
+{
+    std::string text = "[";
+    for (std::vector<ServerOperator>::const_iterator it = operators.begin(); it != operators.end(); ++it)
+    {
+        text += it == operators.begin() ? "\n" : ",\n";
+        text += "  {\n    \"uuid\": " + PcJsonQuote(it->id) + ",\n    \"name\": " + PcJsonQuote(it->name) + "\n  }";
+    }
+    text += operators.empty() ? "]\n" : "\n]\n";
+
+    const std::filesystem::path path = OperatorsPath();
+    std::filesystem::path temporary = path;
+    temporary += ".tmp";
+    {
+        std::ofstream file(temporary, std::ios::binary | std::ios::trunc);
+        file << text;
+        if (!file)
+        {
+            LOG_WARN(sLog, "Could not save the operators to %s", path.string().c_str());
+            return;
+        }
+    }
+    std::error_code error;
+    std::filesystem::rename(temporary, path, error);
+    if (error)
+        LOG_WARN(sLog, "Could not save the operators to %s: %s", path.string().c_str(), error.message().c_str());
 }
 
 long long SeedFromText(const std::string& text)
@@ -624,7 +684,8 @@ int PcServerMain()
     CMinecraftApp::SetDedicatedServer(true);
     VideoSettings::SetRenderDistance(properties.viewDistance);
     VideoSettings::SetSimulationDistance(properties.simulationDistance);
-    PlayerList::SetOperators(properties.ops);
+    PlayerList::SetOperators(LoadOperators());
+    PlayerList::SetOperatorsChanged(SaveOperators);
 
     InitialiseGame(Widen(properties.serverName));
 

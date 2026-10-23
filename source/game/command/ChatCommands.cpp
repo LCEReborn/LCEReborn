@@ -47,6 +47,7 @@
 #include "game/network/DisconnectPacket.hpp"
 #include "game/network/GameCommandPacket.hpp"
 #include "game/network/INetworkPlayer.hpp"
+#include "game/network/PlayerInfoPacket.hpp"
 #include "game/network/ServerGamePacketListenerImpl.hpp"
 #include "game/server/MinecraftServer.hpp"
 #include "game/server/ServerLevel.hpp"
@@ -1335,6 +1336,84 @@ bool Kick(const CommandSource& source, const Words& words)
     return true;
 }
 
+bool SetOperator(const CommandSource& source, const Words& words, bool op)
+{
+    if (words.size() != 2)
+        return false;
+    PlayerList* players = gMinecraftServer->getPlayers();
+    const bool dedicated = CMinecraftApp::IsDedicatedServer();
+    PlayerPtr target = players->getPlayerByNameIgnoringCase(words[1]);
+    if (!target && !dedicated)
+    {
+        Fail(source, L"There is no player called " + words[1] + L".");
+        return true;
+    }
+    std::wstring id;
+    std::wstring name;
+    if (target)
+    {
+        INetworkPlayer* network = target->mConnection ? target->mConnection->getNetworkPlayer() : NULL;
+        if (network != NULL && network->IsHost())
+        {
+            Fail(source, L"The host is always an operator.");
+            return true;
+        }
+        id = target->getXuid().toString();
+        name = target->getName();
+    }
+    else if (PlayerList::ParsePlayerId(words[1], &id))
+    {
+        std::vector<PlayerPtr>* online = players->getPlayers();
+        for (size_t index = 0; index < online->size() && !target; ++index)
+        {
+            if ((*online)[index]->getXuid().toString() == id)
+                target = (*online)[index];
+        }
+        if (target)
+            name = target->getName();
+    }
+    else
+    {
+        ServerOperator known;
+        if (!op && PlayerList::FindOperatorByName(words[1], &known))
+            id = known.id;
+        name = op || known.name.empty() ? words[1] : known.name;
+    }
+
+    bool changed = false;
+    if (dedicated)
+        changed = op ? PlayerList::AddOperator(id, name) : PlayerList::RemoveOperator(id, name);
+    if (target && target->isModerator() != op)
+    {
+        target->setPlayerGamePrivilege(Player::ePlayerGamePrivilege_Op, op ? 1 : 0);
+        players->broadcastAll(boost::shared_ptr<Packet>(new PlayerInfoPacket(target)));
+        changed = true;
+    }
+    if (!changed)
+    {
+        Fail(source, op ? L"Nothing changed. The player already is an operator"
+                        : L"Nothing changed. The player is not an operator");
+        return true;
+    }
+    const std::wstring shown = name.empty() ? id : name;
+    Tell(source, op ? L"Made " + shown + L" a server operator" : L"Made " + shown + L" no longer a server operator");
+    if (op && id.empty())
+        Tell(source, L"No player called " + name + L" is online, so the first player with that name to join is "
+                     L"made the operator and kept by their UUID. Anyone can join with any name, so give the "
+                     L"player's UUID instead if you know it.");
+    return true;
+}
+
+bool Op(const CommandSource& source, const Words& words)
+{
+    return SetOperator(source, words, true);
+}
+
+bool Deop(const CommandSource& source, const Words& words)
+{
+    return SetOperator(source, words, false);
+}
+
 const Entry kEntries[] = {
     {L"help", L"[page|command]", L"command", true, false, Help},
     {L"?", L"[page|command]", L"command", true, true, Help},
@@ -1373,6 +1452,8 @@ const Entry kEntries[] = {
     {L"w", L"<player> <message>", L"targets text", true, true, Message},
     {L"list", L"", L"", true, false, List},
     {L"kick", L"<player> [reason]", L"player text", false, false, Kick},
+    {L"op", L"<player|uuid>", L"player", false, false, Op},
+    {L"deop", L"<player|uuid>", L"player", false, false, Deop},
 };
 
 const size_t kEntryCount = sizeof(kEntries) / sizeof(kEntries[0]);

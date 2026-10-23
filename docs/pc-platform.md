@@ -117,8 +117,13 @@ Windows and Linux. It needs the same content folder as the game and takes
 `--content-dir`, `--save-dir` and `--log-dir`. The first start writes
 `server.properties` to the saves folder; edit it and restart to apply
 changes. `world` names the folder in `games` to load, and a new world is made
-there if it is missing. Players named in `ops` may use commands when cheats
-are allowed.
+there if it is missing. Operators may use commands when cheats are allowed.
+They are kept by UUID in `ops.json` beside `server.properties`, and `op` and
+`deop` change them while the server runs. `op` takes a player's UUID, which
+the server logs when they join, or a name. A UUID is better when you know
+it: a name of a player who isn't online is held until the first player with
+that name joins, who is then kept by their UUID, and anyone can join with
+any name.
 
 `motd` is the message under the server in the Join tab. It takes what Java
 servers take: `§`, `\u00A7` or `&` formatting codes, `&#RRGGBB` or
@@ -175,7 +180,7 @@ They follow Java 1.12, with `/execute`, `/xp` and coordinates as in 1.13:
   `/setworldspawn`, `/toggledownfall`, `/seed`, `/summon`, `/setblock` and
   `/fill` (up to 32768 blocks).
 - **Chat and server:** `/say`, `/me`, `/msg` (also `/tell` and `/w`),
-  `/list` and `/kick`.
+  `/list`, `/kick`, `/op` and `/deop`.
 - **Execute:** `/execute` runs a command as or at other entities: `as`,
   `at`, `positioned` (or `positioned as`), `if entity`, `unless entity` and
   `run`, such as
@@ -190,6 +195,8 @@ They follow Java 1.12, with `/execute`, `/xp` and coordinates as in 1.13:
 game's own permission rule: the host and moderators can use them when the
 world has Host Privileges on, and anyone else is told they don't have
 permission. `/kick` can't remove the host or players on the host's console.
+`/op` and `/deop` make a player a moderator or not; the host always is one.
+In a hosted game they take a player who is online.
 
 Where a command takes targets, a player name or a selector works
 (`TargetSelector`): `@p` nearest player, `@a` all players, `@r` a random

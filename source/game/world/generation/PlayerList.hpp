@@ -36,6 +36,12 @@ class ClientboundLoginPacket;
 
 template <typename T> class arrayWithLength;
 
+struct ServerOperator
+{
+    std::wstring id;
+    std::wstring name;
+};
+
 class PlayerList
 {
 public:
@@ -44,8 +50,14 @@ public:
 
     bool canReceiveAllPackets(const boost::shared_ptr<ServerPlayer>& player);
     bool isOp(boost::shared_ptr<ServerPlayer> player);
-    static void SetOperators(const std::vector<std::wstring>& names);
-    static bool IsOperator(const std::wstring& name);
+    static bool ParsePlayerId(const std::wstring& text, std::wstring* id);
+    static void SetOperators(const std::vector<ServerOperator>& operators);
+    static bool IsOperator(const PlayerUID& uid);
+    static bool FindOperatorByName(const std::wstring& name, ServerOperator* found);
+    static bool AddOperator(const std::wstring& id, const std::wstring& name);
+    static bool RemoveOperator(const std::wstring& id, const std::wstring& name);
+    static bool ResolveOperator(const PlayerUID& uid, const std::wstring& name);
+    static void SetOperatorsChanged(void (*changed)(const std::vector<ServerOperator>& operators));
     int getViewDistance();
     int getSimulationDistance();
     boost::shared_ptr<ServerPlayer> findAlivePlayerOnSystem(boost::shared_ptr<ServerPlayer> player);

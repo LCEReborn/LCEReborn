@@ -115,7 +115,13 @@ void SetWindowIcon()
     }
     SDL_Surface* icon = SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGBA32, pixels, width * 4);
     if (icon == NULL || !SDL_SetWindowIcon(sWindow, icon))
-        LOG_WARN(sLog, "The window icon could not be set: %s", SDL_GetError());
+    {
+        const char* driver = SDL_GetCurrentVideoDriver();
+        if (icon != NULL && driver != NULL && SDL_strcmp(driver, "wayland") == 0)
+            LOG_DEBUG(sLog, "Compositor window icons are unavailable: %s", SDL_GetError());
+        else
+            LOG_WARN(sLog, "The window icon could not be set: %s", SDL_GetError());
+    }
     SDL_DestroySurface(icon);
     stbi_image_free(pixels);
 }
@@ -123,6 +129,8 @@ void SetWindowIcon()
 
 bool PcWindowCreate(int width, int height)
 {
+    SDL_SetAppMetadata("LCEReborn", LCE_BUILD_COMMIT, "org.lcereborn.LCEReborn");
+    SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_TYPE_STRING, "game");
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS))
     {
         LOG_FATAL(sLog, "SDL_Init failed: %s", SDL_GetError());

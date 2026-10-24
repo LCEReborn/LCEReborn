@@ -352,7 +352,25 @@ dedicated server, the launcher with its Qt libraries, `resources/`, a README and
 notices of everything in it. On Linux it also packs the same files as
 `build/LCEReborn-linux-<commit>.AppImage`, which starts the launcher; that
 needs `appimagetool` and the AppImage runtime, which the Docker image has
-(`--no-appimage` skips it). It copies only those files, never the game
+(`--no-appimage` skips it).
+
+On Linux the launcher and the game share the app ID `org.lcereborn.LCEReborn`
+(their Wayland app ID and X11 window class), so desktops show both windows
+under the desktop entry `resources/linux/org.lcereborn.LCEReborn.desktop`,
+with the launcher's icon, where the compositor can't take a window's own icon.
+The AppImage has the entry at its top for AppImage integration. The tar.gz
+has it in `share/` with `install-desktop-entry`, which copies it and the
+icon into the player's `~/.local/share` with `Exec` naming the launcher in
+that folder (`--remove` takes them out). A package of your own can install
+the entry under that name with `Exec` set to the launcher.
+
+`python tools/check_linux_desktop.py` checks the tar.gz's installer with a
+stand-in launcher, including launching from paths with spaces and escaped
+characters, moving the folder, and removing the entry. It needs
+`desktop-file-validate` and GLib's `gio`; all installed files stay in a
+temporary data directory.
+
+The package copies only those files, never the game
 files, saves or logs in `build/pc`, and refuses a tree with uncommitted
 changes, since the package names its commit as its source. License
 texts not found in the dependencies themselves are kept in

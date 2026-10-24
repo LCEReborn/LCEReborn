@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=LCEReborn
+Comment=Minecraft: Wii U Edition from your own copy of the game
+Exec=LCERebornLauncher
+Icon=org.lcereborn.LCEReborn
+Terminal=false
+Categories=Game;
+Keywords=Minecraft;
+StartupWMClass=org.lcereborn.LCEReborn

@@ -129,6 +129,7 @@ public:
     static ShaderPipeline& Get();
 
     void RequestReload() { mReloadRequested = true; }
+    bool ReloadRequested() const { return mReloadRequested; }
     void Shutdown();
     bool Enabled() const { return mLoaded; }
     const std::vector<std::string>& Errors() const { return mErrors; }

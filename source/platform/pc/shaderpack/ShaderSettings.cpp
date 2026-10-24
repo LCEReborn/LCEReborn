@@ -18,6 +18,44 @@ const float ShaderSettings::kHandDepthValues[3] = {0.0625f, 0.125f, 0.25f};
 
 namespace
 {
+const int kAntialiasingLevels[3] = {0, 2, 4};
+const ShaderSettings::Tristate kTristates[3] = {ShaderSettings::Default, ShaderSettings::On, ShaderSettings::Off};
+const char* const kAntialiasingLabels[3] = {"OFF", "FXAA 2x", "FXAA 4x"};
+const char* const kSwitchLabels[2] = {"OFF", "ON"};
+const char* const kQualityLabels[5] = {"0.5x", "0.7x", "1x", "1.4x", "2x"};
+const char* const kHandDepthLabels[3] = {"0.5x", "1x", "2x"};
+const char* const kTristateLabels[3] = {"Default", "ON", "OFF"};
+const ShaderSettings::ChoiceInfo kChoices[ShaderSettings::Choice_Count] = {
+    {"Antialiasing", "MC_FXAA_LEVEL", true, 3, kAntialiasingLabels},
+    {"Normal Map", "MC_NORMAL_MAP", false, 2, kSwitchLabels},
+    {"Specular Map", "MC_SPECULAR_MAP", false, 2, kSwitchLabels},
+    {"Render Quality", "MC_RENDER_QUALITY", true, 5, kQualityLabels},
+    {"Shadow Quality", "MC_SHADOW_QUALITY", true, 5, kQualityLabels},
+    {"Hand Depth", "MC_HAND_DEPTH", true, 3, kHandDepthLabels},
+    {"Old Hand Light", nullptr, false, 3, kTristateLabels},
+    {"Old Lighting", nullptr, false, 3, kTristateLabels}};
+
+template <size_t Count> int NearestIndex(const float (&values)[Count], float value)
+{
+    int best = 0;
+    for (size_t index = 1; index < Count; ++index)
+    {
+        if (std::fabs(values[index] - value) < std::fabs(values[best] - value))
+            best = static_cast<int>(index);
+    }
+    return best;
+}
+
+int TristateIndex(ShaderSettings::Tristate value)
+{
+    for (int index = 0; index < 3; ++index)
+    {
+        if (kTristates[index] == value)
+            return index;
+    }
+    return 0;
+}
+
 std::string Lower(std::string text)
 {
     std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
@@ -85,6 +123,8 @@ void ShaderSettings::Load(const std::filesystem::path& path)
         const std::string& value = entry.second;
         if (key == "shaderPack")
             shaderPack = value.empty() ? std::string(kPackOff) : value;
+        else if (key == "enableShaders")
+            enableShaders = value != "false";
         else if (key == "antialiasingLevel")
         {
             int level = std::atoi(value.c_str());
@@ -118,6 +158,7 @@ bool ShaderSettings::Save(const std::filesystem::path& path) const
         if (!file)
             return false;
         file << "shaderPack=" << shaderPack << "\n";
+        file << "enableShaders=" << (enableShaders ? "true" : "false") << "\n";
         file << "antialiasingLevel=" << antialiasingLevel << "\n";
         file << "normalMapEnabled=" << (normalMapEnabled ? "true" : "false") << "\n";
         file << "specularMapEnabled=" << (specularMapEnabled ? "true" : "false") << "\n";
@@ -131,6 +172,80 @@ bool ShaderSettings::Save(const std::filesystem::path& path) const
     }
     std::filesystem::rename(temporary, path, error);
     return !error;
+}
+
+const ShaderSettings::ChoiceInfo& ShaderSettings::Describe(int choice)
+{
+    return kChoices[choice >= 0 && choice < Choice_Count ? choice : 0];
+}
+
+int ShaderSettings::GetChoice(int choice) const
+{
+    switch (choice)
+    {
+    case Choice_Antialiasing:
+        return antialiasingLevel >= 4 ? 2 : antialiasingLevel >= 2 ? 1 : 0;
+    case Choice_NormalMap:
+        return normalMapEnabled ? 1 : 0;
+    case Choice_SpecularMap:
+        return specularMapEnabled ? 1 : 0;
+    case Choice_RenderQuality:
+        return NearestIndex(kQualityValues, renderResMul);
+    case Choice_ShadowQuality:
+        return NearestIndex(kQualityValues, shadowResMul);
+    case Choice_HandDepth:
+        return NearestIndex(kHandDepthValues, handDepthMul);
+    case Choice_OldHandLight:
+        return TristateIndex(oldHandLight);
+    case Choice_OldLighting:
+        return TristateIndex(oldLighting);
+    default:
+        return 0;
+    }
+}
+
+void ShaderSettings::SetChoice(int choice, int index)
+{
+    if (index < 0 || index >= Describe(choice).count)
+        return;
+    switch (choice)
+    {
+    case Choice_Antialiasing:
+        antialiasingLevel = kAntialiasingLevels[index];
+        break;
+    case Choice_NormalMap:
+        normalMapEnabled = index != 0;
+        break;
+    case Choice_SpecularMap:
+        specularMapEnabled = index != 0;
+        break;
+    case Choice_RenderQuality:
+        renderResMul = kQualityValues[index];
+        break;
+    case Choice_ShadowQuality:
+        shadowResMul = kQualityValues[index];
+        break;
+    case Choice_HandDepth:
+        handDepthMul = kHandDepthValues[index];
+        break;
+    case Choice_OldHandLight:
+        oldHandLight = kTristates[index];
+        break;
+    case Choice_OldLighting:
+        oldLighting = kTristates[index];
+        break;
+    default:
+        break;
+    }
+}
+
+bool ShaderSettings::operator==(const ShaderSettings& other) const
+{
+    return shaderPack == other.shaderPack && enableShaders == other.enableShaders
+           && antialiasingLevel == other.antialiasingLevel && normalMapEnabled == other.normalMapEnabled
+           && specularMapEnabled == other.specularMapEnabled && renderResMul == other.renderResMul
+           && shadowResMul == other.shadowResMul && handDepthMul == other.handDepthMul
+           && oldHandLight == other.oldHandLight && oldLighting == other.oldLighting;
 }
 
 ShaderMacros ShaderStandardMacros(const ShaderSettings& settings, int glVersion, int glslVersion,

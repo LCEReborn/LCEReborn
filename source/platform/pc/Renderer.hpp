@@ -156,6 +156,7 @@ public:
     void SetLayout(ELayout layout);
     ELayout GetLayout() const { return mLayout; }
     float GetScreenAspect();
+    float GetPixelScale();
     void GetInterfaceArea(float* left, float* top, float* width, float* height);
 
     void ShaderSetQuadData(const unsigned short* data);

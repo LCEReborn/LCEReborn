@@ -1738,6 +1738,16 @@ unsigned int CInput::ConsumeMenuClicks(int pad)
     return keyboardMouse.ConsumeClicks();
 }
 
+bool CInput::MenuQuickMoveHeld(int pad)
+{
+    return IsKeyboardPad(pad) && keyboardMouse.QuickMoveHeld();
+}
+
+bool CInput::MenuPointerHeld(int pad)
+{
+    return IsKeyboardPad(pad) && keyboardMouse.PrimaryHeld();
+}
+
 bool CInput::GetMenuPointer(int pad, float* x, float* y)
 {
     return IsKeyboardPad(pad) && MenuPointerPosition(x, y);

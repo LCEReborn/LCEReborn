@@ -450,6 +450,18 @@ settings and opens the pack's own option screens. The choice and global
 settings are saved to `optionsshaders.txt`, and each pack's options to
 `shaderpacks/<pack>.txt`, the same files OptiFine uses.
 
+The menu has three tabs (LB/RB, Q/R on the keyboard). Shader Packs picks
+the pack or turns shaders off; Shader Pack Settings shows the pack's own
+option pages from `shaders.properties`, with Import, Export and Reset; and
+Shader Settings holds the settings that apply to every pack. Shader packs
+or settings files dropped on the window are added or imported.
+
+Changes wait for Apply (X) or Done. Cancel throws them away, and B (Esc)
+asks first when it would close the menu with changes not applied. Y puts
+the highlighted option back to its default. In a world, Hide Menu (F1, or
+the right stick) shows the world as the pack draws it. Shaders are drawn
+only while one player is on screen.
+
 The pack is loaded and run by `platform/pc/shaderpack`; the game reaches it
 through `game/client/render/ShaderPackBridge`. Packs see the 1.12 block,
 item and entity ids from their `block.properties`, `item.properties` and

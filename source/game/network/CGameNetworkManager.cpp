@@ -1556,12 +1556,15 @@ void CGameNetworkManager::WriteStats(INetworkPlayer* player)
 {
     Minecraft::GetInstance()->forceStatsSave(player->GetUserIndex());
 }
-void CGameNetworkManager::AddLocalPlayerFailed(int userIndex, bool full)
+void CGameNetworkManager::AddLocalPlayerFailed(int userIndex, int reason)
 {
     Minecraft* minecraft = Minecraft::GetInstance();
     minecraft->mConnectionFailed[userIndex] = true;
-    minecraft->mDisconnectReasons[userIndex] = full ? DisconnectPacket::eDisconnectReason_GameFull
-                                                    : DisconnectPacket::eDisconnectReason_Banned;
+    if (reason == DisconnectPacket::eDisconnectReason_GameFull
+        || reason == DisconnectPacket::eDisconnectReason_NameInUse)
+        minecraft->mDisconnectReasons[userIndex] = static_cast<DisconnectPacket::eDisconnectReason>(reason);
+    else
+        minecraft->mDisconnectReasons[userIndex] = DisconnectPacket::eDisconnectReason_Banned;
 }
 int CGameNetworkManager::GetPrimaryPad()
 {

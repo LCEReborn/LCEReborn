@@ -145,7 +145,7 @@ public:
     void PlayerLeaving(INetworkPlayer* player);
     void HostChanged();
     void WriteStats(INetworkPlayer* player);
-    void AddLocalPlayerFailed(int userIndex, bool error);
+    void AddLocalPlayerFailed(int userIndex, int reason);
     int GetPrimaryPad();
     int GetLockedProfile();
     void HandleDisconnect(bool error);

@@ -1,5 +1,6 @@
 #include "game/ui/UIScene_ConnectingProgress.hpp"
 #include "game/core/StringIds.hpp"
+#include "game/core/ExtraStrings.hpp"
 
 #include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/core/CMinecraftApp.hpp"
@@ -255,6 +256,9 @@ void UIScene_ConnectingProgress::handleTimerComplete(int)
         break;
     case DisconnectPacket::eDisconnectReason_MiiInUse:
         message = STRING_MII_ALREADY_IN_USE;
+        break;
+    case DisconnectPacket::eDisconnectReason_NameInUse:
+        message = IDS_LCE_DISCONNECTED_NAME_IN_USE;
         break;
     case DisconnectPacket::eDisconnectReason_CannotJoinGame:
         message = STRING_CANNOT_JOIN_GAME;

@@ -48,7 +48,8 @@ public:
         eDisconnectReason_MiiInUse,
         eDisconnectReason_CannotJoinGame,
         eDisconnectReason_NoSuitableGame,
-        eDisconnectReason_MissingPack
+        eDisconnectReason_MissingPack,
+        eDisconnectReason_NameInUse
     };
 
     DisconnectPacket();

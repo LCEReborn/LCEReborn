@@ -509,6 +509,10 @@ void UIScene_PauseMenu::_ExitWorld(void* context)
                     errorMessage = STRING_MII_ALREADY_IN_USE;
                     errorTitle = static_cast<int>(IDS_CANTJOIN_TITLE);
                     break;
+                case DisconnectPacket::eDisconnectReason_NameInUse:
+                    errorMessage = IDS_LCE_DISCONNECTED_NAME_IN_USE;
+                    errorTitle = static_cast<int>(IDS_CANTJOIN_TITLE);
+                    break;
                 case DisconnectPacket::eDisconnectReason_CannotJoinGame:
                     errorMessage = static_cast<int>(STRING_CANNOT_JOIN_GAME);
                     errorTitle = static_cast<int>(IDS_CANTJOIN_TITLE);
@@ -578,6 +582,10 @@ void UIScene_PauseMenu::_ExitWorld(void* context)
             break;
         case DisconnectPacket::eDisconnectReason_MiiInUse:
             errorMessage = STRING_MII_ALREADY_IN_USE;
+            break;
+        case DisconnectPacket::eDisconnectReason_NameInUse:
+            errorMessage = IDS_LCE_DISCONNECTED_NAME_IN_USE;
+            errorTitle = static_cast<int>(IDS_CANTJOIN_TITLE);
             break;
         case DisconnectPacket::eDisconnectReason_CannotJoinGame:
             errorMessage = static_cast<int>(STRING_CANNOT_JOIN_GAME);

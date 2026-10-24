@@ -2,6 +2,7 @@
 
 #include <limits.h>
 #include <string.h>
+#include <wctype.h>
 
 #include "game/core/CMinecraftApp.hpp"
 #include "game/core/CConsoleMinecraftApp.hpp"
@@ -32,6 +33,16 @@ const int64_t cUnjoinedTimeoutMs = 10000;
 const int64_t cQueryTimeoutMs = 6000;
 const int64_t cServerProbeIntervalMs = 5000;
 const int64_t cBeaconRefreshMs = 1000;
+
+bool SameName(const std::wstring& left, const std::wstring& right)
+{
+    if (left.size() != right.size())
+        return false;
+    for (unsigned int index = 0; index < left.size(); ++index)
+        if (towlower(left[index]) != towlower(right[index]))
+            return false;
+    return true;
+}
 
 std::string Narrow(const std::wstring& text)
 {
@@ -1871,9 +1882,18 @@ void CPlatformNetworkManagerLan::HostHandleJoin(lcenet::Link* link, const std::v
     else if (m_roomPlayers.size() + joiners.size() > CGameNetworkManager::sInstance.GetMaxPlayers())
         reason = DisconnectPacket::eDisconnectReason_GameFull;
     for (unsigned int index = 0; index < joiners.size() && reason == 0; ++index)
-        for (unsigned int player = 0; player < m_roomPlayers.size(); ++player)
+    {
+        for (unsigned int player = 0; player < m_roomPlayers.size() && reason == 0; ++player)
+        {
             if (m_roomPlayers[player]->GetUID() == joiners[index].uid)
                 reason = DisconnectPacket::eDisconnectReason_MiiInUse;
+            else if (SameName(m_roomPlayers[player]->GetOnlineName(), joiners[index].onlineName))
+                reason = DisconnectPacket::eDisconnectReason_NameInUse;
+        }
+        for (unsigned int other = 0; other < index && reason == 0; ++other)
+            if (SameName(joiners[other].onlineName, joiners[index].onlineName))
+                reason = DisconnectPacket::eDisconnectReason_NameInUse;
+    }
 
     if (reason != 0)
     {
@@ -2056,8 +2076,7 @@ void CPlatformNetworkManagerLan::ClientHandleJoinFailed(const std::vector<unsign
         if ((mask & (1 << userIndex)) == 0)
             continue;
         m_joinMask &= ~(1 << userIndex);
-        CGameNetworkManager::sInstance.AddLocalPlayerFailed(userIndex,
-                                                            reason == DisconnectPacket::eDisconnectReason_GameFull);
+        CGameNetworkManager::sInstance.AddLocalPlayerFailed(userIndex, reason);
     }
 }
 

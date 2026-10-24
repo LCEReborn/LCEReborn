@@ -111,6 +111,8 @@ const wchar_t* ExtraString(int id)
         return L"Open";
     case IDS_LCE_SHADER_SWITCH_TAB:
         return L"Switch Tab";
+    case IDS_LCE_DISCONNECTED_NAME_IN_USE:
+        return L"Someone with your name is already playing in this game. Change your username to join.";
     default:
         return NULL;
     }

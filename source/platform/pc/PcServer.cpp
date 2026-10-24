@@ -75,6 +75,7 @@ const char* const kDefaultProperties =
     "# world: the folder in saves/games to load; a new world is made there if it is missing\n"
     "# gamemode (survival, creative, adventure), difficulty (peaceful, easy, normal, hard),\n"
     "# world-size (classic, small, medium, large), level-seed, allow-cheats and pvp apply to new worlds\n"
+    "# show-name-tags: show each player's name above their head\n"
     "# Operators may use commands while cheats are allowed. They are kept by UUID in ops.json beside this file;\n"
     "# add and remove them with the op and deop commands.\n"
     "# motd: shown under the server in the Join tab, as on Java servers: \\u00A7 or & codes, &#RRGGBB colours,\n"
@@ -91,6 +92,7 @@ const char* const kDefaultProperties =
     "world-size=classic\n"
     "allow-cheats=false\n"
     "pvp=true\n"
+    "show-name-tags=true\n"
     "view-distance=10\n"
     "simulation-distance=10\n"
     "autosave-minutes=5\n"
@@ -109,6 +111,7 @@ struct ServerProperties
     int worldSize = 0;
     bool allowCheats = false;
     bool pvp = true;
+    bool showNameTags = true;
     int viewDistance = 10;
     int simulationDistance = 10;
     int autosaveMinutes = 5;
@@ -289,6 +292,8 @@ void ApplyProperty(ServerProperties& properties, const std::string& key, const s
         valid = ParseBool(value, properties.allowCheats);
     else if (key == "pvp")
         valid = ParseBool(value, properties.pvp);
+    else if (key == "show-name-tags")
+        valid = ParseBool(value, properties.showNameTags);
     else if (key == "ops")
     {
         if (!value.empty())
@@ -732,6 +737,7 @@ int PcServerMain()
 
     InitialiseGame(Widen(properties.serverName));
     LoadPacks();
+    gApp.SetGameHostOption(eGameHostOption_Gamertags, properties.showNameTags ? 1 : 0);
 
     _NetworkGameInitData* initData;
     if (PcSaveFolderExists(properties.world))

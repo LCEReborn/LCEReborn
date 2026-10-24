@@ -34,6 +34,10 @@ When there is no imported game, the launcher opens on setup:
 
 "Re-import game files", in the Profiles tab, opens setup again.
 
+On a game imported by an older launcher, it says once that bought DLC and
+skin packs now go in the packs folder, from `content/WiiU/DLC` in the update
+dump.
+
 ## Playing
 
 Each profile has its own player name, game folder and language, and whether

@@ -3,12 +3,15 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include <QDesktopServices>
+#include <QDir>
 #include <QFileInfo>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMessageBox>
+#include <QPushButton>
 #include <QSettings>
 #include <QStackedWidget>
+#include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
 
@@ -136,7 +139,10 @@ MainWindow::MainWindow(ProfileStore& store, QWidget* parent)
     restoreGeometry(settings.value("window/geometry").toByteArray());
     const int page = settings.value("window/page", NewsPage).toInt();
     ShowPage(page >= 0 && page < PageCount ? page : NewsPage);
-    mRoot->setCurrentIndex(QFileInfo(LauncherPaths::ContentCheckFile()).isFile() ? 1 : 0);
+    const bool imported = QFileInfo(LauncherPaths::ContentCheckFile()).isFile();
+    mRoot->setCurrentIndex(imported ? 1 : 0);
+    if (imported && !settings.value("notices/packsFolder", false).toBool())
+        QTimer::singleShot(0, this, &MainWindow::ShowPacksNotice);
 
     RefreshProfiles();
 }
@@ -306,7 +312,28 @@ void MainWindow::OnImported()
     mNews->Refresh();
     mStore.NotifySkinsChanged();
     mRoot->setCurrentIndex(1);
+    QSettings(LauncherPaths::SettingsFile(), QSettings::IniFormat).setValue("notices/packsFolder", true);
     update();
+}
+
+void MainWindow::ShowPacksNotice()
+{
+    QSettings(LauncherPaths::SettingsFile(), QSettings::IniFormat).setValue("notices/packsFolder", true);
+    QMessageBox notice(QMessageBox::Information, "Packs",
+                       "DLC and skin packs no longer load from the game files. The packs that came free with the "
+                       "game still load on their own, but packs you bought need adding again.\n\n"
+                       "Copy the folders of the packs you own from content/WiiU/DLC in your update 688 dump into "
+                       "the packs folder, and they load the next time you play.",
+                       QMessageBox::NoButton, this);
+    QPushButton* open = notice.addButton("Open Packs Folder", QMessageBox::ActionRole);
+    notice.addButton(QMessageBox::Ok);
+    notice.exec();
+    const Profile* profile = mStore.Selected();
+    if (notice.clickedButton() != open || profile == nullptr)
+        return;
+    const QString folder = ProfileStore::GameDirFor(*profile) + "/packs";
+    QDir().mkpath(folder);
+    QDesktopServices::openUrl(QUrl::fromLocalFile(folder));
 }
 
 void MainWindow::SaveProfiles()

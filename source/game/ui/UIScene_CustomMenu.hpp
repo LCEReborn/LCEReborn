@@ -64,6 +64,7 @@ private:
     };
 
     void Build();
+    void RestoreFocus(int focusId);
     void ShowDescription(int id);
     void ToggleDescriptionPanel();
     void ApplyDescriptionPanel();

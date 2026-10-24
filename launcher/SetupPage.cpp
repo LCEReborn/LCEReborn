@@ -56,6 +56,11 @@ SetupPage::SetupPage(QWidget* parent)
         "leaves this computer.",
         panel);
     explanation->setWordWrap(true);
+    auto* packs = new QLabel(
+        "DLC packs you own and custom .pck packs work too: once the game is set up, copy each pack's folder "
+        "into the packs folder, which Packs on the game's main menu opens.",
+        panel);
+    packs->setWordWrap(true);
 
     auto* intro = new QVBoxLayout;
     intro->setSpacing(10);
@@ -63,6 +68,7 @@ SetupPage::SetupPage(QWidget* parent)
     intro->addSpacing(14);
     intro->addWidget(statement);
     intro->addWidget(explanation);
+    intro->addWidget(packs);
     intro->addStretch(1);
     intro->addWidget(mBack, 0, Qt::AlignLeft);
     auto* introWidget = new QWidget(panel);

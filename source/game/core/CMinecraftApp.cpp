@@ -1890,7 +1890,7 @@ bool CMinecraftApp::UnloadServerPacks()
         if (clientMode != NULL)
             clientMode->ForgetLevelGenerationOptions();
     }
-    gStorage->RemoveServerPacks();
+    gStorage->ForgetServerPacks();
     return true;
 }
 uint32_t CMinecraftApp::StartInstallDLCProcess(int32_t pad)

@@ -99,7 +99,7 @@ void UIPacksPage::Build(UIScene_CustomMenu& menu)
                 break;
             case C4JStorage::EPackSource_Server:
                 source = L"From Server";
-                description += L"Sent by the game you joined, and removed when you leave it.";
+                description += L"Sent by the game you joined, and unloaded when you leave it.";
                 break;
             default:
                 source = L"Built In";

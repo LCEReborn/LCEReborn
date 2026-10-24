@@ -11,7 +11,7 @@
 
 namespace lcenet
 {
-const uint16_t kProtocolVersion = 2;
+const uint16_t kProtocolVersion = 3;
 const uint32_t kBeaconMagic = 0x4c434542;
 const size_t kMaxMotdLength = 2048;
 const size_t kMaxIconSize = 0xffff;

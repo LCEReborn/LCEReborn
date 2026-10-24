@@ -1946,12 +1946,12 @@ std::string CStorage::GetPacksFolder()
 {
     return WiiUPacksFolder();
 }
-std::string CStorage::GetServerPacksFolder()
+std::string CStorage::GetPackCacheFolder()
 {
     const std::string packs = WiiUPacksFolder();
     if (packs.size() < 5)
         return std::string();
-    return packs.substr(0, packs.size() - 5) + "serverpacks";
+    return packs.substr(0, packs.size() - 5) + "packcache";
 }
 int CStorage::AddInstalledPack(const char* path, const char* name)
 {
@@ -1959,7 +1959,7 @@ int CStorage::AddInstalledPack(const char* path, const char* name)
     AddPack(path, EPackSource_Server, name);
     return m_installedContent.size() > count ? static_cast<int>(count) : -1;
 }
-void CStorage::RemoveServerPacks()
+void CStorage::ForgetServerPacks()
 {
     std::vector<CONTENT_DATA>::iterator content = m_installedContent.begin();
     while (content != m_installedContent.end())
@@ -1969,9 +1969,6 @@ void CStorage::RemoveServerPacks()
         else
             ++content;
     }
-    const std::string folder = GetServerPacksFolder();
-    if (!folder.empty())
-        DeletePath(folder);
 }
 bool CStorage::ListFiles(const std::string& root, std::vector<std::string>& paths,
                          std::vector<unsigned long long>& sizes)

@@ -20,6 +20,7 @@ public:
     ~PackSender();
 
     void offer(ServerGamePacketListenerImpl* connection, unsigned int packId, bool required);
+    void offered(ServerGamePacketListenerImpl* connection);
     void handle(arrayWithLength<unsigned char> data);
     void tick(ServerGamePacketListenerImpl* connection);
     bool isBusy() const;
@@ -42,6 +43,7 @@ class PackReceiver
 {
 public:
     static PackReceiver& Get();
+    static void TidyCache();
 
     void handle(ClientPacketListener* connection, arrayWithLength<unsigned char> data);
     void tick(ClientPacketListener* connection);
@@ -69,6 +71,7 @@ private:
     PackReceiver();
 
     bool isKnown(unsigned int packId);
+    bool loadFromCache(const Offer& offer);
     void handleOffer(const Offer& offer);
     void handleFile(unsigned int packId, const std::wstring& path, long long size);
     void handleData(unsigned int packId, const unsigned char* data, unsigned int length);
@@ -78,12 +81,15 @@ private:
     void leave(const Offer& offer, const wchar_t* reason);
     void showMessage(const std::wstring& message);
     void askNext();
+    void announceReady();
     void queueLoad(const Offer& offer, const std::string& folder);
     void reply(unsigned char type, unsigned int packId);
     static int PromptReturned(void* context, int pad, C4JStorage::EMessageResult result);
 
     ClientPacketListener* m_connection;
+    bool m_offersDone;
     std::deque<Offer> m_prompts;
+    size_t m_promptCount;
     bool m_prompting;
     std::wstring m_promptText;
     std::deque<Offer> m_downloads;
@@ -95,6 +101,7 @@ private:
     long long m_received;
     std::vector<Download> m_toLoad;
     std::vector<unsigned int> m_loading;
+    std::vector<std::wstring> m_ready;
     bool m_releasePending;
     std::wstring m_leaveMessage;
     std::wstring m_leaveText;

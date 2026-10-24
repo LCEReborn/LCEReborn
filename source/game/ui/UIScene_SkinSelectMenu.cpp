@@ -696,6 +696,8 @@ void UIScene_SkinSelectMenu::SetSkinPackButtonList()
     m_packList.AddNewButton(L10N::GetString(IDS_NO_SKIN_PACK), 0, true);
     m_packList.AddNewButton(L10N::GetString(IDS_FAVORITES_SKIN_PACK), 1, true);
 
+    if (texturePackSkinPack != NULL && texturePackSkinPack->GetSource() == C4JStorage::EPackSource_Server)
+        texturePackSkinPack = NULL;
     if (texturePackSkinPack != NULL && texturePackSkinPack->GetPackId() >= 0x400)
     {
         std::wstring texturePackName = texturePackSkinPack->getLocalisedDisplayName();
@@ -711,7 +713,7 @@ void UIScene_SkinSelectMenu::SetSkinPackButtonList()
          ++i)
     {
         DLCPack* pack = gApp.mDLCManager.getPack(i, DLCManager::eDLCType_Skin);
-        if (pack == NULL)
+        if (pack == NULL || pack->GetSource() == C4JStorage::EPackSource_Server)
             continue;
 
         if (m_hasTexturePackSkinPack && texturePackSkinPack != NULL && texturePackSkinPack->GetPackId() >= 0x400

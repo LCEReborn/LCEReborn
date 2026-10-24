@@ -2007,9 +2007,9 @@ std::string CStorage::GetPacksFolder()
     return PcPacksRoot();
 }
 
-std::string CStorage::GetServerPacksFolder()
+std::string CStorage::GetPackCacheFolder()
 {
-    return "/vol/save/serverpacks";
+    return "/vol/save/packcache";
 }
 
 int CStorage::AddInstalledPack(const char* path, const char* name)
@@ -2019,7 +2019,7 @@ int CStorage::AddInstalledPack(const char* path, const char* name)
     return m_installedContent.size() > count ? static_cast<int>(count) : -1;
 }
 
-void CStorage::RemoveServerPacks()
+void CStorage::ForgetServerPacks()
 {
     std::vector<CONTENT_DATA>::iterator content = m_installedContent.begin();
     while (content != m_installedContent.end())
@@ -2029,9 +2029,6 @@ void CStorage::RemoveServerPacks()
         else
             ++content;
     }
-    const std::string folder = GetServerPacksFolder();
-    if (!folder.empty())
-        DeletePath(folder);
 }
 
 bool CStorage::ListFilesUnder(const std::string& folder, const std::string& prefix, std::vector<std::string>& paths,

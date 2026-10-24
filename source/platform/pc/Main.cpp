@@ -19,6 +19,7 @@
 #include "game/core/PIXNamedEvents.hpp"
 #include "game/data/ElementStorage.hpp"
 #include "game/network/CGameNetworkManager.hpp"
+#include "game/network/PackTransfer.hpp"
 #include "game/util/AABB.hpp"
 #include "game/util/Vec3.hpp"
 #include "game/util/phys__Vec2.hpp"
@@ -156,7 +157,7 @@ int main(int argc, char** argv)
     gStorage->SetReadDirFn(ReadDir);
     gStorage->SetCloseDirFn(CloseDir);
     gStorage->SetDLCPackageRoot("DLCDrive");
-    gStorage->RemoveServerPacks();
+    PackReceiver::TidyCache();
 
     Tesselator::CreateNewThreadStorage(0x100000);
     AABB::CreateNewThreadStorage();

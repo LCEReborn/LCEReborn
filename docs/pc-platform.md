@@ -433,13 +433,14 @@ lists what is loaded and where it came from (`game/ui/UIPacksPage`).
 A host or server sends players the packs they are missing, as Java servers
 send resource packs (`game/network/PackTransfer`): the world's texture pack,
 which a player may decline, and the map packs of a mini-game, which a player
-must take to stay. Packs that come with the game are never sent. Received
-packs go in `serverpacks/` in the save folder (on the Wii U,
-`wiiu/LCEReborn/serverpacks` on the SD card) and are removed when the
-player leaves the game, or at the next start if the game closed first. A
-mini-game lobby's countdown waits while anyone is still downloading, and up
-to a minute for an answer; a player who still hasn't answered when it ends
-is removed.
+must take to stay. Packs that come with the game are never sent. When a
+player is missing several, one prompt asks to download them all. Received
+packs are kept in `packcache/` in the save folder (on the Wii U,
+`wiiu/LCEReborn/packcache` on the SD card), so any game that offers the same
+pack again loads it without asking. They load only while the player is in
+that game and never show in the skin picker. A mini-game lobby's countdown
+waits while anyone is still downloading, and up to a minute for an answer;
+a player who still hasn't answered when it ends is removed.
 
 ## Shader packs
 

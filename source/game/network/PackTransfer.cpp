@@ -60,7 +60,8 @@ enum EMessage
     eMessage_Data,
     eMessage_Done,
     eMessage_Skip,
-    eMessage_Removed
+    eMessage_Removed,
+    eMessage_Offered
 };
 
 const unsigned int kChunkSize = 30000;
@@ -234,6 +235,23 @@ std::wstring Megabytes(long long size)
     std::swprintf(text, 32, L"%.1f MB", static_cast<double>(size) / (1024.0 * 1024.0));
     return text;
 }
+
+std::wstring EscapePercent(const std::wstring& text)
+{
+    std::wstring escaped;
+    for (size_t index = 0; index < text.size(); ++index)
+    {
+        escaped += text[index];
+        if (text[index] == L'%')
+            escaped += L'%';
+    }
+    return escaped;
+}
+
+std::string CacheFolder(const unsigned char* hash)
+{
+    return gStorage->GetPackCacheFolder() + "/" + Sha1::toHex(hash);
+}
 }
 
 PackSender::PackSender() : m_manifest(NULL), m_fileIndex(0), m_file(INVALID_HANDLE_VALUE), m_fileRemaining(0)
@@ -265,6 +283,17 @@ void PackSender::offer(ServerGamePacketListenerImpl* connection, unsigned int pa
     output.writeLong(manifest->size);
     output.writeUTF(manifest->name);
     output.writeBoolean(required);
+    SendToClient(connection, bytes);
+}
+
+void PackSender::offered(ServerGamePacketListenerImpl* connection)
+{
+    if (m_offered.empty())
+        return;
+    ByteArrayOutputStream bytes;
+    DataOutputStream output(&bytes);
+    output.writeByte(eMessage_Offered);
+    output.writeInt(0);
     SendToClient(connection, bytes);
 }
 
@@ -420,8 +449,32 @@ PackReceiver& PackReceiver::Get()
     return receiver;
 }
 
+void PackReceiver::TidyCache()
+{
+    const std::string cache = gStorage->GetPackCacheFolder();
+    if (cache.empty())
+        return;
+    gStorage->DeletePath(cache.substr(0, cache.find_last_of('/') + 1) + "serverpacks");
+    std::vector<std::string> files;
+    std::vector<unsigned long long> sizes;
+    if (!gStorage->ListFiles(cache, files, sizes))
+        return;
+    std::vector<std::string> partial;
+    for (size_t index = 0; index < files.size(); ++index)
+    {
+        const std::string top = files[index].substr(0, files[index].find('/'));
+        if (top.size() > 5 && top.compare(top.size() - 5, 5, ".part") == 0
+            && std::find(partial.begin(), partial.end(), top) == partial.end())
+            partial.push_back(top);
+    }
+    for (size_t index = 0; index < partial.size(); ++index)
+        gStorage->DeletePath(cache + "/" + partial[index]);
+}
+
 PackReceiver::PackReceiver()
     : m_connection(NULL),
+      m_offersDone(false),
+      m_promptCount(0),
       m_prompting(false),
       m_downloading(false),
       m_file(INVALID_HANDLE_VALUE),
@@ -479,6 +532,10 @@ void PackReceiver::handle(ClientPacketListener* connection, arrayWithLength<unsi
     case eMessage_Done:
         handleDone(packId);
         break;
+    case eMessage_Offered:
+        m_offersDone = true;
+        askNext();
+        break;
     case eMessage_Removed:
     {
         std::wstring name;
@@ -529,6 +586,24 @@ void PackReceiver::reply(unsigned char type, unsigned int packId)
         new ServerboundCustomPayloadPacket(ServerboundCustomPayloadPacket::PACK_PACKET, bytes.toByteArray())));
 }
 
+bool PackReceiver::loadFromCache(const Offer& offer)
+{
+    const std::string folder = CacheFolder(offer.hash);
+    std::vector<std::string> files;
+    std::vector<unsigned long long> sizes;
+    if (!gStorage->ListFiles(folder, files, sizes) || files.empty())
+        return false;
+    long long size = 0;
+    for (size_t index = 0; index < sizes.size(); ++index)
+        size += static_cast<long long>(sizes[index]);
+    if (size != offer.size)
+        return false;
+    LogInfo("Loading " + convWstringToString(offer.name) + " from the pack cache");
+    reply(eMessage_Skip, offer.packId);
+    queueLoad(offer, folder);
+    return true;
+}
+
 void PackReceiver::handleOffer(const Offer& offer)
 {
     if (isKnown(offer.packId))
@@ -536,7 +611,7 @@ void PackReceiver::handleOffer(const Offer& offer)
         reply(eMessage_Skip, offer.packId);
         return;
     }
-    if (gStorage->GetServerPacksFolder().empty() || offer.size < 0 || offer.size > kMaxPackSize)
+    if (gStorage->GetPackCacheFolder().empty() || offer.size < 0 || offer.size > kMaxPackSize)
     {
         if (offer.required)
             leave(offer, L"there is nowhere to keep it");
@@ -544,33 +619,52 @@ void PackReceiver::handleOffer(const Offer& offer)
             reply(eMessage_Skip, offer.packId);
         return;
     }
+    if (loadFromCache(offer))
+        return;
     m_prompts.push_back(offer);
     askNext();
 }
 
 void PackReceiver::askNext()
 {
-    if (m_prompting || m_prompts.empty() || !gApp.GetGameStarted() || !CGameNetworkManager::sInstance.IsInGameplay()
+    if (m_prompting || !m_offersDone || m_prompts.empty() || !gApp.GetGameStarted()
+        || !CGameNetworkManager::sInstance.IsInGameplay()
         || gConsoleUIController.IsSceneInStack(0xff, EUIScene_FullscreenProgress)
         || gConsoleUIController.IsExpectingOrReloadingSkin())
         return;
     m_prompting = true;
-    const Offer& offer = m_prompts.front();
-    std::wstring name;
-    for (size_t index = 0; index < offer.name.size(); ++index)
+    m_promptCount = m_prompts.size();
+    bool required = false;
+    long long size = 0;
+    std::wstring names;
+    const size_t kNamesShown = 3;
+    for (size_t index = 0; index < m_promptCount; ++index)
     {
-        name += offer.name[index];
-        if (offer.name[index] == L'%')
-            name += L'%';
+        const Offer& offer = m_prompts[index];
+        required = required || offer.required;
+        size += offer.size;
+        if (index >= kNamesShown)
+            continue;
+        if (index > 0)
+            names += index + 1 == m_promptCount ? L" and " : L", ";
+        names += EscapePercent(offer.name);
     }
-    if (offer.required)
-        m_promptText = L"This game uses maps from " + name + L", which you don't have. Download it to keep playing? ("
-                       + Megabytes(offer.size) + L")";
+    if (m_promptCount > kNamesShown)
+        names += L" and " + _toString<int>(static_cast<int>(m_promptCount - kNamesShown)) + L" more";
+
+    if (m_promptCount == 1 && required)
+        m_promptText = L"This game uses maps from " + names + L", which you don't have. Download it to keep playing? (";
+    else if (m_promptCount == 1)
+        m_promptText = L"This world uses " + names + L", which you don't have. Download it? (";
+    else if (required)
+        m_promptText = L"This game needs " + _toString<int>(static_cast<int>(m_promptCount))
+                       + L" packs you don't have: " + names + L". Download them all to keep playing? (";
     else
-        m_promptText = L"This world uses " + name + L", which you don't have. Download it? (" + Megabytes(offer.size)
-                       + L")";
+        m_promptText = L"This world uses " + _toString<int>(static_cast<int>(m_promptCount))
+                       + L" packs you don't have: " + names + L". Download them all? (";
+    m_promptText += Megabytes(size) + L")";
     static int parameters[2] = {static_cast<int>(IDS_CONFIRM_OK), static_cast<int>(IDS_CONFIRM_CANCEL)};
-    gConsoleUIController.RequestAlertMessage(offer.required ? IDS_MINI_GAMES : IDS_DLC_TEXTUREPACK_NOT_PRESENT_TITLE,
+    gConsoleUIController.RequestAlertMessage(required ? IDS_MINI_GAMES : IDS_DLC_TEXTUREPACK_NOT_PRESENT_TITLE,
                                              IDS_DLC_TEXTUREPACK_NOT_PRESENT, parameters, 2, gProfile->GetPrimaryPad(),
                                              PromptReturned, this, const_cast<wchar_t*>(m_promptText.c_str()), true);
 }
@@ -579,22 +673,46 @@ int PackReceiver::PromptReturned(void* context, int, C4JStorage::EMessageResult 
 {
     PackReceiver* receiver = static_cast<PackReceiver*>(context);
     receiver->m_prompting = false;
-    if (receiver->m_prompts.empty())
+    std::vector<Offer> offers;
+    while (offers.size() < receiver->m_promptCount && !receiver->m_prompts.empty())
+    {
+        offers.push_back(receiver->m_prompts.front());
+        receiver->m_prompts.pop_front();
+    }
+    receiver->m_promptCount = 0;
+    if (offers.empty())
         return 0;
-    const Offer offer = receiver->m_prompts.front();
-    receiver->m_prompts.pop_front();
+
     if (result != C4JStorage::EMessageResult_Accept)
     {
-        if (offer.required)
-            receiver->leave(offer, L"you chose not to download it");
-        else
-            receiver->reply(eMessage_Skip, offer.packId);
+        const Offer* required = NULL;
+        for (size_t index = 0; index < offers.size(); ++index)
+        {
+            if (!offers[index].required)
+                receiver->reply(eMessage_Skip, offers[index].packId);
+            else if (required == NULL)
+                required = &offers[index];
+        }
+        if (required != NULL)
+        {
+            receiver->leave(*required, L"you chose not to download it");
+            return 0;
+        }
     }
     else if (receiver->m_connection != NULL)
     {
-        receiver->reply(eMessage_Request, offer.packId);
-        receiver->m_downloads.push_back(offer);
-        receiver->showMessage(L"Downloading " + offer.name + L" (" + Megabytes(offer.size) + L")");
+        long long size = 0;
+        for (size_t index = 0; index < offers.size(); ++index)
+        {
+            receiver->reply(eMessage_Request, offers[index].packId);
+            receiver->m_downloads.push_back(offers[index]);
+            size += offers[index].size;
+        }
+        if (offers.size() == 1)
+            receiver->showMessage(L"Downloading " + offers[0].name + L" (" + Megabytes(size) + L")");
+        else
+            receiver->showMessage(L"Downloading " + _toString<int>(static_cast<int>(offers.size())) + L" packs ("
+                                  + Megabytes(size) + L")");
     }
     receiver->askNext();
     return 0;
@@ -622,7 +740,7 @@ bool PackReceiver::startDownload(unsigned int packId)
     if (m_downloads.empty() || m_downloads.front().packId != packId)
         return false;
     const Offer& offer = m_downloads.front();
-    const std::string part = gStorage->GetServerPacksFolder() + "/" + Sha1::toHex(offer.hash) + ".part";
+    const std::string part = CacheFolder(offer.hash) + ".part";
     gStorage->DeletePath(part);
     if (!gStorage->CreateDirectories(part))
     {
@@ -733,7 +851,7 @@ void PackReceiver::handleDone(unsigned int packId)
         abortDownload(L"what arrived doesn't match what the server offered");
         return;
     }
-    const std::string folder = gStorage->GetServerPacksFolder() + "/" + Sha1::toHex(digest);
+    const std::string folder = CacheFolder(digest);
     gStorage->DeletePath(folder);
     if (!gStorage->RenamePath(m_partFolder, folder))
     {
@@ -772,7 +890,10 @@ void PackReceiver::tick(ClientPacketListener* connection)
         m_toLoad.erase(m_toLoad.begin());
     }
     if (m_loading.empty() || gApp.DLCInstallProcessCompleted() == 0)
+    {
+        announceReady();
         return;
+    }
     for (size_t index = 0; index < m_loading.size(); ++index)
     {
         const unsigned int packId = m_loading[index];
@@ -782,12 +903,25 @@ void PackReceiver::tick(ClientPacketListener* connection)
         std::wstring name = pack->getLocalisedDisplayName();
         if (name.empty())
             name = pack->getName();
-        showMessage(name + L" is ready");
+        m_ready.push_back(name);
         if ((gApp.GetRequiredTexturePackID() & 0x00ffffffu) == (packId & 0x00ffffffu))
             Minecraft::GetInstance()->mTexturePackRepository->selectTexturePackById(packId & 0x00ffffffu, false);
     }
     m_loading.clear();
     connection->applyNextGameMode();
+    announceReady();
+}
+
+void PackReceiver::announceReady()
+{
+    if (m_ready.empty() || !m_offersDone || !m_prompts.empty() || !m_downloads.empty() || !m_toLoad.empty()
+        || !m_loading.empty())
+        return;
+    if (m_ready.size() == 1)
+        showMessage(m_ready[0] + L" is ready");
+    else
+        showMessage(_toString<int>(static_cast<int>(m_ready.size())) + L" packs are ready");
+    m_ready.clear();
 }
 
 void PackReceiver::disconnected(ClientPacketListener* connection)
@@ -804,9 +938,12 @@ void PackReceiver::disconnected(ClientPacketListener* connection)
     m_fileRemaining = 0;
     m_downloads.clear();
     m_prompts.clear();
+    m_offersDone = false;
+    m_promptCount = 0;
     m_prompting = false;
     m_toLoad.clear();
     m_loading.clear();
+    m_ready.clear();
     m_releasePending = true;
 }
 

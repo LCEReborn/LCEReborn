@@ -121,9 +121,9 @@ public:
     virtual int GetMountedDLCIndex();
     virtual std::string GetMountedPath(std::string);
     virtual std::string GetPacksFolder();
-    virtual std::string GetServerPacksFolder();
+    virtual std::string GetPackCacheFolder();
     virtual int AddInstalledPack(const char* path, const char* name);
-    virtual void RemoveServerPacks();
+    virtual void ForgetServerPacks();
     virtual bool ListFiles(const std::string& root, std::vector<std::string>& paths,
                            std::vector<unsigned long long>& sizes);
     virtual bool DeletePath(const std::string& path);

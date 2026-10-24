@@ -404,9 +404,8 @@ void ServerGamePacketListenerImpl::offerPacks()
     mPackSender.offer(this, static_cast<unsigned int>(mServer->getGameModeId()) & 0x00ffffffu, false);
 
     const EMiniGameId miniGame = Minecraft::GetInstance()->GetMiniGame()->GetId();
-    if (miniGame == eMiniGameId_Any)
-        return;
-    for (int type = LevelRules::eLevelRuleType_Battle; type <= LevelRules::eLevelRuleType_Build; ++type)
+    for (int type = LevelRules::eLevelRuleType_Battle;
+         miniGame != eMiniGameId_Any && type <= LevelRules::eLevelRuleType_Build; ++type)
     {
         if (miniGame != eMiniGameId_Lobby && LevelRules::GetRuleTypeForMiniGame(miniGame) != type)
             continue;
@@ -422,6 +421,7 @@ void ServerGamePacketListenerImpl::offerPacks()
             mPackSender.offer(this, options->getTexturePackId() & 0x00ffffffu, false);
         }
     }
+    mPackSender.offered(this);
 }
 
 void ServerGamePacketListenerImpl::sendCommands()

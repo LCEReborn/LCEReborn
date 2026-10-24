@@ -1234,11 +1234,6 @@ void ServerLevel::saveToDisc(ProgressListener* progressListener, bool autosave)
 {
     if (gStorage->GetSaveDisabled())
         return;
-    if (Minecraft::GetInstance()->mTexturePackRepository->getSelected() != TexturePackRepository::defaultTexturePack
-        && !static_cast<DLCTexturePack*>(Minecraft::GetInstance()->mTexturePackRepository->getSelected())
-                ->getDLCInfoParentPack()
-                ->hasPurchasedPack())
-        return;
     if (progressListener != NULL)
         progressListener->progressStage(static_cast<int>(0xaebf0574u));
     mLevelStorage->flushSaveFile(autosave);

@@ -41,9 +41,8 @@ UIScene_HelpAndOptionsMenu::UIScene_HelpAndOptionsMenu(int playerId, void*, UILa
             removeControl(&m_buttons[5], false);
     }
     boost::shared_ptr<MultiplayerLocalPlayer>& player = Minecraft::GetInstance()->mLocalPlayers[playerId];
-    if (!gProfile->IsFullVersion()
-        || (Minecraft::InMiniGame(eMiniGameId_Any, true) && player.get() != NULL
-            && player.get()->GetGameType() != GameType::LOBBY && !gApp.DebugArtToolsOn()))
+    if (Minecraft::InMiniGame(eMiniGameId_Any, true) && player.get() != NULL
+        && player.get()->GetGameType() != GameType::LOBBY && !gApp.DebugArtToolsOn())
         removeControl(&m_buttons[0], false);
     doHorizontalResizeCheck();
     gConsoleUIController.TouchBoxRebuild(this);
@@ -134,10 +133,8 @@ void UIScene_HelpAndOptionsMenu::handleReload()
         if (gProfile->GetPrimaryPad() != m_playerId)
             removeControl(&m_buttons[5], false);
     }
-    gProfile->IsFullVersion();
     boost::shared_ptr<MultiplayerLocalPlayer>& player = Minecraft::GetInstance()->mLocalPlayers[m_playerId];
-    if (!gProfile->IsFullVersion()
-        || (Minecraft::InMiniGame(eMiniGameId_Any, true) && player->GetGameType() != GameType::LOBBY))
+    if (Minecraft::InMiniGame(eMiniGameId_Any, true) && player->GetGameType() != GameType::LOBBY)
         removeControl(&m_buttons[0], false);
     doHorizontalResizeCheck();
     gConsoleUIController.TouchBoxRebuild(this);

@@ -429,6 +429,16 @@ void RenderScreen(int pad, int viewport, int width, int height)
 #endif
 }
 
+float PixelScale()
+{
+#if LCE_PLATFORM_PC
+    const float scale = gRenderer->GetPixelScale();
+    return scale > 0.0f ? scale : 1.0f;
+#else
+    return 1.0f;
+#endif
+}
+
 float ScreenUnit(int width, int height)
 {
     const float fit = static_cast<float>(width) / 640.0f < static_cast<float>(height) / 360.0f
@@ -441,32 +451,69 @@ float ScreenUnit(int width, int height)
     return fit > 0.25f ? fit : 0.25f;
 }
 
+float SnapToPixel(float value)
+{
+    const float pixels = PixelScale();
+    return floorf(value * pixels + 0.5f) / pixels;
+}
+
 void ViewportOrigin(int viewport, int* x, int* y)
+{
+    int width = 0;
+    int height = 0;
+    ViewportArea(viewport, x, y, &width, &height);
+}
+
+void ViewportArea(int viewport, int* x, int* y, int* width, int* height)
 {
     const int screenWidth = static_cast<int>(gConsoleUIController.getScreenWidth());
     const int screenHeight = static_cast<int>(gConsoleUIController.getScreenHeight());
     *x = 0;
     *y = 0;
+    *width = screenWidth;
+    *height = screenHeight;
     switch (viewport)
     {
+    case C4JRender::eViewportType_TopHalf:
+        *height = screenHeight / 2;
+        break;
     case C4JRender::eViewportType_BottomHalf:
-    case C4JRender::eViewportType_BottomLeftQuarter:
         *y = screenHeight / 2;
+        *height = screenHeight - *y;
+        break;
+    case C4JRender::eViewportType_LeftHalf:
+        *width = screenWidth / 2;
         break;
     case C4JRender::eViewportType_RightHalf:
+        *x = screenWidth / 2;
+        *width = screenWidth - *x;
+        break;
+    case C4JRender::eViewportType_TopLeftQuarter:
+        *width = screenWidth / 2;
+        *height = screenHeight / 2;
+        break;
     case C4JRender::eViewportType_TopRightQuarter:
         *x = screenWidth / 2;
+        *width = screenWidth - *x;
+        *height = screenHeight / 2;
+        break;
+    case C4JRender::eViewportType_BottomLeftQuarter:
+        *y = screenHeight / 2;
+        *width = screenWidth / 2;
+        *height = screenHeight - *y;
         break;
     case C4JRender::eViewportType_BottomRightQuarter:
         *x = screenWidth / 2;
         *y = screenHeight / 2;
+        *width = screenWidth - *x;
+        *height = screenHeight - *y;
         break;
     default:
         break;
     }
 }
 
-void BeginScreenDraw(int originX, int originY, float unit, float screenWidth)
+void BeginScreenDraw(float originX, float originY, float unit, float screenWidth)
 {
     GlStateManager::matrixMode(1);
     GlStateManager::pushMatrix();
@@ -476,7 +523,7 @@ void BeginScreenDraw(int originX, int originY, float unit, float screenWidth)
     GlStateManager::matrixMode(0);
     GlStateManager::pushMatrix();
     GlStateManager::loadIdentity();
-    GlStateManager::translatef(static_cast<float>(originX), static_cast<float>(originY), -2000.0f);
+    GlStateManager::translatef(originX, originY, -2000.0f);
     GlStateManager::scalef(unit, unit, 1.0f);
     gRenderer->Set_matrixDirty();
     GlStateManager::disableDepthTest();

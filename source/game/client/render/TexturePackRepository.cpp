@@ -1,5 +1,6 @@
 #include "game/client/render/TexturePackRepository.hpp"
 
+#include <algorithm>
 #include <boost/unordered_map.hpp>
 #include <new>
 
@@ -146,6 +147,20 @@ TexturePack* TexturePackRepository::addTexturePackFromDLC(DLCPack* dlcPack, unsi
         m_texturePacksById[id] = texturePack;
     }
     return texturePack;
+}
+
+void TexturePackRepository::removeTexturePackById(unsigned int packId)
+{
+    boost::unordered_map<unsigned int, TexturePack*>::iterator found = m_texturePacksById.find(packId);
+    if (found == m_texturePacksById.end() || found->second == defaultTexturePack)
+        return;
+    TexturePack* texturePack = found->second;
+    if (texturePack == m_selected || texturePack == m_previousSelected)
+        return;
+    m_texturePacksById.erase(found);
+    m_allTexturePacks->erase(std::remove(m_allTexturePacks->begin(), m_allTexturePacks->end(), texturePack),
+                             m_allTexturePacks->end());
+    delete texturePack;
 }
 
 void TexturePackRepository::updateUI()

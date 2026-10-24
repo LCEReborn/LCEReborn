@@ -1,28 +1,21 @@
 #include "SetupPage.hpp"
 
-#include <QDesktopServices>
 #include <QDir>
 #include <QFileDialog>
-#include <QFileInfo>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
-#include <QMessageBox>
-#include <QProcess>
 #include <QProgressBar>
 #include <QPushButton>
-#include <QSaveFile>
 #include <QSettings>
 #include <QStyle>
 #include <QThread>
 #include <QTimer>
-#include <QUrl>
 #include <QVBoxLayout>
 
 #include "GameFiles.hpp"
 #include "LauncherPaths.hpp"
 #include "Widgets.hpp"
-#include "platform/pc/PcLicenseDefaults.hpp"
 
 namespace
 {
@@ -63,18 +56,11 @@ SetupPage::SetupPage(QWidget* parent)
         "leaves this computer.",
         panel);
     explanation->setWordWrap(true);
-
-    auto* licenseTitle = new QLabel("Licenses", panel);
-    licenseTitle->setObjectName("StepTitle");
-    auto* licenseHint = new QLabel(
-        QString("The game starts as the trial with no DLC. Nothing is unlocked until you edit %1; only unlock what "
-                "you own.")
-            .arg(QDir::toNativeSeparators(LauncherPaths::LicenseFile())),
+    auto* packs = new QLabel(
+        "DLC packs you own and custom .pck packs work too: once the game is set up, copy each pack's folder "
+        "into the packs folder, which Packs on the game's main menu opens.",
         panel);
-    licenseHint->setObjectName("StepHint");
-    licenseHint->setWordWrap(true);
-    licenseHint->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    auto* editLicense = new QPushButton("Edit license.cfg", panel);
+    packs->setWordWrap(true);
 
     auto* intro = new QVBoxLayout;
     intro->setSpacing(10);
@@ -82,10 +68,7 @@ SetupPage::SetupPage(QWidget* parent)
     intro->addSpacing(14);
     intro->addWidget(statement);
     intro->addWidget(explanation);
-    intro->addSpacing(18);
-    intro->addWidget(licenseTitle);
-    intro->addWidget(licenseHint);
-    intro->addWidget(editLicense, 0, Qt::AlignLeft);
+    intro->addWidget(packs);
     intro->addStretch(1);
     intro->addWidget(mBack, 0, Qt::AlignLeft);
     auto* introWidget = new QWidget(panel);
@@ -142,7 +125,6 @@ SetupPage::SetupPage(QWidget* parent)
         mCancel->setEnabled(false);
     });
     connect(mBack, &QPushButton::clicked, this, &SetupPage::BackRequested);
-    connect(editLicense, &QPushButton::clicked, this, &SetupPage::OpenLicenseFile);
     SetCanGoBack(false);
     Validate();
 }
@@ -155,31 +137,6 @@ SetupPage::~SetupPage()
         mThread->quit();
         mThread->wait();
     }
-}
-
-void SetupPage::OpenLicenseFile()
-{
-    const QString path = LauncherPaths::LicenseFile();
-    if (!QFileInfo::exists(path))
-    {
-        QSaveFile file(path);
-        if (!file.open(QIODevice::WriteOnly) || file.write(kPcDefaultLicenseConfig) < 0 || !file.commit())
-        {
-            QMessageBox::warning(
-                this, "License File",
-                QString("%1 could not be created: %2").arg(QDir::toNativeSeparators(path), file.errorString()));
-            return;
-        }
-    }
-    if (QDesktopServices::openUrl(QUrl::fromLocalFile(path)))
-        return;
-#if defined(Q_OS_WIN)
-    if (QProcess::startDetached("notepad.exe", {QDir::toNativeSeparators(path)}))
-        return;
-#endif
-    QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(path).absolutePath()));
-    QMessageBox::information(this, "License File",
-                             QString("Open %1 in a text editor.").arg(QDir::toNativeSeparators(path)));
 }
 
 QWidget* SetupPage::MakeStep(int number, const QString& title, const QString& hint, Step* step, bool isUpdate)

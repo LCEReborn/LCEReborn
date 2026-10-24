@@ -30,7 +30,6 @@
 #include "platform/pc/PcProfilePicker.hpp"
 #include "platform/pc/PcLaunchOptions.hpp"
 #include "platform/pc/PcPaths.hpp"
-#include "platform/pc/PcUnlockPage.hpp"
 
 PlayerUID getPlayerUID(int, bool);
 int getSlotId(int);
@@ -246,8 +245,6 @@ CProfile::CProfile()
     mFriendPresenceOnline = false;
     std::memset(mNetworkAccountId, 0, sizeof(mNetworkAccountId));
     InitializeCriticalSection(&mInitSaveDirCriticalSection);
-    mFullVersion = true;
-    mUpsellFromTrial = false;
     mLeaderboardDisable = false;
     mPrimaryPad = 0;
     mLiveConnectionStatus = 0;
@@ -257,10 +254,6 @@ CProfile::CProfile()
     mProfileReadErrorContext = NULL;
     mNotificationsHandler = NULL;
     mNotificationsContext = NULL;
-    mUpsellHandler = NULL;
-    mUpsellContext = NULL;
-    mUpsellType = eUpsellType_None;
-    mUpsellParam = 0;
     mPresenceUpdatePending = false;
     for (int quadrant = 0; quadrant < 4; ++quadrant)
     {
@@ -572,10 +565,6 @@ bool CProfile::AllowedToPlayMultiplayer(int quadrant)
     return IsSignedInLive(quadrant);
 }
 
-void CProfile::StartTrialGame()
-{
-}
-
 void CProfile::AllowedPlayerCreatedContent(int quadrant, bool singlePlayer, int* allowed, int* communicationAllowed)
 {
     int result = true;
@@ -763,10 +752,6 @@ void CProfile::Tick()
     {
         if (PrimaryPlayerChanged() && PrimaryPlayerHasSignedOutDialogBox(true))
             SetLockedProfile(-1);
-    }
-    else if (mProfileProcessState == eProfileProcessState_Upsell)
-    {
-        SetProfileProcessState(eProfileProcessState_Unknown12);
     }
 }
 
@@ -1043,16 +1028,6 @@ void CProfile::ClearGameUsers()
     }
 }
 
-bool CProfile::IsFullVersion()
-{
-    return mFullVersion;
-}
-
-void CProfile::SetFullVersion(bool fullVersion)
-{
-    mFullVersion = fullVersion;
-}
-
 void CProfile::SetSignInChangeCallback(SignInChangeHandler handler, void* context)
 {
     mSignInChangeHandler = handler;
@@ -1091,33 +1066,6 @@ void CProfile::SetProfileReadErrorCallback(ProfileReadErrorHandler handler, void
     mProfileReadErrorContext = context;
 }
 
-void CProfile::SetUpsellType(eUpsellType type, int upsellParam)
-{
-    mUpsellType = type;
-    mUpsellParam = upsellParam;
-}
-
-void CProfile::DisplayFullVersionPurchase(bool fromTrial, int playerId, int upsellParam)
-{
-    SetUpsellType(eUpsellType_None, upsellParam);
-    if (fromTrial)
-        mUpsellFromTrial = true;
-    SetProfileProcessState(eProfileProcessState_Upsell);
-    gConsoleUIController.NavigateToScene(playerId, EUIScene_CustomMenu, new PcUnlockPage(), EUILayer_Scene,
-                                         EUIGroup_PlayerDefault);
-}
-
-void CProfile::SetUpsellCallback(UpsellHandler handler, void* context)
-{
-    mUpsellHandler = handler;
-    mUpsellContext = context;
-}
-
-void CProfile::SetDebugFullOverride(bool enabled)
-{
-    mDebugFullOverride = enabled;
-}
-
 void CProfile::DebugPrintf(const char* format, ...)
 {
     static const Logger log("Profile");
@@ -1151,7 +1099,6 @@ void CProfile::DebugPrintf(const char* format, ...)
 
 void CProfile::SystemOnCreate()
 {
-    mDebugFullOverride = true;
     mSystemUIShowing = false;
 }
 

@@ -18,6 +18,8 @@ LevelRules::LevelRules()
 void LevelRules::addLevelRule(const std::wstring&, LevelRuleset* ruleset)
 {
     m_levelRules.push_back(ruleset);
+    if (!m_ruleGroups.empty())
+        addToGroup(ruleset);
 }
 
 void LevelRules::removeLevelRule(LevelRuleset* ruleset)
@@ -49,7 +51,12 @@ void LevelRules::removeLevelRule(LevelRuleset* ruleset)
     }
 }
 
-void LevelRules::getRulesByType(ELevelRuleType type, std::vector<LevelRuleset*>* rules, bool requirePurchase)
+std::vector<LevelRuleset*>* LevelRules::getLevelRules()
+{
+    return &m_levelRules;
+}
+
+void LevelRules::getRulesByType(ELevelRuleType type, std::vector<LevelRuleset*>* rules)
 {
     rules->clear();
     std::vector<LevelRuleset*>::iterator rule = m_levelRules.begin();
@@ -58,44 +65,38 @@ void LevelRules::getRulesByType(ELevelRuleType type, std::vector<LevelRuleset*>*
         LevelRuleset* ruleset = *rule;
         if (ruleset->getRuleType() == type)
         {
-            if (!requirePurchase || ruleset->getGenerationOptions()->mPack->hasPurchasedPack())
-            {
-                rules->push_back(ruleset);
-            }
+            rules->push_back(ruleset);
         }
         ++rule;
     }
 }
 
+void LevelRules::addToGroup(LevelRuleset* ruleset)
+{
+    for (std::vector<LevelRulesetGroup*>::iterator existing = m_ruleGroups.begin(); existing != m_ruleGroups.end();
+         ++existing)
+    {
+        LevelRulesetGroup* group = *existing;
+        LevelRuleset* const& front = group->rulesets.front();
+        if (front->getRuleType() == ruleset->getRuleType() && front->getThemeId() == ruleset->getThemeId())
+        {
+            group->rulesets.push_back(ruleset);
+            return;
+        }
+    }
+
+    LevelRulesetGroup* group = new LevelRulesetGroup();
+    m_ruleGroups.push_back(group);
+    group->rulesets.push_back(ruleset);
+}
+
 void LevelRules::populateRulesets()
 {
     for (std::vector<LevelRuleset*>::iterator rule = m_levelRules.begin(); rule != m_levelRules.end(); ++rule)
-    {
-        LevelRuleset* ruleset = *rule;
-        bool found = false;
-        const std::vector<LevelRulesetGroup*>::iterator end = m_ruleGroups.end();
-        for (std::vector<LevelRulesetGroup*>::iterator existing = m_ruleGroups.begin(); existing != end; ++existing)
-        {
-            LevelRulesetGroup* group = *existing;
-            LevelRuleset* const& front = group->rulesets.front();
-            if (front->getRuleType() == ruleset->getRuleType() && front->getThemeId() == ruleset->getThemeId())
-            {
-                group->rulesets.push_back(ruleset);
-                found = true;
-                break;
-            }
-        }
-
-        if (!found)
-        {
-            LevelRulesetGroup* group = new LevelRulesetGroup();
-            m_ruleGroups.push_back(group);
-            group->rulesets.push_back(ruleset);
-        }
-    }
+        addToGroup(*rule);
 }
 
-void LevelRules::getRulesByType(ELevelRuleType type, std::vector<LevelRulesetGroup*>* groups, bool requirePurchase)
+void LevelRules::getRulesByType(ELevelRuleType type, std::vector<LevelRulesetGroup*>* groups)
 {
     if (m_ruleGroups.empty())
     {
@@ -110,16 +111,7 @@ void LevelRules::getRulesByType(ELevelRuleType type, std::vector<LevelRulesetGro
         LevelRuleset* ruleset = current->rulesets.front();
         if (ruleset->getRuleType() == type)
         {
-            bool available = true;
-            if (requirePurchase)
-            {
-                available = ruleset->getGenerationOptions()->mPack->hasPurchasedPack()
-                            || gApp.mDLCManager.IsMiniGameTemporarilyFree(static_cast<int>(type));
-            }
-            if (available)
-            {
-                groups->push_back(current);
-            }
+            groups->push_back(current);
         }
         ++group;
     }

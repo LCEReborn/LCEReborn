@@ -33,6 +33,7 @@ public:
     virtual void handleFocusChange(int focus, int childFocus);
     virtual void handleInitFocus(int focus, int childFocus);
     virtual void handleGainFocus(bool hadFocus);
+    virtual void HandleDLCMountingComplete();
 
     void AddButton(int id, const std::wstring& label, const std::wstring& description);
     void AddCheckbox(int id, const std::wstring& label, bool checked, const std::wstring& description);
@@ -63,6 +64,7 @@ private:
     };
 
     void Build();
+    void RestoreFocus(int focusId);
     void ShowDescription(int id);
     void ToggleDescriptionPanel();
     void ApplyDescriptionPanel();

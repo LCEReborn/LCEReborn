@@ -64,6 +64,7 @@
 #include "game/network/INetworkPlayer.hpp"
 #include "game/network/ServerGamePacketListenerImpl.hpp"
 #include "game/network/CGameNetworkManager.hpp"
+#include "game/server/LeaderboardSavedData.hpp"
 #if LCE_PLATFORM_PC
 #include "platform/pc/Log.hpp"
 #endif
@@ -781,6 +782,7 @@ void PlayerList::placeNewPlayer(Connection* connection, boost::shared_ptr<Server
         player->setPlayerGamePrivilege(Player::ePlayerGamePrivilege_Op, op ? 1 : 0);
     }
 
+    LeaderboardSavedData::onJoin(player.get());
     validatePlayerSpawnPosition(player);
     ServerLevel* level = mServer->getLevel(player->mDimension);
 

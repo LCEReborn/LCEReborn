@@ -813,8 +813,8 @@ bool ShaderPipeline::Reload(int dimension)
 
     ShaderPackManager& manager = ShaderPackManager::Get();
     ShaderPack* pack = manager.ActivePack();
-    bool internal = manager.Settings().shaderPack == ShaderSettings::kPackInternal;
-    if (!internal && (pack == nullptr || !manager.Settings().IsPackSelected()))
+    bool internal = manager.Settings().UsesInternal();
+    if (!internal && (pack == nullptr || !manager.Settings().UsesPack()))
         return false;
 
     mWorld.clear();

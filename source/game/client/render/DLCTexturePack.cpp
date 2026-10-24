@@ -289,7 +289,7 @@ void DLCTexturePack::loadBehaviours()
     }
 }
 
-int DLCTexturePack::packMounted(void* data, int userIndex, unsigned int result, unsigned int licenseMask)
+int DLCTexturePack::packMounted(void* data, int userIndex, unsigned int result, unsigned int)
 {
     DLCTexturePack* pack = static_cast<DLCTexturePack*>(data);
     pack->m_loadingData = false;
@@ -305,7 +305,7 @@ int DLCTexturePack::packMounted(void* data, int userIndex, unsigned int result, 
     }
     else
     {
-        pack->m_loadedPack = new DLCPack(pack->m_dlcPack->getName(), licenseMask);
+        pack->m_loadedPack = new DLCPack(pack->m_dlcPack->getName());
         pack->setHasAudio(false);
         pack->m_hasValidData = true;
 

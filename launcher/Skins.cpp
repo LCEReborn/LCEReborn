@@ -214,13 +214,14 @@ bool ParseBox(const QString& text, Box* box, QString* part)
     return true;
 }
 
-Skin DlcSkin(quint32 skinId)
+Skin DlcSkin(quint32 skinId, const QString& packsDir)
 {
     Skin skin;
     const QString name = QString("dlcskin%1.png").arg(skinId & ~kDlcSkinBit, 8, 10, QChar('0'));
-    for (const QString& root : {QString("/WiiU/DLC"), QString("/WiiU/CU/DLC")})
+    const QString assets = LauncherPaths::AssetsDir();
+    for (const QString& root : {assets + "/WiiU/DLC", assets + "/WiiU/CU/DLC", packsDir})
     {
-        QDirIterator packs(LauncherPaths::AssetsDir() + root, {"*.pck"}, QDir::Files, QDirIterator::Subdirectories);
+        QDirIterator packs(root, {"*.pck"}, QDir::Files, QDirIterator::Subdirectories);
         while (packs.hasNext())
         {
             QFile file(packs.next());
@@ -255,7 +256,7 @@ Skin SkinFor(const Profile& profile)
     const quint32 skinId = SelectedSkinId(profile);
     if ((skinId & kDlcSkinBit) != 0)
     {
-        const Skin skin = DlcSkin(skinId);
+        const Skin skin = DlcSkin(skinId, ProfileStore::GameDirFor(profile) + "/packs");
         if (!skin.texture.isNull())
             return skin;
     }

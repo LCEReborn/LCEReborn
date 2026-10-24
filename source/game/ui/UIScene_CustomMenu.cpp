@@ -162,6 +162,13 @@ void UIScene_CustomMenu::Build()
     gConsoleUIController.TouchBoxRebuild(this);
 }
 
+void UIScene_CustomMenu::HandleDLCMountingComplete()
+{
+    int focusId = m_focusId;
+    reloadMovie(true);
+    RestoreFocus(focusId);
+}
+
 void UIScene_CustomMenu::Rebuild()
 {
     int focusId = m_focusId;
@@ -173,6 +180,11 @@ void UIScene_CustomMenu::Rebuild()
     menu->DoVerticalResizeCheck();
     ApplyDescriptionPanel();
     gConsoleUIController.TouchBoxRebuild(this);
+    RestoreFocus(focusId);
+}
+
+void UIScene_CustomMenu::RestoreFocus(int focusId)
+{
     int index = m_list.getListIndex(focusId);
     if (index >= 0)
         m_list.setCurrentSelection(index, false, true);

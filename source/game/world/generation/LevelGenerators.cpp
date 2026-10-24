@@ -2,11 +2,8 @@
 
 #include <algorithm>
 
-#include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/core/DLCPack.hpp"
-#include "game/core/cDLCInfo.hpp"
 #include "game/world/LevelGenerationOptions.hpp"
-#include "platform/wiiu/cNintendoDLCInfo.hpp"
 
 LevelGenerators::LevelGenerators()
 {
@@ -45,11 +42,5 @@ bool LevelGenerators::SortLevelGenerators(const LevelGenerationOptions* first, c
             return false;
     }
 
-    DLC_INFO* firstInfo = gApp.GetDLCInfoInstance()->GetDLCInfoForPackID(firstPackId);
-    DLC_INFO* secondInfo = gApp.GetDLCInfoInstance()->GetDLCInfoForPackID(secondPackId);
-    if (firstInfo == NULL || secondInfo == NULL)
-        return false;
-
-    bool result = firstInfo->SortIndex > secondInfo->SortIndex;
-    return result;
+    return firstPackId < secondPackId;
 }

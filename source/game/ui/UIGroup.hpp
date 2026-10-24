@@ -68,14 +68,12 @@ public:
     void SetViewportType(C4JRender::eViewportType viewport);
     void HandleDLCMountingComplete();
     void HandleDLCInstalled();
-    void HandleDLCLicenseChange();
     void HandleTMSBanFileRetrieved();
     void HandleMessage(EUIMessage message, void* data);
     void HandleSaveDeviceRemoved(int device);
     UIScene* FindScene(EUIScene scene);
     void ClearTooltips();
     bool HasFocus(int player);
-    void handleUnlockFullVersion();
     void* getCommandBufferList();
     UIComponent_Tooltips* getTooltips() { return m_tooltips; }
     UIComponent_TutorialPopup* getTutorialPopup() { return m_tutorialPopup; }

@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <cstring>
+#include <cwctype>
 #include <deque>
 #include <filesystem>
 #include <fstream>
@@ -18,6 +19,8 @@
 
 #include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/core/Compression.hpp"
+#include "game/core/DLCManager.hpp"
+#include "game/core/DLCPack.hpp"
 #include "game/core/Motd.hpp"
 #include "game/core/GameSettings.hpp"
 #include "game/core/IntCache.hpp"
@@ -26,6 +29,7 @@
 #include "game/core/ShutdownManager.hpp"
 #include "game/core/VideoSettings.hpp"
 #include "game/command/ChatCommands.hpp"
+#include "game/client/render/TexturePackRepository.hpp"
 #include "game/data/ElementStorage.hpp"
 #include "game/data/SparseDataStorage.hpp"
 #include "game/data/SparseLightStorage.hpp"
@@ -75,6 +79,8 @@ const char* const kDefaultProperties =
     "# add and remove them with the op and deop commands.\n"
     "# motd: shown under the server in the Join tab, as on Java servers: \\u00A7 or & codes, &#RRGGBB colours,\n"
     "# \\n for a second line, or a JSON text component. A 64x64 server-icon.png beside this file is its icon.\n"
+    "# texture-pack: a texture or mash-up pack for the world, by its folder name in the packs folder or its pack\n"
+    "# ID; players who don't have it are offered it when they join. Leave it empty to keep the world's own.\n"
     "server-name=LCEReborn Server\n"
     "motd=An LCEReborn server\n"
     "port=25570\n"
@@ -88,7 +94,8 @@ const char* const kDefaultProperties =
     "view-distance=10\n"
     "simulation-distance=10\n"
     "autosave-minutes=5\n"
-    "lan-visible=true\n";
+    "lan-visible=true\n"
+    "texture-pack=\n";
 
 struct ServerProperties
 {
@@ -106,6 +113,7 @@ struct ServerProperties
     int simulationDistance = 10;
     int autosaveMinutes = 5;
     bool lanVisible = true;
+    std::string texturePack;
 };
 
 std::atomic<bool> sStopRequested(false);
@@ -298,6 +306,8 @@ void ApplyProperty(ServerProperties& properties, const std::string& key, const s
         valid = ParseInt(value, 0, 1440, properties.autosaveMinutes);
     else if (key == "lan-visible")
         valid = ParseBool(value, properties.lanVisible);
+    else if (key == "texture-pack")
+        properties.texturePack = value;
     else
     {
         LOG_WARN(sLog, "server.properties: unknown setting %s", key.c_str());
@@ -566,10 +576,8 @@ void InitialiseGame(const std::wstring& serverName)
     Compression::CreateNewThreadStorage();
 
     gApp.loadMediaArchive();
-    gApp.InitialiseDLCInfo();
     if (gApp.ReadProductCodes() == 0)
         gApp.FatalLoadError(L"ReadProductCodes");
-    gProfile->SetFullVersion(true);
     L10N::loadStringTable();
     gApp.InitTime();
 
@@ -661,6 +669,41 @@ void TickMainThread()
     SparseDataStorage::tick();
     Vec3::resetPool();
 }
+
+void LoadPacks()
+{
+    gApp.StartInstallDLCProcess(0);
+    const std::chrono::steady_clock::time_point deadline = std::chrono::steady_clock::now() + std::chrono::minutes(2);
+    while (gApp.DLCInstallProcessCompleted() == 0 && std::chrono::steady_clock::now() < deadline)
+    {
+        TickMainThread();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    LOG_INFO(sLog, "Loaded %d packs; packs folder: %s", gApp.mDLCManager.getPackCount(DLCManager::eDLCType_All),
+             PcPacksRoot().c_str());
+}
+
+int FindTexturePack(const std::string& name)
+{
+    const std::wstring wanted = Widen(Lower(name));
+    char* end = NULL;
+    const long number = std::strtol(name.c_str(), &end, 10);
+    const int count = gApp.mDLCManager.getPackCount(DLCManager::eDLCType_All);
+    for (int index = 0; index < count; ++index)
+    {
+        DLCPack* pack = gApp.mDLCManager.getPack(static_cast<unsigned int>(index), DLCManager::eDLCType_All);
+        if (pack == NULL || pack->GetRootPath().empty())
+            continue;
+        const int id = static_cast<int>(pack->GetPackId() & 0x00ffffffu);
+        std::wstring folder = pack->getName();
+        for (size_t character = 0; character < folder.size(); ++character)
+            folder[character] = static_cast<wchar_t>(std::towlower(folder[character]));
+        const bool matches = (end != NULL && *end == '\0' && !name.empty() && number == id) || folder == wanted;
+        if (matches && Minecraft::GetInstance()->mTexturePackRepository->getTexturePackById(id) != NULL)
+            return id;
+    }
+    return -1;
+}
 }
 
 int PcServerMain()
@@ -688,6 +731,7 @@ int PcServerMain()
     PlayerList::SetOperatorsChanged(SaveOperators);
 
     InitialiseGame(Widen(properties.serverName));
+    LoadPacks();
 
     _NetworkGameInitData* initData;
     if (PcSaveFolderExists(properties.world))
@@ -705,6 +749,19 @@ int PcServerMain()
     {
         initData = PrepareNewWorld(properties);
         LOG_INFO(sLog, "Making a new world in %s", properties.world.c_str());
+    }
+
+    if (!properties.texturePack.empty())
+    {
+        const int texturePack = FindTexturePack(properties.texturePack);
+        if (texturePack < 0)
+            LOG_WARN(sLog, "server.properties: texture-pack %s is not a loaded texture or mash-up pack",
+                     properties.texturePack.c_str());
+        else
+        {
+            initData->m_texturePackId = texturePack;
+            LOG_INFO(sLog, "Using texture pack %d", texturePack);
+        }
     }
 
     LoadServerIcon();

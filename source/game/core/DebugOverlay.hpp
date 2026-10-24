@@ -72,9 +72,12 @@ void Draw(GuiComponent& gui, Font& font, int x, int y, const std::wstring values
           int* highlightX, int* highlightY);
 void RenderScreen(int pad, int viewport, int width, int height);
 
+float PixelScale();
 float ScreenUnit(int width, int height);
+float SnapToPixel(float value);
 void ViewportOrigin(int viewport, int* x, int* y);
-void BeginScreenDraw(int originX, int originY, float unit, float screenWidth = 0.0f);
+void ViewportArea(int viewport, int* x, int* y, int* width, int* height);
+void BeginScreenDraw(float originX, float originY, float unit, float screenWidth = 0.0f);
 void EndScreenDraw();
 }
 

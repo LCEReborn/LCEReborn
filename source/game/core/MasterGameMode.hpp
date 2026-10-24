@@ -149,6 +149,8 @@ public:
     void CheckTutorialUpdate();
     bool IsInKillBox(boost::shared_ptr<Entity> entity);
     bool AreLevelChunksLoaded();
+    bool ArePacksDownloading();
+    void HoldTimer(ETimerID timer, long long time);
     void ChooseNextGameRules(bool advancePlaylist);
     void UpdateClientState(boost::shared_ptr<ServerPlayer> player);
     void SetState(EInternalGameModeState state);
@@ -344,6 +346,8 @@ private:
     BlockChangeListener* mBlockChangeListener;
     unsigned long long mLastChatTime;
     int mLastChatMessage;
+    long long mLastTimerTick;
+    long long mNextDownloadNotice;
     int mPostRoundTeamIndex;
     unsigned int mTickCount;
     BlockRemover* mBlockRemover;

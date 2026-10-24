@@ -6,17 +6,18 @@
 #include <vector>
 
 #include "game/ui/UIScene.hpp"
-#include "game/ui/IUIScene_DlcSelectMenu.hpp"
 #include "game/ui/UIControl.hpp"
 #include "game/ui/UIControl_BitmapIcon.hpp"
 #include "game/ui/UIControl_Label.hpp"
 #include "game/ui/UIControl_MultiList.hpp"
 #include "game/ui/UIControl_PlayerSkinPreview.hpp"
 #include "game/ui/UIControl_Touch.hpp"
+#include "platform/C4JStorage.hpp"
 
+class DLCPack;
 struct SKIN_BOX;
 
-class UIScene_SkinSelectMenu : public UIScene, public IUIScene_DlcSelectMenu
+class UIScene_SkinSelectMenu : public UIScene
 {
 public:
     enum ECharacter
@@ -47,7 +48,6 @@ public:
     virtual void handleAnimationEnd();
     virtual void HandleDLCMountingComplete();
     virtual void HandleDLCInstalled();
-    virtual void HandleDLCLicenseChange();
     virtual void handleTouchInput(unsigned int playerId, int touchX, int touchY, int touchBox, bool pressed,
                                   bool repeat, bool released);
     virtual int getSceneType();
@@ -62,7 +62,6 @@ public:
     unsigned int getNextSkinIndex(unsigned int index);
     int getPreviousSkinIndex(unsigned int index);
     void handleSkinIndexChanged();
-    unsigned char IsTrialDiscontinuedPack(int packId);
     unsigned int GetIsNewPack(int packId);
     static bool SORTNEWEST(int first, int second);
     static bool SORTALPHABETICALLY(int first, int second);
@@ -87,6 +86,8 @@ private:
     UIControl_Touch m_touchCharacters;
     UIControl_MultiList m_packList;
     UIControl_BitmapIcon m_packIcon;
+    DLCPack* m_pack;
+    bool m_inputBlocked;
     std::vector<int> m_packIds;
     std::vector<int> m_newPackIds;
     std::vector<int> m_addedPackIds;

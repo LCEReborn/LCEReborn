@@ -347,13 +347,6 @@ void UIGroup::HandleDLCInstalled()
             m_layers[i]->HandleDLCInstalled();
 }
 
-void UIGroup::HandleDLCLicenseChange()
-{
-    if (m_player < 0 || gProfile->IsSignedIn(m_player))
-        for (int i = 0; i < EUILayer_Count; ++i)
-            m_layers[i]->HandleDLCLicenseChange();
-}
-
 void UIGroup::HandleTMSBanFileRetrieved()
 {
     if (m_player < 0 || gProfile->IsSignedIn(m_player))

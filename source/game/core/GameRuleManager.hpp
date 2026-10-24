@@ -40,6 +40,7 @@ public:
     unsigned int readRuleFile(LevelGenerationOptions* options, unsigned char* data, unsigned int size,
                               StringTable* table);
     void loadGameRules(DLCPack* pack);
+    void unloadGameRules(DLCPack* pack);
     void loadGameRules(LevelGenerationOptions* options, unsigned char* data, unsigned int size);
     LevelGenerationOptions* loadGameRules(unsigned char* data, unsigned int size);
     LevelGenerationOptions* getLevelGenerationOptions();

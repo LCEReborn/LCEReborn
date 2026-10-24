@@ -103,11 +103,9 @@ public:
     virtual void handleTouchBoxRebuild();
     virtual void HandleDLCMountingComplete();
     virtual void HandleDLCInstalled();
-    virtual void HandleDLCLicenseChange();
     virtual void HandleTMSBanFileRetrieved();
     virtual void HandleMessage(EUIMessage message, void* data);
     virtual void HandleSaveDeviceRemoved(int deviceIndex);
-    virtual void handleUnlockFullVersion();
     virtual void handleTouchInput(unsigned int playerId, int touchX, int touchY, int touchBox, bool pressed,
                                   bool repeat, bool released);
     virtual bool isReadyToDelete();

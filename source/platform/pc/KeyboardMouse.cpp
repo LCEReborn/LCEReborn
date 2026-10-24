@@ -511,6 +511,11 @@ bool PcKeyboardMouse::QuickMoveHeld() const
     return false;
 }
 
+bool PcKeyboardMouse::PrimaryHeld() const
+{
+    return mInputDown[kMouseInputBase + SDL_BUTTON_LEFT];
+}
+
 bool PcKeyboardMouse::CaptureEvent(const SDL_Event& event)
 {
     int input = C_4JInput::EKeyCapture_None;

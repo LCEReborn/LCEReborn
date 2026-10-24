@@ -42,6 +42,7 @@ public:
     bool IsRoundRestarting() const;
     void ResetReadyStates();
     void Reset();
+    void ForgetLevelGenerationOptions();
     void PlaySound(const SoundEvent* sound, float volume, float pitch);
     void OnRoundPlay();
     void OnRoundEnding();

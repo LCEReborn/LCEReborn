@@ -20,51 +20,41 @@ extern ConsoleUIController gConsoleUIController;
 
 namespace
 {
-const int kLayoutWidth = 640;
-const int kLayoutHeight = 360;
+const int kLayoutWidth = MenuFrame::kWidth;
+const int kLayoutHeight = MenuFrame::kHeight;
 const int kListLeft = 20;
 const int kListTop = 40;
 const int kListRight = 290;
-const int kListBottom = 272;
 const int kListInset = 6;
 const int kCategoryHeight = 12;
 const int kRowHeight = 17;
 const int kRowGap = 2;
 const int kSwitchWidth = 38;
 const int kSwitchHeight = 11;
-const int kPresetTop = 278;
-const int kPresetBottom = 316;
+const int kPresetHeight = 38;
+const int kPresetGap = 6;
 const int kPreviewLeft = 300;
 const int kPreviewRight = 620;
 const int kPreviewTop = 40;
-const int kPreviewBottom = 316;
 const int kTabHeight = 15;
 const int kViewportTop = kPreviewTop + kListInset + kTabHeight + 4;
 const int kListInnerLeft = kListLeft + kListInset;
 const int kListInnerTop = kListTop + kListInset;
 const int kListInnerRight = kListRight - kListInset - 4;
-const int kListInnerBottom = kListBottom - kListInset;
 const int kSwitchLeftOffset = 4 + kSwitchWidth * 3 + 2;
 const float kPresetSpacing = 84.0f;
 const float kPi = 3.14159265f;
 const int kDisplayOrder[DebugOverlay::EState_Count] = {DebugOverlay::EState_Always, DebugOverlay::EState_WithF3,
                                                       DebugOverlay::EState_Off};
-
-float Approach(float value, float target, float milliseconds, float timeConstant)
-{
-    return value + (target - value) * (1.0f - expf(-milliseconds / timeConstant));
-}
-
-void Text(Font& font, const std::wstring& text, int x, int y, unsigned int colour, bool shadow)
-{
-    GlStateManager::enableBlend();
-    GlStateManager::blendFunc(4, 5);
-    GlStateManager::enableTexture();
-    if (shadow)
-        font.drawShadow(text, x, y, static_cast<int>(colour));
-    else
-        font.draw(text, x, y, static_cast<int>(colour));
-}
+const unsigned int kPanelFill = 0xFFC6C6C6;
+const unsigned int kPanelShade = 0xFF555555;
+const unsigned int kRowFill = 0xFF6F6F6F;
+const unsigned int kRowLight = 0xFFAAAAAA;
+const unsigned int kRowFocusFill = 0xFF7B85C4;
+const unsigned int kRowFocusLight = 0xFFC7CFFF;
+const unsigned int kRowFocusShade = 0xFF59609A;
+const unsigned int kTabFill = 0xFF8B8B8B;
+const unsigned int kPreviewShade = 0x30000000;
 
 int DisplayIndex(int state)
 {
@@ -81,11 +71,11 @@ unsigned int SwitchColour(int state)
     switch (state)
     {
     case DebugOverlay::EState_Always:
-        return 0xFF3C8527;
+        return MenuColour::kChipGreen;
     case DebugOverlay::EState_WithF3:
-        return 0xFFC79A1E;
+        return MenuColour::kChipAmber;
     default:
-        return 0xFF8A2B2B;
+        return MenuColour::kChipRed;
     }
 }
 
@@ -94,12 +84,21 @@ unsigned int SwitchEdge(int state)
     switch (state)
     {
     case DebugOverlay::EState_Always:
-        return 0xFF1D4D13;
+        return MenuColour::kChipGreenEdge;
     case DebugOverlay::EState_WithF3:
-        return 0xFF6E5310;
+        return MenuColour::kChipAmberEdge;
     default:
-        return 0xFF4A1414;
+        return MenuColour::kChipRedEdge;
     }
+}
+
+void Row(MenuPainter& painter, int x0, int y0, int x1, int y1, unsigned int fill, unsigned int light,
+         unsigned int shade)
+{
+    painter.Fill(x0, y0, x1, y1, MenuColour::kBlack);
+    painter.Fill(x0 + 1, y0 + 1, x1 - 1, y1 - 1, fill);
+    painter.Fill(x0 + 1, y0 + 1, x1 - 1, y0 + 2, light);
+    painter.Fill(x0 + 1, y1 - 3, x1 - 1, y1 - 1, shade);
 }
 }
 
@@ -133,11 +132,6 @@ UIScene_DebugOverlayMenu::UIScene_DebugOverlayMenu(int playerId, void*, UILayer*
     }
     m_look.highlight = 0;
     m_look.pulse = 0.0f;
-    for (int index = 0; index < 4; ++index)
-        m_savedScissor[index] = 0;
-    m_originX = 0;
-    m_originY = 0;
-    m_unit = 1.0f;
     m_pointerX = -1.0f;
     m_pointerY = -1.0f;
     m_scrollTarget = 0.0f;
@@ -170,9 +164,19 @@ void UIScene_DebugOverlayMenu::tick()
     HandlePointer();
 }
 
+int UIScene_DebugOverlayMenu::ListBottom() const
+{
+    return m_frame.bottom - kPresetHeight - kPresetGap;
+}
+
+int UIScene_DebugOverlayMenu::PresetTop() const
+{
+    return m_frame.bottom - kPresetHeight;
+}
+
 int UIScene_DebugOverlayMenu::RowAt(float x, float y) const
 {
-    if (x < kListInnerLeft || x >= kListInnerRight || y < kListInnerTop || y >= kListInnerBottom)
+    if (x < kListInnerLeft || x >= kListInnerRight || y < kListInnerTop || y >= ListBottom() - kListInset)
         return -1;
     const float content = y - kListInnerTop + m_scroll;
     for (int entry = 0; entry < DebugOverlay::EEntry_Count; ++entry)
@@ -201,7 +205,7 @@ int UIScene_DebugOverlayMenu::SwitchAt(int entry, float x, float y) const
 
 int UIScene_DebugOverlayMenu::PresetAt(float x, float y) const
 {
-    if (y < kPresetTop + 2 || y >= kPresetBottom - 2 || x < kListLeft || x >= kListRight)
+    if (y < PresetTop() + 2 || y >= m_frame.bottom - 2 || x < kListLeft || x >= kListRight)
         return -1;
     const float centreX = (kListLeft + kListRight) * 0.5f;
     const float offset = (x - centreX) / kPresetSpacing;
@@ -242,7 +246,7 @@ void UIScene_DebugOverlayMenu::Click(float x, float y)
         return;
     }
 
-    if (y >= kPresetTop && y < kPresetBottom && x >= kListLeft && x < kListRight)
+    if (y >= PresetTop() && y < m_frame.bottom && x >= kListLeft && x < kListRight)
     {
         if (x < kListLeft + 14)
         {
@@ -265,9 +269,10 @@ void UIScene_DebugOverlayMenu::HandlePointer()
 #if LCE_PLATFORM_PC
     float pointerX = 0.0f;
     float pointerY = 0.0f;
-    const bool hasPointer = g_pInput->GetMenuPointer(m_playerId, &pointerX, &pointerY) && m_unit > 0.0f;
-    const float x = (pointerX - m_originX) / m_unit;
-    const float y = (pointerY - m_originY) / m_unit;
+    const bool hasPointer = g_pInput->GetMenuPointer(m_playerId, &pointerX, &pointerY);
+    float x = 0.0f;
+    float y = 0.0f;
+    m_frame.Pointer(m_playerId, &x, &y);
     if (hasPointer && (pointerX != m_pointerX || pointerY != m_pointerY))
     {
         m_pointerX = pointerX;
@@ -521,8 +526,8 @@ void UIScene_DebugOverlayMenu::Animate()
     m_look.pulse = 0.5f + 0.5f * sinf(static_cast<float>(now % 1000) / 1000.0f * 2.0f * kPi);
 
     const int focusTop = RowTop(m_focus);
-    m_focusY = Approach(m_focusY, static_cast<float>(focusTop), elapsed, 55.0f);
-    const int visible = (kListBottom - kListTop) - kListInset * 2;
+    m_focusY = MenuApproach(m_focusY, static_cast<float>(focusTop), elapsed, 55.0f);
+    const int visible = (ListBottom() - kListTop) - kListInset * 2;
     float scrollTarget =
         m_mouseScroll ? m_scrollTarget : static_cast<float>(focusTop) - visible * 0.5f + kRowHeight * 0.5f;
     const float maximum = static_cast<float>(ContentHeight() - visible);
@@ -532,34 +537,22 @@ void UIScene_DebugOverlayMenu::Animate()
         scrollTarget = 0.0f;
     if (m_mouseScroll)
         m_scrollTarget = scrollTarget;
-    m_scroll = Approach(m_scroll, scrollTarget, elapsed, 90.0f);
+    m_scroll = MenuApproach(m_scroll, scrollTarget, elapsed, 90.0f);
 
     float carouselTarget = static_cast<float>(m_preset);
     while (carouselTarget - m_carousel > ePreset_Count * 0.5f)
         carouselTarget -= ePreset_Count;
     while (m_carousel - carouselTarget > ePreset_Count * 0.5f)
         carouselTarget += ePreset_Count;
-    m_carousel = Approach(m_carousel, carouselTarget, elapsed, 120.0f);
+    m_carousel = MenuApproach(m_carousel, carouselTarget, elapsed, 120.0f);
     if (fabsf(m_carousel - carouselTarget) < 0.001f)
         m_carousel = static_cast<float>(m_preset);
 
     const bool shown = DebugOverlay::IsShown(m_playerId, m_focus, m_previewOpen);
-    m_zoom = Approach(m_zoom, shown ? 1.0f : 0.62f, elapsed, 140.0f);
+    m_zoom = MenuApproach(m_zoom, shown ? 1.0f : 0.62f, elapsed, 140.0f);
 }
 
-void UIScene_DebugOverlayMenu::Clip(int originX, int originY, float unit, int x0, int y0, int x1, int y1)
-{
-    const int left = originX + static_cast<int>(x0 * unit);
-    const int top = originY + static_cast<int>(y0 * unit);
-    const int right = originX + static_cast<int>(x1 * unit);
-    const int bottom = originY + static_cast<int>(y1 * unit);
-    gRenderer->StateSetScissorRect(static_cast<unsigned int>(left < 0 ? 0 : left),
-                                   static_cast<unsigned int>(top < 0 ? 0 : top),
-                                   static_cast<unsigned int>(right < 0 ? 0 : right),
-                                   static_cast<unsigned int>(bottom < 0 ? 0 : bottom));
-}
-
-void UIScene_DebugOverlayMenu::DrawSwitch(Font& font, int x, int y, int entry)
+void UIScene_DebugOverlayMenu::DrawSwitch(MenuPainter& painter, int x, int y, int entry)
 {
     const int state = DebugOverlay::GetState(m_playerId, entry);
     const long long since = System::processTimeInMilliSecs() - m_changeTime[entry];
@@ -576,30 +569,22 @@ void UIScene_DebugOverlayMenu::DrawSwitch(Font& font, int x, int y, int entry)
         GlStateManager::scalef(scale, scale, 1.0f);
         const int left = -kSwitchWidth / 2;
         const int top = -kSwitchHeight / 2;
-        m_gui.fill(left, top, left + kSwitchWidth, top + kSwitchHeight,
-                   static_cast<int>(selected ? SwitchEdge(option) : 0xFF1D1D1D));
-        m_gui.fill(left + 1, top + 1, left + kSwitchWidth - 1, top + kSwitchHeight - 1,
-                   static_cast<int>(selected ? SwitchColour(option) : 0xFF3B3B3B));
-        const std::wstring label = DebugOverlay::StateName(option);
-        Text(font, label, -font.width(label) / 2, top + 2, selected ? 0xFFFFFFFF : 0xFF9A9A9A, selected);
+        painter.SwitchSegment(left, top, left + kSwitchWidth, top + kSwitchHeight, DebugOverlay::StateName(option),
+                              selected, SwitchColour(option), SwitchEdge(option));
         GlStateManager::popMatrix();
     }
 }
 
-void UIScene_DebugOverlayMenu::DrawList(Font& font, int originX, int originY, float unit)
+void UIScene_DebugOverlayMenu::DrawList(MenuPainter& painter)
 {
-    m_gui.fill(kListLeft, kListTop, kListRight, kListBottom, 0xFF000000);
-    m_gui.fill(kListLeft + 1, kListTop + 1, kListRight - 1, kListBottom - 1, 0xFFC6C6C6);
-    m_gui.fill(kListLeft + 1, kListTop + 1, kListRight - 1, kListTop + 2, 0xFFFFFFFF);
-    m_gui.fill(kListLeft + 1, kListTop + 1, kListLeft + 2, kListBottom - 1, 0xFFFFFFFF);
-    m_gui.fill(kListLeft + 1, kListBottom - 2, kListRight - 1, kListBottom - 1, 0xFF555555);
-    m_gui.fill(kListRight - 2, kListTop + 1, kListRight - 1, kListBottom - 1, 0xFF555555);
+    const int listBottom = ListBottom();
+    painter.Bevel(kListLeft, kListTop, kListRight, listBottom, kPanelFill, MenuColour::kPanelLight, kPanelShade);
 
     const int innerLeft = kListLeft + kListInset;
     const int innerTop = kListTop + kListInset;
     const int innerRight = kListRight - kListInset - 4;
-    const int innerBottom = kListBottom - kListInset;
-    Clip(originX, originY, unit, innerLeft - 6, innerTop, innerRight + 6, innerBottom);
+    const int innerBottom = listBottom - kListInset;
+    m_frame.Clip(innerLeft - 6, innerTop, innerRight + 6, innerBottom);
     const int offset = innerTop - static_cast<int>(m_scroll + 0.5f);
 
     int group = -1;
@@ -609,67 +594,46 @@ void UIScene_DebugOverlayMenu::DrawList(Font& font, int originX, int originY, fl
         if (DebugOverlay::Group(entry) != group)
         {
             group = DebugOverlay::Group(entry);
-            Text(font, DebugOverlay::GroupName(group), innerLeft + 2, rowTop - kCategoryHeight + 3, 0xFF404040, false);
+            painter.Text(DebugOverlay::GroupName(group), innerLeft + 2, rowTop - kCategoryHeight + 3,
+                         MenuColour::kTextDark, false);
         }
-        m_gui.fill(innerLeft, rowTop, innerRight, rowTop + kRowHeight, 0xFF000000);
-        m_gui.fill(innerLeft + 1, rowTop + 1, innerRight - 1, rowTop + kRowHeight - 1, 0xFF6F6F6F);
-        m_gui.fill(innerLeft + 1, rowTop + 1, innerRight - 1, rowTop + 2, 0xFFAAAAAA);
-        m_gui.fill(innerLeft + 1, rowTop + kRowHeight - 3, innerRight - 1, rowTop + kRowHeight - 1, 0xFF555555);
+        Row(painter, innerLeft, rowTop, innerRight, rowTop + kRowHeight, kRowFill, kRowLight, kPanelShade);
     }
 
     const int focusTop = offset + static_cast<int>(m_focusY + 0.5f);
-    const int grow = 1 + static_cast<int>(m_pulse * 5.0f);
-    const unsigned int ring = (static_cast<unsigned int>((1.0f - m_pulse) * 180.0f) << 24) | 0xFFFF55;
-    m_gui.fill(innerLeft - grow, focusTop - grow, innerRight + grow, focusTop - grow + 1, static_cast<int>(ring));
-    m_gui.fill(innerLeft - grow, focusTop + kRowHeight + grow - 1, innerRight + grow, focusTop + kRowHeight + grow,
-               static_cast<int>(ring));
-    m_gui.fill(innerLeft - grow, focusTop - grow, innerLeft - grow + 1, focusTop + kRowHeight + grow,
-               static_cast<int>(ring));
-    m_gui.fill(innerRight + grow - 1, focusTop - grow, innerRight + grow, focusTop + kRowHeight + grow,
-               static_cast<int>(ring));
-    m_gui.fill(innerLeft, focusTop, innerRight, focusTop + kRowHeight, 0xFF000000);
-    m_gui.fill(innerLeft + 1, focusTop + 1, innerRight - 1, focusTop + kRowHeight - 1, 0xFF7B85C4);
-    m_gui.fill(innerLeft + 1, focusTop + 1, innerRight - 1, focusTop + 2, 0xFFC7CFFF);
-    m_gui.fill(innerLeft + 1, focusTop + kRowHeight - 3, innerRight - 1, focusTop + kRowHeight - 1, 0xFF59609A);
+    painter.Ring(innerLeft, focusTop, innerRight, focusTop + kRowHeight, m_pulse);
+    Row(painter, innerLeft, focusTop, innerRight, focusTop + kRowHeight, kRowFocusFill, kRowFocusLight,
+        kRowFocusShade);
 
     for (int entry = 0; entry < DebugOverlay::EEntry_Count; ++entry)
     {
         const int rowTop = offset + RowTop(entry);
         const bool focused = entry == m_focus;
-        Text(font, DebugOverlay::EntryName(entry), innerLeft + 5, rowTop + 5, focused ? 0xFFFFFF55 : 0xFFE0E0E0, true);
-        DrawSwitch(font, innerRight - 4 - kSwitchWidth * 3 - 2, rowTop + 3, entry);
+        painter.Text(DebugOverlay::EntryName(entry), innerLeft + 5, rowTop + 5,
+                     focused ? MenuColour::kTextYellow : MenuColour::kTextLight, true);
+        DrawSwitch(painter, innerRight - 4 - kSwitchWidth * 3 - 2, rowTop + 3, entry);
     }
+    m_frame.Unclip();
 
-    const int visible = innerBottom - innerTop;
-    const int content = ContentHeight();
-    if (content > visible)
-    {
-        const int barHeight = visible * visible / content;
-        const int barTop = innerTop + static_cast<int>((visible - barHeight) * m_scroll / (content - visible));
-        m_gui.fill(innerRight + 3, innerTop, innerRight + 5, innerBottom, 0xFF8B8B8B);
-        m_gui.fill(innerRight + 3, barTop, innerRight + 5, barTop + barHeight, 0xFF555555);
-    }
+    painter.Scrollbar(innerRight + 3, innerTop, innerBottom, ContentHeight(), m_scroll, MenuColour::kScrollTrack,
+                      MenuColour::kScrollThumb);
 }
 
-void UIScene_DebugOverlayMenu::DrawPresets(Font& font, int originX, int originY, float unit)
+void UIScene_DebugOverlayMenu::DrawPresets(MenuPainter& painter)
 {
-    m_gui.fill(kListLeft, kPresetTop, kListRight, kPresetBottom, 0xFF000000);
-    m_gui.fill(kListLeft + 1, kPresetTop + 1, kListRight - 1, kPresetBottom - 1, 0xFFC6C6C6);
-    m_gui.fill(kListLeft + 1, kPresetTop + 1, kListRight - 1, kPresetTop + 2, 0xFFFFFFFF);
-    m_gui.fill(kListLeft + 1, kPresetTop + 1, kListLeft + 2, kPresetBottom - 1, 0xFFFFFFFF);
-    m_gui.fill(kListLeft + 1, kPresetBottom - 2, kListRight - 1, kPresetBottom - 1, 0xFF555555);
-    m_gui.fill(kListRight - 2, kPresetTop + 1, kListRight - 1, kPresetBottom - 1, 0xFF555555);
+    const int presetTop = PresetTop();
+    const int presetBottom = m_frame.bottom;
+    painter.Bevel(kListLeft, presetTop, kListRight, presetBottom, kPanelFill, MenuColour::kPanelLight, kPanelShade);
 
-    const int arrowWidth = font.width(L">");
+    const int arrowWidth = painter.Width(L">");
     const int stripLeft = kListLeft + 6 + arrowWidth + 4;
     const int stripRight = kListRight - 6 - arrowWidth - 4;
-    const int middleY = (kPresetTop + kPresetBottom) / 2;
-    Text(font, L"<", kListLeft + 6, middleY - 4, 0xFF404040, false);
-    Text(font, L">", kListRight - 6 - arrowWidth, middleY - 4, 0xFF404040, false);
-    Clip(originX, originY, unit, stripLeft, kPresetTop + 2, stripRight, kPresetBottom - 2);
+    const int middleY = (presetTop + presetBottom) / 2;
+    painter.Text(L"<", kListLeft + 6, middleY - 4, MenuColour::kTextDark, false);
+    painter.Text(L">", kListRight - 6 - arrowWidth, middleY - 4, MenuColour::kTextDark, false);
+    m_frame.Clip(stripLeft, presetTop + 2, stripRight, presetBottom - 2);
 
     const float centreX = (stripLeft + stripRight) * 0.5f;
-    const float spacing = kPresetSpacing;
     float offsets[ePreset_Count];
     int order[ePreset_Count];
     for (int preset = 0; preset < ePreset_Count; ++preset)
@@ -704,45 +668,44 @@ void UIScene_DebugOverlayMenu::DrawPresets(Font& font, int originX, int originY,
         const float distance = fabsf(offset) < 1.0f ? fabsf(offset) : 1.0f;
         const float closeness = 1.0f - distance;
         const std::wstring name = PresetName(preset);
-        const int width = font.width(name) + 12 + static_cast<int>(10.0f * closeness);
+        const int width = painter.Width(name) + 12 + static_cast<int>(10.0f * closeness);
         const int height = 20 + static_cast<int>(6.0f * closeness);
-        const int x = static_cast<int>(centreX + offset * spacing);
+        const int x = static_cast<int>(centreX + offset * kPresetSpacing);
         const int x0 = x - width / 2;
         const int y0 = middleY - height / 2;
         const bool current = preset == m_preset && closeness > 0.5f;
-        m_gui.fill(x0, y0, x0 + width, y0 + height, 0xFF000000);
-        m_gui.fill(x0 + 1, y0 + 1, x0 + width - 1, y0 + height - 1, current ? 0xFF7B85C4 : 0xFF6F6F6F);
-        m_gui.fill(x0 + 1, y0 + 1, x0 + width - 1, y0 + 2, current ? 0xFFC7CFFF : 0xFFAAAAAA);
-        m_gui.fill(x0 + 1, y0 + height - 3, x0 + width - 1, y0 + height - 1, current ? 0xFF59609A : 0xFF555555);
-        const unsigned int colour = current ? 0xFFFFFF55 : 0xFFE0E0E0;
-        Text(font, name, x - font.width(name) / 2, middleY - 4, colour, true);
+        if (current)
+            Row(painter, x0, y0, x0 + width, y0 + height, kRowFocusFill, kRowFocusLight, kRowFocusShade);
+        else
+            Row(painter, x0, y0, x0 + width, y0 + height, kRowFill, kRowLight, kPanelShade);
+        painter.Text(name, x - painter.Width(name) / 2, middleY - 4,
+                     current ? MenuColour::kTextYellow : MenuColour::kTextLight, true);
         if (fabsf(offset) > 1.0f)
         {
             const float fade = fabsf(offset) - 1.0f;
-            const unsigned int alpha = static_cast<unsigned int>((fade > 1.0f ? 1.0f : fade) * 200.0f);
-            m_gui.fill(x0, y0, x0 + width, y0 + height, static_cast<int>((alpha << 24) | 0xC6C6C6));
+            const float alpha = (fade > 1.0f ? 1.0f : fade) * 0.78f;
+            painter.Fill(x0, y0, x0 + width, y0 + height, MenuPainter::WithAlpha(kPanelFill, alpha));
         }
     }
+    m_frame.Unclip();
 }
 
-void UIScene_DebugOverlayMenu::DrawPreview(Font& font, int originX, int originY, float unit)
+void UIScene_DebugOverlayMenu::DrawPreview(MenuPainter& painter, Font& font)
 {
+    const int previewBottom = m_frame.bottom;
     const int left = kPreviewLeft + kListInset;
     const int right = kPreviewRight - kListInset;
     const int viewTop = kViewportTop;
-    const int viewBottom = kPreviewBottom - kListInset;
-    m_gui.fill(kPreviewLeft, kPreviewTop, kPreviewRight, kPreviewTop + 1, 0xFF000000);
-    m_gui.fill(kPreviewLeft, kPreviewBottom - 1, kPreviewRight, kPreviewBottom, 0xFF000000);
-    m_gui.fill(kPreviewLeft, kPreviewTop, kPreviewLeft + 1, kPreviewBottom, 0xFF000000);
-    m_gui.fill(kPreviewRight - 1, kPreviewTop, kPreviewRight, kPreviewBottom, 0xFF000000);
-    m_gui.fill(kPreviewLeft + 1, kPreviewTop + 1, kPreviewRight - 1, viewTop, 0xFFC6C6C6);
-    m_gui.fill(kPreviewLeft + 1, viewBottom, kPreviewRight - 1, kPreviewBottom - 1, 0xFFC6C6C6);
-    m_gui.fill(kPreviewLeft + 1, viewTop, left, viewBottom, 0xFFC6C6C6);
-    m_gui.fill(right, viewTop, kPreviewRight - 1, viewBottom, 0xFFC6C6C6);
-    m_gui.fill(kPreviewLeft + 1, kPreviewTop + 1, kPreviewRight - 1, kPreviewTop + 2, 0xFFFFFFFF);
-    m_gui.fill(kPreviewLeft + 1, kPreviewTop + 1, kPreviewLeft + 2, kPreviewBottom - 1, 0xFFFFFFFF);
-    m_gui.fill(kPreviewLeft + 1, kPreviewBottom - 2, kPreviewRight - 1, kPreviewBottom - 1, 0xFF555555);
-    m_gui.fill(kPreviewRight - 2, kPreviewTop + 1, kPreviewRight - 1, kPreviewBottom - 1, 0xFF555555);
+    const int viewBottom = previewBottom - kListInset;
+    painter.Outline(kPreviewLeft, kPreviewTop, kPreviewRight, previewBottom, MenuColour::kBlack);
+    painter.Fill(kPreviewLeft + 1, kPreviewTop + 1, kPreviewRight - 1, viewTop, kPanelFill);
+    painter.Fill(kPreviewLeft + 1, viewBottom, kPreviewRight - 1, previewBottom - 1, kPanelFill);
+    painter.Fill(kPreviewLeft + 1, viewTop, left, viewBottom, kPanelFill);
+    painter.Fill(right, viewTop, kPreviewRight - 1, viewBottom, kPanelFill);
+    painter.Fill(kPreviewLeft + 1, kPreviewTop + 1, kPreviewRight - 1, kPreviewTop + 2, MenuColour::kPanelLight);
+    painter.Fill(kPreviewLeft + 1, kPreviewTop + 1, kPreviewLeft + 2, previewBottom - 1, MenuColour::kPanelLight);
+    painter.Fill(kPreviewLeft + 1, previewBottom - 2, kPreviewRight - 1, previewBottom - 1, kPanelShade);
+    painter.Fill(kPreviewRight - 2, kPreviewTop + 1, kPreviewRight - 1, previewBottom - 1, kPanelShade);
 
     const int tabTop = kPreviewTop + kListInset;
     const int middle = (left + right) / 2;
@@ -752,21 +715,18 @@ void UIScene_DebugOverlayMenu::DrawPreview(Font& font, int originX, int originY,
         const bool selected = (tab == 1) == m_previewOpen;
         const int x0 = tab == 0 ? left : middle;
         const int x1 = tab == 0 ? middle : right;
-        m_gui.fill(x0, tabTop, x1, tabTop + kTabHeight, 0xFF000000);
-        m_gui.fill(x0 + 1, tabTop + 1, x1 - 1, tabTop + kTabHeight - 1, selected ? 0xFF7B85C4 : 0xFF8B8B8B);
-        const std::wstring label = tabs[tab];
-        Text(font, label, (x0 + x1 - font.width(label)) / 2, tabTop + 4, selected ? 0xFFFFFF55 : 0xFF404040, selected);
+        painter.Fill(x0, tabTop, x1, tabTop + kTabHeight, MenuColour::kBlack);
+        painter.Fill(x0 + 1, tabTop + 1, x1 - 1, tabTop + kTabHeight - 1, selected ? kRowFocusFill : kTabFill);
+        const unsigned int colour = selected ? MenuColour::kTextYellow : MenuColour::kTextDark;
+        painter.Centred(tabs[tab], (x0 + x1) / 2, tabTop + 4, colour, selected);
     }
 
-    m_gui.fill(left, viewTop, right, viewTop + 1, 0xFF000000);
-    m_gui.fill(left, viewBottom - 1, right, viewBottom, 0xFF000000);
-    m_gui.fill(left, viewTop, left + 1, viewBottom, 0xFF000000);
-    m_gui.fill(right - 1, viewTop, right, viewBottom, 0xFF000000);
-    m_gui.fill(left + 1, viewTop + 1, right - 1, viewBottom - 1, 0x30000000);
+    painter.Outline(left, viewTop, right, viewBottom, MenuColour::kBlack);
+    painter.Fill(left + 1, viewTop + 1, right - 1, viewBottom - 1, kPreviewShade);
 
     std::wstring values[DebugOverlay::EEntry_Count];
     DebugOverlay::Values(m_playerId, values);
-    Clip(originX, originY, unit, left + 1, viewTop + 1, right - 1, viewBottom - 1);
+    m_frame.Clip(left + 1, viewTop + 1, right - 1, viewBottom - 1);
     int highlightX = -1;
     int highlightY = -1;
     GlStateManager::pushMatrix();
@@ -774,6 +734,7 @@ void UIScene_DebugOverlayMenu::DrawPreview(Font& font, int originX, int originY,
     GlStateManager::scalef(m_zoom, m_zoom, 1.0f);
     DebugOverlay::Draw(m_gui, font, 2, 2, values, m_look, &highlightX, &highlightY);
     GlStateManager::popMatrix();
+    m_frame.Unclip();
 
     const float viewWidth = static_cast<float>(right - left - 2);
     const float viewHeight = static_cast<float>(viewBottom - viewTop - 2);
@@ -794,46 +755,24 @@ void UIScene_DebugOverlayMenu::DrawPreview(Font& font, int originX, int originY,
         if (targetY < lowestY)
             targetY = lowestY;
     }
-    m_cameraX = Approach(m_cameraX, targetX, m_elapsed, 140.0f);
-    m_cameraY = Approach(m_cameraY, targetY, m_elapsed, 140.0f);
+    m_cameraX = MenuApproach(m_cameraX, targetX, m_elapsed, 140.0f);
+    m_cameraY = MenuApproach(m_cameraY, targetY, m_elapsed, 140.0f);
 }
 
-void UIScene_DebugOverlayMenu::render(int width, int height, C4JRender::eViewportType viewport)
+void UIScene_DebugOverlayMenu::render(int, int, C4JRender::eViewportType viewport)
 {
     Minecraft* minecraft = Minecraft::GetInstance();
     if (!m_hasTicked || minecraft == NULL || minecraft->mFont == NULL)
         return;
     Font& font = *minecraft->mFont;
+    m_frame.Fit(viewport);
     Animate();
 
-    int viewportX = 0;
-    int viewportY = 0;
-    DebugOverlay::ViewportOrigin(viewport, &viewportX, &viewportY);
-    const float unit = DebugOverlay::ScreenUnit(width, height);
-    const int originX = viewportX + static_cast<int>((width - kLayoutWidth * unit) * 0.5f);
-    const int originY = viewportY + static_cast<int>((height - kLayoutHeight * unit) * 0.5f);
-    m_originX = originX;
-    m_originY = originY;
-    m_unit = unit;
-
-    gRenderer->StateGetScissorRect(m_savedScissor[0], m_savedScissor[1], m_savedScissor[2], m_savedScissor[3]);
-    DebugOverlay::BeginScreenDraw(originX, originY, unit);
-
-    const std::wstring title = L"Debug Overlay";
-    GlStateManager::pushMatrix();
-    GlStateManager::translatef(kLayoutWidth * 0.5f, 6.0f, 0.0f);
-    GlStateManager::scalef(2.0f, 2.0f, 1.0f);
-    Text(font, title, -font.width(title) / 2, 0, 0xFFFFFFFF, true);
-    GlStateManager::popMatrix();
-    const std::wstring subtitle = L"More Options";
-    Text(font, subtitle, (kLayoutWidth - font.width(subtitle)) / 2, 26, 0xFFAAAAAA, true);
-
-    DrawList(font, originX, originY, unit);
-    gRenderer->StateSetScissorRect(m_savedScissor[0], m_savedScissor[1], m_savedScissor[2], m_savedScissor[3]);
-    DrawPresets(font, originX, originY, unit);
-    gRenderer->StateSetScissorRect(m_savedScissor[0], m_savedScissor[1], m_savedScissor[2], m_savedScissor[3]);
-    DrawPreview(font, originX, originY, unit);
-    gRenderer->StateSetScissorRect(m_savedScissor[0], m_savedScissor[1], m_savedScissor[2], m_savedScissor[3]);
-
-    DebugOverlay::EndScreenDraw();
+    MenuPainter painter(m_gui, font, m_frame);
+    m_frame.Begin();
+    painter.Title(L"Debug Overlay", L"More Options", MenuColour::kTextSubtitle);
+    DrawList(painter);
+    DrawPresets(painter);
+    DrawPreview(painter, font);
+    m_frame.End();
 }

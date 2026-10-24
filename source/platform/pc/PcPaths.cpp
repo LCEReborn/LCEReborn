@@ -2,6 +2,8 @@
 
 #include <filesystem>
 
+#include <SDL3/SDL.h>
+
 #include "platform/pc/PcLaunchOptions.hpp"
 
 static std::string RootFromOption(const std::string& option, const char* fallback)
@@ -52,15 +54,15 @@ const std::string& PcSaveRoot()
     return SaveRoot();
 }
 
-const std::string& PcResourceRoot()
+const std::string& PcPacksRoot()
 {
-    static std::string root = ResourceRootFromOption(PcGetLaunchOptions().resourceDir);
+    static std::string root = RootFromOption(PcGetLaunchOptions().packsDir, "packs");
     return root;
 }
 
-const std::string& PcLicenseFile()
+const std::string& PcResourceRoot()
 {
-    static std::string root = RootFromOption(PcGetLaunchOptions().licenseFile, "license.cfg");
+    static std::string root = ResourceRootFromOption(PcGetLaunchOptions().resourceDir);
     return root;
 }
 
@@ -119,4 +121,13 @@ bool PcCheckGameFolders(std::string& message, bool needInterfaceArt)
     }
 
     return true;
+}
+
+void PcOpenFolder(const std::string& path)
+{
+    std::error_code error;
+    const std::filesystem::path folder = std::filesystem::u8path(path);
+    std::filesystem::create_directories(folder, error);
+    const std::string url = "file:///" + folder.generic_u8string();
+    SDL_OpenURL(url.c_str());
 }

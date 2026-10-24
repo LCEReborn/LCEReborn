@@ -19,6 +19,7 @@ struct CommandSource
     float yRot;
     float xRot;
     bool console;
+    int permission;
 };
 
 #endif

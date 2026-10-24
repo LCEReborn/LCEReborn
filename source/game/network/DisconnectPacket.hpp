@@ -47,7 +47,8 @@ public:
         eDisconnectReason_NetworkError,
         eDisconnectReason_MiiInUse,
         eDisconnectReason_CannotJoinGame,
-        eDisconnectReason_NoSuitableGame
+        eDisconnectReason_NoSuitableGame,
+        eDisconnectReason_MissingPack
     };
 
     DisconnectPacket();

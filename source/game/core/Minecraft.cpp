@@ -111,7 +111,6 @@
 #include "game/core/StatsUID.hpp"
 #include "game/core/System.hpp"
 #include "game/core/Timer.hpp"
-#include "game/core/TrialMode.hpp"
 #include "game/core/User.hpp"
 #include "game/core/UnityClient13.hpp"
 #include "game/core/UnityClient6.hpp"
@@ -1158,8 +1157,6 @@ boost::shared_ptr<MultiplayerLocalPlayer> Minecraft::createExtraLocalPlayer(int 
 
         if (tutorialMode && tutorialForUid)
             mGameModes[playerIdx] = new MultiPlayerGameMode(playerIdx, connection, gameModeUserIndex, true, false);
-        else if (!gProfile->IsFullVersion())
-            mGameModes[playerIdx] = new TrialMode(playerIdx, connection, gameModeUserIndex);
         else
             mGameModes[playerIdx] = new MultiPlayerGameMode(playerIdx, connection, gameModeUserIndex, false,
                                                             GameType::byId(gameTypeId) == GameType::LOBBY);
@@ -2228,7 +2225,7 @@ void Minecraft::run_middle()
     AABB::resetPool();
     Vec3::resetPool();
 
-    if (mLevel != NULL && gProfile->IsFullVersion() && CGameNetworkManager::sInstance.IsHost()
+    if (mLevel != NULL && CGameNetworkManager::sInstance.IsHost()
         && !InMiniGame(eMiniGameId_Any, true) && !gStorage->GetSaveDisabled())
     {
         if (gApp.GetXuiAction(gProfile->GetPrimaryPad()) == eXuiAction_Idle)
@@ -2242,16 +2239,6 @@ void Minecraft::run_middle()
             {
                 bool autosaveAllowed = GameSettings::GetGameSettings(gProfile->GetPrimaryPad(), eGameSetting_Autosave)
                                        != 0;
-                if (GetInstance()->mTexturePackRepository->getSelected() != TexturePackRepository::defaultTexturePack)
-                {
-                    DLCPack* parentPack = static_cast<DLCTexturePack*>(
-                                              GetInstance()->mTexturePackRepository->getSelected())
-                                              ->getDLCInfoParentPack();
-                    if (parentPack != NULL && !parentPack->hasPurchasedPack())
-                    {
-                        autosaveAllowed = false;
-                    }
-                }
 
                 if (autosaveAllowed)
                 {
@@ -3203,6 +3190,8 @@ void Minecraft::fjReloadTexturePack()
     BlockEntityRenderDispatcher::instance->setupForTexturePack(mTexturePackRepository->getSelected());
     mTextures->reloadAll();
     mTexturePackRepository->updateUI();
+    if (mLevel != NULL && mPlayer != NULL && mLevelRenderer != NULL)
+        mLevelRenderer->allChanged();
 
     TexturePack* selected = mTexturePackRepository->getSelected();
     if (selected->hasAudio() || selected->getId() == 0x801 || selected->getId() == 0x803 || selected->getId() == 0x806

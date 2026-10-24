@@ -52,9 +52,9 @@ data, Nintendo friend presence) are declared under that platform's
 ## Files and folders on PC
 
 Game content is read from `assets/` (what the launcher's setup or
-`tools/prepare.py` writes), saves
-go to `saves/` and the PC interface art is read from `resources/`, all
-relative to the working directory. The `--content-dir`, `--save-dir` and
+`tools/prepare.py` writes), saves go to `saves/`, packs are read from
+`packs/` and the PC interface art is read from `resources/`, all relative to
+the working directory. The `--content-dir`, `--save-dir`, `--packs-dir` and
 `--resource-dir` arguments override them (`platform/pc/PcPaths`). A resource
 folder with a `pc` subfolder, such as the repository's own `resources/`, is
 read from that subfolder.
@@ -64,23 +64,14 @@ comes from its arguments (`platform/pc/PcLaunchOptions`, `--help` lists them).
 `--username` sets the player name, falling back to the OS user name, and
 `--language` the language, falling back to the system's. `--uuid` sets the
 first player's identity, 32 hexadecimal digits with or without dashes;
-without it the identity is made from the player name. `--license-file` sets
-the license file (see Licenses). `--world` loads a save folder from
-`saves/games/` as soon as the main menu is up. Most players start the game
-from the launcher (`pc-launcher.md`).
+without it the identity is made from the player name. `--world` loads a save
+folder from `saves/games/` as soon as the main menu is up. Most players start
+the game from the launcher (`pc-launcher.md`).
 
 Debug builds (`-DCMAKE_BUILD_TYPE=RelWithDebInfo` or `Debug`) add options for
 render testing: `--position` and `--rotation` place the player once a world
 has loaded, and `--capture-frames`, `--capture-delay` and `--capture-dir`
 save that many frames as PNG files after the delay, then quit.
-
-## Licenses
-
-The PC has no store, so the game reads what is unlocked from `license.cfg`
-(or `--license-file`) and writes it on first start with everything locked.
-Nothing is unlocked until you edit it, and you should only unlock what you
-own. `full_game = true` unlocks the full game, otherwise it runs as the trial.
-`dlc` is `none`, `all`, or pack names separated by commas.
 
 ## Multiplayer
 
@@ -114,14 +105,17 @@ server.
 
 `LCERebornServer` runs a world with no window, sound or local player, on
 Windows and Linux. It needs the same content folder as the game and takes
-`--content-dir`, `--save-dir` and `--log-dir`. In a release, that content is
-what the launcher imported: in the package folder on Windows, where the
+`--content-dir`, `--save-dir`, `--packs-dir` and `--log-dir`. In a release,
+that content is what the launcher imported: in the package folder on
+Windows, where the
 server finds it when started there, and in `~/.local/share/LCEReborn/assets`
 on Linux. The AppImage only starts the launcher, so run the server from the
 tar.gz. The first start writes
 `server.properties` to the saves folder; edit it and restart to apply
 changes. `world` names the folder in `games` to load, and a new world is made
-there if it is missing. Operators may use commands when cheats are allowed.
+there if it is missing. `texture-pack` gives the world a texture or mash-up
+pack, by its folder name in the packs folder or its pack ID. Operators may
+use commands when cheats are allowed.
 They are kept by UUID in `ops.json` beside `server.properties`, and `op` and
 `deop` change them while the server runs. `op` takes a player's UUID, which
 the server logs when they join, or a name. A UUID is better when you know
@@ -142,6 +136,18 @@ container (publish the TCP port; finding games on the local network doesn't
 reach past Docker's own network). The world is saved every
 `autosave-minutes`. If it can't start, for example because its port is
 taken, it exits with code 1.
+
+## Leaderboards
+
+The console's four boards (Travelling, Mining, Farming and Kills) show one
+total each, with no split by difficulty. Leaderboards on the main menu shows
+My Statistics: the player's own totals from every game they have played.
+Leaderboards in the pause menu shows the current world's board, ranking
+everyone who has played there, and X (Y on the Wii U) switches between
+Overall, My Score and My Statistics. The world's server counts these and keeps them in the save
+by UUID, so a dedicated server keeps one for its players. A game hosted by
+an older version doesn't keep one. Stats count in every game mode and world,
+as Java's do; only achievements keep the console's limits.
 
 ## Discord
 
@@ -179,7 +185,9 @@ font draws (`Font::draw`).
 
 The Chat button can be changed in Controls for keyboards and controllers.
 
-A message starting with `/` is a command (`ChatCommands` in `game/command/`).
+A message starting with `/` is a command. Each command is a `ChatCommand`
+in `game/command/chat/`, registered with `ChatCommands::Register`, which
+finds commands by name or alias and checks permission before running them.
 They follow Java 1.12, with `/execute`, `/xp` and coordinates as in 1.13:
 
 - **Players and items:** `/give`, `/clear`, `/effect`, `/enchant`, `/xp`,
@@ -198,13 +206,14 @@ They follow Java 1.12, with `/execute`, `/xp` and coordinates as in 1.13:
 `/xp add`, `set` and `query` take `points` or `levels`; the older
 `/xp 5L` form also works. `/effect` and `/enchant` work on any mob.
 
-`/help` lists them a page at a time, and `/help <command>` shows one usage.
-`/me`, `/msg`, `/list` and `/help` are open to everyone. The rest follow the
-game's own permission rule: the host and moderators can use them when the
-world has Host Privileges on, and anyone else is told they don't have
-permission. `/kick` can't remove the host or players on the host's console.
-`/op` and `/deop` make a player a moderator or not; the host always is one.
-In a hosted game they take a player who is online.
+`/help` lists the commands you can use a page at a time, and
+`/help <command>` shows one usage. `/me`, `/msg`, `/list` and `/help` are
+open to everyone. The rest follow the game's own permission rule: the host
+and moderators can use them when the world has Host Privileges on, and
+anyone else is told they don't have permission. `/kick` can't remove the
+host or players on the host's console. `/op` and `/deop` make a player a
+moderator or not; the host always is one. In a hosted game they take a
+player who is online.
 
 Where a command takes targets, a player name or a selector works
 (`TargetSelector`): `@p` nearest player, `@a` all players, `@r` a random
@@ -215,7 +224,9 @@ negates `type`, `name` and `m`. Coordinates take `~` for values relative to
 where you are, or `^left ^up ^forward` for values relative to where you
 face; both are measured from whoever runs the command.
 Tab completes item, block, effect, enchantment and entity names, and selector
-arguments.
+arguments. The server sends each player the commands they may use over the
+`LCE|Commands` channel, again whenever that changes, so completion only
+offers those; a game hosted by an older version sends none.
 
 ## Debug overlay
 
@@ -426,6 +437,28 @@ prompt (the game's X/Square action, X on the keyboard) slides the list to the
 left and the description panel out from behind it, sized to its text; the
 same button tucks it away again. The panel follows the highlight while open.
 
+## Packs
+
+Skin, texture, mash-up and map packs are the game's `.pck` files. The packs
+that came free with the game load from its content
+(`platform/BuiltInPacks.hpp`); the rest of the game's DLC folders are not
+loaded. Other packs go in the packs folder, each as a `.pck` file or as a
+folder holding the `.pck` and its `Data` folder, and load when the game
+starts. On the Wii U the packs folder is `wiiu/LCEReborn/packs` on the SD
+card. A pack whose ID is already loaded is skipped. Packs on the main menu
+lists what is loaded and where it came from (`game/ui/UIPacksPage`).
+
+A host or server sends players the packs they are missing, as Java servers
+send resource packs (`game/network/PackTransfer`): the world's texture pack,
+which a player may decline, and the map packs of a mini-game, which a player
+must take to stay. Packs that come with the game are never sent. Received
+packs go in `serverpacks/` in the save folder (on the Wii U,
+`wiiu/LCEReborn/serverpacks` on the SD card) and are removed when the
+player leaves the game, or at the next start if the game closed first. A
+mini-game lobby's countdown waits while anyone is still downloading, and up
+to a minute for an answer; a player who still hasn't answered when it ends
+is removed.
+
 ## Shader packs
 
 OptiFine and Iris shader packs (OpenGL, as `.zip` files or folders) go in
@@ -434,6 +467,18 @@ OptiFine and Iris shader packs (OpenGL, as `.zip` files or folders) go in
 settings and opens the pack's own option screens. The choice and global
 settings are saved to `optionsshaders.txt`, and each pack's options to
 `shaderpacks/<pack>.txt`, the same files OptiFine uses.
+
+The menu has three tabs (LB/RB, Q/R on the keyboard). Shader Packs picks
+the pack or turns shaders off; Shader Pack Settings shows the pack's own
+option pages from `shaders.properties`, with Import, Export and Reset; and
+Shader Settings holds the settings that apply to every pack. Shader packs
+or settings files dropped on the window are added or imported.
+
+Changes wait for Apply (X) or Done. Cancel throws them away, and B (Esc)
+asks first when it would close the menu with changes not applied. Y puts
+the highlighted option back to its default. In a world, Hide Menu (F1, or
+the right stick) shows the world as the pack draws it. Shaders are drawn
+only while one player is on screen.
 
 The pack is loaded and run by `platform/pc/shaderpack`; the game reaches it
 through `game/client/render/ShaderPackBridge`. Packs see the 1.12 block,

@@ -25,9 +25,6 @@
 #include "platform/CInput.hpp"
 #include "vendor/_ConnectionProgressParams.hpp"
 #include "platform/Platform.hpp"
-#if LCE_PLATFORM_WIIU
-#include "platform/wiiu/cCommerceNintendo.hpp"
-#endif
 #include "platform/C4JThread.hpp"
 #include "game/network/ServerboundPreLoginPacket.hpp"
 #include "game/server/MinecraftServer.hpp"
@@ -229,13 +226,7 @@ int CGameNetworkManager::JoinFromInvite_SignInReturned(void* data, bool result, 
 }
 void CGameNetworkManager::HandleInviteWhenInMenus(int userIndex, const nn::fp::FriendPresence* presence)
 {
-    bool fullVersion = gProfile->IsFullVersion();
     gProfile->SetPrimaryPad(userIndex);
-    if (!fullVersion)
-    {
-        gApp.SetAction(userIndex, eXuiAction_UpsellForInvite, 0);
-        return;
-    }
     gApp.StartInstallDLCProcess(userIndex);
     if (!gApp.IsLocalMultiplayerAvailable() || gApp.IsDrcPreventingSplitscreen())
     {
@@ -824,11 +815,6 @@ bool CGameNetworkManager::_RunNetworkGame(void* data)
     }
 
     gApp.SetGameStarted(true);
-    if (!gProfile->IsFullVersion())
-    {
-        gConsoleUIController.SetTrialTimerLimitSecs(0x960u);
-        gApp.SetTrialTimerStart();
-    }
     return result;
 }
 bool CGameNetworkManager::RunDedicatedServer(void* data)
@@ -1759,16 +1745,6 @@ unsigned int CallbackAcquiredForeground(void*)
 {
     gRenderer->AcquiredForeground();
     g_pInput->AcquiredForeground();
-#if LCE_PLATFORM_WIIU
-    if (CommerceAppletIsExecuting())
-    {
-        CommerceAppletFinish();
-        CommerceAppletGetReturnCode();
-        cCommerceNintendo* commerce = static_cast<cCommerceNintendo*>(
-            reinterpret_cast<void*>(gApp.GetCommerceInstance()));
-        commerce->SetProcessState(cCommerceNintendo::eCommerce_Process_State_ForegroundAcquired);
-    }
-#endif
     CGameNetworkManager::sInstance.WiiU_AcquiredForeground();
     return 0;
 }

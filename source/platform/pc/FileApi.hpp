@@ -22,5 +22,8 @@ void CloseHandle(int file);
 int CreateDirectoryA(const char* pathName, void* securityAttributes);
 int CreateFileA(const char* fileName, unsigned int desiredAccess, unsigned int shareMode, void* securityAttributes,
                 unsigned int creationDisposition, unsigned int flagsAndAttributes, int templateFile);
+bool PcRemoveAll(const char* path);
+bool PcRename(const char* from, const char* to);
+bool PcCreateDirectories(const char* path);
 
 #endif

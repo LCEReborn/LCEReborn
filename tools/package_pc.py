@@ -508,6 +508,15 @@ def server_text():
     return "Dedicated server\n----------------\n\n%s\n\n" % textwrap.fill(text, 72, break_on_hyphens=False)
 
 
+def packs_text():
+    folder = "~/.local/share/LCEReborn/packs" if LINUX else "the packs folder beside the launcher"
+    text = ("The packs that came free with the game load on their own. To use DLC packs you own, or custom "
+            ".pck packs, copy each pack's folder, the one holding its .pck file, into %s and it loads the "
+            "next time the game starts. Packs on the game's main menu lists them and opens the folder. A "
+            "game you join sends you the packs it uses that you don't have." % folder)
+    return "Packs\n-----\n\n%s\n\n" % textwrap.fill(text, 72, break_on_hyphens=False)
+
+
 def readme_text(source, glibc, desktop_script=False):
     readme = read(os.path.join(ROOT, "README.md"))
     disclaimers = block(readme, "## Disclaimers", "\n## ", os.path.join(ROOT, "README.md"))
@@ -530,6 +539,7 @@ def readme_text(source, glibc, desktop_script=False):
             "688 and imports them into %s"
             "%s\n"
             "%s"
+            "%s"
             "Source and license\n"
             "------------------\n\n"
             "LCEReborn is free software under the GNU General Public License,\n"
@@ -538,7 +548,7 @@ def readme_text(source, glibc, desktop_script=False):
             "third_party/NOTICES.txt lists the libraries in it and their licenses.\n\n"
             "Disclaimers\n"
             "-----------\n\n"
-            "%s\n" % (title, "=" * len(title), build, PROGRAMS[1], folder, requirements_text(glibc), server_text(),
+            "%s\n" % (title, "=" * len(title), build, PROGRAMS[1], folder, requirements_text(glibc), packs_text(), server_text(),
                       source["repository"], source["commit"], disclaimers))
 
 

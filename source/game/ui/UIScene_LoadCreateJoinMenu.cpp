@@ -41,7 +41,6 @@
 #include "platform/CProfile.hpp"
 #include "platform/CStorage.hpp"
 #include "platform/Platform.hpp"
-#include "platform/Commerce.hpp"
 #include "vendor/_LoadingInputParams.hpp"
 #include "vendor/_SaveListDetails.hpp"
 
@@ -885,7 +884,7 @@ void UIScene_LoadCreateJoinMenu::Initialise()
     m_selectedCreateIndex = 0;
     m_buttonCount = 0;
     m_texturePackWorldCount = 0;
-    if (!gProfile->IsFullVersion() || m_miniGames)
+    if (m_miniGames)
     {
         AddDefaultButtons();
         m_ignoreInput = false;
@@ -1186,36 +1185,6 @@ int UIScene_LoadCreateJoinMenu::handleSaveOptionsDialogReturned(int pad, C4JStor
         m_ignoreInput = false;
         break;
     }
-    return 0;
-}
-
-int UIScene_LoadCreateJoinMenu::handleTexturePackDialogReturned(int pad, C4JStorage::EMessageResult result)
-{
-    if (result == C4JStorage::EMessageResult_Accept)
-    {
-        XBackgroundDownloadSetMode(XBACKGROUND_DOWNLOAD_MODE_ALWAYS_ALLOW);
-        if (gProfile->IsSignedIn(pad))
-        {
-            if (gProfile->IsSignedInLive(pad))
-            {
-                if (!gApp.GetCommerceInstance()->PurchaseDLCByPackID(
-                        m_joinSceneData->session->m_gameSessionData.m_texturePackParentId))
-                {
-                    int options[1] = {IDS_CONFIRM_OK};
-                    gConsoleUIController.RequestErrorMessage(IDS_DLC_ALREADY_INSTALLED_TITLE,
-                                                             IDS_DLC_ALREADY_INSTALLED_TEXT, options, 1, pad, NULL,
-                                                             NULL, NULL, true);
-                }
-            }
-            else
-            {
-                int options[1] = {IDS_CONFIRM_OK};
-                gConsoleUIController.RequestErrorMessage(IDS_PRO_NOTONLINE_TITLE, 0xC34C0B77, options, 1, pad, NULL,
-                                                         NULL, NULL, true);
-            }
-        }
-    }
-    m_ignoreInput = false;
     return 0;
 }
 

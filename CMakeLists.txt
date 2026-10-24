@@ -118,13 +118,10 @@ list(FILTER LCE_PLATFORM_SOURCES EXCLUDE REGEX "/platform/pc/(Server)?Main\\.cpp
 # The LAN and internet play shared with the Wii U build.
 file(GLOB LCE_NET_SOURCES CONFIGURE_DEPENDS "${LCE_SOURCE}/net/*.cpp")
 list(APPEND LCE_PLATFORM_SOURCES ${LCE_NET_SOURCES})
-# Units under platform/wiiu shared with PC: the index of the DLC packs in the game content, 4J's memory helpers,
-# System (whose clock is switched per platform) and the leaderboard manager (the edition has no leaderboards).
+# Units under platform/wiiu shared with PC: 4J's memory helpers and System (whose clock is switched per platform).
 list(APPEND LCE_PLATFORM_SOURCES
-  "${LCE_SOURCE}/platform/wiiu/cNintendoDLCInfo.cpp"
   "${LCE_SOURCE}/platform/wiiu/Memory.cpp"
-  "${LCE_SOURCE}/platform/wiiu/System.cpp"
-  "${LCE_SOURCE}/platform/wiiu/WiiULeaderboardManager.cpp")
+  "${LCE_SOURCE}/platform/wiiu/System.cpp")
 add_library(lce_platform OBJECT ${LCE_PLATFORM_SOURCES})
 target_link_libraries(lce_platform PRIVATE lce_common lce_zlib SDL3::SDL3-static)
 set_target_properties(lce_platform PROPERTIES CXX_STANDARD 17)

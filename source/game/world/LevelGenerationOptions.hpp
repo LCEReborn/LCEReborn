@@ -82,6 +82,7 @@ public:
     bool isGameModeLobby();
     unsigned int getMapSize() const;
     void setGrSource(GameRulesSource* source);
+    GameRulesSource* getGrSource() const { return mGameRulesSource; }
     void setRequiresTexturePack(bool required);
     void setTexturePackId(unsigned int id);
     void setDefaultSaveName(const std::wstring& name);

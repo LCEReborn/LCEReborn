@@ -70,8 +70,6 @@ extern "C" void OSReport(const char*, ...);
 C4JCriticalSection g_uiCriticalSection;
 ConsoleUIController gConsoleUIController;
 
-static unsigned int s_trialTimerValue = 0;
-static unsigned int s_trialTimerLimitSecs = 40 * 60;
 static bool s_uiCriticalSectionInitialized = false;
 
 void PopupToast(void* context, int playerId, int achievementId, int imageId, int value)
@@ -86,7 +84,6 @@ ConsoleUIController::ConsoleUIController()
     m_oldFont = 0;
     m_homeMenuPending = false;
     m_font = 0;
-    s_trialTimerValue = 0;
     m_skinThread = 0;
     m_currentFont = 0;
     m_bitmapFontAlt = 0;
@@ -1262,16 +1259,6 @@ void ConsoleUIController::HandleDLCInstalled(int packId)
         m_groups[i]->HandleDLCInstalled();
 }
 
-void ConsoleUIController::HandleDLCLicenseChange()
-{
-    for (int i = 0; i < 6; ++i)
-        m_groups[i]->HandleDLCLicenseChange();
-}
-
-void ConsoleUIController::HandleTMSDLCFileRetrieved(int fileId)
-{
-}
-
 void ConsoleUIController::HandleTMSBanFileRetrieved(int fileId)
 {
     for (int i = 0; i < 6; ++i)
@@ -1356,56 +1343,10 @@ void ConsoleUIController::ShowOtherPlayersBaseScene(unsigned int playerId, bool 
 {
 }
 
-void ConsoleUIController::ShowTrialTimer(bool show)
-{
-    if (m_groups[EUIGroup_Fullscreen]->getPressStartToPlay() != 0)
-        m_groups[EUIGroup_Fullscreen]->getPressStartToPlay()->showTrialTimer(show);
-}
-
-void ConsoleUIController::SetTrialTimerLimitSecs(unsigned int limitSecs)
-{
-    s_trialTimerLimitSecs = limitSecs;
-}
-
-void ConsoleUIController::UpdateTrialTimer(unsigned int playerId)
-{
-    unsigned int elapsed = (unsigned int)gApp.getTrialTimer();
-    if (elapsed > s_trialTimerLimitSecs)
-        elapsed = s_trialTimerLimitSecs;
-    unsigned int remaining = s_trialTimerLimitSecs - elapsed;
-    if (remaining < 180)
-    {
-        wchar_t timer[20];
-        swprintf(timer, 20, L"%d:%02d", remaining / 60, remaining % 60);
-        if (m_groups[EUIGroup_Fullscreen]->getPressStartToPlay() != 0)
-            m_groups[EUIGroup_Fullscreen]->getPressStartToPlay()->setTrialTimer(timer);
-    }
-    else
-    {
-        if (m_groups[EUIGroup_Fullscreen]->getPressStartToPlay() == 0)
-            return;
-        m_groups[EUIGroup_Fullscreen]->getPressStartToPlay()->setTrialTimer(L"");
-    }
-    if (remaining == 0 && !gConsoleUIController.GetMenuDisplayed((int)playerId))
-    {
-        gConsoleUIController.NavigateToScene((int)playerId, EUIScene_PauseMenu, 0, EUILayer_Scene,
-                                             EUIGroup_PlayerDefault);
-        gApp.SetAction((int)playerId, eXuiAction_TrialOver, 0);
-    }
-}
-
-void ConsoleUIController::ReduceTrialTimerValue()
-{
-    unsigned int elapsed = (unsigned int)(int)gApp.getTrialTimer();
-    if (elapsed > s_trialTimerLimitSecs)
-        elapsed = s_trialTimerLimitSecs;
-    s_trialTimerLimitSecs -= elapsed;
-}
-
 void ConsoleUIController::ShowAutosaveCountdownTimer(bool show)
 {
     if (m_groups[EUIGroup_Fullscreen]->getPressStartToPlay() != 0)
-        m_groups[EUIGroup_Fullscreen]->getPressStartToPlay()->showTrialTimer(show);
+        m_groups[EUIGroup_Fullscreen]->getPressStartToPlay()->showAutosaveTimer(show);
 }
 
 void ConsoleUIController::UpdateAutosaveCountdownTimer(unsigned int remainingSecs)
@@ -1413,7 +1354,7 @@ void ConsoleUIController::UpdateAutosaveCountdownTimer(unsigned int remainingSec
     wchar_t text[100];
     swprintf(text, 100, L10N::GetString(IDS_AUTOSAVE_COUNTDOWN), remainingSecs);
     if (m_groups[EUIGroup_Fullscreen]->getPressStartToPlay() != 0)
-        m_groups[EUIGroup_Fullscreen]->getPressStartToPlay()->setTrialTimer(text);
+        m_groups[EUIGroup_Fullscreen]->getPressStartToPlay()->setAutosaveTimer(text);
 }
 
 void ConsoleUIController::ShowSavingMessage(unsigned int playerId, C4JStorage::ESavingMessage message)

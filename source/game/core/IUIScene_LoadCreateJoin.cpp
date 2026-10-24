@@ -505,7 +505,7 @@ void IUIScene_LoadCreateJoin::_updateTooltips()
     if (m_partyGamesAvailable && DoesGamesListHaveFocus() && partyTooltip == -1)
         partyTooltip = m_partyGamesOnly ? IDS_TOOLTIPS_ALL_GAMES : IDS_TOOLTIPS_PARTY_GAMES;
 
-    if (gProfile->IsFullVersion() && gStorage->GetSaveDisabled())
+    if (gStorage->GetSaveDisabled())
         DoesLoadListHaveFocus();
 
     gConsoleUIController.SetTooltips(0, selectTooltip, IDS_TOOLTIPS_BACK, partyTooltip, listTooltip, -1, -1, -1,
@@ -892,11 +892,6 @@ void IUIScene_LoadCreateJoin::HandleNewListPress(int index, int variant)
     m_ignoreInput = 0;
 }
 
-int IUIScene_LoadCreateJoin::TexturePackDialogReturned(void* context, int userIndex, C4JStorage::EMessageResult result)
-{
-    return static_cast<IUIScene_LoadCreateJoin*>(context)->handleTexturePackDialogReturned(userIndex, result);
-}
-
 void IUIScene_LoadCreateJoin::CheckAndJoinGame(int index)
 {
     if (GetJoinListSize() <= 0)
@@ -905,35 +900,8 @@ void IUIScene_LoadCreateJoin::CheckAndJoinGame(int index)
         return;
 
     m_joinSceneData->userIndex = GetPad();
-    FriendSessionInfo* session = m_friendSessions->at(index);
-    unsigned int texturePackId = session->m_gameSessionData.m_texturePackParentId;
-    m_joinSceneData->session = session;
+    m_joinSceneData->session = m_friendSessions->at(index);
     m_joinSceneData->miniGames = m_miniGames;
-
-    if (texturePackId != 0)
-    {
-        int packCount = Minecraft::GetInstance()->mTexturePackRepository->getTexturePackCount();
-        bool texturePackFound = false;
-        for (int packIndex = 0; packIndex < packCount; ++packIndex)
-        {
-            if (Minecraft::GetInstance()->mTexturePackRepository->getTexturePackByIndex(packIndex)->getDLCParentPackId()
-                == m_joinSceneData->session->m_gameSessionData.m_texturePackParentId)
-            {
-                texturePackFound = true;
-                break;
-            }
-        }
-        if (!texturePackFound)
-        {
-            int options[2];
-            options[0] = IDS_TEXTUREPACK_FULLVERSION;
-            options[1] = IDS_CONFIRM_CANCEL;
-            gConsoleUIController.RequestAlertMessage(
-                IDS_DLC_TEXTUREPACK_NOT_PRESENT_TITLE, IDS_DLC_TEXTUREPACK_NOT_PRESENT, options, 2, GetPad(),
-                &IUIScene_LoadCreateJoin::TexturePackDialogReturned, this, 0, true);
-            return;
-        }
-    }
 
     ShowJoinListTimer(false);
     m_ignoreInput = true;

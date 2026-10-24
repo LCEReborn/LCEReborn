@@ -1,15 +1,12 @@
 #include "game/core/CConsoleMinecraftApp.hpp"
 #include "game/core/StringIds.hpp"
 #include "game/core/ConsoleUIController.hpp"
-#include "game/core/DLCPack.hpp"
 #include "game/core/ShutdownManager.hpp"
 #include "game/network/CGameNetworkManager.hpp"
 #include "game/ui/UIScene_AchievementsMenu.hpp"
 #include "platform/C4JThread.hpp"
 #include "platform/CInput.hpp"
 #include "platform/CStorage.hpp"
-#include "platform/Commerce.hpp"
-#include "platform/wiiu/cNintendoDLCInfo.hpp"
 #include "platform/C4JThreadImpl.hpp"
 #include "platform/FileSystem.hpp"
 #include "platform/FileApi.hpp"
@@ -115,10 +112,6 @@ bool CConsoleMinecraftApp::IsAmericanSKU()
 {
     return m_productSKU == 1;
 }
-PlatformCommerce* CConsoleMinecraftApp::GetCommerceInstance()
-{
-    return m_commerce;
-}
 void CConsoleMinecraftApp::RequestToBackground()
 {
     s_requestBackground = 1;
@@ -166,126 +159,16 @@ void CConsoleMinecraftApp::FatalLoadError(const wchar_t* message, ...)
     ShutdownAndExit();
 #endif
 }
-void CConsoleMinecraftApp::InitialiseDLCInfo()
-{
-    m_dlcInfo = new cNintendoDLCInfo;
-}
-#if LCE_PLATFORM_PC
-static bool ReadBigEndianUInt32(int handle, unsigned int* value)
-{
-    unsigned char bytes[4];
-    unsigned int bytesRead = 0;
-    if (ReadFile(handle, bytes, sizeof(bytes), &bytesRead, 0) == 0)
-        return false;
-    *value = (static_cast<unsigned int>(bytes[0]) << 24) | (static_cast<unsigned int>(bytes[1]) << 16) |
-             (static_cast<unsigned int>(bytes[2]) << 8) | static_cast<unsigned int>(bytes[3]);
-    return true;
-}
-#endif
-
-#if LCE_PLATFORM_WIIU
 uint32_t CConsoleMinecraftApp::ReadProductCodes()
 {
-    unsigned int bytesRead = 0;
-    int handle = CreateFileA("WiiU/WiiUProductCodes.bin", 0x80000000U, 0, 0, 3, 0x80, 0);
-    if (handle == -1)
-        return 0;
-
-    unsigned int fileSize = 0;
-    if (GetFileSize(handle, &fileSize) != 0)
-    {
-        if (ReadFile(handle, m_productCode, 9, &bytesRead, 0) == 0)
-            return 0;
-
-        unsigned int dlcCount;
-        if (ReadFile(handle, &dlcCount, 4, &bytesRead, 0) == 0)
-            return 0;
-
-        for (unsigned int index = 0; index < dlcCount; ++index)
-        {
-            DLC_INFO* dlcInfo = new DLC_INFO;
-            memset(dlcInfo, 0, sizeof(DLC_INFO));
-
-            unsigned int stringLength;
-            if (ReadFile(handle, &dlcInfo->ContentType, 4, &bytesRead, 0) == 0)
-                return 0;
-            if (ReadFile(handle, &dlcInfo->PackType, 4, &bytesRead, 0) == 0)
-                return 0;
-            if (ReadFile(handle, &dlcInfo->CatalogIndex, 4, &bytesRead, 0) == 0)
-                return 0;
-            if (ReadFile(handle, &stringLength, 4, &bytesRead, 0) == 0)
-                return 0;
-            if (ReadFile(handle, dlcInfo->PackName, stringLength, &bytesRead, 0) == 0)
-                return 0;
-            if (ReadFile(handle, &stringLength, 4, &bytesRead, 0) == 0)
-                return 0;
-            if (ReadFile(handle, dlcInfo->BannerName, stringLength, &bytesRead, 0) == 0)
-                return 0;
-            if (ReadFile(handle, &dlcInfo->PackID, 4, &bytesRead, 0) == 0)
-                return 0;
-            if (ReadFile(handle, &dlcInfo->SortIndex, 4, &bytesRead, 0) == 0)
-                return 0;
-            if (ReadFile(handle, dlcInfo->RomName, 5, &bytesRead, 0) == 0)
-                return 0;
-
-            m_dlcInfo->AddDLCInfo(dlcInfo);
-        }
-        CloseHandle(handle);
-    }
-
-#elif LCE_PLATFORM_PC
-uint32_t CConsoleMinecraftApp::ReadProductCodes()
-{
-    unsigned int bytesRead = 0;
     int handle = CreateFileA("WiiU/WiiUProductCodes.bin", GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     if (handle == -1)
         return 0;
-
-    unsigned int fileSize = 0;
-    if (GetFileSize(handle, &fileSize) != 0)
-    {
-        if (ReadFile(handle, m_productCode, 9, &bytesRead, 0) == 0)
-            return 0;
-
-        unsigned int dlcCount;
-        if (!ReadBigEndianUInt32(handle, &dlcCount))
-            return 0;
-
-        for (unsigned int index = 0; index < dlcCount; ++index)
-        {
-            DLC_INFO* dlcInfo = new DLC_INFO;
-            memset(dlcInfo, 0, sizeof(DLC_INFO));
-
-            unsigned int value;
-            unsigned int stringLength;
-            if (!ReadBigEndianUInt32(handle, &value))
-                return 0;
-            dlcInfo->ContentType = static_cast<int>(value);
-            if (!ReadBigEndianUInt32(handle, &value))
-                return 0;
-            dlcInfo->PackType = static_cast<int>(value);
-            if (!ReadBigEndianUInt32(handle, &dlcInfo->CatalogIndex))
-                return 0;
-            if (!ReadBigEndianUInt32(handle, &stringLength))
-                return 0;
-            if (ReadFile(handle, dlcInfo->PackName, stringLength, &bytesRead, 0) == 0)
-                return 0;
-            if (!ReadBigEndianUInt32(handle, &stringLength))
-                return 0;
-            if (ReadFile(handle, dlcInfo->BannerName, stringLength, &bytesRead, 0) == 0)
-                return 0;
-            if (!ReadBigEndianUInt32(handle, &dlcInfo->PackID))
-                return 0;
-            if (!ReadBigEndianUInt32(handle, &dlcInfo->SortIndex))
-                return 0;
-            if (ReadFile(handle, dlcInfo->RomName, 5, &bytesRead, 0) == 0)
-                return 0;
-
-            m_dlcInfo->AddDLCInfo(dlcInfo);
-        }
-        CloseHandle(handle);
-    }
-#endif
+    unsigned int bytesRead = 0;
+    const bool read = ReadFile(handle, m_productCode, 9, &bytesRead, 0) != 0 && bytesRead == 9;
+    CloseHandle(handle);
+    if (!read)
+        return 0;
 
     if (strcmp(m_productCode, "AUMP01D75") == 0)
         m_productSKU = 0;
@@ -298,22 +181,6 @@ uint32_t CConsoleMinecraftApp::ReadProductCodes()
 uint32_t CConsoleMinecraftApp::GetProductSKU()
 {
     return (uint32_t)m_productSKU;
-}
-void CConsoleMinecraftApp::CommerceInit()
-{
-    m_commerceInitialized = 0;
-#if LCE_PLATFORM_WIIU
-    m_commerce = new cCommerceNintendoWiiU;
-#elif LCE_PLATFORM_PC
-    m_commerce = new cCommerce;
-#endif
-    m_commerceResult = 0;
-    m_commerceProduct = 0;
-    m_commerceCategory = 0;
-    m_commerceError = 0;
-    m_commerceState = 0;
-    m_commerceInstanceState = 0;
-    memset(m_commerceReserved, 0, sizeof(m_commerceReserved));
 }
 int CConsoleMinecraftApp::RequestSignInUIChoices(int playerId)
 {
@@ -374,16 +241,6 @@ void CConsoleMinecraftApp::Callback_SaveGameIncomplete(void* context, C4JStorage
             return;
     }
     Callback_SaveGameIncompleteMessageBoxReturned(context, 0, C4JStorage::EMessageResult_Cancelled);
-}
-cNintendoDLCInfo* CConsoleMinecraftApp::GetDLCInfoInstance()
-{
-    return m_dlcInfo;
-}
-void CConsoleMinecraftApp::HandleDLCLicenseChange(std::wstring& packName)
-{
-    DLCPack* pack = gApp.mDLCManager.getPack(packName);
-    if (pack != NULL)
-        pack->updateLicenseMask(1);
 }
 void CConsoleMinecraftApp::SetDRCIconEnabled(bool value)
 {
@@ -482,22 +339,6 @@ uint32_t CConsoleMinecraftApp::GetLocalTMSFileIndex(wchar_t*, bool, eFileExtensi
 void CConsoleMinecraftApp::TemporaryCreateGameStart()
 {
 }
-uint32_t CConsoleMinecraftApp::UpgradeTrial()
-{
-    if (m_commerceState == 1)
-    {
-        m_commerceState = 20;
-        return 1;
-    }
-    if (m_commerceState == 2)
-    {
-        int messageParameter = IDS_CONFIRM_OK;
-        gConsoleUIController.RequestErrorMessage(0xa561a8df, 0x84f3e8d2, &messageParameter, 1,
-                                                 gProfile->GetPrimaryPad(), NULL, NULL, NULL, true);
-        return 1;
-    }
-    return 0;
-}
 #if LCE_PLATFORM_WIIU
 void CConsoleMinecraftApp::RequestSignInUIWiiUReturnedSelected(MiiDataEntry* mii, int choice, int pad)
 {
@@ -520,14 +361,6 @@ uint8_t CConsoleMinecraftApp::IsDrcPreventingSplitscreen()
 void CConsoleMinecraftApp::setIgnoreMainMenuInputDuringInvite(bool value)
 {
     m_ignoreMainMenuInputDuringInvite = value;
-}
-void CConsoleMinecraftApp::LoadLocalDLCImages()
-{
-    m_dlcInfo->LoadLocalDLCImages();
-}
-void CConsoleMinecraftApp::FreeLocalDLCImages()
-{
-    m_dlcInfo->FreeLocalDLCImages();
 }
 void CConsoleMinecraftApp::ReadBannedList(int, eTMSAction, bool)
 {

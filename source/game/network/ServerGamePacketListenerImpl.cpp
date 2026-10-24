@@ -35,6 +35,10 @@
 #include "game/network/ServerboundPlayerAbilitiesPacket.hpp"
 #include "game/network/ServerboundSetCarriedItemPacket.hpp"
 #include "game/server/MinecraftServer.hpp"
+#include "game/server/LeaderboardSavedData.hpp"
+#include "game/core/ByteArrayOutputStream.hpp"
+#include "game/core/DataOutputStream.hpp"
+#include "game/network/ClientboundCustomPayloadPacket.hpp"
 #include "game/server/ServerPlayerGameMode.hpp"
 #include "game/world/generation/PlayerList.hpp"
 #include "game/core/MasterGameMode.hpp"
@@ -72,6 +76,10 @@
 #include "game/data/StringTag.hpp"
 #include "game/item/WrittenBookItem.hpp"
 #include "game/minigame/MiniGameDef.hpp"
+#include "game/world/LevelGenerationOptions.hpp"
+#include "game/world/LevelRules.hpp"
+#include "game/world/LevelRuleset.hpp"
+#include "game/core/DLCPack.hpp"
 #include "game/network/ClientboundSoundPacket.hpp"
 #include "game/network/GameCommandPacket.hpp"
 #include "game/network/GameModePacket.hpp"
@@ -131,6 +139,8 @@ ServerGamePacketListenerImpl::ServerGamePacketListenerImpl(MinecraftServer* serv
       mKeepAlivePending(0),
       mChatSpamTickCount(0),
       mDropSpamTickCount(0),
+      mSentCommandPermission(-1),
+      mPacksOffered(false),
       mFirstGoodX(0.0),
       mFirstGoodY(0.0),
       mFirstGoodZ(0.0),
@@ -369,7 +379,59 @@ void ServerGamePacketListenerImpl::tick()
             --mChatSpamTickCount;
         if (mDropSpamTickCount > 0)
             --mDropSpamTickCount;
+        sendCommands();
+        offerPacks();
+        mPackSender.tick(this);
     }
+}
+
+bool ServerGamePacketListenerImpl::removeIfMissingPacks()
+{
+    if (!mPackSender.sendRemovedIfUnanswered(this))
+        return false;
+    disconnect(DisconnectPacket::eDisconnectReason_MissingPack);
+    return true;
+}
+
+void ServerGamePacketListenerImpl::offerPacks()
+{
+    if (mPacksOffered)
+        return;
+    mPacksOffered = true;
+    INetworkPlayer* networkPlayer = getNetworkPlayer();
+    if (networkPlayer == NULL || networkPlayer->IsLocal())
+        return;
+    mPackSender.offer(this, static_cast<unsigned int>(mServer->getGameModeId()) & 0x00ffffffu, false);
+
+    const EMiniGameId miniGame = Minecraft::GetInstance()->GetMiniGame()->GetId();
+    if (miniGame == eMiniGameId_Any)
+        return;
+    for (int type = LevelRules::eLevelRuleType_Battle; type <= LevelRules::eLevelRuleType_Build; ++type)
+    {
+        if (miniGame != eMiniGameId_Lobby && LevelRules::GetRuleTypeForMiniGame(miniGame) != type)
+            continue;
+        std::vector<LevelRuleset*> rules;
+        gApp.getLevelRules()->getRulesByType(static_cast<LevelRules::ELevelRuleType>(type), &rules);
+        for (size_t index = 0; index < rules.size(); ++index)
+        {
+            LevelGenerationOptions* options = rules[index]->getGenerationOptions();
+            if (options == NULL)
+                continue;
+            if (options->getPack() != NULL)
+                mPackSender.offer(this, options->getPack()->GetPackId(), true);
+            mPackSender.offer(this, options->getTexturePackId() & 0x00ffffffu, false);
+        }
+    }
+}
+
+void ServerGamePacketListenerImpl::sendCommands()
+{
+    const int permission = ChatCommands::PermissionOf(mPlayer);
+    if (permission == mSentCommandPermission)
+        return;
+    mSentCommandPermission = permission;
+    send(boost::shared_ptr<Packet>(new ClientboundCustomPayloadPacket(ClientboundCustomPayloadPacket::COMMANDS_PACKET,
+                                                                      ChatCommands::WriteUsages(permission))));
 }
 
 bool ServerGamePacketListenerImpl::containsInvalidValues(boost::shared_ptr<ServerboundMoveVehiclePacket> packet)
@@ -1380,6 +1442,23 @@ void ServerGamePacketListenerImpl::handleCustomPayload(boost::shared_ptr<Serverb
         if (mPlayer != NULL && mPlayer->getLevel() != NULL)
             mPlayer->getLevel()->getChunkMap()->updatePlayerViewDistance(mPlayer);
     }
+    else if (ServerboundCustomPayloadPacket::PACK_PACKET == identifier)
+    {
+        mPackSender.handle(packet->getData());
+    }
+    else if (ServerboundCustomPayloadPacket::LEADERBOARD_PACKET == identifier)
+    {
+        ByteArrayInputStream bytes(packet->getData());
+        DataInputStream input(&bytes);
+        const int board = input.readByte();
+        const bool aroundMe = input.readByte() != 0;
+        const int startRank = input.readInt();
+        const int count = Mth::clamp(input.readInt(), 0, LEADERBOARD_MAX_ROWS);
+        bytes.reset();
+        input.close();
+        sendLeaderboard(board, aroundMe, startRank < 1 ? 1u : static_cast<unsigned int>(startRank),
+                        static_cast<unsigned int>(count));
+    }
     else if (ServerboundCustomPayloadPacket::PICK_ITEM_PACKET == identifier)
     {
         ByteArrayInputStream bytes(packet->getData());
@@ -1392,6 +1471,36 @@ void ServerGamePacketListenerImpl::handleCustomPayload(boost::shared_ptr<Serverb
         input.close();
     }
 }
+void ServerGamePacketListenerImpl::sendLeaderboard(int board, bool aroundMe, unsigned int startRank,
+                                                   unsigned int count)
+{
+    if (mPlayer == NULL)
+        return;
+    std::vector<LeaderboardSavedData::Ranked> rows;
+    unsigned int total = 0;
+    boost::shared_ptr<LeaderboardSavedData> data = LeaderboardSavedData::get();
+    if (data)
+        total = data->query(board, aroundMe, mPlayer->getXuid().toString(), startRank, count, rows);
+
+    ByteArrayOutputStream bytes;
+    DataOutputStream output(&bytes);
+    output.writeByte(static_cast<unsigned char>(board));
+    output.writeInt(static_cast<int>(total));
+    output.writeShort(static_cast<short>(rows.size()));
+    const int columns = LeaderboardBoards::ColumnCount(board);
+    for (size_t i = 0; i < rows.size(); ++i)
+    {
+        output.writeInt(static_cast<int>(rows[i].rank));
+        output.writeUTF(rows[i].row->name);
+        output.writeUTF(rows[i].row->id);
+        output.writeByte(static_cast<unsigned char>(columns));
+        for (int column = 0; column < columns; ++column)
+            output.writeInt(static_cast<int>(rows[i].row->values[board][column]));
+    }
+    send(boost::shared_ptr<Packet>(
+        new ClientboundCustomPayloadPacket(ClientboundCustomPayloadPacket::LEADERBOARD_PACKET, bytes.toByteArray())));
+}
+
 void ServerGamePacketListenerImpl::handleCraftItem(boost::shared_ptr<CraftItemPacket> packet)
 {
     if (packet->mStackedItems.empty() && packet->mItemIds.empty())

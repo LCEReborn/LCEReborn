@@ -37,8 +37,6 @@
 #include "game/ui/FJ_CreditsMenu.hpp"
 #include "game/ui/FJ_Cursor_Normal.hpp"
 #include "game/ui/FJ_Cursor_Small.hpp"
-#include "game/ui/FJ_DLCMainMenu.hpp"
-#include "game/ui/FJ_DLCOffersMenu.hpp"
 #include "game/ui/FJ_DeathMenu.hpp"
 #include "game/ui/FJ_DebugBuildTools.hpp"
 #include "game/ui/FJ_DebugCreateSchematic.hpp"
@@ -420,8 +418,6 @@ static const std::string g_DebugMenu_name("DebugMenu");
 static const std::string g_DebugOptions_name("DebugOptions");
 static const std::string g_DebugPuppeteer_name("DebugPuppeteer");
 static const std::string g_DebugSetCamera_name("DebugSetCamera");
-static const std::string g_DLCMainMenu_name("DLCMainMenu");
-static const std::string g_DLCOffersMenu_name("DLCOffersMenu");
 static const std::string g_GameModeSelection_name("GameModeSelection");
 static const std::string g_Gamertag_name("Gamertag");
 static const std::string g_JoinGameFilterList_name("JoinGameFilterList");
@@ -849,10 +845,6 @@ void FJ_Factory::initialise()
         std::make_pair(g_DebugPuppeteer_name, reinterpret_cast<FJ_FactoryFunction>(&FJ_DebugPuppeteer::Create)));
     g_fuiNodeFactories.insert(
         std::make_pair(g_DebugSetCamera_name, reinterpret_cast<FJ_FactoryFunction>(&FJ_DebugSetCamera::Create)));
-    g_fuiNodeFactories.insert(
-        std::make_pair(g_DLCMainMenu_name, reinterpret_cast<FJ_FactoryFunction>(&FJ_DLCMainMenu::Create)));
-    g_fuiNodeFactories.insert(
-        std::make_pair(g_DLCOffersMenu_name, reinterpret_cast<FJ_FactoryFunction>(&FJ_DLCOffersMenu::Create)));
     g_fuiNodeFactories.insert(
         std::make_pair(g_GameModeSelection_name, reinterpret_cast<FJ_FactoryFunction>(&FJ_GameModeSelection::Create)));
     g_fuiNodeFactories.insert(

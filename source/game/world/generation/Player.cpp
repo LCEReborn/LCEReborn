@@ -23,6 +23,7 @@
 #include "game/world/generation/MultiPlayerLevel.hpp"
 #include "game/core/PIXNamedEvents.hpp"
 #include "game/core/SharedConstants.hpp"
+#include "game/core/Stat.hpp"
 #include "game/core/GameType.hpp"
 #include "game/minigame/CheckpointRuleDefinition.hpp"
 #include "game/client/render/ParticleType.hpp"
@@ -1614,6 +1615,8 @@ Vec3* Player::getAttachPos(Entity::EEntityLocation location, float partialTicks)
 
 uint8_t Player::CanRecordStats(Stat* stat, arrayWithLength<unsigned char> parameters)
 {
+    if (stat != NULL && !stat->isAchievement())
+        return 1;
     uint32_t canRecord = 0;
     GameMode* gameMode = GetGameMode();
     if (gameMode == NULL || gameMode->CanRecordStatsAndAchievements())

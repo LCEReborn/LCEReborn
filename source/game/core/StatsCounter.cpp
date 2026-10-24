@@ -290,11 +290,6 @@ int StatsCounter::getTotalValue(Stat* stat)
 
 void StatsCounter::save(int profile, bool force, unsigned char* data)
 {
-    if (!gProfile->IsFullVersion())
-    {
-        return;
-    }
-
     unsigned char* buffer;
     if (data != NULL)
     {
@@ -387,7 +382,6 @@ void StatsCounter::save(int profile, bool force, unsigned char* data)
 
 void StatsCounter::writeStats()
 {
-    gProfile->IsFullVersion();
 }
 
 void StatsCounter::flushLeaderboards()
@@ -572,10 +566,6 @@ void StatsCounter::clear()
 
 void StatsCounter::saveLeaderboards()
 {
-    if (!gProfile->IsFullVersion())
-    {
-        return;
-    }
     if (g_pLeaderboardManager->OpenSession())
     {
         writeStats();

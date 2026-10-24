@@ -14,7 +14,6 @@
 #include "game/core/ConsoleUIController.hpp"
 #include "game/core/GameSettings.hpp"
 #include "game/core/Minecraft.hpp"
-#include "game/core/cDLCInfo.hpp"
 #include "game/core/DLCManager.hpp"
 #include "game/core/DLCPack.hpp"
 #include "game/minigame/MiniGameDef.hpp"
@@ -27,7 +26,6 @@ extern ConsoleUIController gConsoleUIController;
 
 UIScene_MapSelectMenu::UIScene_MapSelectMenu(int sceneType, void* data, UILayer* layer)
     : UIScene(sceneType, layer),
-      IUIScene_DlcSelectMenu(eDLCContentType_MapPack),
       m_levelRuleGroups(),
       m_mapList(),
       m_mapListTitle(),
@@ -42,8 +40,8 @@ UIScene_MapSelectMenu::UIScene_MapSelectMenu(int sceneType, void* data, UILayer*
     LevelRules::ELevelRuleType ruleType = LevelRules::GetRuleTypeForMiniGame(m_initData->mMiniGameId);
     if (m_initData->mMatchmaking && !m_initData->mTimeTrial
         && !Minecraft::GetInstance()->GetMiniGame()->HasFeatureSeasonalMaps())
-        gApp.getLevelRules()->getRulesByType(ruleType, &m_initData->mLevelRulesetGroups, true);
-    gApp.getLevelRules()->getRulesByType(ruleType, &m_levelRuleGroups, false);
+        gApp.getLevelRules()->getRulesByType(ruleType, &m_initData->mLevelRulesetGroups);
+    gApp.getLevelRules()->getRulesByType(ruleType, &m_levelRuleGroups);
     std::sort(m_levelRuleGroups.begin(), m_levelRuleGroups.end(), LevelRules::LevelRulesetGroup::SortMapRules);
     m_miniGameType = m_initData->mMiniGameId;
     m_mapSelection = 0;
@@ -118,9 +116,6 @@ void UIScene_MapSelectMenu::_init()
 
         LevelGenerationOptions* options = group->rulesets[0]->getGenerationOptions();
         bool selected = (m_mapSelection & (1 << options->getThemeId())) != 0;
-        if (!options->getPack()->hasPurchasedPack()
-            && !gApp.mDLCManager.IsMiniGameTemporarilyFree(group->rulesets[0]->getRuleType()))
-            selected = false;
 
         if (m_initData->mMatchmaking && !m_initData->mTimeTrial
             && std::find(m_initData->mLevelRulesetGroups.begin(), m_initData->mLevelRulesetGroups.end(), group)
@@ -212,7 +207,6 @@ void UIScene_MapSelectMenu::tick()
         m_mapInfoPending = 0;
         UpdateMapInfo();
     }
-    IUIScene_DlcSelectMenu::tick();
 }
 
 void UIScene_MapSelectMenu::handleReload()
@@ -220,28 +214,8 @@ void UIScene_MapSelectMenu::handleReload()
     _init();
 }
 
-int UIScene_MapSelectMenu::checkHasPurchased(int index, bool tryPurchase)
-{
-    LevelRules::LevelRulesetGroup* group = m_levelRuleGroups.at(index);
-    LevelRuleset* ruleset = group->rulesets.at(0);
-    LevelGenerationOptions* options = ruleset->getGenerationOptions();
-    DLCPack* pack = options->getPack();
-    bool purchased = pack->hasPurchasedPack() || gApp.mDLCManager.IsMiniGameTemporarilyFree(ruleset->getRuleType());
-    if (!purchased && tryPurchase)
-    {
-        bool handled = false;
-        cDLCInfo* dlcInfo = static_cast<cDLCInfo*>((void*)gApp.GetDLCInfoInstance());
-        DLC_INFO* info = dlcInfo->GetDLCInfoForPackID(pack->GetPackId());
-        int contentType = info == NULL ? 0 : info->ContentType;
-        tryPurchaseDlc(m_playerId, handled, (eDLCContentType)contentType);
-    }
-    return purchased;
-}
-
 void UIScene_MapSelectMenu::handleInput(int, int action, bool repeat, bool pressed, bool released, bool& handled)
 {
-    if (m_purchasePending)
-        return;
     gConsoleUIController.AnimateKeyPress(m_playerId, action, repeat, pressed, released);
     switch (action)
     {
@@ -294,8 +268,6 @@ void UIScene_MapSelectMenu::handleInput(int, int action, bool repeat, bool press
     case EControllerActions_MenuOk:
         if (!pressed || repeat)
             return;
-        if (checkHasPurchased((int)m_mapList.getCurrentSelection(), true) == 0)
-            return;
         sendInputToMovie(action, false, pressed, released);
         gConsoleUIController.PlayUISFX(SoundEvents::UI_PRESS);
         break;
@@ -305,8 +277,7 @@ void UIScene_MapSelectMenu::handleInput(int, int action, bool repeat, bool press
         if (!pressed || repeat)
             return;
         for (int i = 0; i < m_mapList.getItemCount(); ++i)
-            if (checkHasPurchased(i, false) != 0)
-                m_mapList.SetCheckbox(i, true);
+            m_mapList.SetCheckbox(i, true);
         gConsoleUIController.PlayUISFX(SoundEvents::UI_PRESS);
         break;
     case EControllerActions_MenuY:
@@ -315,8 +286,7 @@ void UIScene_MapSelectMenu::handleInput(int, int action, bool repeat, bool press
         if (!pressed || repeat)
             return;
         for (int i = 0; i < m_mapList.getItemCount(); ++i)
-            if (checkHasPurchased(i, false) != 0)
-                m_mapList.SetCheckbox(i, false);
+            m_mapList.SetCheckbox(i, false);
         gConsoleUIController.PlayUISFX(SoundEvents::UI_PRESS);
         break;
     case EControllerActions_MenuUp:
@@ -333,7 +303,6 @@ void UIScene_MapSelectMenu::handleFocusChange(int, int childFocus)
     m_mapList.updateChildFocus(childFocus);
     m_mapInfoPending = 1;
     m_generationOptions = m_levelRuleGroups.at(m_mapList.getCurrentSelection())->rulesets.at(0)->getGenerationOptions();
-    m_pack = m_generationOptions->getPack();
 }
 
 void UIScene_MapSelectMenu::handlePress(int, int)

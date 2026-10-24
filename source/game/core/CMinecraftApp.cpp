@@ -9,7 +9,6 @@
 #include "platform/CInput.hpp"
 #include "platform/PlatformTiming.hpp"
 #include "game/core/CConsoleMinecraftApp.hpp"
-#include "platform/Commerce.hpp"
 #include "game/core/ArchiveFile.hpp"
 #include "game/core/File.hpp"
 #include "game/core/ConsoleUIController.hpp"
@@ -61,15 +60,14 @@
 #include "game/core/Achievement.hpp"
 #include "game/core/GenericStats.hpp"
 #include "game/core/UnityClient6.hpp"
+#include "game/core/DLCFile.hpp"
 #include "game/core/DLCPack.hpp"
-#include "game/core/IUIScene_DLCUpsell.hpp"
 #include "game/core/MOJANG_DATA.hpp"
 #include "game/core/GameModeOptions.hpp"
 #include "game/core/GameRuleManager.hpp"
 #include "game/core/Gui.hpp"
 #include "game/core/Stat.hpp"
 #include "game/core/StringConversion.hpp"
-#include "game/core/cDLCInfo.hpp"
 #include "game/entity/mob/AbstractHorse.hpp"
 #include "game/minigame/MiniGameDef.hpp"
 #include "game/item/Container.hpp"
@@ -100,12 +98,12 @@
 #elif LCE_PLATFORM_PC
 #include "platform/pc/PcPlatform.hpp"
 #endif
-#include "platform/wiiu/cNintendoDLCInfo.hpp"
 #include "platform/C4JThreadImpl.hpp"
 #include "platform/Runtime.hpp"
 #include "vendor/SKIN_BOX.hpp"
 #include <algorithm>
 #include <boost/pointer_cast.hpp>
+#include <cctype>
 #include <cstdio>
 #include <cstring>
 #include <cwchar>
@@ -347,18 +345,9 @@ CMinecraftApp::CMinecraftApp()
     mAutosaveTime = 0;
     mDLCInstallProcessCompleted = false;
     mDLCInstallCount = 0;
-    mTrialPausedTime = 0.0f;
     std::memset(mUniqueMapName, 0, sizeof(mUniqueMapName));
-    mUnusedNewDLCFlag = false;
-    mNewDLCAvailable = false;
     std::memset(mPlayerIds, 0, sizeof(mPlayerIds));
-    mDLCDownloadQueueResetFlag = true;
-    mDLCOffersRetrievedValue = 0;
-    InitializeCriticalSection(&mDLCRetrieveMutex);
     mUnusedBanListFlag = false;
-    mUnusedDLCQueueFlags[1] = true;
-    mUnusedDLCQueueFlags[0] = true;
-    InitializeCriticalSection(&mDLCDownloadQueueMutex);
     InitializeCriticalSection(&mAdditionalModelPartsMutex);
     InitializeCriticalSection(&mAdditionalSkinBoxesMutex);
     InitializeCriticalSection(&mSkinAdjustmentsMutex);
@@ -828,15 +817,6 @@ void CMinecraftApp::InvalidateBannedList(int32_t player)
         mBanListBuffers[player].data = NULL;
     }
 }
-void CMinecraftApp::ClearAndResetDLCDownloadQueue()
-{
-    EnterCriticalSection(&mDLCDownloadQueueMutex);
-    for (std::vector<_DLCRequest*>::iterator it = mDLCDownloadQueue.begin(); it != mDLCDownloadQueue.end(); ++it)
-        delete *it;
-    mDLCDownloadQueue.clear();
-    mDLCDownloadQueueResetFlag = true;
-    LeaveCriticalSection(&mDLCDownloadQueueMutex);
-}
 void CMinecraftApp::ClearDLCInstalled()
 {
     mDLCInstallProcessCompleted = false;
@@ -859,8 +839,6 @@ int CMinecraftApp::SignInChangeCallback(void* context, bool signedIn, unsigned i
     if (primaryPad != -1 && lockedProfile == -1)
     {
         app->InvalidateBannedList(primaryPad);
-        gStorage->ClearDLCOffers();
-        app->ClearAndResetDLCDownloadQueue();
         app->ClearDLCInstalled();
     }
     else
@@ -872,8 +850,6 @@ int CMinecraftApp::SignInChangeCallback(void* context, bool signedIn, unsigned i
             {
                 app->SetAction(primaryPad, eXuiAction_PrimarySignedOut, NULL);
                 app->InvalidateBannedList(primaryPad);
-                gStorage->ClearDLCOffers();
-                app->ClearAndResetDLCDownloadQueue();
                 app->ClearDLCInstalled();
             }
             else
@@ -1039,20 +1015,6 @@ void CMinecraftApp::InitGameSettings()
     GameSettings::InitGameSettings();
     SetDefaultHostOptions();
 }
-int CMinecraftApp::UpsellReturnedCallback(void* context, eUpsellType type, eUpsellResponse response, int userIndex)
-{
-    ESen_UpsellOutcome outcome;
-    if (response == static_cast<eUpsellResponse>(1))
-        outcome = eSen_UpsellOutcome_Purchased;
-    else if (response == static_cast<eUpsellResponse>(2))
-        outcome = eSen_UpsellOutcome_Declined;
-    else
-        outcome = eSen_UpsellOutcome_Cancelled;
-
-    const int playerId = gProfile->GetPrimaryPad();
-    telemetryManagerInstance->RecordUpsellResponded(playerId, eSen_UpsellID_FullGame, 1, outcome);
-    return 0;
-}
 int CMinecraftApp::TipsSortFunction(const void* firstTip, const void* secondTip)
 {
     const TIPSTRUCT* first = static_cast<const TIPSTRUCT*>(firstTip);
@@ -1097,7 +1059,6 @@ int CMinecraftApp::EthernetDisconnectReturned(void* context, int pad, C4JStorage
     if (minecraft->mPlayer == NULL)
     {
         gConsoleUIController.NavigateToHomeMenu(false);
-        gApp.GetCommerceInstance()->HideStoreIcon();
         int userIndex = static_cast<int>(reinterpret_cast<intptr_t>(context));
         if (userIndex == 0xff)
             userIndex = gProfile->GetPrimaryPad();
@@ -1133,20 +1094,6 @@ uint8_t CMinecraftApp::GetChangingSessionType()
 {
     return mChangingSessionType;
 }
-int CMinecraftApp::UnlockFullSaveReturned(void* context, int pad, C4JStorage::EMessageResult result)
-{
-    Minecraft* minecraft = Minecraft::GetInstance();
-    if (result == C4JStorage::EMessageResult_Accept)
-    {
-        if (gProfile->IsSignedInLive(minecraft->mPlayer.get()->mUserIndex))
-            gProfile->DisplayFullVersionPurchase(false, minecraft->mPlayer.get()->mUserIndex, 1);
-    }
-    else
-    {
-        telemetryManagerInstance->RecordUpsellResponded(pad, eSen_UpsellID_FullGame, 1, eSen_UpsellOutcome_Cancelled);
-    }
-    return 0;
-}
 void CMinecraftApp::SetAutosaveTimerTime()
 {
     mAutosaveTime =
@@ -1162,26 +1109,6 @@ void CMinecraftApp::SetGameStarted(bool started)
 uint32_t CMinecraftApp::GetXuiServerAction(int32_t player)
 {
     return mXuiServerActions[player];
-}
-int CMinecraftApp::UnlockFullExitReturned(void* context, int pad, C4JStorage::EMessageResult result)
-{
-    Minecraft* minecraft = Minecraft::GetInstance();
-    CMinecraftApp* app = static_cast<CMinecraftApp*>(context);
-
-    if (result == C4JStorage::EMessageResult_Accept)
-    {
-        if (gProfile->IsSignedInLive(minecraft->mPlayer.get()->mUserIndex))
-        {
-            gProfile->DisplayFullVersionPurchase(false, minecraft->mPlayer.get()->mUserIndex, 1);
-            app->SetAction(minecraft->mPlayer.get()->mUserIndex, eXuiAction_ExitWorldAfterUpsell, NULL);
-        }
-    }
-    else
-    {
-        telemetryManagerInstance->RecordUpsellResponded(pad, eSen_UpsellID_FullGame, 1, eSen_UpsellOutcome_Cancelled);
-        app->SetAction(minecraft->mPlayer.get()->mUserIndex, eXuiAction_ExitWorldAfterUpsell, NULL);
-    }
-    return 0;
 }
 void CMinecraftApp::SetChangingSessionType(bool changing)
 {
@@ -1293,39 +1220,6 @@ int CMinecraftApp::SignoutExitWorldThreadProc(void* context)
     MinecraftServer::s_saveOnExitAnswered = false;
     return 0;
 }
-int CMinecraftApp::TrialOverReturned(void* context, int pad, C4JStorage::EMessageResult result)
-{
-    Minecraft* minecraft = Minecraft::GetInstance();
-    CMinecraftApp* app = static_cast<CMinecraftApp*>(context);
-
-    if (result == C4JStorage::EMessageResult_Accept)
-    {
-        if (!gProfile->IsSignedInLive(minecraft->mPlayer.get()->mUserIndex))
-            app->SetAction(minecraft->mPlayer.get()->mUserIndex, eXuiAction_ExitGame, NULL);
-        else
-            gProfile->DisplayFullVersionPurchase(false, minecraft->mPlayer.get()->mUserIndex, 1);
-    }
-    else
-    {
-        telemetryManagerInstance->RecordUpsellResponded(pad, eSen_UpsellID_FullGame, 1, eSen_UpsellOutcome_Cancelled);
-        app->SetAction(minecraft->mPlayer.get()->mUserIndex, eXuiAction_ExitGame, NULL);
-    }
-    return 0;
-}
-int CMinecraftApp::UnlockFullInviteReturned(void* context, int pad, C4JStorage::EMessageResult result)
-{
-    Minecraft* minecraft = Minecraft::GetInstance();
-    if (result == C4JStorage::EMessageResult_Accept)
-    {
-        if (gProfile->IsSignedInLive(pad))
-            gProfile->DisplayFullVersionPurchase(false, pad, 1);
-    }
-    else
-    {
-        telemetryManagerInstance->RecordUpsellResponded(pad, eSen_UpsellID_FullGame, 1, eSen_UpsellOutcome_Cancelled);
-    }
-    return 0;
-}
 int CMinecraftApp::ExitAndJoinFromInvite(void* context, int pad, C4JStorage::EMessageResult result)
 {
     if (result == C4JStorage::EMessageResult_Decline)
@@ -1336,21 +1230,6 @@ int CMinecraftApp::ExitAndJoinFromInviteAndSaveReturned(void* context, int pad, 
 {
     if (result == C4JStorage::EMessageResult_Decline)
     {
-        if (Minecraft::GetInstance()->mTexturePackRepository->getSelected()
-            != TexturePackRepository::defaultTexturePack)
-        {
-            DLCPack* pack = Minecraft::GetInstance()->mTexturePackRepository->getSelected()->getDLCPack();
-            if (!pack->hasPurchasedPack())
-            {
-                int parameters[2] = {static_cast<int>(IDS_CONFIRM_OK), static_cast<int>(IDS_CONFIRM_CANCEL)};
-                gConsoleUIController.RequestAlertMessage(static_cast<int>(0x3bb3096e), static_cast<int>(0xd52c2e3),
-                                                         parameters, 2, static_cast<unsigned int>(pad),
-                                                         UIScene_PauseMenu::WarningTrialTexturePackReturned, NULL, NULL,
-                                                         true);
-                return 0;
-            }
-        }
-
         MinecraftServer::s_saveOnExitAnswered = true;
         gMinecraftServer->saveOnExit = true;
         gApp.SetAction(pad, eXuiAction_ExitAndJoinFromInvite, NULL);
@@ -1371,21 +1250,6 @@ int CMinecraftApp::ExitAndJoinFromInviteSaveDialogReturned(void* context, int pa
 {
     if (result == C4JStorage::EMessageResult_Decline)
     {
-        if (Minecraft::GetInstance()->mTexturePackRepository->getSelected()
-            != TexturePackRepository::defaultTexturePack)
-        {
-            DLCPack* pack = Minecraft::GetInstance()->mTexturePackRepository->getSelected()->getDLCPack();
-            if (!pack->hasPurchasedPack())
-            {
-                int parameters[2] = {static_cast<int>(IDS_CONFIRM_OK), static_cast<int>(IDS_CONFIRM_CANCEL)};
-                gConsoleUIController.RequestAlertMessage(static_cast<int>(0x3bb3096e), static_cast<int>(0xd52c2e3),
-                                                         parameters, 2, static_cast<unsigned int>(pad),
-                                                         UIScene_PauseMenu::WarningTrialTexturePackReturned, context,
-                                                         NULL, true);
-                return 0;
-            }
-        }
-
         bool saveExists = false;
         gStorage->DoesSaveExist(&saveExists);
         if (!saveExists)
@@ -1516,10 +1380,6 @@ void CMinecraftApp::ExitGameFromRemoteSave(void* context)
     gConsoleUIController.RequestAlertMessage(static_cast<int>(IDS_EXIT_GAME), static_cast<int>(IDS_CONFIRM_EXIT_GAME),
                                              messageParameters, 2, pad, ExitGameFromRemoteSaveDialogReturned, NULL,
                                              NULL, true);
-}
-int CMinecraftApp::TexturePackDialogReturned(void* context, int pad, C4JStorage::EMessageResult result)
-{
-    return 0;
 }
 void CMinecraftApp::SetupMiniGameMusic()
 {
@@ -1853,10 +1713,6 @@ uint8_t CMinecraftApp::IsAppPaused()
 {
     return mAppPaused;
 }
-void CMinecraftApp::UpdateTrialPausedTimer()
-{
-    mTrialPausedTime += mFrameTime;
-}
 void CMinecraftApp::setLevelGenerationOptions(LevelGenerationOptions* options)
 {
     mGameRuleManager.setLevelGenerationOptions(options);
@@ -1865,278 +1721,40 @@ uint8_t CMinecraftApp::DLCInstallProcessCompleted()
 {
     return mDLCInstallProcessCompleted;
 }
-std::wstring CMinecraftApp::getDLCFolderName(EDLC_ID dlcId)
+std::wstring CMinecraftApp::getFilePath(unsigned int packId, std::wstring name, bool mounted, std::wstring drive)
 {
-    switch (dlcId)
+    DLCPack* pack = mDLCManager.getPackFromPackID(packId);
+    if (pack != NULL && !pack->GetRootPath().empty())
     {
-    case EDLC_ID_TutorialWorld:
-        return L"Tutorial World";
-    case EDLC_ID_SkinPack1:
-        return L"Skin Pack 1";
-    case EDLC_ID_SkinPack2:
-        return L"Skin Pack 2";
-    case EDLC_ID_SkinPack3:
-        return L"Skin Pack 3";
-    case EDLC_ID_SkinPack4:
-        return L"Skin Pack 4";
-    case EDLC_ID_SummerOfArcadeSkinPack:
-        return L"Summer of Arcade Skin Pack";
-    case EDLC_ID_HalloweenCharitySkinPack:
-        return L"Halloween Charity Skin Pack";
-    case EDLC_ID_FestiveSkinPack:
-        return L"Festive Skin Pack";
-    case EDLC_ID_BirthdaySkinPack:
-        return L"Birthday Skin Pack";
-    case EDLC_ID_BattleAndBeasts:
-        return L"Battle & Beasts";
-    case EDLC_ID_SkinPack5:
-        return L"Skin Pack 5";
-    case EDLC_ID_BattleAndBeasts2:
-        return L"Battle & Beasts 2";
-    case EDLC_ID_StarWarsClassicSkinPack:
-        return L"Star Wars Classic Skin Pack";
-    case EDLC_ID_StarWarsPrequelSkinPack:
-        return L"Star Wars Prequel Skin Pack";
-    case EDLC_ID_SkinPack6:
-        return L"Skin Pack 6";
-    case EDLC_ID_MarvelAvengers:
-        return L"Marvel Avengers";
-    case EDLC_ID_MarvelSpiderMan:
-        return L"Marvel Spider-Man";
-    case EDLC_ID_DoctorWhoSkinsVolume1:
-        return L"Doctor Who Skins Volume I";
-    case EDLC_ID_TheSimpsons:
-        return L"The Simpsons";
-    case EDLC_ID_SecondBirthdaySkinPack:
-    case EDLC_ID_SecondBirthdaySkinPackAlt:
-    case EDLC_ID_SecondBirthdaySkinPackAlt2:
-        return L"2nd Birthday Skin Pack";
-    case EDLC_ID_MarvelGuardiansOfTheGalaxy:
-        return L"Marvel Guardians of the Galaxy";
-    case EDLC_ID_StarWarsRebelsSkinPack:
-        return L"Star Wars Rebels Skin Pack";
-    case EDLC_ID_DoctorWhoSkinsVolume2:
-        return L"Doctor Who Skins Volume II";
-    case EDLC_ID_BiomeSettlersPack1:
-        return L"Biome Settlers Pack 1";
-    case EDLC_ID_BiomeSettlersPack2:
-        return L"Biome Settlers Pack 2";
-    case EDLC_ID_StoryModeSkinPack:
-        return L"Story Mode Skin Pack";
-    case EDLC_ID_RedstoneSpecialistsSkinPack:
-        return L"Redstone Specialists Skin Pack";
-    case EDLC_ID_CampfireTalesSkinPack:
-        return L"Campfire Tales Skin Pack";
-    case EDLC_ID_ThirdBirthdaySkinPack:
-        return L"3rd Birthday Skin Pack";
-    case EDLC_ID_Minecon2015SkinPack:
-        return L"Minecon 2015 Skin Pack";
-    case EDLC_ID_FourthBirthdaySkinPack:
-    case EDLC_ID_FourthBirthdaySkinPackAlt:
-        return L"4th Birthday Skin Pack";
-    case EDLC_ID_Minecon2016SkinPack:
-        return L"Minecon 2016 Skin Pack";
-    case EDLC_ID_FirstBirthdaySkinPack:
-        return L"1st Birthday Skin Pack";
-    case EDLC_ID_VillainsSkinPack:
-        return L"Villains Skin Pack";
-    case EDLC_ID_MiniGamesHeroesSkinPack:
-        return L"Mini Games Heroes Skin Pack";
-    case EDLC_ID_MagicTheGatheringSkinPack:
-        return L"Magic: The Gathering Skin Pack";
-    case EDLC_ID_StrangersBiomeSettlers3SkinPack:
-        return L"Strangers Biome Settlers 3 Skin Pack";
-    case EDLC_ID_StrangerThingsSkinPack:
-        return L"Stranger Things Skin Pack";
-    case EDLC_ID_MineconEarth2017:
-        return L"Minecon Earth 2017";
-    case EDLC_ID_MoanaCharacterPack:
-        return L"Moana Character Pack";
-    case EDLC_ID_StarWarsSequelSkinPack:
-        return L"Star Wars Sequel Skin Pack";
-    case EDLC_ID_FinalFantasyXVSkinPack:
-        return L"FINAL FANTASY XV Skin Pack";
-    case EDLC_ID_TheIncrediblesSkinPack:
-        return L"The Incredibles Skin Pack";
-    case EDLC_ID_SoloAStarWarsStoryPack:
-        return L"Solo: A Star Wars Story Pack";
-    case EDLC_ID_FromTheShadowsSkinPack:
-        return L"From The Shadows Skin Pack";
-    case EDLC_ID_MassEffect:
-        return L"Mass Effect";
-    case EDLC_ID_Skyrim:
-        return L"Skyrim";
-    case EDLC_ID_Halo:
-        return L"Halo";
-    case EDLC_ID_Festive:
-        return L"Festive";
-    case EDLC_ID_LittleBigPlanet:
-        return L"LittleBigPlanet";
-    case EDLC_ID_GreekMythology:
-        return L"Greek Mythology";
-    case EDLC_ID_NorseMythology:
-        return L"Norse Mythology";
-    case EDLC_ID_Halloween2015:
-        return L"Halloween 2015";
-    case EDLC_ID_Mario:
-        return L"Mario";
-    case EDLC_ID_AdventureTime:
-        return L"Adventure Time";
-    case EDLC_ID_PiratesOfTheCaribbean:
-        return L"Pirates Of The Caribbean";
-    case EDLC_ID_EgyptianMythology:
-        return L"Egyptian Mythology";
-    case EDLC_ID_ChineseMythology:
-        return L"Chinese Mythology";
-    case EDLC_ID_Fallout:
-        return L"Fallout";
-    case EDLC_ID_TheNightmareBeforeChristmas:
-        return L"The Nightmare Before Christmas";
-    case EDLC_ID_Plastic:
-        return L"Plastic";
-    case EDLC_ID_Candy:
-        return L"Candy";
-    case EDLC_ID_Fantasy:
-        return L"Fantasy";
-    case EDLC_ID_HalloweenTexturePack:
-        return L"Halloween Texture Pack";
-    case EDLC_ID_Natural:
-        return L"Natural";
-    case EDLC_ID_City:
-    case EDLC_ID_CityAlt:
-        return L"City";
-    case EDLC_ID_Cartoon:
-        return L"Cartoon";
-    case EDLC_ID_Steampunk:
-    case EDLC_ID_SteampunkAlt:
-        return L"Steampunk";
-    case EDLC_ID_Pattern:
-        return L"Pattern";
-    case EDLC_ID_SuperCuteTexturePack:
-        return L"Super Cute Texture Pack";
-    case EDLC_ID_BattleMapPack0:
-        return L"Battle Map Pack 0";
-    case EDLC_ID_BattleMapPack1:
-        return L"Battle Map Pack 1";
-    case EDLC_ID_BattleMapPack2:
-        return L"Battle Map Pack 2";
-    case EDLC_ID_BattleMapPack3:
-        return L"Battle Map Pack 3";
-    case EDLC_ID_BattleMapPack4:
-        return L"Battle Map Pack 4";
-    case EDLC_ID_MG02MapPack0:
-        return L"MG02 Map Pack 0";
-    case EDLC_ID_MG02MapPack1:
-        return L"MG02 Map Pack 1";
-    case EDLC_ID_MG04TestWorldPack:
-        return L"MG04_TestWorldPack";
-    case EDLC_ID_HalloweenBattleMap:
-        return L"Halloween Battle Map";
-    case EDLC_ID_FestiveBattleMap:
-        return L"Festive Battle Map";
-    case EDLC_ID_FalloutBattleMapPack:
-        return L"Fallout Battle Map Pack";
-    case EDLC_ID_GlideMapPack0:
-        return L"Glide Map Pack 0";
-    case EDLC_ID_GlideBeastsTrackPack:
-        return L"Glide Beasts Track Pack";
-    case EDLC_ID_GlideGiantsTrackPack:
-        return L"Glide Giants Track Pack";
-    case EDLC_ID_GlideMythsTrackPack:
-        return L"Glide Myths Track Pack";
-    case EDLC_ID_MG02MapPack2:
-        return L"MG02 Map Pack 2";
-    case EDLC_ID_MG02MapPack3:
-        return L"MG02 Map Pack 3";
-    default:
-        return std::wstring();
+        const std::wstring path = pack->GetRootPath() + (mounted ? L"/Data/" : L"/") + name;
+        if (File(path).exists())
+            return path;
     }
+    return drive + L"\\Data\\" + name;
 }
-std::wstring CMinecraftApp::getRootPath(unsigned int contentType, bool create, bool mounted, std::wstring suffix)
+static bool IsPackFileName(const std::string& path)
 {
-    std::wstring path = suffix;
-    if (create)
-    {
-        bool useDLCFolder;
-        if (contentType < 0x400)
-        {
-            if (contentType < 0x222)
-                useDLCFolder = (contentType == 4) || (contentType == 0x207) || (contentType == 0x216);
-            else
-                useDLCFolder = (contentType < 0x227) || (contentType == 0x22c) || (contentType == 0x230)
-                               || (contentType == 0x233);
-        }
-        else if (contentType < 0x4f4)
-        {
-            if (contentType <= 0x402)
-                useDLCFolder = true;
-            else if (contentType <= 0x404)
-                useDLCFolder = false;
-            else if (contentType <= 0x40a)
-                useDLCFolder = true;
-            else if (contentType == 0x40c)
-                useDLCFolder = true;
-            else if (contentType <= 0x40d)
-                useDLCFolder = false;
-            else if (contentType <= 0x40f)
-                useDLCFolder = true;
-            else
-                useDLCFolder = false;
-        }
-        else
-        {
-            useDLCFolder = (contentType <= 0x4f5) || (contentType == 0x4f9) || (contentType == 0x804)
-                           || (contentType == 0x812);
-        }
-
-        if (useDLCFolder)
-        {
-            const std::wstring name = getDLCFolderName(static_cast<EDLC_ID>(contentType));
-            if (contentType == 0x207 || contentType == 0x216 || contentType == 0x804
-                || (contentType >= 0x222 && contentType < 0x227) || contentType == 0x22c || contentType == 0x230
-                || contentType == 0x233)
-                path = std::wstring(L"WiiU\\CU\\DLC\\") + name;
-            else
-                path = std::wstring(L"WiiU\\DLC\\") + name;
-        }
-
-        if (!File(path).exists())
-            path = suffix;
-    }
-    return path + (mounted ? std::wstring(L"\\Data\\") : std::wstring(L"\\"));
-}
-std::wstring CMinecraftApp::getFilePath(unsigned int contentType, std::wstring name, bool mounted, std::wstring suffix)
-{
-    const std::wstring primary = getRootPath(contentType, true, mounted, suffix) + name;
-    if (File(primary).exists())
-        return primary;
-    return getRootPath(contentType, false, true, suffix) + name;
+    if (path.size() < 4)
+        return false;
+    std::string extension = path.substr(path.size() - 4);
+    for (size_t index = 0; index < extension.size(); ++index)
+        extension[index] = static_cast<char>(std::tolower(static_cast<unsigned char>(extension[index])));
+    return extension == ".pck";
 }
 void CMinecraftApp::HandleDLC(DLCPack* pack)
 {
     unsigned int numItemsAdded = 0;
     std::vector<std::string> files;
     gStorage->GetMountedDLCFileList("DLCDrive", files);
-    if (!files.empty())
+    for (size_t index = 0; index < files.size(); ++index)
     {
-        const std::string& filePath = files[0];
-        std::wstring widePath(stringtowchararray(filePath));
-        std::wstring fileName = File(widePath).getName();
-        const unsigned int packId = mDLCManager.retrievePackIDFromDLCDataFile(filePath);
-        DLC_INFO* info = gApp.GetDLCInfoInstance()->GetDLCInfoForPackID(packId);
-        if (info == NULL || info->PackType != 5)
-        {
-            const unsigned int license = info != NULL ? info->PackID : 0;
-            mDLCManager.readDLCDataFile(numItemsAdded, filePath, pack, license, false);
-        }
-        else
-        {
-            std::wstring dataPath = getFilePath(packId, fileName, false, L"TPACK:");
-            if (!File(dataPath).exists())
-                mDLCManager.readDLCDataFile(numItemsAdded, filePath, pack, info->PackID, false);
-            else
-                mDLCManager.readDLCDataFile(numItemsAdded, dataPath, pack, info->PackID, false);
-        }
+        if (!IsPackFileName(files[index]))
+            continue;
+        const unsigned int packId = mDLCManager.retrievePackIDFromDLCDataFile(files[index]);
+        DLCPack* loaded = packId != 0 ? mDLCManager.getPackFromPackID(packId) : NULL;
+        if (loaded == NULL || loaded == pack)
+            mDLCManager.readDLCDataFile(numItemsAdded, files[index], pack, packId, false);
+        break;
     }
 
     if (numItemsAdded == 0)
@@ -2154,15 +1772,17 @@ int CMinecraftApp::DLCMountedCallback(void* context, int result, unsigned int co
 
     CONTENT_DATA content = *reinterpret_cast<CONTENT_DATA*>(gStorage->GetDLC(gApp.mDLCInstallIndex));
     const std::wstring folderName = convStringToWstring(std::string(content.name));
+    const std::wstring rootPath = convStringToWstring(std::string(content.path));
     DLCPack* existingPack = gApp.mDLCManager.getPack(folderName);
-    cNintendoDLCInfo* dlcInfo = static_cast<CConsoleMinecraftApp*>(&gApp)->GetDLCInfoInstance();
 
-    if (existingPack != NULL && !existingPack->IsCorrupt())
+    if (existingPack != NULL && existingPack->GetRootPath() != rootPath)
     {
-        const unsigned int licenseMask = dlcInfo->GetDLCPurchased(content.name);
+        gStorage->UnmountInstalledDLC(NULL);
+    }
+    else if (existingPack != NULL && !existingPack->IsCorrupt())
+    {
         existingPack->SetDLCMountIndex(gApp.mDLCInstallIndex);
         existingPack->SetDLCDeviceID(content.state);
-        existingPack->updateLicenseMask(licenseMask);
         gStorage->UnmountInstalledDLC(NULL);
     }
     else
@@ -2170,25 +1790,10 @@ int CMinecraftApp::DLCMountedCallback(void* context, int result, unsigned int co
         if (existingPack != NULL)
             gApp.mDLCManager.removePack(existingPack);
 
-        unsigned int licenseMask = dlcInfo->GetDLCPurchased(content.name);
-        if (std::wstring(L"Battle & Beasts") == folderName)
-            licenseMask = 1U;
-        if (std::wstring(L"Battle & Beasts 2") == folderName)
-            licenseMask = 1U;
-        if (std::wstring(L"Festive") == folderName)
-            licenseMask = 1U;
-        if (std::wstring(L"Fantasy Texture Pack") == folderName)
-            licenseMask = 1U;
-        if (std::wstring(L"City Texture Pack") == folderName)
-            licenseMask = 1U;
-        if (std::wstring(L"Natural Texture Pack") == folderName)
-            licenseMask = 1U;
-        if (std::wstring(L"Mario") == folderName)
-            licenseMask = 1U;
-
-        DLCPack* pack = new DLCPack(folderName, licenseMask);
+        DLCPack* pack = new DLCPack(folderName);
         pack->SetDLCMountIndex(gApp.mDLCInstallIndex);
         pack->SetDLCDeviceID(content.state);
+        pack->SetRootPath(rootPath, content.source);
         gApp.mDLCManager.addPack(pack);
         gApp.HandleDLC(pack);
         gStorage->UnmountInstalledDLC(NULL);
@@ -2212,7 +1817,8 @@ void CMinecraftApp::MountNextDLC(int32_t pad)
     {
         mDLCInstallProcessCompleted = true;
         mDLCInstallPending = false;
-        gConsoleUIController.HandleDLCMountingComplete();
+        if (!IsDedicatedServer())
+            gConsoleUIController.HandleDLCMountingComplete();
     }
 }
 int CMinecraftApp::DLCInstalledCallback(void* context, int result, int index)
@@ -2223,6 +1829,69 @@ int CMinecraftApp::DLCInstalledCallback(void* context, int result, int index)
         gApp.MountNextDLC(index);
     }
     return 0;
+}
+int CMinecraftApp::LoadPack(const std::string& path, const std::wstring& name)
+{
+    if (mDLCInstallPending || !mDLCInstallProcessCompleted)
+        return 0;
+    const int index = gStorage->AddInstalledPack(path.c_str(), convWstringToString(name).c_str());
+    if (index < 0)
+        return -1;
+    mDLCInstallIndex = index;
+    mDLCInstallCount = index + 1;
+    mDLCInstallProcessCompleted = false;
+    mDLCInstallPending = true;
+    MountNextDLC(gProfile->GetPrimaryPad());
+    return 1;
+}
+static void ForgetSkinNames(DLCPack* pack, std::vector<std::wstring>& names)
+{
+    const unsigned int count = pack->getDLCItemsCount(DLCManager::eDLCType_Skin);
+    for (unsigned int index = 0; index < count; ++index)
+    {
+        DLCFile* file = pack->getFile(DLCManager::eDLCType_Skin, index, false, false);
+        if (file != NULL)
+            names.erase(std::remove(names.begin(), names.end(), file->getPath()), names.end());
+    }
+    std::vector<DLCPack*>& children = pack->getChildPacks();
+    for (size_t child = 0; child < children.size(); ++child)
+        ForgetSkinNames(children[child], names);
+}
+bool CMinecraftApp::UnloadServerPacks()
+{
+    TexturePackRepository* repository = Minecraft::GetInstance()->mTexturePackRepository;
+    if (mDLCInstallPending || !mDLCInstallProcessCompleted || repository->getSelectedId() != 0
+        || repository->needsUIUpdate())
+        return false;
+    std::vector<DLCPack*> packs;
+    const int count = mDLCManager.getPackCount(DLCManager::eDLCType_All);
+    for (int index = 0; index < count; ++index)
+    {
+        DLCPack* pack = mDLCManager.getPack(index, DLCManager::eDLCType_All);
+        if (pack != NULL && pack->GetSource() == C4JStorage::EPackSource_Server)
+            packs.push_back(pack);
+    }
+    for (size_t index = 0; index < packs.size(); ++index)
+    {
+        DLCPack* pack = packs[index];
+        std::vector<DLCPack*>& children = pack->getChildPacks();
+        for (size_t child = 0; child < children.size(); ++child)
+        {
+            if (children[child]->getDLCItemsCount(DLCManager::eDLCType_Texture) > 0)
+                repository->removeTexturePackById(children[child]->GetPackId() & 0x00ffffffu);
+        }
+        mGameRuleManager.unloadGameRules(pack);
+        ForgetSkinNames(pack, m_dlcSkinNames);
+        mDLCManager.removePack(pack);
+    }
+    if (!packs.empty())
+    {
+        ClientMasterGameMode* clientMode = Minecraft::GetInstance()->GetClientMasterGameMode();
+        if (clientMode != NULL)
+            clientMode->ForgetLevelGenerationOptions();
+    }
+    gStorage->RemoveServerPacks();
+    return true;
 }
 uint32_t CMinecraftApp::StartInstallDLCProcess(int32_t pad)
 {
@@ -2878,18 +2547,6 @@ uint8_t CMinecraftApp::DLCInstallPending()
 {
     return mDLCInstallPending;
 }
-void CMinecraftApp::SetNewDLCAvailable(bool available)
-{
-    mNewDLCAvailable = available;
-}
-void CMinecraftApp::UpsellDLC(int userIndex, DLCPack* pack, int (*callback)(void*, int, int), IUIScene_DLCUpsell* scene)
-{
-    if (gProfile->IsSignedIn(userIndex) && !gProfile->IsSignedInLive(userIndex))
-    {
-        scene->SetIgnoreInput(false);
-        scene->ShowNotOnlineDialog(userIndex);
-    }
-}
 void CMinecraftApp::StoreLaunchData()
 {
 }
@@ -3015,49 +2672,13 @@ uint64_t CMinecraftApp::getArchiveFileSize(const std::wstring& path)
         return selected->getArchiveFile()->getFileSize(path);
     return mMediaArchive->getFileSize(path);
 }
-void CMinecraftApp::SetTrialTimerStart()
-{
-    mTrialTimerStart = mAppTime;
-    mTrialPausedTime = 0.0f;
-}
-double CMinecraftApp::getTrialTimer()
-{
-    return (mAppTime - mTrialTimerStart) - mTrialPausedTime;
-}
-uint32_t CMinecraftApp::WarningTrialTexturePackReturned(void* context, int pad, C4JStorage::EMessageResult result)
-{
-    if (result == C4JStorage::EMessageResult_Accept && gProfile->IsSignedIn(pad))
-    {
-        if (!gProfile->IsSignedInLive(pad))
-        {
-            int parameter = static_cast<int>(IDS_CONFIRM_OK);
-            gConsoleUIController.RequestErrorMessage(static_cast<int>(IDS_PRO_NOTONLINE_TITLE),
-                                                     static_cast<int>(0xc34c0b77), &parameter, 1,
-                                                     static_cast<unsigned int>(pad), NULL, NULL, NULL, true);
-        }
-        else
-        {
-            DLCTexturePack* texturePack = static_cast<DLCTexturePack*>(
-                Minecraft::GetInstance()->mTexturePackRepository->getSelected());
-            DLCPack* pack = texturePack->getDLCInfoParentPack();
-            if (!gApp.GetCommerceInstance()->PurchaseDLCByPackID(pack->GetPackId()))
-            {
-                int parameter = static_cast<int>(IDS_CONFIRM_OK);
-                gConsoleUIController.RequestErrorMessage(static_cast<int>(IDS_DLC_ALREADY_INSTALLED_TITLE),
-                                                         static_cast<int>(IDS_DLC_ALREADY_INSTALLED_TEXT), &parameter,
-                                                         1, static_cast<unsigned int>(pad), NULL, NULL, NULL, true);
-            }
-        }
-    }
-    return 0;
-}
 uint32_t CMinecraftApp::tipFiltered(int32_t tipId)
 {
     return 0;
 }
 uint32_t CMinecraftApp::GetNextTip(bool firstTipRequest, EMiniGameId miniGame)
 {
-    if (s_pendingDlcInstallTip && gProfile->IsFullVersion())
+    if (s_pendingDlcInstallTip)
     {
         s_pendingDlcInstallTip = false;
         if (gApp.DLCInstallProcessCompleted() == 0 || gApp.mDLCManager.getPackCount(DLCManager::eDLCType_Skin) == 0)
@@ -4085,58 +3706,6 @@ std::wstring CMinecraftApp::getEntityName(uint64_t entityType, int32_t auxValue)
         return L10N::GetString(IDS_WOLF);
     return L"";
 }
-int CMinecraftApp::DLCOffersReturned(void* context, unsigned int offerValue, unsigned int contentId, int status)
-{
-    CMinecraftApp* app = static_cast<CMinecraftApp*>(context);
-    EnterCriticalSection(&app->mDLCDownloadQueueMutex);
-    for (std::vector<_DLCRequest*>::iterator it = app->mDLCDownloadQueue.begin(); it != app->mDLCDownloadQueue.end();
-         ++it)
-    {
-        if ((*it)->mContentId == contentId)
-        {
-            (*it)->mStatus = 2U;
-            app->mDLCOffersRetrievedValue = offerValue;
-            break;
-        }
-    }
-    LeaveCriticalSection(&app->mDLCDownloadQueueMutex);
-    return 0;
-}
-uint32_t CMinecraftApp::RetrieveNextDLCContent()
-{
-    const int primaryPad = gProfile->GetPrimaryPad();
-    if (primaryPad == -1 || !gProfile->IsSignedInLive(primaryPad))
-        return 1;
-
-    EnterCriticalSection(&mDLCRetrieveMutex);
-
-    for (std::vector<_DLCRequest*>::iterator it = mDLCDownloadQueue.begin(); it != mDLCDownloadQueue.end(); ++it)
-    {
-        if ((*it)->mStatus == 1)
-        {
-            LeaveCriticalSection(&mDLCRetrieveMutex);
-            return 1;
-        }
-    }
-
-    std::vector<_DLCRequest*>::iterator it = mDLCDownloadQueue.begin();
-    while (it != mDLCDownloadQueue.end() && (*it)->mStatus != 0)
-        ++it;
-
-    if (it == mDLCDownloadQueue.end())
-    {
-        LeaveCriticalSection(&mDLCRetrieveMutex);
-        return 0;
-    }
-
-    _DLCRequest* request = *it;
-    const int result =
-        gStorage->GetDLCOffers(gProfile->GetPrimaryPad(), DLCOffersReturned, this, request->mContentId);
-
-    request->mStatus = (result == 5) ? 1U : 2U;
-    LeaveCriticalSection(&mDLCRetrieveMutex);
-    return 1;
-}
 void CMinecraftApp::SetCorruptSaveDeleted(bool deleted)
 {
     mCorruptSaveDeleted = deleted;
@@ -4277,6 +3846,10 @@ uint32_t CMinecraftApp::GetTMSXUIDsFileRead()
 void CMinecraftApp::SetRequiredTexturePackID(uint32_t texturePackId)
 {
     mRequiredTexturePackID = texturePackId;
+}
+uint32_t CMinecraftApp::GetRequiredTexturePackID() const
+{
+    return mRequiredTexturePackID;
 }
 void CMinecraftApp::GetFileFromTPD(eTPDFileType type, unsigned char* source, unsigned int sourceSize,
                                    unsigned char** data, unsigned int* size)
@@ -4524,14 +4097,6 @@ void CMinecraftApp::HandleXuiActions()
             {
                 SetActionInternal(pad, eXuiAction_Idle, NULL);
             }
-            else if (!gProfile->IsFullVersion())
-            {
-                int parameters[2] = {static_cast<int>(IDS_CONFIRM_OK), IDS_CONFIRM_CANCEL};
-                gConsoleUIController.RequestErrorMessage(static_cast<int>(IDS_UNLOCK_TITLE),
-                                                         static_cast<int>(0xc75616c3U), parameters, 2, pad,
-                                                         UnlockFullSaveReturned, this, NULL, true);
-                SetActionInternal(pad, eXuiAction_Idle, NULL);
-            }
             else
             {
                 SetActionInternal(pad, eXuiAction_SaveGameNow, NULL);
@@ -4583,30 +4148,17 @@ void CMinecraftApp::HandleXuiActions()
                 g_pLeaderboardManager->CloseSession();
             }
 
-            ClientMasterGameMode* masterGameMode;
-            if (!gProfile->IsFullVersion())
+            if (pad != gProfile->GetPrimaryPad())
             {
-                int parameters[2] = {static_cast<int>(IDS_CONFIRM_OK), IDS_CONFIRM_CANCEL};
-                gConsoleUIController.RequestErrorMessage(static_cast<int>(IDS_UNLOCK_TITLE),
-                                                         static_cast<int>(0xc75616c3U), parameters, 2, pad,
-                                                         UnlockFullExitReturned, this, NULL, true);
+                minecraft->setLocalPlayerIdx(gProfile->GetPrimaryPad());
+                minecraft->removeLocalPlayerIdx(pad);
+                gProfile->SignOutUser(pad);
                 SetActionInternal(pad, eXuiAction_Idle, NULL);
-                masterGameMode = minecraft->GetClientMasterGameMode();
+                LeaveCriticalSection(&mActionMutex);
+                return;
             }
-            else
-            {
-                if (pad != gProfile->GetPrimaryPad())
-                {
-                    minecraft->setLocalPlayerIdx(gProfile->GetPrimaryPad());
-                    minecraft->removeLocalPlayerIdx(pad);
-                    gProfile->SignOutUser(pad);
-                    SetActionInternal(pad, eXuiAction_Idle, NULL);
-                    LeaveCriticalSection(&mActionMutex);
-                    return;
-                }
-                SetActionInternal(pad, eXuiAction_ExitWorldNow, param);
-                masterGameMode = minecraft->GetClientMasterGameMode();
-            }
+            SetActionInternal(pad, eXuiAction_ExitWorldNow, param);
+            ClientMasterGameMode* masterGameMode = minecraft->GetClientMasterGameMode();
             if (masterGameMode != NULL)
                 masterGameMode->OnExitedGame();
             if (gMinecraftServer != NULL && gMinecraftServer->mMasterGameMode != NULL)
@@ -4647,29 +4199,6 @@ void CMinecraftApp::HandleXuiActions()
             params->m_threadProc = &UIScene_PauseMenu::ExitWorldThreadProc;
             FullscreenProgressState* completionData = new FullscreenProgressState;
             completionData->showTip = param == NULL;
-            completionData->closeMode = 4;
-            completionData->playerId = 0;
-            params->m_completionData = completionData;
-            gConsoleUIController.NavigateToScene(gProfile->GetPrimaryPad(), EUIScene_FullscreenProgress, params,
-                                                 EUILayer_Scene, EUIGroup_PlayerDefault);
-            break;
-        }
-        case eXuiAction_ExitWorldAfterUpsell:
-        {
-            SetActionInternal(pad, eXuiAction_Idle, NULL);
-            minecraft->mGui->clearMessages(-1);
-            minecraft->mGui->clearSingleMessages();
-            gConsoleUIController.HideAllGameUIElements();
-            for (int player = 0; player < 4; ++player)
-                gConsoleUIController.SetTutorialVisible(player, false);
-            SetGameStarted(false);
-            gConsoleUIController.CloseAllPlayersScenes(false);
-            for (int player = 0; player < 4; ++player)
-                minecraft->playerLeftTutorial(player);
-            _LoadingInputParams* params = new _LoadingInputParams();
-            params->m_threadParam = param;
-            params->m_threadProc = &UIScene_PauseMenu::ExitWorldThreadProc;
-            FullscreenProgressState* completionData = new FullscreenProgressState;
             completionData->closeMode = 4;
             completionData->playerId = 0;
             params->m_completionData = completionData;
@@ -4802,14 +4331,6 @@ void CMinecraftApp::HandleXuiActions()
             SetActionInternal(pad, eXuiAction_Idle, NULL);
             break;
         }
-        case eXuiAction_TrialOver:
-        {
-            SetActionInternal(pad, eXuiAction_Idle, NULL);
-            int parameters[2] = {static_cast<int>(IDS_UNLOCK_TITLE), static_cast<int>(IDS_EXIT_GAME)};
-            gConsoleUIController.RequestErrorMessage(IDS_TRIALOVER_TITLE, static_cast<int>(0x91a0515aU), parameters, 2,
-                                                     pad, TrialOverReturned, this, NULL, true);
-            break;
-        }
         case eXuiAction_ExitGame:
             ExitGame();
             break;
@@ -4935,30 +4456,10 @@ void CMinecraftApp::HandleXuiActions()
             break;
         case eXuiAction_JoinFromInvite:
             SetActionInternal(pad, eXuiAction_Idle, NULL);
-            if (!gProfile->IsFullVersion())
-            {
-                int parameters[2] = {static_cast<int>(IDS_CONFIRM_OK), IDS_CONFIRM_CANCEL};
-                gConsoleUIController.RequestErrorMessage(static_cast<int>(IDS_UNLOCK_TITLE),
-                                                         static_cast<int>(0xadece1fdU), parameters, 2, pad,
-                                                         UnlockFullInviteReturned, this, NULL, true);
-                telemetryManagerInstance->RecordUpsellPresented(pad, eSen_UpsellID_FullGame, 1);
-            }
-            else
-            {
-                UIScene_PauseMenu::OpenExitGameDialog(gProfile->GetPrimaryPad(), this, ExitAndJoinFromInvite,
-                                                      ExitAndJoinFromInviteSaveDialogReturned,
-                                                      UIScene_PauseMenu::EOpenExitGameDialog_JoinInvite);
-            }
+            UIScene_PauseMenu::OpenExitGameDialog(gProfile->GetPrimaryPad(), this, ExitAndJoinFromInvite,
+                                                  ExitAndJoinFromInviteSaveDialogReturned,
+                                                  UIScene_PauseMenu::EOpenExitGameDialog_JoinInvite);
             break;
-        case eXuiAction_UpsellForInvite:
-        {
-            telemetryManagerInstance->RecordUpsellPresented(pad, eSen_UpsellID_FullGame, 1);
-            SetActionInternal(pad, eXuiAction_Idle, NULL);
-            int parameters[2] = {static_cast<int>(IDS_CONFIRM_OK), IDS_CONFIRM_CANCEL};
-            gConsoleUIController.RequestErrorMessage(static_cast<int>(IDS_UNLOCK_TITLE), static_cast<int>(0xadece1fdU),
-                                                     parameters, 2, pad, UnlockFullInviteReturned, this, NULL, true);
-            break;
-        }
         case eXuiAction_ExitAndJoinFromInvite:
         {
             SetActionInternal(pad, eXuiAction_Idle, NULL);
@@ -5180,15 +4681,6 @@ void CMinecraftApp::HandleXuiActions()
             gConsoleUIController.setCleanupOnReload(true);
             SetActionInternal(pad, eXuiAction_Idle, NULL);
             break;
-        case eXuiAction_TexturePackMissing:
-        {
-            int parameters[2] = {IDS_TEXTUREPACK_FULLVERSION, IDS_TEXTURE_PACK_TRIALVERSION};
-            gConsoleUIController.RequestErrorMessage(
-                IDS_DLC_TEXTUREPACK_NOT_PRESENT_TITLE, IDS_DLC_TEXTUREPACK_NOT_PRESENT, parameters, 2,
-                gProfile->GetPrimaryPad(), TexturePackDialogReturned, this, NULL, true);
-            SetActionInternal(pad, eXuiAction_Idle, NULL);
-            break;
-        }
         case eXuiAction_GameModeTransition:
         {
             SetActionInternal(pad, eXuiAction_GameModeTransitionInProgress, NULL);

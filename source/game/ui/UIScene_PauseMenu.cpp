@@ -32,7 +32,6 @@
 #include "game/core/DLCPack.hpp"
 #include "game/core/ExtraStrings.hpp"
 #include "game/client/render/DLCTexturePack.hpp"
-#include "game/core/cCommerce.hpp"
 #include "game/minigame/Tutorial.hpp"
 #include "game/world/generation/MultiPlayerGameMode.hpp"
 #include "game/util/AABB.hpp"
@@ -41,7 +40,6 @@
 #include "platform/CInput.hpp"
 #include "platform/CProfile.hpp"
 #include "platform/CStorage.hpp"
-#include "platform/Commerce.hpp"
 #include "game/core/GameSettings.hpp"
 #include "platform/C4JThreadImpl.hpp"
 #include "platform/Runtime.hpp"
@@ -57,6 +55,8 @@ void UIScene_PauseMenu::Init()
 
     m_buttonList.AddNewMenuButton(L10N::GetString(IDS_RESUME_GAME), 0);
     m_buttonList.AddNewMenuButton(L10N::GetString(IDS_HELP_AND_OPTIONS), 1);
+    if (gApp.GetGameHostOption(eGameHostOption_MiniGame) == 0)
+        m_buttonList.AddNewMenuButton(L10N::GetString(IDS_LEADERBOARDS), 2);
 
     PlayerUID xuid(0);
     gProfile->GetXUID(m_playerId, &xuid, false);
@@ -192,20 +192,8 @@ void UIScene_PauseMenu::updateTooltips()
 {
     bool host = CGameNetworkManager::sInstance.IsHost() && gProfile->GetPrimaryPad() == m_playerId;
     int saveTooltip = -1;
-    if (gProfile->IsFullVersion())
-    {
-        if (gStorage->GetSaveDisabled())
-        {
-            if (host)
-                saveTooltip = IDS_TOOLTIPS_SELECTDEVICE;
-            else
-                saveTooltip = -1;
-        }
-        else if (host)
-            saveTooltip = IDS_TOOLTIPS_CHANGEDEVICE;
-        else
-            saveTooltip = -1;
-    }
+    if (host)
+        saveTooltip = gStorage->GetSaveDisabled() ? IDS_TOOLTIPS_SELECTDEVICE : IDS_TOOLTIPS_CHANGEDEVICE;
     if (gConsoleUIController.IsSceneInStack(m_playerId, EUIScene_FullscreenProgress))
         gConsoleUIController.SetTooltips(m_playerId, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
                                          false, false);
@@ -299,21 +287,6 @@ void UIScene_PauseMenu::handlePress(int, int childId)
         return;
     case 2:
     {
-        int parameters[1] = {static_cast<int>(IDS_CONFIRM_OK)};
-        if (gProfile->IsGuest(m_playerId))
-        {
-            gConsoleUIController.RequestAlertMessage(0x0e6bf122, static_cast<int>(0x8ba9896fU), parameters, 1,
-                                                     gProfile->GetPrimaryPad(), NULL, NULL, NULL, true);
-            return;
-        }
-        if (!gProfile->IsSignedInLive(m_playerId))
-        {
-            int errorParameters[1] = {static_cast<int>(IDS_CONFIRM_OK)};
-            gConsoleUIController.RequestErrorMessage(static_cast<int>(IDS_PRO_NOTONLINE_TITLE),
-                                                     static_cast<int>(0xc34c0b77U), errorParameters, 1, m_playerId,
-                                                     NULL, NULL, NULL, true);
-            return;
-        }
         gConsoleUIController.NavigateToScene(m_playerId, EUIScene_LeaderboardsMenu, NULL, EUILayer_Scene,
                                              EUIGroup_PlayerDefault);
         return;
@@ -370,18 +343,6 @@ void UIScene_PauseMenu::SetIgnoreInput(bool ignore)
     m_ignoreInput = ignore;
 }
 
-unsigned int UIScene_PauseMenu::BuyTexturePack_SignInReturned(void*, bool signedIn, int userIndex, int)
-{
-    if (signedIn && gProfile->IsSignedInLive(userIndex))
-    {
-        Minecraft* minecraft = Minecraft::GetInstance();
-        TexturePackRepository* repository = minecraft->mTexturePackRepository;
-        DLCPack* pack = static_cast<DLCTexturePack*>(repository->getSelected())->getDLCInfoParentPack();
-        gApp.GetCommerceInstance()->PurchaseDLCByPackID(pack->GetPackId());
-    }
-    return 0;
-}
-
 bool UIScene_PauseMenu::IsBanEnabled()
 {
     bool host = CGameNetworkManager::sInstance.IsHost() && gProfile->GetPrimaryPad() == m_playerId;
@@ -412,8 +373,6 @@ UIScene_PauseMenu::UIScene_PauseMenu(int sceneType, void*, UILayer* layer) : UIS
     m_lastIndex = -1;
     m_unusedValue = 0;
     Minecraft* minecraft = Minecraft::GetInstance();
-    if (!gProfile->IsFullVersion())
-        gConsoleUIController.ShowTrialTimer(false);
     Init();
     doHorizontalResizeCheck();
     gConsoleUIController.HidePressStart();
@@ -438,8 +397,6 @@ UIScene_PauseMenu::~UIScene_PauseMenu()
         if (tutorial != NULL)
             tutorial->showTutorialPopup(true);
     }
-    if (!gProfile->IsFullVersion())
-        gConsoleUIController.ShowTrialTimer(true);
     if (CGameNetworkManager::sInstance.IsLocalGame() && minecraft->mGameModes[m_playerId] != NULL)
         gApp.SetXuiServerAction(gProfile->GetPrimaryPad(), eXuiServerAction_PauseServer, NULL);
     m_layer->showComponent(m_playerId, EUIScene_Panorama, false);
@@ -455,15 +412,12 @@ int UIScene_PauseMenu::SaveWorldThreadProc(void* context)
     AABB::UseDefaultThreadStorage();
     Vec3::UseDefaultThreadStorage();
     Compression::UseDefaultThreadStorage();
-    if (gProfile->IsFullVersion())
-    {
-        gApp.SetGameStarted(false);
-        while (gApp.GetXuiServerAction(gProfile->GetPrimaryPad()) != eXuiServerAction_Idle
-               && !MinecraftServer::s_haltRequested)
-            Sleep(10);
-        if (!MinecraftServer::s_haltRequested && !gApp.GetChangingSessionType())
-            gApp.SetGameStarted(true);
-    }
+    gApp.SetGameStarted(false);
+    while (gApp.GetXuiServerAction(gProfile->GetPrimaryPad()) != eXuiServerAction_Idle
+           && !MinecraftServer::s_haltRequested)
+        Sleep(10);
+    if (!MinecraftServer::s_haltRequested && !gApp.GetChangingSessionType())
+        gApp.SetGameStarted(true);
     if (gApp.GetChangingSessionType())
         return ERROR_CANCELLED;
     return 0;
@@ -563,12 +517,15 @@ void UIScene_PauseMenu::_ExitWorld(void* context)
                     errorMessage = static_cast<int>(STRING_NO_SUITABLE_GAME_TO_JOIN);
                     errorTitle = static_cast<int>(IDS_CANTJOIN_TITLE);
                     break;
+                case DisconnectPacket::eDisconnectReason_MissingPack:
+                    errorMessage = -1;
+                    break;
                 default:
                     errorMessage = IDS_CONNECTION_LOST_SERVER;
                     break;
                 }
             }
-            if (gProfile->IsSignedIn(gProfile->GetPrimaryPad()))
+            if (errorMessage >= 0 && gProfile->IsSignedIn(gProfile->GetPrimaryPad()))
             {
                 gApp.setIgnoreMainMenuInputDuringInvite(false);
                 gConsoleUIController.RequestMessageBox(errorTitle, errorMessage, parameters, 1,
@@ -682,12 +639,7 @@ void UIScene_PauseMenu::OpenExitGameDialog(int player, void* callbackData,
     int message = 0xd5e33637;
     unsigned int parameterCount = 2;
     int (*selectedCallback)(void*, int, C4JStorage::EMessageResult) = callback;
-    if (!gProfile->IsFullVersion())
-    {
-        gConsoleUIController.ReduceTrialTimerValue();
-        message = IDS_CONFIRM_EXIT_GAME_PROGRESS_LOST;
-    }
-    else if (CGameNetworkManager::sInstance.IsHost())
+    if (CGameNetworkManager::sInstance.IsHost())
     {
         if (gApp.GetGameHostOption(eGameHostOption_MiniGame) == 0)
         {
@@ -714,37 +666,6 @@ void UIScene_PauseMenu::OpenExitGameDialog(int player, void* callbackData,
         message = IDS_CONFIRM_LEAVE_VIA_INVITE;
     gConsoleUIController.RequestAlertMessage(IDS_EXIT_GAME, message, parameters, parameterCount, player,
                                              selectedCallback, callbackData, NULL, true);
-}
-
-int UIScene_PauseMenu::WarningTrialTexturePackReturned(void* context, int pad, C4JStorage::EMessageResult result)
-{
-    UIScene* scene =
-        gConsoleUIController.GetSceneFromCallbackId(static_cast<unsigned int>(reinterpret_cast<uintptr_t>(context)));
-    UIScene_PauseMenu* pauseMenu = scene != NULL ? dynamic_cast<UIScene_PauseMenu*>(scene) : NULL;
-    if (result == C4JStorage::EMessageResult_Accept && gProfile->IsSignedIn(pad))
-    {
-        if (gProfile->IsSignedInLive(pad))
-        {
-            DLCPack* pack = static_cast<DLCTexturePack*>(
-                                Minecraft::GetInstance()->mTexturePackRepository->getSelected())
-                                ->getDLCInfoParentPack();
-            if (!gApp.GetCommerceInstance()->PurchaseDLCByPackID(pack->GetPackId()))
-            {
-                int parameters[1] = {static_cast<int>(IDS_CONFIRM_OK)};
-                gConsoleUIController.RequestErrorMessage(static_cast<int>(IDS_DLC_ALREADY_INSTALLED_TITLE),
-                                                         static_cast<int>(IDS_DLC_ALREADY_INSTALLED_TEXT), parameters,
-                                                         1, pad, NULL, NULL, NULL, true);
-            }
-        }
-        else
-        {
-            int parameters[1] = {static_cast<int>(IDS_CONFIRM_OK)};
-            gConsoleUIController.RequestErrorMessage(static_cast<int>(IDS_PRO_NOTONLINE_TITLE),
-                                                     static_cast<int>(0xc34c0b77U), parameters, 1, pad, NULL, NULL,
-                                                     NULL, true);
-        }
-    }
-    return 0;
 }
 
 int UIScene_PauseMenu::ExitGameDialogReturned(void* context, int pad, C4JStorage::EMessageResult result)
@@ -839,18 +760,6 @@ int UIScene_PauseMenu::ExitGameSaveDialogReturned(void* context, int pad, C4JSto
         }
         return 0;
     }
-    bool defaultPack = Minecraft::GetInstance()->mTexturePackRepository->getSelected()
-                       == TexturePackRepository::defaultTexturePack;
-    if (!defaultPack
-        && !static_cast<DLCTexturePack*>(Minecraft::GetInstance()->mTexturePackRepository->getSelected())
-                ->getDLCInfoParentPack()
-                ->hasPurchasedPack())
-    {
-        int parameters[2] = {static_cast<int>(IDS_CONFIRM_OK), IDS_CONFIRM_CANCEL};
-        gConsoleUIController.RequestAlertMessage(0x3bb3096e, 0x0d52c2e3, parameters, 2, gProfile->GetPrimaryPad(),
-                                                 WarningTrialTexturePackReturned, context, NULL, true);
-        return 0;
-    }
     bool saveExists;
     gStorage->DoesSaveExist(&saveExists);
     if (saveExists)
@@ -908,50 +817,9 @@ void UIScene_PauseMenu::HandleDLCInstalled()
     gApp.StartInstallDLCProcess(m_playerId);
 }
 
-int UIScene_PauseMenu::UnlockFullSaveReturned(void*, int, C4JStorage::EMessageResult result)
-{
-    Minecraft* minecraft = Minecraft::GetInstance();
-    if (result == C4JStorage::EMessageResult_Accept && gProfile->IsSignedInLive(minecraft->mPlayer.get()->mUserIndex))
-        gProfile->DisplayFullVersionPurchase(false, minecraft->mPlayer.get()->mUserIndex, 1);
-    return 0;
-}
-
 void UIScene_PauseMenu::PerformActionSaveGame()
 {
-    int unlockParameters[2];
-    int texturePackParameters[2];
     int saveParameters[2];
-    if (!gProfile->IsFullVersion())
-    {
-        if (gProfile->IsSignedInLive(m_playerId))
-        {
-            unlockParameters[0] = (int)IDS_CONFIRM_OK;
-            unlockParameters[1] = IDS_CONFIRM_CANCEL;
-            gConsoleUIController.RequestAlertMessage((int)IDS_UNLOCK_TITLE, (int)0xc75616c3, unlockParameters, 2,
-                                                     m_playerId, UnlockFullSaveReturned,
-                                                     reinterpret_cast<void*>(GetCallbackUniqueId()), NULL, true);
-        }
-        return;
-    }
-
-    TexturePackRepository* repository = Minecraft::GetInstance()->mTexturePackRepository;
-    bool isDefaultPack = repository->getSelected() == TexturePackRepository::defaultTexturePack;
-    if (!isDefaultPack)
-    {
-        DLCPack* pack = static_cast<DLCTexturePack*>(Minecraft::GetInstance()->mTexturePackRepository->getSelected())
-                            ->getDLCInfoParentPack();
-        if (!pack->hasPurchasedPack())
-        {
-            texturePackParameters[0] = (int)IDS_CONFIRM_OK;
-            texturePackParameters[1] = IDS_CONFIRM_CANCEL;
-            gConsoleUIController.RequestAlertMessage(0x3bb3096e, 0x0d52c2e3, texturePackParameters, 2, m_playerId,
-                                                     WarningTrialTexturePackReturned,
-                                                     reinterpret_cast<void*>(GetCallbackUniqueId()), NULL, true);
-            return;
-        }
-        m_texturePackWarningPending = false;
-    }
-
     bool saveExists;
     gStorage->DoesSaveExist(&saveExists);
     saveParameters[0] = IDS_CONFIRM_CANCEL;

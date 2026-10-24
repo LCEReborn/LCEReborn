@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <boost/shared_ptr.hpp>
+#include "game/command/ChatCommands.hpp"
 #include "game/network/ClientGamePacketListener.hpp"
 #include "game/core/Socket.hpp"
 #include "game/core/CriticalSection.hpp"
@@ -232,6 +233,8 @@ public:
     void handlePlayerReady(boost::shared_ptr<PlayerReadyPacket> packet);
     virtual void handlePowerup(boost::shared_ptr<ClientboundPowerupPacket> packet);
     virtual void handleVote(boost::shared_ptr<VotePacket> packet);
+    const std::vector<ChatCommands::CommandUsage>& getCommands() const;
+    void applyNextGameMode();
     static void staticCtor();
     static C4JCriticalSection s_deferredLinkMutex;
     static std::vector<DeferredEntityLinkPacket> s_deferredLinks;
@@ -259,6 +262,9 @@ private:
     int m_sentViewDistance;
     int m_worldXZSize;
     int m_worldHellScale;
+    std::vector<ChatCommands::CommandUsage> m_commands;
+    int m_nextGameMode;
+    int m_nextMap;
 };
 
 #endif

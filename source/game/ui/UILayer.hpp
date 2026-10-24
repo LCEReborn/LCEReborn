@@ -42,8 +42,6 @@ enum EUIScene
     EUIScene_SignEntryMenu = 0x1d,
     EUIScene_InGameInfoMenu = 0x1e,
     EUIScene_ConnectingProgress = 0x1f,
-    EUIScene_DLCOffersMenu = 0x20,
-    EUIScene_TrialExitUpsell = 0x22,
     EUIScene_LoadMenu = 0x23,
     EUIScene_Chat = 0x24,
     EUIScene_ReinstallMenu = 0x25,
@@ -52,7 +50,6 @@ enum EUIScene
     EUIScene_InGamePlayerOptionsMenu = 0x29,
     EUIScene_CreativeMenu = 0x2a,
     EUIScene_LaunchMoreOptionsMenu = 0x2b,
-    EUIScene_DLCMainMenu = 0x2c,
     EUIScene_NewUpdateMessage = 0x2d,
     EUIScene_EnchantingMenu = 0x2e,
     EUIScene_BrewingStandMenu = 0x2f,
@@ -128,11 +125,9 @@ public:
     C4JRender::eViewportType getViewport();
     void HandleDLCMountingComplete();
     void HandleDLCInstalled();
-    void HandleDLCLicenseChange();
     void HandleTMSBanFileRetrieved();
     void HandleMessage(EUIMessage message, void* data);
     void HandleSaveDeviceRemoved(int device);
-    void handleUnlockFullVersion();
     UIScene* FindScene(EUIScene scene);
     void DestroyAllScenes();
     bool GetMenuDisplayed();

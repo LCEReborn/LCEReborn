@@ -2715,6 +2715,18 @@ float Renderer::GetScreenAspect()
     return (float)mScreenWidth[0] / (float)mScreenHeight[0];
 }
 
+float Renderer::GetPixelScale()
+{
+    if (mScreen != 0)
+        return 1.0f;
+    float x;
+    float y;
+    float width;
+    float height;
+    GetLayoutRect(mLayout, &x, &y, &width, &height);
+    return height > 0.0f ? height / (float)UI_HEIGHT : 1.0f;
+}
+
 void Renderer::GetInterfaceArea(float* left, float* top, float* width, float* height)
 {
     int screen = mScreen;

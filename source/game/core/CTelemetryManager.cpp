@@ -251,10 +251,7 @@ unsigned int CTelemetryManager::GetMode(unsigned int playerId)
 
 unsigned int CTelemetryManager::GetLicense()
 {
-    if (gProfile->IsFullVersion())
-        return 2;
-
-    return 1;
+    return 2;
 }
 
 unsigned int CTelemetryManager::GetAudioSettings(unsigned int playerId)

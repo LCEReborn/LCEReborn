@@ -43,7 +43,6 @@
 #include "platform/pc/PcDiscord.hpp"
 #include "platform/pc/Log.hpp"
 #include "platform/pc/PcLaunchOptions.hpp"
-#include "platform/pc/PcLicenses.hpp"
 #include "platform/pc/PcFrameCapture.hpp"
 #include "platform/pc/PcStartWorld.hpp"
 #include "platform/pc/PcWindow.hpp"
@@ -54,7 +53,6 @@ void DefineActions();
 void RegisterAwardsWithProfileManager();
 void ShutdownAndExit();
 
-static unsigned char s_trialTimerShown = 1;
 static const Logger sLog("Main");
 
 int main(int argc, char** argv)
@@ -96,10 +94,8 @@ int main(int argc, char** argv)
     g_pInput->SetDeadzoneAndMovementRange(0, 20000, 0x7fff);
 
     gApp.loadMediaArchive();
-    gApp.InitialiseDLCInfo();
     if (gApp.ReadProductCodes() == 0)
         gApp.FatalLoadError(L"ReadProductCodes");
-    PcApplyLicenses();
 
     switch (gApp.GetProductSKU())
     {
@@ -129,7 +125,6 @@ int main(int argc, char** argv)
         uiHeight = 480;
     }
     gConsoleUIController.init(uiWidth, uiHeight);
-    gApp.CommerceInit();
     gApp.InitTime();
     static unsigned int s_profileDefaults[5];
     gProfile->Initialise(L"", L"", 0x22, 5, 4, s_profileDefaults, 0x1e60, &gApp.mGameDefinedDataChangedBitmask);
@@ -161,6 +156,7 @@ int main(int argc, char** argv)
     gStorage->SetReadDirFn(ReadDir);
     gStorage->SetCloseDirFn(CloseDir);
     gStorage->SetDLCPackageRoot("DLCDrive");
+    gStorage->RemoveServerPacks();
 
     Tesselator::CreateNewThreadStorage(0x100000);
     AABB::CreateNewThreadStorage();
@@ -179,8 +175,6 @@ int main(int argc, char** argv)
     Minecraft* minecraft = Minecraft::GetInstance();
     gApp.InitGameSettings();
     gStorage->ReadFromProfile(0, 0);
-    gProfile->SetUpsellCallback(reinterpret_cast<CProfile::UpsellHandler>(CMinecraftApp::UpsellReturnedCallback),
-                                &gApp);
     gApp.InitialiseTips();
     g_pLeaderboardManager->OpenSession();
     CGameNetworkManager::sInstance.Initialise();
@@ -269,20 +263,6 @@ int main(int argc, char** argv)
 #if LCE_DEBUG_BUILD
         PcFrameCaptureTick();
 #endif
-        if (!gProfile->IsFullVersion())
-        {
-            if (gApp.GetGameStarted() != 0)
-            {
-                if (gApp.IsAppPaused() != 0)
-                    gApp.UpdateTrialPausedTimer();
-                gConsoleUIController.UpdateTrialTimer(gProfile->GetPrimaryPad());
-            }
-        }
-        else if (s_trialTimerShown != 0)
-        {
-            gConsoleUIController.ShowTrialTimer(false);
-            s_trialTimerShown = 0;
-        }
         Vec3::resetPool();
     }
 

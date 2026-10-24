@@ -108,6 +108,12 @@ void ClientMasterGameMode::Reset()
     mNewLevelDataPending = false;
 }
 
+void ClientMasterGameMode::ForgetLevelGenerationOptions()
+{
+    mNextLevelGenOptions = NULL;
+    mCurrentLevelGenOptions = NULL;
+}
+
 void ClientMasterGameMode::PlaySound(const SoundEvent* sound, float volume, float pitch)
 {
     Minecraft::GetInstance()->mSoundEngine->playUI(sound, volume, pitch);
@@ -432,7 +438,7 @@ void ClientMasterGameMode::GetCurrentMapVotesText(std::vector<HtmlString>& text)
     for (std::vector<MapSelectInfo>::const_iterator it = playlist.begin(); it != playlist.end(); ++it)
     {
         LevelGenerationOptions* options = gApp.getLevelRules()->getLevelGenFromUniqueId(ruleType, it->uniqueId);
-        const std::wstring worldName = options != NULL ? options->getWorldName() : L"";
+        const std::wstring worldName = options != NULL ? options->getWorldName() : it->name;
         if (gApp.DebugArtToolsOn())
         {
             if (totals.find(it->uniqueId) == totals.end())

@@ -16,6 +16,7 @@
 #include "game/network/Connection.hpp"
 #include "game/network/DisconnectPacket.hpp"
 #include "game/network/ClientboundPlayerPositionPacket.hpp"
+#include "game/network/PackTransfer.hpp"
 #include "game/world/chunk/Chunk.hpp"
 #include "game/world/generation/PlayerUID.hpp"
 
@@ -148,9 +149,14 @@ public:
     int getRequestedViewDistance() const;
     virtual bool usesWideCoordinates();
     void handleCommand(const std::wstring& command);
+    bool isSendingPacks() const { return mPackSender.isBusy(); }
+    bool removeIfMissingPacks();
 
 private:
     void DisableAchievements();
+    void sendLeaderboard(int board, bool aroundMe, unsigned int startRank, unsigned int count);
+    void sendCommands();
+    void offerPacks();
 
     friend class PlayerList;
     friend class ServerPlayer;
@@ -161,6 +167,7 @@ private:
     static const int DROP_SPAM_STEP = 20;
     static const int CHAT_SPAM_LIMIT = 200;
     static const int CHAT_SPAM_STEP = 20;
+    static const int LEADERBOARD_MAX_ROWS = 50;
 
 public:
     Connection* mConnection;
@@ -179,6 +186,9 @@ private:
     int mKeepAlivePending;
     int mChatSpamTickCount;
     int mDropSpamTickCount;
+    int mSentCommandPermission;
+    bool mPacksOffered;
+    PackSender mPackSender;
     double mFirstGoodX;
     double mFirstGoodY;
     double mFirstGoodZ;

@@ -12,7 +12,6 @@
 #include "game/ui/UIScene.hpp"
 #include "game/world/generation/PlayerUID.hpp"
 #include "game/world/LevelRules.hpp"
-#include "platform/C4JStorage.hpp"
 
 class UILayer;
 
@@ -74,7 +73,6 @@ public:
     virtual unsigned int mapElementsAndNames();
     virtual int getSceneType();
     virtual void tick();
-    virtual void handleTimerComplete(int timerId);
     virtual bool hasFocus(int sceneType);
     virtual void updateTooltips();
     virtual void updateComponents();
@@ -94,8 +92,8 @@ public:
     int SetLeaderboardTitleIcons();
     void PopulateLeaderboard(LeaderboardManager::eStatsReturn result);
     void finishUpdatingLeaderboards();
+    std::wstring FilterText() const;
     static void staticCtor();
-    static int ExitLeaderboards(void* context, int pad, C4JStorage::EMessageResult result);
 
 private:
     unsigned int m_visibleRowCount;
@@ -121,6 +119,7 @@ private:
     int m_totalRows;
     LeaderboardManager::ReadView m_readView;
     bool m_loading;
+    bool m_worldLeaderboard;
     std::vector<LevelRules::LevelRulesetGroup*> m_levelRuleGroups;
     unsigned int m_result;
 };

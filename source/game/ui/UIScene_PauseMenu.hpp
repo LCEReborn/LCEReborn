@@ -23,7 +23,6 @@ public:
                                    int (*callback)(void*, int, C4JStorage::EMessageResult),
                                    int (*saveCallback)(void*, int, C4JStorage::EMessageResult),
                                    EOpenExitGameDialog action);
-    static int WarningTrialTexturePackReturned(void* context, int pad, C4JStorage::EMessageResult result);
     static int ExitGameDialogReturned(void* context, int pad, C4JStorage::EMessageResult result);
     static int ExitGameAndSaveReturned(void* context, int pad, C4JStorage::EMessageResult result);
     static int ExitGameDeclineSaveReturned(void* context, int pad, C4JStorage::EMessageResult result);
@@ -33,7 +32,6 @@ public:
     static int DisableAutosaveDialogReturned(void* context, int pad, C4JStorage::EMessageResult result);
     virtual void HandleDLCMountingComplete();
     virtual void HandleDLCInstalled();
-    static int UnlockFullSaveReturned(void* context, int pad, C4JStorage::EMessageResult result);
     void PerformActionSaveGame();
     static unsigned int SaveGame_SignInReturned(void* context, bool signedIn, int userIndex, int playerIndex);
     void Init();
@@ -48,7 +46,6 @@ public:
     virtual void handlePress(int controlId, int childId);
     virtual void ShowScene(bool show);
     virtual void SetIgnoreInput(bool ignore);
-    static unsigned int BuyTexturePack_SignInReturned(void* context, bool signedIn, int userIndex, int playerIndex);
     bool IsBanEnabled();
     virtual unsigned int mapElementsAndNames();
     virtual int getSceneType();
@@ -56,7 +53,6 @@ public:
 
 private:
     bool m_unusedFlag;
-    bool m_texturePackWarningPending;
     bool m_unusedFlag2;
     int m_lastIndex;
     int m_focusIndex;

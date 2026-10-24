@@ -201,8 +201,6 @@ public:
     virtual void UpdateSelectedItemPos(unsigned int playerId);
     virtual void HandleDLCMountingComplete();
     virtual void HandleDLCInstalled(int packId);
-    virtual void HandleDLCLicenseChange();
-    virtual void HandleTMSDLCFileRetrieved(int fileId);
     virtual void HandleTMSBanFileRetrieved(int fileId);
     virtual void HandleInventoryUpdated(int playerId);
     virtual void HandleGameTick();
@@ -214,10 +212,6 @@ public:
     virtual void SetEmptyQuadrantLogo(int quadrant);
     virtual void HideAllGameUIElements();
     virtual void ShowOtherPlayersBaseScene(unsigned int playerId, bool show);
-    virtual void ShowTrialTimer(bool show);
-    virtual void SetTrialTimerLimitSecs(unsigned int limitSecs);
-    virtual void UpdateTrialTimer(unsigned int remainingSecs);
-    virtual void ReduceTrialTimerValue();
     virtual void ShowAutosaveCountdownTimer(bool show);
     virtual void UpdateAutosaveCountdownTimer(unsigned int remainingSecs);
     virtual void ShowSavingMessage(unsigned int playerId, C4JStorage::ESavingMessage message);
@@ -261,7 +255,6 @@ public:
 
     void shutdown();
     void setBlockOrigin(int x, int y);
-    static void handleUnlockFullVersionCallback();
     UIScene_HUD* GetHUD(unsigned int playerId);
     void showComponent(int playerId, EUIScene scene, EUILayer layer, EUIGroup group, bool show);
     void removeComponent(EUIScene scene, EUILayer layer, EUIGroup group);

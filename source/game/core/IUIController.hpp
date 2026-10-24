@@ -65,8 +65,6 @@ public:
     virtual void UpdateSelectedItemPos(unsigned int playerId) = 0;
     virtual void HandleDLCMountingComplete() = 0;
     virtual void HandleDLCInstalled(int packId) = 0;
-    virtual void HandleDLCLicenseChange() = 0;
-    virtual void HandleTMSDLCFileRetrieved(int fileId) = 0;
     virtual void HandleTMSBanFileRetrieved(int fileId) = 0;
     virtual void HandleInventoryUpdated(int playerId) = 0;
     virtual void HandleGameTick() = 0;
@@ -78,10 +76,6 @@ public:
     virtual void SetEmptyQuadrantLogo(int quadrant) = 0;
     virtual void HideAllGameUIElements() = 0;
     virtual void ShowOtherPlayersBaseScene(unsigned int playerId, bool bShow) = 0;
-    virtual void ShowTrialTimer(bool bShow) = 0;
-    virtual void SetTrialTimerLimitSecs(unsigned int limitSecs) = 0;
-    virtual void UpdateTrialTimer(unsigned int remainingSecs) = 0;
-    virtual void ReduceTrialTimerValue() = 0;
     virtual void ShowAutosaveCountdownTimer(bool bShow) = 0;
     virtual void UpdateAutosaveCountdownTimer(unsigned int remainingSecs) = 0;
     virtual void ShowSavingMessage(unsigned int playerId, C4JStorage::ESavingMessage savingMessage) = 0;

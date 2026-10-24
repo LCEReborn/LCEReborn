@@ -5,6 +5,7 @@
 
 #include "game/core/DebugOverlay.hpp"
 #include "game/core/GuiComponent.hpp"
+#include "game/ui/UIMenuPainter.hpp"
 #include "game/ui/UIScene.hpp"
 
 class UIScene_DebugOverlayMenu : public UIScene
@@ -49,13 +50,15 @@ private:
 
     int RowTop(int entry) const;
     int ContentHeight() const;
-    void DrawList(Font& font, int originX, int originY, float unit);
-    void DrawPresets(Font& font, int originX, int originY, float unit);
-    void DrawPreview(Font& font, int originX, int originY, float unit);
-    void DrawSwitch(Font& font, int x, int y, int entry);
-    void Clip(int originX, int originY, float unit, int x0, int y0, int x1, int y1);
+    int ListBottom() const;
+    int PresetTop() const;
+    void DrawList(MenuPainter& painter);
+    void DrawPresets(MenuPainter& painter);
+    void DrawPreview(MenuPainter& painter, Font& font);
+    void DrawSwitch(MenuPainter& painter, int x, int y, int entry);
 
     GuiComponent m_gui;
+    MenuFrame m_frame;
     int m_focus;
     int m_preset;
     bool m_previewOpen;
@@ -72,10 +75,6 @@ private:
     long long m_pendingTime[DebugOverlay::EEntry_Count];
     int m_pendingState[DebugOverlay::EEntry_Count];
     DebugOverlay::Look m_look;
-    unsigned int m_savedScissor[4];
-    int m_originX;
-    int m_originY;
-    float m_unit;
     float m_pointerX;
     float m_pointerY;
     float m_scrollTarget;

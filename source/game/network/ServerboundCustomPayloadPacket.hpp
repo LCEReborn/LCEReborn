@@ -41,6 +41,8 @@ public:
     static const std::wstring PICK_ITEM_PACKET;
     static const std::wstring CLIENT_BRAND_PACKET;
     static const std::wstring VIEW_DISTANCE_PACKET;
+    static const std::wstring LEADERBOARD_PACKET;
+    static const std::wstring PACK_PACKET;
 
     static boost::shared_ptr<Packet> create()
     {

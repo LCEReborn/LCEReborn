@@ -38,6 +38,7 @@ private:
     void OnGameStarted();
     void OnGameFinished(int exitCode, bool crashed);
     void OnImported();
+    void ShowPacksNotice();
     void SaveProfiles();
     void SetStatus(const QString& text, const QColor& colour);
 

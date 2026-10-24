@@ -1179,12 +1179,10 @@ uint32_t GameSettings::IsAllowedSkin(int profile)
     {
         DLCSkinFile* skinFile = static_cast<DLCSkinFile*>(pack->getSkinFile(skinPath));
         bool smallSkinBlocked = false;
-        const bool skinIsFree = skinFile->getParameterAsBool(DLCManager::eDLCParameterType_Free);
-        const bool licensed = pack->hasPurchasedPack();
         if (Minecraft::GetInstance()->GetMiniGame()->AllowSmallSkins()
             && (skinFile->getSkinAdjustments().mGameFlags & 1) != 0)
             smallSkinBlocked = true;
-        if ((skinIsFree || licensed) && !smallSkinBlocked)
+        if (!smallSkinBlocked)
             return 1;
     }
     return 0;
@@ -1301,10 +1299,9 @@ void GameSettings::ValidateFavoriteSkins(int profile)
     for (uint32_t i = 0; i < count; ++i)
     {
         bool isDefaultSkin = false;
-        bool hasPurchasedPack = false;
-        DLCFile* skinFile = gApp.mDLCManager.getSkinFile(
-            static_cast<int>(GetPlayerFavoriteSkin(profile, static_cast<int>(i))), isDefaultSkin, hasPurchasedPack);
-        if (isDefaultSkin || (skinFile != NULL && (hasPurchasedPack || static_cast<DLCSkinFile*>(skinFile)->isFree())))
+        DLCFile* skinFile =
+            gApp.mDLCManager.getSkinFile(static_cast<int>(GetPlayerFavoriteSkin(profile, static_cast<int>(i))), isDefaultSkin);
+        if (isDefaultSkin || skinFile != NULL)
         {
             gGameSettings[profile]->mFavoriteSkins[validCount] = gGameSettings[profile]->mFavoriteSkins[i];
             ++validCount;

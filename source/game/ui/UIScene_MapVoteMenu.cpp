@@ -19,6 +19,7 @@
 #include "game/minigame/MiniGameDef.hpp"
 #include "game/ui/UIString.hpp"
 #include "game/ui/UILayer.hpp"
+#include "game/ui/MapDownloadIcon.hpp"
 #include "game/ui/fuiFile.hpp"
 #include "game/world/LevelGenerationOptions.hpp"
 #include "game/core/GameSettings.hpp"
@@ -71,7 +72,7 @@ unsigned int UIScene_MapVoteMenu::mapElementsAndNames()
 void UIScene_MapVoteMenu::InitForMap()
 {
     LevelRules::ELevelRuleType type = LevelRules::GetRuleTypeForMiniGame(Minecraft::GetMiniGameId());
-    gApp.getLevelRules()->getRulesByType(type, &m_levelRuleGroups, false);
+    gApp.getLevelRules()->getRulesByType(type, &m_levelRuleGroups);
     m_mapList.init(0);
     m_mapListTitle.init(UIString(IDS_MG_SELECT_MAP));
     if (m_splitScreen)
@@ -103,7 +104,14 @@ void UIScene_MapVoteMenu::InitForMap()
             }
 
             LevelGenerationOptions* options = gApp.getLevelRules()->getLevelGenFromUniqueId(type, info->uniqueId);
-            std::wstring name = options != NULL ? options->getWorldName() : L"";
+            std::wstring name = options != NULL ? options->getWorldName() : info->name;
+            if (options == NULL)
+            {
+                std::swprintf(textureName, 64, L"mapdownload");
+                if (!hasRegisteredSubstitutionTexture(textureName))
+                    registerSubstitutionTexture(textureName, const_cast<unsigned char*>(kMapDownloadIcon),
+                                                kMapDownloadIconSize, false);
+            }
             short mapSize = LevelGenerationOptions::GetMapSizeFromUniqueId(info->uniqueId);
             if (debugArtTools)
             {

@@ -7,7 +7,6 @@
 #include <vector>
 
 #include "game/ui/UIScene.hpp"
-#include "game/ui/IUIScene_DlcSelectMenu.hpp"
 #include "game/ui/UIControl_BitmapIcon.hpp"
 #include "game/ui/UIControl_CheckboxButtonList.hpp"
 #include "game/ui/UIControl_HTMLLabel.hpp"
@@ -17,7 +16,7 @@
 class LevelGenerationOptions;
 class LaunchMoreOptionsMenuInitData;
 
-class UIScene_MapSelectMenu : public UIScene, public IUIScene_DlcSelectMenu
+class UIScene_MapSelectMenu : public UIScene
 {
 public:
     UIScene_MapSelectMenu(int sceneType, void* data, UILayer* layer);
@@ -31,7 +30,6 @@ public:
     void UpdateMapInfo();
     virtual void tick();
     virtual void handleReload();
-    int checkHasPurchased(int index, bool tryPurchase);
     virtual void handleInput(int playerId, int action, bool repeat, bool pressed, bool released, bool& handled);
     virtual void handleFocusChange(int focus, int childFocus);
     virtual void handlePress(int controlId, int childId);

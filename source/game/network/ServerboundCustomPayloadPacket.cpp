@@ -18,6 +18,8 @@ const std::wstring ServerboundCustomPayloadPacket::SET_RENAME_ITEM_PACKET = L"MC
 const std::wstring ServerboundCustomPayloadPacket::PICK_ITEM_PACKET = L"MC|PickItem";
 const std::wstring ServerboundCustomPayloadPacket::CLIENT_BRAND_PACKET = L"MC|Brand";
 const std::wstring ServerboundCustomPayloadPacket::VIEW_DISTANCE_PACKET = L"LCE|ViewDist";
+const std::wstring ServerboundCustomPayloadPacket::LEADERBOARD_PACKET = L"LCE|Board";
+const std::wstring ServerboundCustomPayloadPacket::PACK_PACKET = L"LCE|Pack";
 
 ServerboundCustomPayloadPacket::ServerboundCustomPayloadPacket()
 {

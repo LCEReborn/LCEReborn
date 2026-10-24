@@ -123,14 +123,7 @@ void SelectWorldScreen::buttonClicked(Button* button)
     }
     else if (button->mId == 3)
     {
-        if (gProfile->IsFullVersion())
-            mMinecraft->setScreen(new CreateWorldScreen(this));
-        else
-        {
-            mMinecraft->setScreen(NULL);
-            if (!mSelecting)
-                mSelecting = true;
-        }
+        mMinecraft->setScreen(new CreateWorldScreen(this));
     }
     else if (button->mId == 6)
     {

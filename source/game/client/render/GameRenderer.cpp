@@ -56,8 +56,12 @@
 #include "game/core/ColourTable.hpp"
 #include "game/core/Direction.hpp"
 #include "game/core/GameSettings.hpp"
+#include "game/core/L10N.hpp"
+#include "game/core/StringIds.hpp"
 #if LCE_PLATFORM_PC
 #include "game/item/PowerupItems.hpp"
+#include "game/ui/EntityTooltipDataHolder.hpp"
+#include "game/world/generation/MultiplayerLocalPlayer.hpp"
 #include "platform/CInput.hpp"
 #endif
 #include "game/core/System.hpp"
@@ -228,6 +232,9 @@ GameRenderer::GameRenderer(Minecraft* minecraft, ResourceManager* resourceManage
       mDebugView(0)
 {
     InitializeCriticalSection(&mUpdateThreadMutex);
+#if LCE_PLATFORM_PC
+    mTouchCentrePick = false;
+#endif
 
     mUnusedBuffer = MemoryTracker::createFloatBuffer(16);
     mFogBuffer = MemoryTracker::createFloatBuffer(16);
@@ -776,7 +783,90 @@ static bool isPickable_apply(boost::shared_ptr<Entity> entity)
     return entity->isPickable() || eTYPE_DERIVED_FROM(EntityType::ITEM_ENTITY, entity->GetType());
 }
 
+#if LCE_PLATFORM_PC
+static bool TouchAimDirection(unsigned int viewport, float aimX, float aimY, float fov, float aspect, float yaw,
+                              const Vec3* view, double* x, double* y, double* z)
+{
+    static const float kViewports[9][4] = {
+        {0.0f, 0.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 0.5f}, {0.0f, 0.5f, 1.0f, 0.5f},
+        {0.0f, 0.0f, 0.5f, 1.0f}, {0.5f, 0.0f, 0.5f, 1.0f}, {0.0f, 0.0f, 0.5f, 0.5f},
+        {0.5f, 0.0f, 0.5f, 0.5f}, {0.0f, 0.5f, 0.5f, 0.5f}, {0.5f, 0.5f, 0.5f, 0.5f}};
+    const float* area = kViewports[viewport < 9 ? viewport : 0];
+    const float screenX = (aimX - area[0]) / area[2] * 2.0f - 1.0f;
+    const float screenY = 1.0f - (aimY - area[1]) / area[3] * 2.0f;
+    if (screenX < -1.0f || screenX > 1.0f || screenY < -1.0f || screenY > 1.0f)
+        return false;
+
+    const double tanY = tan(fov * 0.5f * Mth::DEG_TO_RAD);
+    const double tanX = tanY * aspect;
+    const double rightX = -cos(yaw * Mth::DEG_TO_RAD);
+    const double rightZ = -sin(yaw * Mth::DEG_TO_RAD);
+    const double upX = -view->y * rightZ;
+    const double upY = view->x * rightZ - view->z * rightX;
+    const double upZ = view->y * rightX;
+    const double dirX = view->x + rightX * screenX * tanX + upX * screenY * tanY;
+    const double dirY = view->y + upY * screenY * tanY;
+    const double dirZ = view->z + rightZ * screenX * tanX + upZ * screenY * tanY;
+    const double length = sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ);
+    if (length <= 0.0)
+        return false;
+    *x = dirX / length;
+    *y = dirY / length;
+    *z = dirZ / length;
+    return true;
+}
+
+void GameRenderer::reportTouchInteract()
+{
+    const int pad = mMinecraft->mPlayer->mUserIndex;
+    int interact = IDS_NONE;
+    const HitResult* hit = mMinecraft->mHitResult;
+    if (hit != NULL && hit->mType == HitResult::ENTITY && hit->mEntity.get() != NULL
+        && !mMinecraft->mPlayer->isSpectator())
+    {
+        EntityTooltipDataHolder data(mMinecraft->mPlayer, mMinecraft->mPlayer->getMainHandItem(),
+                                     mMinecraft->mPlayer->isAllowedToHurtEntity(hit->mEntity),
+                                     mMinecraft->mPlayer->isAllowedToInteract(hit->mEntity));
+        interact = static_cast<int>(hit->mEntity->GetInteractTooltip(data));
+    }
+    g_pInput->SetTouchInteract(pad, interact == IDS_NONE ? NULL : L10N::GetString(interact));
+}
+
+void GameRenderer::reportTouchAim()
+{
+    if (mMinecraft->mPlayer == NULL)
+        return;
+    int target = C_4JInput::ETouchAim_None;
+    if (mMinecraft->mHitResult != NULL && mMinecraft->mHitResult->mType == HitResult::ENTITY)
+        target = C_4JInput::ETouchAim_Entity;
+    else if (mMinecraft->mHitResult != NULL && mMinecraft->mHitResult->mType == HitResult::BLOCK)
+        target = C_4JInput::ETouchAim_Block;
+    g_pInput->SetTouchAimTarget(mMinecraft->mPlayer->mUserIndex, target);
+}
+
 void GameRenderer::pick(float partialTick)
+{
+    mTouchCentrePick = false;
+    pickHit(partialTick);
+    if (mMinecraft->mPlayer == NULL || !g_pInput->UsesTouch(mMinecraft->mPlayer->mUserIndex))
+        return;
+    if (mTouchCentrePick
+        || GameSettings::GetGameSettings(mMinecraft->mPlayer->mUserIndex, eGameSetting_TouchControls)
+               == C_4JInput::ETouchScheme_JoystickCrosshair)
+        reportTouchInteract();
+    if (mTouchCentrePick)
+    {
+        delete mMinecraft->mHitResult;
+        mMinecraft->mHitResult = NULL;
+        mPointedEntity.reset();
+        mMinecraft->mSpectateEntity.reset();
+    }
+}
+
+void GameRenderer::pickHit(float partialTick)
+#else
+void GameRenderer::pick(float partialTick)
+#endif
 {
     static const double kPickDistanceCompare = 3.0;
     static const double kCreativePickRange = 6.0;
@@ -804,8 +894,40 @@ void GameRenderer::pick(float partialTick)
     delete mMinecraft->mHitResult;
     mMinecraft->mHitResult = NULL;
 
+#if LCE_PLATFORM_PC
+    bool touchAim = false;
+    double touchX = 0.0;
+    double touchY = 0.0;
+    double touchZ = 0.0;
+    const int touchPad = mMinecraft->mPlayer != NULL ? mMinecraft->mPlayer->mUserIndex : -1;
+    if (touchPad >= 0 && g_pInput->UsesTouch(touchPad)
+        && GameSettings::GetGameSettings(touchPad, eGameSetting_TouchControls)
+               != C_4JInput::ETouchScheme_JoystickCrosshair)
+    {
+        float aimX;
+        float aimY;
+        if (g_pInput->GetTouchAim(touchPad, &aimX, &aimY))
+        {
+            float fov;
+            float aspect;
+            getFovAndAspect(fov, aspect, partialTick, true);
+            touchAim = TouchAimDirection(mMinecraft->mPlayer->mViewport, aimX, aimY, fov, aspect,
+                                         getCameraYRot(partialTick), camera->getViewVector(partialTick), &touchX,
+                                         &touchY, &touchZ);
+        }
+        mTouchCentrePick = !touchAim;
+    }
+#endif
+
     MemSect(0x1f);
+#if LCE_PLATFORM_PC
+    if (touchAim)
+        mMinecraft->mHitResult = camera->pick(pickRange, partialTick, Vec3::newTemp(touchX, touchY, touchZ));
+    else
+        mMinecraft->mHitResult = camera->pick(pickRange, partialTick);
+#else
     mMinecraft->mHitResult = camera->pick(pickRange, partialTick);
+#endif
     MemSect(0);
 
     Dimension* dimension = level->mDimension;
@@ -848,6 +970,10 @@ void GameRenderer::pick(float partialTick)
     }
 
     Vec3* viewVector = cameraRaw->getViewVector(1.0f);
+#if LCE_PLATFORM_PC
+    if (touchAim)
+        viewVector = Vec3::newTemp(touchX, touchY, touchZ);
+#endif
     Vec3* rayEnd = eyePosition->add(viewVector->x * entityReach, viewVector->y * entityReach,
                                     viewVector->z * entityReach);
 
@@ -3265,6 +3391,9 @@ void GameRenderer::renderLevel(float partialTick, long long targetNanoTime)
     const bool sortTransparent = minecraft->mPlayer.get() == minecraft->mLocalPlayers[playerIndex].get();
 
     pick(partialTick);
+#if LCE_PLATFORM_PC
+    reportTouchAim();
+#endif
     GlStateManager::enableDepthTest();
     GlStateManager::enableAlphaTest();
     GlStateManager::alphaFunc(4, kAlphaRef);
@@ -3377,6 +3506,38 @@ static void ApplyMouseLook(Minecraft* minecraft)
         localPlayer->turn(x * scale, y * scale);
     }
 }
+
+static void ApplyTouchLook(Minecraft* minecraft)
+{
+    static const float kDegreesPerTurn = 45.0f;
+    static const float kTurnDegrees = 0.15f;
+    for (int player = 0; player < 4; ++player)
+    {
+        float x;
+        float y;
+        if (!g_pInput->ConsumeTouchLook(player, &x, &y))
+            continue;
+        boost::shared_ptr<MultiplayerLocalPlayer> localPlayer = minecraft->mLocalPlayers[player];
+        MultiPlayerGameMode* gameMode = minecraft->mGameModes[player];
+        if (localPlayer == NULL || gameMode == NULL || minecraft->mScreen != NULL)
+            continue;
+        if (!gameMode->isInputAllowed(EControllerActions_LookLeft)
+            && !gameMode->isInputAllowed(EControllerActions_LookRight))
+            x = 0.0f;
+        if (!gameMode->isInputAllowed(EControllerActions_LookUp)
+            && !gameMode->isInputAllowed(EControllerActions_LookDown))
+            y = 0.0f;
+        y = -y;
+        if (GameSettings::GetGameSettings(player, eGameSetting_InvertLook) != 0)
+            y = -y;
+        float sensitivity = static_cast<float>(GameSettings::GetGameSettings(player, eGameSetting_GameSensitivity))
+                            / 100.0f;
+        if (sensitivity < 0.1f)
+            sensitivity = 0.1f;
+        float scale = kDegreesPerTurn * sensitivity / kTurnDegrees;
+        localPlayer->turn(x * scale, y * scale);
+    }
+}
 #endif
 
 void GameRenderer::render(float partialTick, long long frameNanoTime, bool refreshLightTexture)
@@ -3407,6 +3568,7 @@ void GameRenderer::render(float partialTick, long long frameNanoTime, bool refre
 
 #if LCE_PLATFORM_PC
         ApplyMouseLook(mMinecraft);
+        ApplyTouchLook(mMinecraft);
 #endif
         const long long startNano = System::processTimeInNanoSecs();
         int remainingNanos = 1000000000 / fpsCap / 4 - static_cast<int>(startNano - frameNanoTime);

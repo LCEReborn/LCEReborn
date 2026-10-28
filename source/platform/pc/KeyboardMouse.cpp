@@ -169,6 +169,11 @@ PcKeyboardMouse::PcKeyboardMouse()
     mMotionSinceTick = 0.0f;
     mMovedThisTick = false;
     mClicks = 0;
+    std::memset(mTouchDown, 0, sizeof(mTouchDown));
+    std::memset(mTouchPressed, 0, sizeof(mTouchPressed));
+    mTouchMoveX = 0.0f;
+    mTouchMoveY = 0.0f;
+    mTouchMoving = false;
     mRepeatDelay = 0;
     SetDefaultBindings();
 }
@@ -661,6 +666,10 @@ void PcKeyboardMouse::Update(EPcInputContext context, float initialRepeatDelay, 
             down = true;
             pressed = true;
         }
+        if (mTouchDown[action])
+            down = true;
+        if (mTouchPressed[action])
+            pressed = true;
         if (pressed && !state.down)
         {
             state.pressTime = now;
@@ -679,6 +688,11 @@ void PcKeyboardMouse::Update(EPcInputContext context, float initialRepeatDelay, 
                     - (mActions[EControllerActions_MoveBackward].down ? 1.0f : 0.0f);
     float right = (mActions[EControllerActions_MoveRight].down ? 1.0f : 0.0f)
                   - (mActions[EControllerActions_MoveLeft].down ? 1.0f : 0.0f);
+    if (mTouchMoving)
+    {
+        right = mTouchMoveX;
+        forward = mTouchMoveY;
+    }
     if (context != EPcInputContext_Game)
     {
         forward = 0.0f;
@@ -686,6 +700,7 @@ void PcKeyboardMouse::Update(EPcInputContext context, float initialRepeatDelay, 
     }
     mMoveX = right;
     mMoveY = forward;
+    std::memset(mTouchPressed, 0, sizeof(mTouchPressed));
 
     for (int input = 0; input < INPUT_COUNT; ++input)
     {
@@ -721,6 +736,9 @@ void PcKeyboardMouse::ReleaseAll()
         mInputDown[input] = false;
         mInputPressed[input] = false;
     }
+    std::memset(mTouchDown, 0, sizeof(mTouchDown));
+    std::memset(mTouchPressed, 0, sizeof(mTouchPressed));
+    mTouchMoving = false;
     DiscardRelativeInput();
 }
 
@@ -814,11 +832,33 @@ void PcKeyboardMouse::SetPointer(float x, float y)
     mPointerY = y;
 }
 
+void PcKeyboardMouse::MovePointer(float x, float y)
+{
+    mPointerX = x;
+    mPointerY = y;
+    mPointerMoved = true;
+}
+
 unsigned int PcKeyboardMouse::ConsumeClicks()
 {
     unsigned int clicks = mClicks;
     mClicks = 0;
     return clicks;
+}
+
+void PcKeyboardMouse::AddClicks(unsigned int clicks)
+{
+    mClicks |= clicks;
+}
+
+void PcKeyboardMouse::SetTouchInput(const bool* down, const bool* pressed, float moveX, float moveY, bool moving)
+{
+    std::memcpy(mTouchDown, down, sizeof(mTouchDown));
+    for (int action = 0; action < ACTION_COUNT; ++action)
+        mTouchPressed[action] = mTouchPressed[action] || pressed[action];
+    mTouchMoveX = moveX;
+    mTouchMoveY = moveY;
+    mTouchMoving = moving;
 }
 
 void PcKeyboardMouse::DiscardRelativeInput()

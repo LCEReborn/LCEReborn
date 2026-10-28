@@ -52,7 +52,14 @@ enum eGameSetting
     eGameSetting_ShowGlideGhostPath,
     eGameSetting_AutoJump,
     eGameSetting_SkinAdjustments,
-    eGameSetting_HoldToSneak
+    eGameSetting_HoldToSneak,
+    eGameSetting_TouchControls,
+    eGameSetting_TouchPickBlock,
+    eGameSetting_TouchLeftHanded,
+    eGameSetting_TouchEasySprint,
+    eGameSetting_TouchPerspective,
+    eGameSetting_TouchJoystick,
+    eGameSetting_TouchSwapJumpSneak
 };
 enum EControllerActions
 {

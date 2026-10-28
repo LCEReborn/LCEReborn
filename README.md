@@ -29,8 +29,9 @@ hand class families to Luna and Opus 5 workers. See `docs/overview.md`.
 3. Pick a profile and press Play.
 
 The PC version runs in a window of any shape or borderless fullscreen, with
-keyboard and mouse or controllers, split screen, render distance up to 32
-chunks, and multiplayer with other PCs and with LCEReborn's Wii U build.
+keyboard and mouse, a touchscreen or controllers, split screen, render distance
+up to 32 chunks, and multiplayer with other PCs and with LCEReborn's Wii U
+build.
 `LCERebornServer` in the same package runs a dedicated server on Windows or
 Linux. See `docs/pc-launcher.md` and `docs/pc-platform.md`.
 

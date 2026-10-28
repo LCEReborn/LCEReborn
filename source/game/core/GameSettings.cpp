@@ -383,6 +383,22 @@ uint32_t GameSettings::GetGameSettings(int profile, eGameSetting setting)
         return gGameSettings[profile]->mSkinFlags & 15;
     case eGameSetting_HoldToSneak:
         return gGameSettings[profile]->mReserved & 1;
+#if LCE_PLATFORM_PC
+    case eGameSetting_TouchControls:
+        return (gGameSettings[profile]->mReserved >> 1) & 3;
+    case eGameSetting_TouchSwapJumpSneak:
+        return (gGameSettings[profile]->mReserved >> 3) & 1;
+    case eGameSetting_TouchLeftHanded:
+        return (gGameSettings[profile]->mReserved >> 4) & 1;
+    case eGameSetting_TouchJoystick:
+        return (gGameSettings[profile]->mReserved >> 5) & 3;
+    case eGameSetting_TouchEasySprint:
+        return ((gGameSettings[profile]->mReserved >> 7) & 1) == 0;
+    case eGameSetting_TouchPickBlock:
+        return (gGameSettings[profile]->mReserved >> 8) & 1;
+    case eGameSetting_TouchPerspective:
+        return (gGameSettings[profile]->mReserved >> 9) & 1;
+#endif
     case eGameSetting_ControlMappings:
         return 0;
     default:
@@ -852,6 +868,29 @@ void GameSettings::SetGameSettings(int profile, eGameSetting setting, unsigned c
     case eGameSetting_HoldToSneak:
         setGameSettingsHelper<unsigned short>(profile, setting, value, &gameSettings->mReserved, 0x1, 0);
         break;
+#if LCE_PLATFORM_PC
+    case eGameSetting_TouchControls:
+        setGameSettingsHelper<unsigned short>(profile, setting, value, &gameSettings->mReserved, 0x6, 1);
+        break;
+    case eGameSetting_TouchSwapJumpSneak:
+        setGameSettingsHelper<unsigned short>(profile, setting, value, &gameSettings->mReserved, 0x8, 3);
+        break;
+    case eGameSetting_TouchLeftHanded:
+        setGameSettingsHelper<unsigned short>(profile, setting, value, &gameSettings->mReserved, 0x10, 4);
+        break;
+    case eGameSetting_TouchJoystick:
+        setGameSettingsHelper<unsigned short>(profile, setting, value, &gameSettings->mReserved, 0x60, 5);
+        break;
+    case eGameSetting_TouchEasySprint:
+        setGameSettingsHelper<unsigned short>(profile, setting, value == 0 ? 1 : 0, &gameSettings->mReserved, 0x80, 7);
+        break;
+    case eGameSetting_TouchPickBlock:
+        setGameSettingsHelper<unsigned short>(profile, setting, value, &gameSettings->mReserved, 0x100, 8);
+        break;
+    case eGameSetting_TouchPerspective:
+        setGameSettingsHelper<unsigned short>(profile, setting, value, &gameSettings->mReserved, 0x200, 9);
+        break;
+#endif
     case eGameSetting_ControlMappings:
         break;
     default:
@@ -987,6 +1026,15 @@ void GameSettings::SetDefaultControls(C4JStorage::PROFILESETTINGS* values, int p
     SetGameSettings(profile, eGameSetting_InvertLook, static_cast<unsigned char>(values->values[0] != 0));
     SetGameSettings(profile, eGameSetting_SouthPaw, values->flags);
     SetGameSettings(profile, eGameSetting_HoldToSneak, 0);
+#if LCE_PLATFORM_PC
+    SetGameSettings(profile, eGameSetting_TouchControls, 0);
+    SetGameSettings(profile, eGameSetting_TouchPickBlock, 0);
+    SetGameSettings(profile, eGameSetting_TouchLeftHanded, 0);
+    SetGameSettings(profile, eGameSetting_TouchEasySprint, 1);
+    SetGameSettings(profile, eGameSetting_TouchPerspective, 0);
+    SetGameSettings(profile, eGameSetting_TouchJoystick, 0);
+    SetGameSettings(profile, eGameSetting_TouchSwapJumpSneak, 0);
+#endif
 
     for (int action = 0; action < 25; ++action)
     {

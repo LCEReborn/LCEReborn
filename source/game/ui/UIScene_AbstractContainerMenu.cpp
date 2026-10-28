@@ -12,6 +12,7 @@
 #include "game/core/HtmlString.hpp"
 #include "game/core/L10N.hpp"
 #include "game/core/Minecraft.hpp"
+#include "game/core/Slot.hpp"
 #include "game/item/Inventory.hpp"
 #include "game/item/Item.hpp"
 #include "game/item/ItemInstance.hpp"
@@ -45,6 +46,11 @@ UIScene_AbstractContainerMenu::UIScene_AbstractContainerMenu(int type, UILayer* 
     gConsoleUIController.OverrideSFX(m_playerId, 4, true);
     gConsoleUIController.OverrideSFX(m_playerId, 5, true);
     m_ignoreInput = false;
+#if LCE_PLATFORM_PC
+    m_touchDragSection = IUIScene_AbstractContainerMenu::ESceneSection_None;
+    m_touchDragSlotX = 0;
+    m_touchDragSlotY = 0;
+#endif
 }
 
 UIScene_AbstractContainerMenu::~UIScene_AbstractContainerMenu()
@@ -257,6 +263,7 @@ void UIScene_AbstractContainerMenu::tick()
     onMouseTick();
 #if LCE_PLATFORM_PC
     unsigned int clicks = g_pInput->ConsumeMenuClicks(m_playerId);
+    float split = g_pInput->ConsumeMenuSplit(m_playerId);
     int wheel = g_pInput->ConsumeMenuWheel(m_playerId);
     if (!m_ignoreInput)
     {
@@ -266,8 +273,17 @@ void UIScene_AbstractContainerMenu::tick()
             handleKeyDown(m_playerId, EControllerActions_MenuA, false);
         if ((clicks & C_4JInput::EPcMenuClick_Secondary) != 0)
             handleKeyDown(m_playerId, EControllerActions_MenuX, false);
+        if ((clicks & C_4JInput::EPcMenuClick_DragStart) != 0)
+            TouchDragStart();
+        if ((clicks & C_4JInput::EPcMenuClick_DragEnd) != 0)
+            TouchDragEnd();
+        if ((clicks & C_4JInput::EPcMenuClick_Auto) != 0)
+            TouchAutoPlace();
+        if ((clicks & C_4JInput::EPcMenuClick_Split) != 0)
+            TouchSplit(split);
         if (wheel != 0)
             onMouseWheel(wheel);
+        TouchHoldAmount();
     }
 #endif
 
@@ -335,6 +351,131 @@ void UIScene_AbstractContainerMenu::PlacePointerAtMouse()
 
 void UIScene_AbstractContainerMenu::onMouseWheel(int)
 {
+}
+
+static int TouchSplitAmount(float fraction, int total)
+{
+    int amount = static_cast<int>(ceilf(fraction * static_cast<float>(total)));
+    if (amount < 1)
+        amount = 1;
+    return amount > total ? total : amount;
+}
+
+static bool CarryingItem(int pad)
+{
+    boost::shared_ptr<MultiplayerLocalPlayer> player = Minecraft::GetInstance()->mLocalPlayers[pad];
+    return player.get() != NULL && !player->mInventory->getCarried()->isEmpty();
+}
+
+bool UIScene_AbstractContainerMenu::TouchSplitTarget(int* total, bool* placing)
+{
+    *total = 0;
+    *placing = false;
+    boost::shared_ptr<MultiplayerLocalPlayer> player = Minecraft::GetInstance()->mLocalPlayers[getPad()];
+    if (player.get() == NULL || m_pointerOutsideMenu || !IsSectionSlotList(m_currentSection))
+        return false;
+    not_null_ptr<ItemInstance> carried = player->mInventory->getCarried();
+    const int slotIndex = getCurrentIndex(m_currentSection) - getSectionStartOffset(m_currentSection);
+    not_null_ptr<ItemInstance> item = getSlotItem(m_currentSection, slotIndex);
+    if (carried->isEmpty())
+    {
+        if (item->isEmpty())
+            return false;
+        *total = item->getCount();
+        return true;
+    }
+    if (!item->isEmpty() && !IsSameItemAs(item, carried))
+        return false;
+    *placing = true;
+    *total = carried->getCount();
+    return true;
+}
+
+void UIScene_AbstractContainerMenu::TouchSplit(float fraction)
+{
+    int total;
+    bool placing;
+    if (!TouchSplitTarget(&total, &placing))
+    {
+        handleKeyDown(m_playerId, EControllerActions_MenuA, false);
+        return;
+    }
+    const int amount = TouchSplitAmount(fraction, total);
+    if (placing)
+    {
+        for (int placed = 0; placed < amount; ++placed)
+            handleKeyDown(m_playerId, EControllerActions_MenuX, false);
+        return;
+    }
+    handleKeyDown(m_playerId, EControllerActions_MenuA, false);
+    for (int left = amount; left < total; ++left)
+        handleKeyDown(m_playerId, EControllerActions_MenuX, false);
+}
+
+void UIScene_AbstractContainerMenu::TouchDragStart()
+{
+    m_touchDragSection = IUIScene_AbstractContainerMenu::ESceneSection_None;
+    if (CarryingItem(getPad()) || m_pointerOutsideMenu)
+        return;
+    if (IsSectionSlotList(m_currentSection))
+    {
+        if (isSlotEmpty(m_currentSection, getCurrentIndex(m_currentSection) - getSectionStartOffset(m_currentSection)))
+            return;
+        m_touchDragSection = m_currentSection;
+        m_touchDragSlotX = m_currentSlotX;
+        m_touchDragSlotY = m_currentSlotY;
+    }
+    handleKeyDown(m_playerId, EControllerActions_MenuA, false);
+}
+
+void UIScene_AbstractContainerMenu::TouchDragEnd()
+{
+    if (CarryingItem(getPad()))
+        handleKeyDown(m_playerId, EControllerActions_MenuA, false);
+    TouchReturnCarried();
+}
+
+void UIScene_AbstractContainerMenu::TouchReturnCarried()
+{
+    const IUIScene_AbstractContainerMenu::ESceneSection section = m_touchDragSection;
+    m_touchDragSection = IUIScene_AbstractContainerMenu::ESceneSection_None;
+    boost::shared_ptr<MultiplayerLocalPlayer> player = Minecraft::GetInstance()->mLocalPlayers[getPad()];
+    if (section == IUIScene_AbstractContainerMenu::ESceneSection_None || player.get() == NULL)
+        return;
+    not_null_ptr<ItemInstance> carried = player->mInventory->getCarried();
+    if (carried->isEmpty())
+        return;
+    const IUIScene_AbstractContainerMenu::ESceneSection currentSection = m_currentSection;
+    const int currentSlotX = m_currentSlotX;
+    const int currentSlotY = m_currentSlotY;
+    m_currentSection = section;
+    m_currentSlotX = m_touchDragSlotX;
+    m_currentSlotY = m_touchDragSlotY;
+    Slot* slot = getSlot(section, getCurrentIndex(section) - getSectionStartOffset(section));
+    if (slot != NULL && slot->mayPlace(carried) && (!slot->hasItem() || IsSameItemAs(slot->getItem(), carried)))
+        handleSlotListClicked(section, 0, 0);
+    m_currentSection = currentSection;
+    m_currentSlotX = currentSlotX;
+    m_currentSlotY = currentSlotY;
+}
+
+void UIScene_AbstractContainerMenu::TouchAutoPlace()
+{
+    if (CarryingItem(getPad()))
+        handleKeyDown(m_playerId, EControllerActions_MenuA, false);
+    handleKeyDown(m_playerId, EControllerActions_MenuY, false);
+}
+
+void UIScene_AbstractContainerMenu::TouchHoldAmount()
+{
+    float progress;
+    if (!g_pInput->GetMenuHold(m_playerId, &progress))
+        return;
+    int total;
+    bool placing;
+    if (!TouchSplitTarget(&total, &placing))
+        total = 0;
+    g_pInput->SetMenuHoldAmount(m_playerId, total > 0 ? TouchSplitAmount(progress, total) : 0, total);
 }
 #endif
 

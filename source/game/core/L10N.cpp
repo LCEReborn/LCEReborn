@@ -113,6 +113,32 @@ const wchar_t* ExtraString(int id)
         return L"Switch Tab";
     case IDS_LCE_DISCONNECTED_NAME_IN_USE:
         return L"Someone with your name is already playing in this game. Change your username to join.";
+    case IDS_LCE_TOUCH_CONTROLS:
+        return L"Touch Controls";
+    case IDS_LCE_TOUCH_JOYSTICK_TAP:
+        return L"Joystick & Tap";
+    case IDS_LCE_TOUCH_JOYSTICK_CROSSHAIR:
+        return L"Joystick & Crosshair";
+    case IDS_LCE_TOUCH_DPAD_TAP:
+        return L"D-Pad & Tap";
+    case IDS_LCE_TOUCH_PICK_BLOCK:
+        return L"Pick Block Button";
+    case IDS_LCE_TOUCH_LEFT_HANDED:
+        return L"Left-Handed Inventory";
+    case IDS_LCE_TOUCH_EASY_SPRINT:
+        return L"Sprint Using the Joystick";
+    case IDS_LCE_TOUCH_PERSPECTIVE:
+        return L"Camera Perspective Button";
+    case IDS_LCE_TOUCH_JOYSTICK:
+        return L"Joystick";
+    case IDS_LCE_TOUCH_JOYSTICK_VISIBLE:
+        return L"Always Visible";
+    case IDS_LCE_TOUCH_JOYSTICK_HIDDEN_UNUSED:
+        return L"Hidden When Unused";
+    case IDS_LCE_TOUCH_JOYSTICK_HIDDEN:
+        return L"Always Hidden";
+    case IDS_LCE_TOUCH_SWAP_JUMP_SNEAK:
+        return L"Swap Jump and Sneak";
     default:
         return NULL;
     }

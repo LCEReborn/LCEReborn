@@ -117,6 +117,8 @@ public:
     virtual void handleAdditionalKeyPress(int key);
 #if LCE_PLATFORM_PC
     virtual void onMouseWheel(int steps);
+    virtual void TouchDragStart();
+    virtual void TouchDragEnd();
 #endif
     virtual void handleSlotListClicked(IUIScene_AbstractContainerMenu::ESceneSection section, int slot, int button);
     virtual int getSectionStartOffset(IUIScene_AbstractContainerMenu::ESceneSection section);

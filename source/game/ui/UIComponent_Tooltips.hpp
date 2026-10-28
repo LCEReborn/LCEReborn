@@ -51,6 +51,8 @@ public:
 #if LCE_PLATFORM_PC
     static std::wstring PromptImagesHtml(int pad, const int* actions, int actionCount, unsigned int buttons,
                                          int height);
+    static std::wstring TouchPromptImagesHtml(int pad, const int* actions, int actionCount, int height);
+    static std::wstring ImagesHtml(const int* images, int count, int height);
     static std::wstring EscapeHtml(const std::wstring& text);
     std::wstring PromptHtml(unsigned int index, int type, int subtype);
     void RefreshPrompts();

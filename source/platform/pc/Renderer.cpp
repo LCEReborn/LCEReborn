@@ -18,6 +18,7 @@
 #include "platform/pc/PcCrashReport.hpp"
 #include "platform/pc/PcKeyboardOverlay.hpp"
 #include "platform/pc/PcFrameCapture.hpp"
+#include "platform/pc/PcInputEvents.hpp"
 #include "platform/pc/PcWindow.hpp"
 #include "platform/pc/RenderShaders.hpp"
 #include "platform/pc/shaderpack/ShaderPipeline.hpp"
@@ -2176,6 +2177,7 @@ Renderer::~Renderer()
 {
     if (mDevice != NULL && mDevice->IsGlThread())
     {
+        PcInputShutdownTouch();
         PcKeyboardOverlayShutdown();
         mDevice->Destroy();
         PcWindowDestroy();
@@ -2822,6 +2824,7 @@ void Renderer::Present()
 #if LCE_DEBUG_BUILD
         PcFrameCaptureFrame(drawableWidth, drawableHeight);
 #endif
+        PcInputDrawTouch(drawableWidth, drawableHeight);
         PcKeyboardOverlayDraw(drawableWidth, drawableHeight);
         PcWindowSwap();
         mDevice->Invalidate();

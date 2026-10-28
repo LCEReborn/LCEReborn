@@ -4,6 +4,7 @@
 #include "platform/C4JInput.hpp"
 #include "platform/pc/KeyboardMouse.hpp"
 #include "platform/pc/PcInputEvents.hpp"
+#include "platform/pc/PcTouch.hpp"
 
 #include <string>
 #include <vector>
@@ -92,6 +93,7 @@ public:
     virtual int GetPromptStyle(int pad);
     virtual int GetPromptImages(int pad, const int* actions, int actionCount, unsigned int buttons, int* images,
                                 int maxImages);
+    virtual int GetTouchPromptImages(int pad, const int* actions, int actionCount, int* images, int maxImages);
     virtual bool UsesKeyboard(int pad);
     int LastInputPad();
     virtual void BeginKeyCapture();
@@ -108,10 +110,21 @@ public:
     virtual void EndTextCapture();
     virtual bool ConsumeCapturedText(std::wstring* text);
     virtual int ConsumeTextKey();
+    virtual bool UsesTouch(int pad);
+    virtual bool HasTouchscreen();
+    virtual void SetTouchHud(int pad, const TouchHud& hud);
+    virtual bool GetTouchAim(int pad, float* x, float* y);
+    virtual void SetTouchAimTarget(int pad, int target);
+    virtual void SetTouchInteract(int pad, const wchar_t* label);
+    virtual bool ConsumeTouchLook(int pad, float* x, float* y);
+    virtual bool GetMenuHold(int pad, float* progress);
+    virtual float ConsumeMenuSplit(int pad);
+    virtual void SetMenuHoldAmount(int pad, int amount, int total);
 
 private:
     friend void PcInputHandleEvent(const SDL_Event& event);
     friend bool PcInputGetKeyboardText(std::wstring* title, std::wstring* text);
+    friend void PcInputDrawTouch(int width, int height);
 
     enum
     {
@@ -193,6 +206,9 @@ private:
     };
 
     void HandleEvent(const SDL_Event& event);
+    bool FromTouch(const SDL_Event& event) const;
+    void HandleFinger(const SDL_Event& event);
+    PcTouch::EContext TouchContext() const;
     void AddGamepad(unsigned int gamepadId);
     void RemoveGamepad(unsigned int gamepadId);
     void ResolveFaceButtons(Joypad& joypad);
@@ -220,6 +236,7 @@ private:
     void UpdateJoypads();
     void FollowDeviceInUse();
     void UpdateKeyboardMouse(Joypad& joypad);
+    void UpdateTouch();
     EPcInputContext KeyboardContext() const;
     unsigned int KeyboardActionValue(int pad, unsigned char map);
     void GetStartTime(int pad, int button);
@@ -261,6 +278,7 @@ private:
     bool localMultiplayer;
 
     PcKeyboardMouse keyboardMouse;
+    PcTouch touch;
     std::string keyBindingsPath;
     unsigned short touchData[4];
     bool mouseLookEnabled;

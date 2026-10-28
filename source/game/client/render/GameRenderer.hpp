@@ -74,6 +74,11 @@ public:
     void tickRain();
     void tick(bool);
     void pick(float);
+#if LCE_PLATFORM_PC
+    void pickHit(float);
+    void reportTouchInteract();
+    void reportTouchAim();
+#endif
     float getFov(float, bool);
     void bobHurt(float);
     void bobView(float);
@@ -165,6 +170,9 @@ private:
     MapRenderer* mMapRenderer;
     int mTickCount;
     boost::shared_ptr<Entity> mPointedEntity;
+#if LCE_PLATFORM_PC
+    bool mTouchCentrePick;
+#endif
     SmoothFloat mSmoothTurnX;
     SmoothFloat mSmoothTurnY;
     SmoothFloat mSmoothDummy1;

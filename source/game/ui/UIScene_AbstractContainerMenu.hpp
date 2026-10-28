@@ -52,6 +52,13 @@ protected:
 #if LCE_PLATFORM_PC
     bool TouchToPanel(float touchX, float touchY, float* x, float* y);
     void PlacePointerAtMouse();
+    bool TouchSplitTarget(int* total, bool* placing);
+    void TouchSplit(float fraction);
+    virtual void TouchDragStart();
+    virtual void TouchDragEnd();
+    void TouchAutoPlace();
+    void TouchHoldAmount();
+    void TouchReturnCarried();
 #endif
     IUIScene_AbstractContainerMenu::ESceneSection m_focusSection;
     bool m_ignoreInput;
@@ -64,6 +71,11 @@ protected:
     UIControl_Label m_inventoryLabel;
     UIControl_Label m_hotbarLabel;
     UIControl m_backgroundPanel;
+#if LCE_PLATFORM_PC
+    IUIScene_AbstractContainerMenu::ESceneSection m_touchDragSection;
+    int m_touchDragSlotX;
+    int m_touchDragSlotY;
+#endif
 };
 
 #endif

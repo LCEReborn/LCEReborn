@@ -2468,8 +2468,17 @@ bool Entity::shouldRenderAtSqrDistance(double distanceSqr)
 
 HitResult* Entity::pick(double distance, float partialTicks)
 {
+#if LCE_PLATFORM_PC
+    return pick(distance, partialTicks, getViewVector(partialTicks));
+}
+
+HitResult* Entity::pick(double distance, float partialTicks, Vec3* view)
+{
+    Vec3* from = getEyePosition(partialTicks);
+#else
     Vec3* from = getEyePosition(partialTicks);
     Vec3* view = getViewVector(partialTicks);
+#endif
     Vec3* to = from->add(view->x * distance, view->y * distance, view->z * distance);
 
     bool inMiniGame = false;

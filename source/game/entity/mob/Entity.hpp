@@ -416,6 +416,9 @@ public:
     int getFireTransitionStartTick() const;
     Vec3* calculateViewVector(float xRot, float yRot);
     HitResult* pick(double distance, float partialTicks);
+#if LCE_PLATFORM_PC
+    HitResult* pick(double distance, float partialTicks, Vec3* view);
+#endif
     HitResult* pick(Vec3* from, double distance, float partialTicks, bool liquids, bool ignoreEntities);
     HitResult* pickBlockInDirection(Vec3* direction, double distance, float partialTicks);
     std::wstring getEncodeId();

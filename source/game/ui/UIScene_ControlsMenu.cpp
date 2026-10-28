@@ -28,6 +28,9 @@ extern ConsoleUIController gConsoleUIController;
 
 UIScene_ControlsMenu::UIScene_ControlsMenu(int player, void* data, UILayer* layer) : UIScene(player, layer)
 {
+#if LCE_PLATFORM_PC
+    m_touchRows = false;
+#endif
     initialiseMovie();
     Init(player);
 }
@@ -85,6 +88,79 @@ void UIScene_ControlsMenu::SetControlsHelp(int, int control, std::wstring help)
     menu->SetControlsHelp(control, helpText);
 }
 
+#if LCE_PLATFORM_PC
+std::wstring UIScene_ControlsMenu::TouchControlsString()
+{
+    static const int kNames[C_4JInput::ETouchScheme_Count] = {IDS_LCE_TOUCH_JOYSTICK_TAP,
+                                                              IDS_LCE_TOUCH_JOYSTICK_CROSSHAIR, IDS_LCE_TOUCH_DPAD_TAP};
+    unsigned int scheme = GameSettings::GetGameSettings(m_playerId, eGameSetting_TouchControls);
+    if (scheme >= C_4JInput::ETouchScheme_Count)
+        scheme = 0;
+    return std::wstring(L" ") + L10N::GetString(kNames[scheme]);
+}
+
+std::wstring UIScene_ControlsMenu::TouchJoystickString()
+{
+    static const int kNames[C_4JInput::ETouchJoystick_Count] = {
+        IDS_LCE_TOUCH_JOYSTICK_VISIBLE, IDS_LCE_TOUCH_JOYSTICK_HIDDEN_UNUSED, IDS_LCE_TOUCH_JOYSTICK_HIDDEN};
+    unsigned int visibility = GameSettings::GetGameSettings(m_playerId, eGameSetting_TouchJoystick);
+    if (visibility >= C_4JInput::ETouchJoystick_Count)
+        visibility = 0;
+    return std::wstring(L" ") + L10N::GetString(kNames[visibility]);
+}
+
+namespace
+{
+struct TouchCheckbox
+{
+    int control;
+    int label;
+    eGameSetting setting;
+};
+
+const TouchCheckbox kTouchCheckboxes[] = {
+    {UIScene_ControlsMenu::EControl_TouchPickBlock, IDS_LCE_TOUCH_PICK_BLOCK, eGameSetting_TouchPickBlock},
+    {UIScene_ControlsMenu::EControl_TouchLeftHanded, IDS_LCE_TOUCH_LEFT_HANDED, eGameSetting_TouchLeftHanded},
+    {UIScene_ControlsMenu::EControl_TouchEasySprint, IDS_LCE_TOUCH_EASY_SPRINT, eGameSetting_TouchEasySprint},
+    {UIScene_ControlsMenu::EControl_TouchPerspective, IDS_LCE_TOUCH_PERSPECTIVE, eGameSetting_TouchPerspective},
+    {UIScene_ControlsMenu::EControl_TouchSwapJumpSneak, IDS_LCE_TOUCH_SWAP_JUMP_SNEAK,
+     eGameSetting_TouchSwapJumpSneak}};
+const int kTouchCheckboxCount = sizeof(kTouchCheckboxes) / sizeof(kTouchCheckboxes[0]);
+}
+
+void UIScene_ControlsMenu::AddTouchRows()
+{
+    m_touchRows = g_pInput->HasTouchscreen();
+    if (!m_touchRows)
+        return;
+    m_controlsList.AddNewControllerButton(L10N::GetString(IDS_LCE_TOUCH_CONTROLS), TouchControlsString(), true,
+                                          EControl_TouchControls);
+    for (int index = 0; index < kTouchCheckboxCount; ++index)
+    {
+        const TouchCheckbox& row = kTouchCheckboxes[index];
+        if (row.control == EControl_TouchSwapJumpSneak)
+            m_controlsList.AddNewControllerButton(L10N::GetString(IDS_LCE_TOUCH_JOYSTICK), TouchJoystickString(), true,
+                                                  EControl_TouchJoystick);
+        m_controlsList.AddNewCheckbox(L10N::GetString(row.label), row.control,
+                                      GameSettings::GetGameSettings(m_playerId, row.setting) != 0);
+    }
+}
+
+void UIScene_ControlsMenu::UpdateTouchRows()
+{
+    if (!m_touchRows)
+        return;
+    m_controlsList.SetSecondaryLabel(EControl_TouchControls, UIString(TouchControlsString()), true, true, false);
+    m_controlsList.SetSecondaryLabel(EControl_TouchJoystick, UIString(TouchJoystickString()), true, true, false);
+    for (int index = 0; index < kTouchCheckboxCount; ++index)
+    {
+        const TouchCheckbox& row = kTouchCheckboxes[index];
+        m_controlsList.SetCheckboxValue(row.control, GameSettings::GetGameSettings(m_playerId, row.setting) != 0,
+                                        false);
+    }
+}
+#endif
+
 void UIScene_ControlsMenu::Init(int player)
 {
     bool notInGame = Minecraft::GetInstance()->mLevel == NULL;
@@ -117,6 +193,9 @@ void UIScene_ControlsMenu::Init(int player)
                                   GameSettings::GetGameSettings(m_playerId, eGameSetting_SouthPaw) != 0);
     m_controlsList.AddNewCheckbox(L10N::GetString(IDS_LCE_HOLD_TO_SNEAK), EControl_HoldToSneak,
                                   GameSettings::GetGameSettings(m_playerId, eGameSetting_HoldToSneak) != 0);
+#if LCE_PLATFORM_PC
+    AddTouchRows();
+#endif
 
     if (GameSettings::GetGameSettings(m_playerId, eGameSetting_SouthPaw))
     {
@@ -472,6 +551,9 @@ void UIScene_ControlsMenu::UpdateControls(int player)
                                     GameSettings::GetGameSettings(m_playerId, eGameSetting_SouthPaw) != 0, false);
     m_controlsList.SetCheckboxValue(EControl_HoldToSneak,
                                     GameSettings::GetGameSettings(m_playerId, eGameSetting_HoldToSneak) != 0, false);
+#if LCE_PLATFORM_PC
+    UpdateTouchRows();
+#endif
     controlString = GetControlsString(EControl_Look, mapped);
     m_controlsList.SetSecondaryLabel(EControl_Look, UIString(controlString), true, mapped, false);
     controlString = GetControlsString(EControl_Move, mapped);
@@ -630,6 +712,13 @@ void UIScene_ControlsMenu::handleCheckboxElementToggled(int first, int second, b
     }
     else if (second == EControl_HoldToSneak)
         GameSettings::SetGameSettings(m_playerId, eGameSetting_HoldToSneak, checked);
+#if LCE_PLATFORM_PC
+    for (int index = 0; index < kTouchCheckboxCount; ++index)
+    {
+        if (second == kTouchCheckboxes[index].control)
+            GameSettings::SetGameSettings(m_playerId, kTouchCheckboxes[index].setting, checked);
+    }
+#endif
 }
 
 int UIScene_ControlsMenu::ResetDefaultsDialogReturned(void* context, int pad, C4JStorage::EMessageResult result)
@@ -1093,6 +1182,26 @@ void UIScene_ControlsMenu::handlePress(int controlId, int childId)
                                                  (void*)static_cast<uintptr_t>(GetCallbackUniqueId()), NULL, true);
         return;
     }
+#if LCE_PLATFORM_PC
+    if (childId == EControl_TouchControls)
+    {
+        unsigned int scheme = GameSettings::GetGameSettings(m_playerId, eGameSetting_TouchControls) + 1;
+        if (scheme >= C_4JInput::ETouchScheme_Count)
+            scheme = 0;
+        GameSettings::SetGameSettings(m_playerId, eGameSetting_TouchControls, static_cast<unsigned char>(scheme));
+        m_controlsList.SetSecondaryLabel(EControl_TouchControls, UIString(TouchControlsString()), true, true, false);
+        return;
+    }
+    if (childId == EControl_TouchJoystick)
+    {
+        unsigned int visibility = GameSettings::GetGameSettings(m_playerId, eGameSetting_TouchJoystick) + 1;
+        if (visibility >= C_4JInput::ETouchJoystick_Count)
+            visibility = 0;
+        GameSettings::SetGameSettings(m_playerId, eGameSetting_TouchJoystick, static_cast<unsigned char>(visibility));
+        m_controlsList.SetSecondaryLabel(EControl_TouchJoystick, UIString(TouchJoystickString()), true, true, false);
+        return;
+    }
+#endif
     if (childId >= EControl_Use && childId < EControl_Label)
     {
         std::wstring ellipsis(L"...");

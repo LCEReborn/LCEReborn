@@ -42,7 +42,10 @@ enum EPcPadElement
 enum
 {
     PC_PROMPT_ART_MOUSE = 1000,
-    PC_PROMPT_ART_PAD_BASE = 1024
+    PC_PROMPT_ART_PAD_BASE = 1024,
+    PC_PROMPT_ART_TOUCH_JOYSTICK = 2000,
+    PC_PROMPT_ART_TOUCH_BASE = 2048,
+    PC_PROMPT_ART_TOUCH_END = 2112
 };
 
 int PcPadPromptArt(EPcPadFamily family, EPcPadElement element);

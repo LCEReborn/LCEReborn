@@ -2806,6 +2806,12 @@ static std::wstring PromptReplacement(int pad, int action, unsigned int primary,
 {
     int actions[4];
     int actionCount = PromptActions(action, actions);
+    if (g_pInput->GetPromptStyle(pad) == C_4JInput::EPromptStyle_Touch)
+    {
+        std::wstring touch = UIComponent_Tooltips::TouchPromptImagesHtml(pad, actions, actionCount, size);
+        if (!touch.empty())
+            return touch;
+    }
     if (g_pInput->GetPromptStyle(pad) < C_4JInput::EPromptStyle_Gamepad)
         return UIComponent_Tooltips::PromptImagesHtml(pad, actions, actionCount, 0, size);
     std::wstring html = UIComponent_Tooltips::PromptImagesHtml(pad, actions, actionCount, primary, size);

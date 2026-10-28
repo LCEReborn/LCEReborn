@@ -35,6 +35,9 @@ const int kMouseRestingIcon = 5;
 const int kSymbolSize = 9;
 const int kArrowSize = 7;
 const int kMouseInputBase = PcKeyboardMouse::SCANCODE_COUNT;
+const int kTouchButton = 20;
+const int kTouchIcon = 12;
+const int kTouchPad = 48;
 
 struct Colour
 {
@@ -108,6 +111,7 @@ struct Resources
     Image arrows;
     Image symbols;
     Image shapes[EShape_Count];
+    Image touch;
     std::vector<unsigned char> fontData;
     stbtt_fontinfo font;
     std::map<int, Art> art;
@@ -188,6 +192,27 @@ void Copy(const Image& source, int sourceX, int sourceY, Image* target, int targ
     to[1] = from[1];
     to[2] = from[2];
     to[3] = from[3];
+}
+
+void Blend(const Image& source, int sourceX, int sourceY, int width, int height, Image* target, int targetX,
+           int targetY)
+{
+    for (int y = 0; y < height; ++y)
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            const unsigned char* from = Pixel(source, sourceX + x, sourceY + y);
+            unsigned char* to = &target->rgba[((targetY + y) * target->width + targetX + x) * 4];
+            const int alpha = from[3];
+            const int below = to[3] * (255 - alpha) / 255;
+            const int total = alpha + below;
+            if (total == 0)
+                continue;
+            for (int channel = 0; channel < 3; ++channel)
+                to[channel] = (unsigned char)((from[channel] * alpha + to[channel] * below) / total);
+            to[3] = (unsigned char)total;
+        }
+    }
 }
 
 void Plot(Image* target, int x, int y, const Colour& colour)
@@ -594,6 +619,31 @@ Image ComposePadButton(EPcPadFamily family, EPcPadElement element)
     return canvas;
 }
 
+bool ComposeTouch(int art, Image* image)
+{
+    if (sResources.touch.rgba.empty() && !LoadImage("touch.png", &sResources.touch))
+        return false;
+    const Image& atlas = sResources.touch;
+    if (atlas.height < kTouchButton + kTouchIcon + kTouchPad)
+        return false;
+    if (art == PC_PROMPT_ART_TOUCH_JOYSTICK)
+    {
+        *image = BlankImage(kTouchPad, kTouchPad);
+        const int knob = (kTouchPad - kTouchButton) / 2;
+        Blend(atlas, 0, kTouchButton + kTouchIcon, kTouchPad, kTouchPad, image, 0, 0);
+        Blend(atlas, 0, 0, kTouchButton, kTouchButton, image, knob, knob);
+        return true;
+    }
+    const int icon = art - PC_PROMPT_ART_TOUCH_BASE;
+    if ((icon + 1) * kTouchIcon > atlas.width)
+        return false;
+    *image = BlankImage(kTouchButton, kTouchButton);
+    const int inset = (kTouchButton - kTouchIcon) / 2;
+    Blend(atlas, 0, 0, kTouchButton, kTouchButton, image, 0, 0);
+    Blend(atlas, icon * kTouchIcon, kTouchButton, kTouchIcon, kTouchIcon, image, inset, inset);
+    return true;
+}
+
 Image Enlarge(const Image& source)
 {
     Image image = BlankImage(source.width * kArtScale, source.height * kArtScale);
@@ -617,6 +667,8 @@ bool Compose(int art, Image* image)
         *image = MouseIcon(kMouseRestingIcon);
         return true;
     }
+    if (art == PC_PROMPT_ART_TOUCH_JOYSTICK || (art >= PC_PROMPT_ART_TOUCH_BASE && art < PC_PROMPT_ART_TOUCH_END))
+        return ComposeTouch(art, image);
     int pad = art - PC_PROMPT_ART_PAD_BASE;
     if (pad >= 0 && pad < EPcPadFamily_Count * EPcPadElement_Count)
     {

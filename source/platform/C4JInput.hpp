@@ -15,7 +15,11 @@ public:
     {
         EPcMenuClick_Primary = 0x1,
         EPcMenuClick_Secondary = 0x2,
-        EPcMenuClick_Quick = 0x4
+        EPcMenuClick_Quick = 0x4,
+        EPcMenuClick_DragStart = 0x8,
+        EPcMenuClick_DragEnd = 0x10,
+        EPcMenuClick_Auto = 0x20,
+        EPcMenuClick_Split = 0x40
     };
     enum ETextKey
     {
@@ -41,7 +45,61 @@ public:
     {
         EPromptStyle_Keyboard,
         EPromptStyle_Pointer,
+        EPromptStyle_Touch,
         EPromptStyle_Gamepad
+    };
+    enum ETouchScheme
+    {
+        ETouchScheme_JoystickTap,
+        ETouchScheme_JoystickCrosshair,
+        ETouchScheme_DPadTap,
+        ETouchScheme_Count
+    };
+    enum ETouchHud
+    {
+        ETouchHud_Flying = 0x1,
+        ETouchHud_Swimming = 0x2,
+        ETouchHud_Riding = 0x4,
+        ETouchHud_Sneaking = 0x8,
+        ETouchHud_HoldToUse = 0x10,
+        ETouchHud_Spectator = 0x20,
+        ETouchHud_Hotbar = 0x40,
+        ETouchHud_HoldToSneak = 0x80,
+        ETouchHud_Survival = 0x100,
+        ETouchHud_CanSprint = 0x200
+    };
+    enum ETouchOption
+    {
+        ETouchOption_PickBlock = 0x1,
+        ETouchOption_LeftHanded = 0x2,
+        ETouchOption_EasySprint = 0x4,
+        ETouchOption_Perspective = 0x8,
+        ETouchOption_SwapJumpSneak = 0x10
+    };
+    enum ETouchJoystick
+    {
+        ETouchJoystick_Visible,
+        ETouchJoystick_HiddenWhenUnused,
+        ETouchJoystick_Hidden,
+        ETouchJoystick_Count
+    };
+    struct TouchHud
+    {
+        unsigned int flags;
+        int scheme;
+        unsigned int options;
+        int joystick;
+        float opacity;
+        float hotbarX;
+        float hotbarY;
+        float hotbarWidth;
+        float hotbarHeight;
+    };
+    enum ETouchAim
+    {
+        ETouchAim_None,
+        ETouchAim_Block,
+        ETouchAim_Entity
     };
     enum EKeyCapture
     {
@@ -142,6 +200,7 @@ public:
     virtual int GetPromptStyle(int pad) = 0;
     virtual int GetPromptImages(int pad, const int* actions, int actionCount, unsigned int buttons, int* images,
                                 int maxImages) = 0;
+    virtual int GetTouchPromptImages(int pad, const int* actions, int actionCount, int* images, int maxImages) = 0;
     virtual bool UsesKeyboard(int pad) = 0;
     virtual void BeginKeyCapture() = 0;
     virtual void CancelKeyCapture() = 0;
@@ -157,6 +216,16 @@ public:
     virtual void EndTextCapture() = 0;
     virtual bool ConsumeCapturedText(std::wstring* text) = 0;
     virtual int ConsumeTextKey() = 0;
+    virtual bool UsesTouch(int pad) = 0;
+    virtual bool HasTouchscreen() = 0;
+    virtual void SetTouchHud(int pad, const TouchHud& hud) = 0;
+    virtual bool GetTouchAim(int pad, float* x, float* y) = 0;
+    virtual void SetTouchAimTarget(int pad, int target) = 0;
+    virtual void SetTouchInteract(int pad, const wchar_t* label) = 0;
+    virtual bool ConsumeTouchLook(int pad, float* x, float* y) = 0;
+    virtual bool GetMenuHold(int pad, float* progress) = 0;
+    virtual float ConsumeMenuSplit(int pad) = 0;
+    virtual void SetMenuHoldAmount(int pad, int amount, int total) = 0;
 #endif
 };
 

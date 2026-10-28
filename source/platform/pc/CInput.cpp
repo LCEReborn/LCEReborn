@@ -188,6 +188,19 @@ bool PcInputGetKeyboardText(std::wstring* title, std::wstring* text)
     return true;
 }
 
+void PcInputDrawTouch(int width, int height)
+{
+    if (g_pInputInstance != 0)
+    {
+        g_pInputInstance->touch.Draw(width, height);
+    }
+}
+
+void PcInputShutdownTouch()
+{
+    PcTouch::Shutdown();
+}
+
 CInput::CInput()
 {
     g_pInputInstance = this;
@@ -505,12 +518,25 @@ void CInput::HandleEvent(const SDL_Event& event)
         }
         break;
     case SDL_EVENT_KEY_UP:
+        keyboardMouse.HandleEvent(event, KeyboardContext(), mouseCaptured);
+        break;
     case SDL_EVENT_MOUSE_MOTION:
     case SDL_EVENT_MOUSE_BUTTON_UP:
-        keyboardMouse.HandleEvent(event, KeyboardContext(), mouseCaptured);
+        if (!FromTouch(event))
+            keyboardMouse.HandleEvent(event, KeyboardContext(), mouseCaptured);
+        break;
+    case SDL_EVENT_FINGER_DOWN:
+    case SDL_EVENT_FINGER_MOTION:
+    case SDL_EVENT_FINGER_UP:
+    case SDL_EVENT_FINGER_CANCELED:
+        HandleFinger(event);
         break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
     case SDL_EVENT_MOUSE_WHEEL:
+        if (FromTouch(event))
+        {
+            break;
+        }
         if (textCapture)
         {
             if (event.type == SDL_EVENT_MOUSE_WHEEL && event.wheel.y != 0.0f)
@@ -533,6 +559,81 @@ void CInput::HandleEvent(const SDL_Event& event)
         break;
     default:
         break;
+    }
+}
+
+bool CInput::FromTouch(const SDL_Event& event) const
+{
+    switch (event.type)
+    {
+    case SDL_EVENT_MOUSE_MOTION:
+        return event.motion.which == SDL_TOUCH_MOUSEID;
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
+    case SDL_EVENT_MOUSE_BUTTON_UP:
+        return event.button.which == SDL_TOUCH_MOUSEID;
+    case SDL_EVENT_MOUSE_WHEEL:
+        return event.wheel.which == SDL_TOUCH_MOUSEID;
+    default:
+        return false;
+    }
+}
+
+void CInput::HandleFinger(const SDL_Event& event)
+{
+    SDL_TouchDeviceType type = SDL_GetTouchDeviceType(event.tfinger.touchID);
+    if (type == SDL_TOUCH_DEVICE_INDIRECT_ABSOLUTE || type == SDL_TOUCH_DEVICE_INDIRECT_RELATIVE)
+    {
+        return;
+    }
+    if (event.tfinger.windowID != 0)
+    {
+        lastWindowId = event.tfinger.windowID;
+    }
+    if (keyboardState != EKeyboardState_Idle || errorViewerState != EErrorViewerState_None)
+    {
+        return;
+    }
+    touch.HandleEvent(event, TouchContext());
+    if (event.type == SDL_EVENT_FINGER_DOWN)
+    {
+        lastInputJoypad = kKeyboardJoypad;
+        idleStartTimes[kKeyboardJoypad] = SDL_GetTicksNS();
+    }
+}
+
+PcTouch::EContext CInput::TouchContext() const
+{
+    return KeyboardContext() == EPcInputContext_Game ? PcTouch::EContext_Game : PcTouch::EContext_Menu;
+}
+
+void CInput::UpdateTouch()
+{
+    SDL_Window* window = LocateWindow();
+    int pixelWidth = 0;
+    int pixelHeight = 0;
+    if (window != 0 && SDL_GetWindowSizeInPixels(window, &pixelWidth, &pixelHeight))
+    {
+        touch.SetScreen(static_cast<float>(pixelWidth), static_cast<float>(pixelHeight));
+    }
+    touch.Update(TouchContext(), menuDrawsPointer);
+    float x;
+    float y;
+    int width = 0;
+    int height = 0;
+    if (touch.ConsumeMenuMoved() && touch.MenuPointer(&x, &y) && window != 0
+        && SDL_GetWindowSize(window, &width, &height))
+    {
+        keyboardMouse.MovePointer(x * static_cast<float>(width), y * static_cast<float>(height));
+    }
+    unsigned int clicks = touch.ConsumeMenuClicks();
+    if (clicks != 0)
+    {
+        keyboardMouse.AddClicks(clicks);
+    }
+    touch.ApplyActions(keyboardMouse);
+    if (touch.Touching())
+    {
+        idleStartTimes[kKeyboardJoypad] = SDL_GetTicksNS();
     }
 }
 
@@ -775,7 +876,7 @@ void CInput::UpdateMouseCapture()
                    && errorViewerState == EErrorViewerState_None && KeyboardPlayer() >= 0 && !IsKeyboardInMenu();
     mouseLookEnabled = desired;
     bool showCursor = !desired && !(menuDrawsPointer && keyboardState == EKeyboardState_Idle)
-                      && lastInputJoypad == kKeyboardJoypad;
+                      && lastInputJoypad == kKeyboardJoypad && !touch.InUse();
     if (showCursor != cursorShown && (showCursor ? SDL_ShowCursor() : SDL_HideCursor()))
     {
         cursorShown = showCursor;
@@ -791,7 +892,7 @@ void CInput::UpdateMouseCapture()
         if (SDL_SetWindowRelativeMouseMode(window, desired))
         {
             mouseCaptured = desired;
-            if (!desired && windowFocused)
+            if (!desired && windowFocused && !touch.InUse())
             {
                 if (pointerPlacementPending)
                 {
@@ -999,7 +1100,9 @@ void CInput::UpdateKeyboardMouse(Joypad& joypad)
     if (joypad.consumed)
     {
         keyboardMouse.ReleaseAll();
+        touch.Cancel();
     }
+    UpdateTouch();
     keyboardMouse.Update(KeyboardContext(), initialRepeatDelay, repeatDelay);
     joypad.previousValue = 0;
     joypad.rawValue = 0;
@@ -1018,6 +1121,7 @@ void CInput::UpdateKeyboardMouse(Joypad& joypad)
     if (keyboardMouse.AnyInputPressed() || keyboardMouse.MouseMovedThisTick())
     {
         lastInputJoypad = kKeyboardJoypad;
+        touch.SetInUse(false);
     }
 }
 
@@ -1518,6 +1622,19 @@ unsigned char CInput::IsCircleCrossSwapped()
 
 void CInput::MapTouchInput(int pad, unsigned int mask)
 {
+    int mappedPad = pad;
+    if (RemapIpad(mappedPad) && mappedPad == kKeyboardJoypad)
+    {
+        for (unsigned char map = 0; mask != 0 && map < controllerConfiguration[1]; ++map)
+        {
+            unsigned int mapping = GetGameJoypadMaps(pad, map);
+            if (mapping != 0 && (mapping & mask) == mapping)
+            {
+                keyboardMouse.SetFakeAction(map, 2);
+            }
+        }
+        return;
+    }
     if (static_cast<unsigned int>(pad) < JOYPAD_COUNT)
     {
         joypads[pad].touchValue = (joypads[pad].touchValue & ~kTouchInputButtons) | mask;
@@ -1745,7 +1862,7 @@ bool CInput::MenuQuickMoveHeld(int pad)
 
 bool CInput::MenuPointerHeld(int pad)
 {
-    return IsKeyboardPad(pad) && keyboardMouse.PrimaryHeld();
+    return IsKeyboardPad(pad) && (keyboardMouse.PrimaryHeld() || touch.MenuDown());
 }
 
 bool CInput::GetMenuPointer(int pad, float* x, float* y)
@@ -1891,6 +2008,10 @@ int CInput::GetPromptStyle(int pad)
     {
         return EPromptStyle_Gamepad + PadFamily(joypad);
     }
+    if (touch.InUse())
+    {
+        return EPromptStyle_Touch;
+    }
     return menuDrawsPointer ? EPromptStyle_Pointer : EPromptStyle_Keyboard;
 }
 
@@ -1970,13 +2091,35 @@ int CInput::GetPromptImages(int pad, const int* actions, int actionCount, unsign
     return count;
 }
 
+int CInput::GetTouchPromptImages(int pad, const int* actions, int actionCount, int* images, int maxImages)
+{
+    int count = 0;
+    if (!UsesTouch(pad))
+    {
+        return 0;
+    }
+    for (int index = 0; index < actionCount && count < maxImages; ++index)
+    {
+        int art = touch.PromptArt(actions[index]);
+        if (art < 0)
+        {
+            return 0;
+        }
+        if (count == 0 || images[count - 1] != art)
+        {
+            images[count++] = art;
+        }
+    }
+    return count;
+}
+
 int CInput::ConsumeMenuWheel(int pad)
 {
     if (!IsKeyboardPad(pad) || !IsKeyboardInMenu())
     {
         return 0;
     }
-    return keyboardMouse.ConsumeMenuWheel();
+    return keyboardMouse.ConsumeMenuWheel() + touch.ConsumeMenuWheel();
 }
 
 bool CInput::ConsumeHotbarInput(int pad, int* slot, int* scroll)
@@ -1985,7 +2128,109 @@ bool CInput::ConsumeHotbarInput(int pad, int* slot, int* scroll)
     {
         return false;
     }
+    int touchSlot = -1;
+    if (touch.ConsumeHotbar(&touchSlot))
+    {
+        *slot = touchSlot;
+        *scroll = 0;
+        return true;
+    }
     return keyboardMouse.ConsumeHotbar(slot, scroll);
+}
+
+bool CInput::UsesTouch(int pad)
+{
+    return IsKeyboardPad(pad) && touch.InUse();
+}
+
+bool CInput::HasTouchscreen()
+{
+    if (touch.Seen())
+    {
+        return true;
+    }
+    int count = 0;
+    SDL_TouchID* devices = SDL_GetTouchDevices(&count);
+    bool found = false;
+    for (int index = 0; index < count && devices != 0; ++index)
+    {
+        if (SDL_GetTouchDeviceType(devices[index]) == SDL_TOUCH_DEVICE_DIRECT)
+        {
+            found = true;
+        }
+    }
+    SDL_free(devices);
+    return found;
+}
+
+void CInput::SetTouchHud(int pad, const TouchHud& hud)
+{
+    if (pad != KeyboardPlayer())
+    {
+        return;
+    }
+    float areaLeft;
+    float areaTop;
+    float areaWidth;
+    float areaHeight;
+    gRenderer->GetInterfaceArea(&areaLeft, &areaTop, &areaWidth, &areaHeight);
+    PcTouch::Hud touchHud;
+    touchHud.flags = hud.flags;
+    touchHud.scheme = hud.scheme >= 0 && hud.scheme < ETouchScheme_Count ? hud.scheme : ETouchScheme_JoystickTap;
+    touchHud.options = hud.options;
+    touchHud.joystick = hud.joystick >= 0 && hud.joystick < ETouchJoystick_Count ? hud.joystick
+                                                                                 : ETouchJoystick_Visible;
+    touchHud.opacity = hud.opacity;
+    touchHud.hotbarLeft = hud.hotbarX / kTouchSpaceWidth * areaWidth + areaLeft;
+    touchHud.hotbarTop = hud.hotbarY / kTouchSpaceHeight * areaHeight + areaTop;
+    touchHud.hotbarWidth = hud.hotbarWidth / kTouchSpaceWidth * areaWidth;
+    touchHud.hotbarHeight = hud.hotbarHeight / kTouchSpaceHeight * areaHeight;
+    touchHud.updated = 0;
+    touch.SetHud(touchHud);
+}
+
+bool CInput::GetTouchAim(int pad, float* x, float* y)
+{
+    return pad == KeyboardPlayer() && touch.InUse() && touch.GetAim(x, y);
+}
+
+void CInput::SetTouchAimTarget(int pad, int target)
+{
+    if (pad == KeyboardPlayer())
+    {
+        touch.SetAimTarget(target);
+    }
+}
+
+void CInput::SetTouchInteract(int pad, const wchar_t* label)
+{
+    if (pad == KeyboardPlayer())
+    {
+        touch.SetInteract(label);
+    }
+}
+
+bool CInput::ConsumeTouchLook(int pad, float* x, float* y)
+{
+    return pad == KeyboardPlayer() && touch.ConsumeLook(x, y);
+}
+
+bool CInput::GetMenuHold(int pad, float* progress)
+{
+    return IsKeyboardPad(pad) && touch.MenuHold(progress);
+}
+
+float CInput::ConsumeMenuSplit(int pad)
+{
+    return IsKeyboardPad(pad) ? touch.ConsumeMenuSplit() : 0.0f;
+}
+
+void CInput::SetMenuHoldAmount(int pad, int amount, int total)
+{
+    if (IsKeyboardPad(pad))
+    {
+        touch.SetMenuHoldAmount(amount, total);
+    }
 }
 
 unsigned short* CInput::GetTouchPadData(int pad, ETouchType touchType, bool previous)
@@ -2000,7 +2245,7 @@ unsigned short* CInput::GetTouchPadData(int pad, ETouchType touchType, bool prev
     }
     touchData[0] = static_cast<unsigned short>(x);
     touchData[1] = static_cast<unsigned short>(y);
-    touchData[2] = (SDL_GetMouseState(0, 0) & SDL_BUTTON_LMASK) != 0 ? 1 : 0;
+    touchData[2] = touch.MenuDown() || (!touch.InUse() && (SDL_GetMouseState(0, 0) & SDL_BUTTON_LMASK) != 0) ? 1 : 0;
     touchData[3] = 0;
     return touchData;
 }

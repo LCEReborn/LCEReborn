@@ -58,6 +58,7 @@
 #include "game/world/generation/MultiPlayerLevel.hpp"
 #include "game/world/generation/MultiplayerLocalPlayer.hpp"
 #include "game/world/generation/Player.hpp"
+#include "platform/CInput.hpp"
 #include "platform/CProfile.hpp"
 
 UIScene_HUD::UIScene_HUD(int sceneType, void*, UILayer* layer) : UIScene(sceneType, layer)
@@ -1313,6 +1314,12 @@ void UIScene_HUD::updateFrameTick()
     if (gConsoleUIController.GetMenuDisplayed(pad) == 0
         && GameSettings::GetGameSettings(pad, eGameSetting_Tooltips) == 0)
         tooltipsEnabled = false;
+#if LCE_PLATFORM_PC
+    const unsigned int touchScheme = GameSettings::GetGameSettings(pad, eGameSetting_TouchControls);
+    const bool touchTaps = g_pInput->UsesTouch(pad) && touchScheme != C_4JInput::ETouchScheme_JoystickCrosshair;
+#else
+    const bool touchTaps = false;
+#endif
     SetTooltipsEnabled(tooltipsEnabled);
 
     SetActiveSlot(player->mInventory->m_selected);
@@ -1340,7 +1347,7 @@ void UIScene_HUD::updateFrameTick()
             if (!player->IsSpectatingOtherPlayer())
                 showCrosshair = player->GetThirdPersonView(false) == 0;
         }
-        ShowCrosshair(showCrosshair);
+        ShowCrosshair(showCrosshair && !touchTaps);
         ShowHealth(false);
         ShowFood(false);
         ShowHorseHealth(false);
@@ -1353,7 +1360,7 @@ void UIScene_HUD::updateFrameTick()
     }
     else
     {
-        ShowCrosshair(player->GetThirdPersonView(false) == 0);
+        ShowCrosshair(player->GetThirdPersonView(false) == 0 && !touchTaps);
         const bool canHurt = gameMode->canHurtPlayer();
         ShowQuickSelect(true);
         if (canHurt)
@@ -1372,6 +1379,53 @@ void UIScene_HUD::updateFrameTick()
             renderVehicleHealth();
         }
     }
+
+#if LCE_PLATFORM_PC
+    {
+        unsigned int touchFlags = 0;
+        if (player->mAbilities.mFlying)
+            touchFlags |= C_4JInput::ETouchHud_Flying;
+        else if (player->isInWater() && !player->mOnGround)
+            touchFlags |= C_4JInput::ETouchHud_Swimming;
+        if (player->isPassenger())
+            touchFlags |= C_4JInput::ETouchHud_Riding;
+        if (player->isSneaking())
+            touchFlags |= C_4JInput::ETouchHud_Sneaking;
+        if (player->isUsingItem() || player->getMainHandItem()->getUseAnimation() != UseAnim_none)
+            touchFlags |= C_4JInput::ETouchHud_HoldToUse;
+        if (player->isSpectator())
+            touchFlags |= C_4JInput::ETouchHud_Spectator;
+        if (GetHotBarWidth() > 0)
+            touchFlags |= C_4JInput::ETouchHud_Hotbar;
+        if (GameSettings::GetGameSettings(pad, eGameSetting_HoldToSneak) != 0)
+            touchFlags |= C_4JInput::ETouchHud_HoldToSneak;
+        if (gameMode->canHurtPlayer())
+            touchFlags |= C_4JInput::ETouchHud_Survival;
+        if (player->mAbilities.mMayfly || player->getFoodData()->getFoodLevel() > 6)
+            touchFlags |= C_4JInput::ETouchHud_CanSprint;
+        static const eGameSetting kOptionSettings[] = {eGameSetting_TouchPickBlock, eGameSetting_TouchLeftHanded,
+                                                       eGameSetting_TouchEasySprint, eGameSetting_TouchPerspective,
+                                                       eGameSetting_TouchSwapJumpSneak};
+        unsigned int touchOptions = 0;
+        for (unsigned int option = 0; option < sizeof(kOptionSettings) / sizeof(kOptionSettings[0]); ++option)
+        {
+            if (GameSettings::GetGameSettings(pad, kOptionSettings[option]) != 0)
+                touchOptions |= 1u << option;
+        }
+        float opacity = static_cast<float>(GameSettings::GetGameSettings(pad, eGameSetting_InterfaceOpacity)) / 80.0f;
+        C_4JInput::TouchHud touchHud;
+        touchHud.flags = touchFlags;
+        touchHud.scheme = static_cast<int>(touchScheme);
+        touchHud.options = touchOptions;
+        touchHud.joystick = static_cast<int>(GameSettings::GetGameSettings(pad, eGameSetting_TouchJoystick));
+        touchHud.opacity = opacity > 1.0f ? 1.0f : opacity;
+        touchHud.hotbarX = static_cast<float>(GetHotBarX());
+        touchHud.hotbarY = static_cast<float>(GetHotBarY());
+        touchHud.hotbarWidth = static_cast<float>(GetHotBarWidth());
+        touchHud.hotbarHeight = static_cast<float>(GetHotBarHeight());
+        g_pInput->SetTouchHud(pad, touchHud);
+    }
+#endif
 
     if (player->isRidingJumpable())
     {

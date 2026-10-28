@@ -12,6 +12,10 @@ Writes into resources/pc/ui:
                 shadow) that the game replaces with each controller's colours
   symbols.png   9 by 9 button symbols: cross, circle, square, triangle, menu, view,
                 plus and minus
+  touch.png     the on-screen touch controls: 20 by 20 button frames (at rest,
+                pressed and switched on) along the top, 12 by 12 icons below
+                them in TOUCH_ICONS order, the 48 by 48 joystick pad, and
+                beside it a white block and the digits 0 to 9
 
 The art is drawn at one texel per pixel and the game scales it by whole
 numbers, so it stays as sharp as the rest of the interface. Labels are not part
@@ -239,6 +243,471 @@ PAD_SHAPES = {
 }
 
 
+# Touch controls, drawn like the hotbar's slots: a dark outline, a bevelled grey
+# frame and a see-through middle. Icons are white with a drop shadow, like the
+# interface's text.
+TOUCH_COLOURS = {
+    ".": (0, 0, 0, 0),
+    "K": (16, 16, 16, 220),
+    "W": (236, 236, 236, 255),
+    "F": (168, 168, 168, 255),
+    "S": (88, 88, 88, 255),
+    "I": (0, 0, 0, 104),
+    "P": (255, 255, 255, 72),
+    "L": (255, 224, 96, 120),
+    "G": (0, 0, 0, 64),
+}
+TOUCH_BUTTON = 20
+TOUCH_ICON = 12
+TOUCH_PAD = 48
+
+TOUCH_ICONS = [
+    ("jump", [
+        ".....##.....",
+        "....####....",
+        "...######...",
+        "..########..",
+        ".##########.",
+        "....####....",
+        "....####....",
+        "....####....",
+        "............",
+        ".##########.",
+        ".##########.",
+        "............",
+    ]),
+    ("sneak", [
+        "....####....",
+        "....####....",
+        "....####....",
+        ".##########.",
+        "..########..",
+        "...######...",
+        "....####....",
+        ".....##.....",
+        "............",
+        ".##########.",
+        ".##########.",
+        "............",
+    ]),
+    ("fly_up", [
+        ".....##.....",
+        "....####....",
+        "...##..##...",
+        "..##....##..",
+        ".##..##..##.",
+        "....####....",
+        "...##..##...",
+        "..##....##..",
+        ".##......##.",
+        "............",
+        ".##########.",
+        "............",
+    ]),
+    ("fly_down", [
+        ".##########.",
+        "............",
+        ".##......##.",
+        "..##....##..",
+        "...##..##...",
+        "....####....",
+        ".##..##..##.",
+        "..##....##..",
+        "...##..##...",
+        "....####....",
+        ".....##.....",
+        "............",
+    ]),
+    ("swim_up", [
+        ".....##.....",
+        "....####....",
+        "...######...",
+        "..########..",
+        "....####....",
+        "....####....",
+        "............",
+        ".##...##....",
+        "#..#.#..#.#.",
+        "....#....#..",
+        "............",
+        "............",
+    ]),
+    ("swim_down", [
+        ".##...##....",
+        "#..#.#..#.#.",
+        "....#....#..",
+        "............",
+        "....####....",
+        "....####....",
+        "..########..",
+        "...######...",
+        "....####....",
+        ".....##.....",
+        "............",
+        "............",
+    ]),
+    ("dismount", [
+        "#######.....",
+        "#.....#.....",
+        "#.....#..#..",
+        "#.....#..##.",
+        "#...#######.",
+        "#...#######.",
+        "#.....#..##.",
+        "#.....#..#..",
+        "#.....#.....",
+        "#######.....",
+        "............",
+        "............",
+    ]),
+    ("attack", [
+        ".........###",
+        "........###.",
+        ".......###..",
+        "......###...",
+        ".#...###....",
+        ".##.###.....",
+        "..####......",
+        "...##.......",
+        "..####......",
+        ".##..##.....",
+        "##..........",
+        "............",
+    ]),
+    ("use", [
+        ".....##.....",
+        ".....##.....",
+        "............",
+        "............",
+        "............",
+        "##...##...##",
+        "##...##...##",
+        "............",
+        "............",
+        "............",
+        ".....##.....",
+        ".....##.....",
+    ]),
+    ("pause", [
+        "............",
+        "..###..###..",
+        "..###..###..",
+        "..###..###..",
+        "..###..###..",
+        "..###..###..",
+        "..###..###..",
+        "..###..###..",
+        "..###..###..",
+        "..###..###..",
+        "............",
+        "............",
+    ]),
+    ("chat", [
+        "............",
+        ".##########.",
+        "#..........#",
+        "#.##.##.##.#",
+        "#.##.##.##.#",
+        "#..........#",
+        ".####.#####.",
+        "....#.#.....",
+        "....##......",
+        "....#.......",
+        "............",
+        "............",
+    ]),
+    ("inventory", [
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        ".##..##..##.",
+        ".##..##..##.",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+    ]),
+    ("crafting", [
+        "............",
+        ".##..##..##.",
+        ".##..##..##.",
+        "............",
+        "............",
+        ".##..##..##.",
+        ".##..##..##.",
+        "............",
+        "............",
+        ".##..##..##.",
+        ".##..##..##.",
+        "............",
+    ]),
+    ("arrow_up", [
+        "............",
+        "............",
+        "............",
+        ".....##.....",
+        "....####....",
+        "...######...",
+        "..########..",
+        ".##########.",
+        "............",
+        "............",
+        "............",
+        "............",
+    ]),
+    ("arrow_up_left", [
+        "............",
+        ".#######....",
+        ".######.....",
+        ".#####......",
+        ".####.......",
+        ".###........",
+        ".##.........",
+        ".#..........",
+        "............",
+        "............",
+        "............",
+        "............",
+    ]),
+]
+
+
+# Buttons added after the d-pad arrows, so the arrows keep their places: the
+# sprint toggle, pick block, camera perspective, the interact button shown
+# when the label cannot be written in the font, and the look prompt used in
+# tutorial text.
+TOUCH_EXTRA_ICONS = [
+    ("sprint", [
+        "............",
+        "............",
+        ".##...##....",
+        "..##...##...",
+        "...##...##..",
+        "....##...##.",
+        "....##...##.",
+        "...##...##..",
+        "..##...##...",
+        ".##...##....",
+        "............",
+        "............",
+    ]),
+    ("pick_block", [
+        "........#...",
+        "........#...",
+        "......#####.",
+        "........#...",
+        "........#...",
+        "#######.....",
+        "#.....#.....",
+        "#.###.#.....",
+        "#.###.#.....",
+        "#.###.#.....",
+        "#.....#.....",
+        "#######.....",
+    ]),
+    ("perspective", [
+        "............",
+        "............",
+        "....####....",
+        "..##....##..",
+        ".#...##...#.",
+        "#...####...#",
+        "#...####...#",
+        ".#...##...#.",
+        "..##....##..",
+        "....####....",
+        "............",
+        "............",
+    ]),
+    ("interact", [
+        "............",
+        ".....##.....",
+        ".....##.....",
+        ".....##.....",
+        "............",
+        ".###....###.",
+        ".###....###.",
+        "............",
+        ".....##.....",
+        ".....##.....",
+        ".....##.....",
+        "............",
+    ]),
+    ("look", [
+        ".....##.....",
+        "....####....",
+        "...######...",
+        ".....##.....",
+        "..#..##..#..",
+        ".##########.",
+        ".##########.",
+        "..#..##..#..",
+        ".....##.....",
+        "...######...",
+        "....####....",
+        ".....##.....",
+    ]),
+]
+
+
+# Digits for the amount a held finger is taking, 3 by 5, drawn after a 4 by 4
+# white block that the bars are filled from.
+TOUCH_DIGITS = [
+    ["###", "#.#", "#.#", "#.#", "###"],
+    [".#.", "##.", ".#.", ".#.", "###"],
+    ["###", "..#", "###", "#..", "###"],
+    ["###", "..#", ".##", "..#", "###"],
+    ["#.#", "#.#", "###", "..#", "..#"],
+    ["###", "#..", "###", "..#", "###"],
+    ["###", "#..", "###", "#.#", "###"],
+    ["###", "..#", ".#.", ".#.", ".#."],
+    ["###", "#.#", "###", "#.#", "###"],
+    ["###", "#.#", "###", "..#", "###"],
+]
+TOUCH_WHITE_LEFT = TOUCH_PAD
+TOUCH_DIGITS_LEFT = TOUCH_PAD + 4
+
+
+def touch_icon_rows(name):
+    for icon_name, rows in TOUCH_ICONS:
+        if icon_name == name:
+            return rows
+    raise KeyError(name)
+
+
+def centred(rows):
+    # Moves the shape to the middle of its cell. When it cannot sit exactly in
+    # the middle it goes up and left, leaving the spare texel to its shadow.
+    filled = [(x, y) for y, row in enumerate(rows) for x, c in enumerate(row) if c == "#"]
+    left = min(x for x, _ in filled)
+    right = max(x for x, _ in filled)
+    top = min(y for _, y in filled)
+    bottom = max(y for _, y in filled)
+    shift_x = (TOUCH_ICON - (right - left + 1)) // 2 - left
+    shift_y = (TOUCH_ICON - (bottom - top + 1)) // 2 - top
+    out = [["."] * TOUCH_ICON for _ in range(TOUCH_ICON)]
+    for x, y in filled:
+        out[y + shift_y][x + shift_x] = "#"
+    return ["".join(row) for row in out]
+
+
+def touch_icons():
+    # The d-pad's other arrows are turns of the up arrows.
+    icons = list(TOUCH_ICONS)
+    up = touch_icon_rows("arrow_up")
+    right = rotate(up)
+    down = rotate(right)
+    left = rotate(down)
+    up_left = touch_icon_rows("arrow_up_left")
+    up_right = rotate(up_left)
+    icons += [("arrow_down", down), ("arrow_left", left), ("arrow_right", right), ("arrow_up_right", up_right)]
+    icons += TOUCH_EXTRA_ICONS
+    return [(name, centred(rows)) for name, rows in icons]
+
+
+def touch_frame(face, top_left, bottom_right):
+    rows = []
+    last = TOUCH_BUTTON - 1
+    for y in range(TOUCH_BUTTON):
+        row = ""
+        for x in range(TOUCH_BUTTON):
+            corner = (x in (0, last)) and (y in (0, last))
+            if corner:
+                row += "."
+            elif x in (0, last) or y in (0, last):
+                row += "K"
+            elif x == 1 or y == 1:
+                row += top_left
+            elif x == last - 1 or y == last - 1:
+                row += bottom_right
+            elif x == 2 or y == 2 or x == last - 2 or y == last - 2:
+                row += "F"
+            else:
+                row += face
+        rows.append(row)
+    return rows
+
+
+def edge_depth(inside, x, y, limit):
+    for depth in range(limit):
+        reach = depth + 1
+        for dy in range(-reach, reach + 1):
+            for dx in range(-reach, reach + 1):
+                if not inside(x + dx, y + dy):
+                    return depth
+    return limit
+
+
+def touch_pad():
+    rows = []
+    inside = rounded_rect(TOUCH_PAD, TOUCH_PAD, 6.0, 6.0)
+    for y in range(TOUCH_PAD):
+        row = ""
+        for x in range(TOUCH_PAD):
+            if not inside(x, y):
+                row += "."
+                continue
+            depth = edge_depth(inside, x, y, 3)
+            if depth == 0:
+                row += "K"
+            elif depth == 1:
+                row += "W" if (x < TOUCH_PAD - y) else "S"
+            elif depth == 2:
+                row += "F"
+            else:
+                row += "G"
+        rows.append(row)
+    return rows
+
+
+def write_touch(path):
+    icons = touch_icons()
+    width = max(TOUCH_BUTTON * 3, TOUCH_ICON * len(icons))
+    height = TOUCH_BUTTON + TOUCH_ICON + TOUCH_PAD
+    pixels = [TOUCH_COLOURS["."]] * (width * height)
+
+    def put(left, top, rows, colours):
+        for y, row in enumerate(rows):
+            for x, c in enumerate(row):
+                if c != ".":
+                    pixels[(top + y) * width + left + x] = colours[c]
+
+    frames = [touch_frame("I", "W", "S"), touch_frame("P", "S", "W"), touch_frame("L", "W", "W")]
+    for index, frame in enumerate(frames):
+        put(index * TOUCH_BUTTON, 0, frame, TOUCH_COLOURS)
+
+    white = (255, 255, 255, 255)
+    shadow = (24, 24, 24, 200)
+    for index, (_, rows) in enumerate(icons):
+        left = index * TOUCH_ICON
+        top = TOUCH_BUTTON
+        for y in range(TOUCH_ICON):
+            for x in range(TOUCH_ICON):
+                if rows[y][x] == "#":
+                    continue
+                if x > 0 and y > 0 and rows[y - 1][x - 1] == "#":
+                    pixels[(top + y) * width + left + x] = shadow
+        for y in range(TOUCH_ICON):
+            for x in range(TOUCH_ICON):
+                if rows[y][x] == "#":
+                    pixels[(top + y) * width + left + x] = white
+
+    put(0, TOUCH_BUTTON + TOUCH_ICON, touch_pad(), TOUCH_COLOURS)
+    top = TOUCH_BUTTON + TOUCH_ICON
+    for y in range(4):
+        for x in range(4):
+            pixels[(top + y) * width + TOUCH_WHITE_LEFT + x] = white
+    for index, rows in enumerate(TOUCH_DIGITS):
+        for y, row in enumerate(rows):
+            for x, c in enumerate(row):
+                if c == "#":
+                    pixels[(top + y) * width + TOUCH_DIGITS_LEFT + index * 4 + x] = white
+    write_png(path, width, height, pixels)
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     write_png(os.path.join(OUT, "keycap.png"), len(KEYCAP[0]), len(KEYCAP), paint(KEYCAP))
@@ -272,6 +741,7 @@ def main():
         for symbol in SYMBOLS:
             pixels.extend(white if c == "#" else clear for c in symbol[y])
     write_png(os.path.join(OUT, "symbols.png"), 9 * len(SYMBOLS), 9, pixels)
+    write_touch(os.path.join(OUT, "touch.png"))
     print("wrote", OUT)
 
 

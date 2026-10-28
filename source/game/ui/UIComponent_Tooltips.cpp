@@ -311,6 +311,18 @@ std::wstring UIComponent_Tooltips::PromptImagesHtml(int pad, const int* actions,
 {
     int images[8];
     int count = g_pInput->GetPromptImages(pad, actions, actionCount, buttons, images, 8);
+    return ImagesHtml(images, count, height);
+}
+
+std::wstring UIComponent_Tooltips::TouchPromptImagesHtml(int pad, const int* actions, int actionCount, int height)
+{
+    int images[8];
+    int count = g_pInput->GetTouchPromptImages(pad, actions, actionCount, images, 8);
+    return ImagesHtml(images, count, height);
+}
+
+std::wstring UIComponent_Tooltips::ImagesHtml(const int* images, int count, int height)
+{
     std::wstring html;
     for (int index = 0; index < count; ++index)
     {
@@ -388,6 +400,8 @@ std::wstring UIComponent_Tooltips::PromptHtml(unsigned int index, int type, int 
     else if (index < 16)
         action = kMenuActions[index];
 
+    if (g_pInput->GetPromptStyle(m_promptPad) == C_4JInput::EPromptStyle_Touch)
+        return std::wstring();
     if (g_pInput->GetPromptStyle(m_promptPad) < C_4JInput::EPromptStyle_Gamepad)
         return PromptImagesHtml(m_promptPad, &action, 1, 0, kPromptHeight);
 
@@ -428,6 +442,10 @@ void UIComponent_Tooltips::RefreshPrompts()
 
 void UIComponent_Tooltips::render(int width, int height, C4JRender::eViewportType viewport)
 {
+#if LCE_PLATFORM_PC
+    if (gConsoleUIController.GetMenuDisplayed(m_playerId) == 0 && g_pInput->UsesTouch(m_playerId))
+        return;
+#endif
     if (gProfile->GetLockedProfile() != -1)
     {
         int playerId = m_playerId;

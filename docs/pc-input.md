@@ -5,7 +5,7 @@ slots, the game asks whether an action (`EControllerActions`) is down, pressed
 or released, and reads stick values for movement and looking. The Wii U layer
 answers those questions from a GamePad or a Pro Controller. On PC the same
 questions are answered by two kinds of device: gamepads, and the keyboard and
-mouse together.
+mouse together, which a touchscreen joins.
 
 The keyboard and mouse are a device in their own right. They are not dressed up
 as a gamepad: actions are bound to keys and mouse buttons, looking uses the raw
@@ -18,7 +18,7 @@ pointer.
 
 | Slot | Device |
 | --- | --- |
-| 0 | keyboard and mouse (always connected) |
+| 0 | keyboard and mouse, and a touchscreen (always connected) |
 | 1-4 | gamepads, in the order they are connected |
 
 A player signs in on whichever device they press a button on, exactly as on a
@@ -176,9 +176,134 @@ is using, and every row shows that device's buttons or keys.
   raises the game's warning. Reset to Defaults resets the keyboard bindings as
   well when the keyboard is the player's device.
 
+## Touchscreen
+
+A touchscreen plays the way Minecraft plays on phones and tablets, drawn in the
+interface's own style. It belongs to slot 0 with the keyboard and mouse: the
+first touch makes it the device in use, which shows the touch controls, hides
+the system cursor and turns the prompts into plain words; the next key press
+or mouse movement goes back to the keyboard and mouse. Only screens touched
+directly count. Touchpads, which also report fingers, stay a mouse, and the
+mouse events the system makes up from touches are ignored, so a touch is never
+seen twice. `platform/pc/PcTouch.hpp` keeps the fingers and draws the controls
+over the finished frame.
+
+**In menus** a finger is a pointer, as on the GamePad's touch screen: touching
+a control highlights it and lifting the finger presses it, dragging scrolls
+and moves sliders, and the prompts along the bottom are buttons, so Back,
+Select and the rest can be tapped.
+
+Containers (the inventory, chests, crafting, the creative menu) move items as
+Minecraft does on phones, through the container's own take, place and quick
+move so every move is one the server already understands:
+
+- A tap takes the whole stack under the finger, and a tap on another slot
+  places it there, swapping or merging as a click would.
+- Holding still on a stack for 0.525 seconds starts splitting it: a bar over
+  the finger fills and the amount above it grows to the whole stack over the
+  next second, and lifting the finger takes that many. Holding on a slot
+  while carrying a stack places that many from it instead.
+- Resting on a stack for 0.18 seconds and then moving drags it; it goes to
+  the slot the finger lifts over, or is dropped if that is outside the
+  container. Whatever the drop leaves on the finger (the other stack of a
+  swap, what did not fit on a full stack, or the whole stack if the slot does
+  not take it) goes back to the slot the drag started from. In the creative
+  menu an item dragged from the list goes to the hotbar slot it is dropped
+  on, and a hotbar item dragged back onto the list is deleted.
+- A double tap sends the stack to the other part of the container, as quick
+  move does.
+- Swiping up or down before the finger has rested scrolls, which turns the
+  creative menu's pages.
+
+**In game** the Controls menu's Touch Controls row picks one of three layouts,
+those of Minecraft on phones (stored per profile in a spare settings field):
+
+| Layout | Moving | Breaking and using |
+| --- | --- | --- |
+| Joystick & Tap (default) | a joystick that appears under the thumb anywhere in the lower left | at the finger |
+| Joystick & Crosshair | the same joystick | at the crosshair, with Attack and Use buttons |
+| D-Pad & Tap | arrow buttons; diagonals show while walking forward, and the finger can slide between them | at the finger |
+
+- Dragging anywhere that is not a control looks around: a drag across the
+  whole width of the screen turns 180 degrees at the default sensitivity, and
+  Look Sensitivity and Invert Look apply as they do to the mouse.
+- With the tap layouts there is no crosshair. A short tap uses what is held on
+  the block under the finger (placing a block, opening a door or a chest) or
+  attacks a mob there; holding still breaks the block under the finger, or
+  attacks the mob, until the finger lifts, and dragging while holding keeps
+  breaking as the view turns. Food, bows, shields and other held items are
+  used by holding instead. Taps and holds aim through the touched point, so
+  the block outline appears under the finger.
+- Jump is at the bottom right; tapping it twice quickly starts and stops
+  flying, as the jump button does. Sneak sits beside it (the centre of the
+  d-pad in that layout): a tap turns sneaking on or off, and holding it sneaks
+  until it is let go. While flying or swimming they become up and down, and
+  while riding Sneak becomes Dismount. Tapping fly down twice quickly stops
+  flying, as on Bedrock.
+- The joystick layouts have a sprint button beside sneak. Tapping it turns
+  sprinting on for as long as the player keeps walking forward, and again
+  turns it off; it fades while the player is too hungry to sprint. Pushing
+  the joystick past its edge while walking forward also sprints (Sprint Using
+  the Joystick), and double-tapping forward on the d-pad sprints as it does on
+  a stick.
+- When the middle of the view is on a mob or vehicle the player can do
+  something with, a button above the hotbar names it, as Bedrock's interact
+  button does: Ride, Mount, Sail, Feed, Milk, Shear, Trade, Name, Leash and
+  the rest, the same words the game's own prompts use. Tapping it uses what is
+  held on that mob, so mobs can be ridden, fed and traded with even though a
+  tap on a mob attacks it. The label is written in the game's font; in a
+  language the font cannot write, the button shows an icon instead.
+- Tapping a hotbar slot selects it; holding one drops its items one at a time.
+  The two buttons after the hotbar open the inventory and the crafting menu,
+  and pause and chat are at the top right.
+- The controls scale by whole numbers with the window's height, as the rest
+  of the interface does, and fade with the Interface Opacity setting (fully
+  drawn at its default of 80% and above). On narrow windows, where they would
+  meet the hotbar's buttons, jump, sneak and sprint move up above them.
+- Tutorial hints and How to Play name the touch buttons by their icons while
+  the touchscreen is in use, so "press Sneak" in a boat shows the Dismount
+  button rather than a key.
+
+Below Touch Controls, the Controls menu has Bedrock's other touch options.
+They are shown when the computer has a touchscreen or one has been used, and
+are stored with the layout in the profile:
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| Pick Block Button | off | a button above jump; tapping it and then a block picks that block, or picks at once with the crosshair |
+| Left-Handed Inventory | off | the inventory and crafting buttons sit left of the hotbar |
+| Sprint Using the Joystick | on | pushing the joystick past its edge sprints |
+| Camera Perspective Button | off | a button beside chat that changes the camera view |
+| Joystick | Always Visible | Always Visible, Hidden When Unused or Always Hidden; it works the same either way |
+| Swap Jump and Sneak | off | sneak takes the outer corner and jump moves beside it |
+
+The buttons, their names and options come from Bedrock Edition 26.32's
+touch settings, button textures (`interact`, `sprint`, `pick_block`,
+`perspective`) and input names (`button.sprint_toggle`,
+`button.block_select_toggle`), and its HUD keeps the interact button above
+the hotbar. The timings follow Minecraft on phones too (read from the same
+version): a
+tap lifts before the hold time, which is 0.3 seconds with the joystick and
+0.4 seconds with the d-pad; a finger moving further than 3% of the screen's
+height looks around instead; sneaking turns into holding after 0.4 seconds;
+and in containers a drag needs 0.18 seconds of rest and splitting starts after
+0.525 seconds (Bedrock's `ctrl_dwellbeforedragtime` and
+`ctrl_stacksplittingtriggertime`). The art is `resources/pc/ui/touch.png`, drawn by
+`tools/pcart/make_ui_art.py` like the rest of the PC interface art: button
+frames shaped like the hotbar's slots, an icon for each button and the
+joystick's pad.
+
 ## What changes in the game
 
 The game core stays platform-pure. Where PC input needs the game to do
-something new (turning by the mouse, selecting a hotbar slot, hovering a
-control), the change sits behind `#if LCE_PLATFORM_PC` and the Wii U code is
-untouched.
+something new (turning by the mouse or a finger, selecting a hotbar slot,
+hovering a control, aiming at the touched point), the change sits behind
+`#if LCE_PLATFORM_PC` and the Wii U code is untouched. For the touch controls
+the HUD reports to the input layer each frame where the hotbar is, the touch
+options and Interface Opacity, and whether the player is flying, swimming,
+riding, sneaking, able to sprint or holding something used by holding;
+`GameRenderer::pick` aims through the touched point and reports whether it
+found a block or a mob. With the tap layouts and no finger aiming, it picks
+through the middle of the view only to ask the mob there for its interaction
+prompt (`Entity::GetInteractTooltip`) for the interact button, then drops
+that pick so nothing is outlined or used there.

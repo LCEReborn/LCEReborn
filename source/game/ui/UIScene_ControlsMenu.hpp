@@ -52,12 +52,25 @@ public:
         EControl_ChatCommand,
         EControl_DebugOverlay,
         EControl_Label,
-        EControl_HoldToSneak
+        EControl_HoldToSneak,
+        EControl_TouchControls,
+        EControl_TouchPickBlock,
+        EControl_TouchLeftHanded,
+        EControl_TouchEasySprint,
+        EControl_TouchPerspective,
+        EControl_TouchJoystick,
+        EControl_TouchSwapJumpSneak
     };
 
     UIScene_ControlsMenu(int player, void* data, UILayer* layer);
     virtual ~UIScene_ControlsMenu();
     std::wstring GetControlsString(int player, EControllerActions action, bool& mapped);
+#if LCE_PLATFORM_PC
+    std::wstring TouchControlsString();
+    std::wstring TouchJoystickString();
+    void AddTouchRows();
+    void UpdateTouchRows();
+#endif
     void SetControlsHelp(int player, int control, std::wstring help);
     void Init(int player);
     virtual unsigned int mapElementsAndNames();
@@ -113,6 +126,9 @@ private:
     unsigned int m_ignoredPadButtons;
     UIControl_Label m_version;
     UIControl_MultiList m_controlsList;
+#if LCE_PLATFORM_PC
+    bool m_touchRows;
+#endif
 };
 
 #endif

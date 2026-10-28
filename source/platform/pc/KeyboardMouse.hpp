@@ -68,7 +68,10 @@ public:
     float PointerX() const;
     float PointerY() const;
     void SetPointer(float x, float y);
+    void MovePointer(float x, float y);
     unsigned int ConsumeClicks();
+    void AddClicks(unsigned int clicks);
+    void SetTouchInput(const bool* down, const bool* pressed, float moveX, float moveY, bool moving);
     bool QuickMoveHeld() const;
     bool PrimaryHeld() const;
     void DiscardRelativeInput();
@@ -109,6 +112,11 @@ private:
     float mMotionSinceTick;
     bool mMovedThisTick;
     unsigned int mClicks;
+    bool mTouchDown[ACTION_COUNT];
+    bool mTouchPressed[ACTION_COUNT];
+    float mTouchMoveX;
+    float mTouchMoveY;
+    bool mTouchMoving;
     unsigned long long mRepeatDelay;
     bool mCapturing;
     int mCaptured;

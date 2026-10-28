@@ -683,6 +683,32 @@ void UIScene_CreativeMenu::onMouseWheel(int steps)
     for (; steps < 0; ++steps)
         handleAdditionalKeyPress(EControllerActions_MenuOtherStickDown);
 }
+
+void UIScene_CreativeMenu::TouchDragStart()
+{
+    if (m_currentSection != IUIScene_AbstractContainerMenu::ESceneSection_CreativeSelector || m_pointerOutsideMenu)
+    {
+        UIScene_AbstractContainerMenu::TouchDragStart();
+        return;
+    }
+    boost::shared_ptr<Inventory> inventory = Minecraft::GetInstance()->mLocalPlayers[getPad()]->mInventory;
+    not_null_ptr<ItemInstance> selected = m_menu->getSlot(getCurrentIndex(m_currentSection))->getItem();
+    if (!inventory->getCarried()->isEmpty() || selected->isEmpty())
+        return;
+    inventory->setCarried(selected->copy());
+    gConsoleUIController.PlayUISFX(SoundEvents::UI_PRESS);
+}
+
+void UIScene_CreativeMenu::TouchDragEnd()
+{
+    boost::shared_ptr<Inventory> inventory = Minecraft::GetInstance()->mLocalPlayers[getPad()]->mInventory;
+    if (m_currentSection == IUIScene_AbstractContainerMenu::ESceneSection_CreativeSelector && !m_pointerOutsideMenu)
+    {
+        inventory->setCarried(ItemInstance::EMPTY);
+        return;
+    }
+    UIScene_AbstractContainerMenu::TouchDragEnd();
+}
 #endif
 
 bool UIScene_CreativeMenu::getEmptyInventorySlot(not_null_ptr<ItemInstance> item, int& slot)
